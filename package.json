@@ -1,0 +1,39 @@
+{
+  "name": "bee-drill-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "fixtures": "tsx scripts/build-fixtures.ts",
+    "poc": "tsx src/poc.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "real": "tsx scripts/real.ts",
+    "class": "tsx scripts/class.ts",
+    "day1": "tsx scripts/score-day1.ts",
+    "mislabel:score": "tsx scripts/score-mislabel.ts",
+    "review": "tsx scripts/review.ts",
+    "meetings": "tsx scripts/meetings.ts",
+    "meetings:score": "tsx scripts/score-meetings.ts",
+    "leak-check": "tsx scripts/leak-check.ts",
+    "hub": "tsx src/hub/server.ts",
+    "contract:check": "tsx scripts/contract-check.ts",
+    "demo:fixtures": "tsx scripts/build-demo-fixtures.ts",
+    "hub:cards": "tsx scripts/hub-cards.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1151.0",
+    "@aws-sdk/credential-providers": "^3.1151.0",
+    "@rackboard/tv-voice-bridge": "file:vendor/rackboard-tv-voice-bridge-0.1.0.tgz",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}

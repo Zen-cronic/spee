@@ -1,0 +1,55 @@
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Secrets and local config
+.env*
+*.pem
+*.key
+*.p12
+
+# Logs and OS files
+*.log
+.DS_Store
+
+# Real operator data (work meeting; never commit)
+fixtures/private/
+out/
+# LLM response cache: holds real speech and possibly other speakers' context
+cache/
+
+# Day-1 real Bee captures (personal data)
+day1/*.json
+
+# Real Bee data: wearer-only line store, deck, class outputs (personal data; never commit)
+/real/
+
+# Superseded mock-data PoC report (names another project; kept local only)
+POC_REPORT.md
+
+# Packed tarballs, except the vendored bridge a fresh clone installs from
+*.tgz
+!vendor/rackboard-tv-voice-bridge-0.1.0.tgz
+
+# Browser automation and recording artifacts
+.playwright-mcp/
+test-results/
+playwright-report/
+film/
+*.mp4
+*.webm
+
+# Agent and editor local state
+.claude/
+.codex/
+.agents/
+.vscode/
+.idea/
+
+# Private working notes and agent steering files
+notes.md
+BUILD_CHECKPOINT.md
+CLAUDE.md
+AGENTS.md
