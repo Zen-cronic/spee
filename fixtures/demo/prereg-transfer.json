@@ -1,0 +1,26 @@
+{
+ "kind": "transfer",
+ "registered_at": "2026-10-12T13:00:00.000Z",
+ "registered_local": "2026-10-12 09:00 EDT",
+ "lang": "en",
+ "basis": "SYNTHETIC DEMO pre-registration (invented, mirrors prereg/transfer.json): two drilled habits and one control habit that is deliberately never drilled",
+ "drilled": [
+  {
+   "habit": "hedges",
+   "why": "hero habit: hedging a finished result (all hedges)"
+  },
+  {
+   "habit": "filler:like",
+   "why": "the most frequent filler"
+  }
+ ],
+ "control": [
+  {
+   "habit": "restart",
+   "why": "same speech, never drilled: separates drill transfer from a general change in how the wearer talks"
+  }
+ ],
+ "min_words_per_period": 400,
+ "cutover_rule": "drilled habit: its first Bee-verified drill attempt; control: the earliest first drill of any drilled habit",
+ "synthetic": true
+}
