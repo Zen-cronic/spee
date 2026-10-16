@@ -103,32 +103,37 @@ describe("hub server with the stub plugins", () => {
     expect(h.contractVersion).toBe(CONTRACT_VERSION);
     expect(h.contractVersion).toBe(2);
     expect(h.plugins.map((p: any) => p.name)).toEqual(["live", "mirror", "static", "alexa", "mcp", "probe"]);
-    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "stub", routes: expect.arrayContaining(["GET /api/coach/now"]) });
+    for (const name of ["live", "mirror", "alexa", "mcp"]) {
+      expect(h.plugins.find((p: any) => p.name === name)?.status, `${name} landed`).toBe("ready");
+    }
+    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", routes: expect.arrayContaining(["GET /api/coach/now"]) });
     expect(h.plugins.find((p: any) => p.name === "static")).toMatchObject({ owner: "lead", status: "ready" });
     expect(h.fixtureV2).toBe(false);
     expect(r.text).not.toContain("p".repeat(20));
     expect(r.text).not.toContain("m".repeat(20));
   });
-  it("every planned v2 route answers 501 not_implemented from its owner's stub", async () => {
-    const want: [string, string, string][] = [
-      ["GET", "/api/live", "live"],
-      ["POST", "/api/live/mode", "live"],
-      ["GET", "/api/recaps", "live"],
-      ["GET", "/api/recaps/rcp_x", "live"],
-      ["GET", "/api/coach/now", "live"],
-      ["POST", "/api/demo/live", "live"],
-      ["POST", "/api/demo/mirror", "mirror"],
-      ["POST", "/alexa", "alexa"],
-      ["POST", "/mcp", "mcp"],
-      ["GET", "/mcp", "mcp"],
-      ["DELETE", "/mcp", "mcp"],
+  it("every planned v2 route is owned by its landed plugin (no 501 stubs, no core 404)", async () => {
+    const want: [string, string, number[]][] = [
+      ["GET", "/api/live", [200]],
+      ["POST", "/api/live/mode", [200, 400]],
+      ["GET", "/api/recaps", [200]],
+      ["GET", "/api/recaps/rcp_x", [404]],
+      ["GET", "/api/coach/now", [200]],
+      ["POST", "/api/demo/live", [202]],
+      ["POST", "/api/demo/mirror", [202]],
+      ["POST", "/alexa", [400]],
+      ["POST", "/mcp", [400, 406]],
+      ["GET", "/mcp", [405]],
+      ["DELETE", "/mcp", [405]],
     ];
-    for (const [m, p, owner] of want) {
-      const r = await raw(s.port, p, { method: m, headers: { "content-type": "application/json" }, body: m === "POST" ? "{}" : undefined });
-      expect(r.status, `${m} ${p}`).toBe(501);
-      expect(JSON.parse(r.text)).toMatchObject({ error: "not_implemented", plugin: owner });
+    for (const [m, p, ok] of want) {
+      // aim the demo take at a room that doesn't exist so it can't consume a real room's meter budget
+      const body = p === "/api/demo/mirror" ? JSON.stringify({ room: "NOROOM" }) : "{}";
+      const r = await raw(s.port, p, { method: m, headers: { "content-type": "application/json" }, body: m === "POST" ? body : undefined });
+      expect(ok, `${m} ${p} -> ${r.status}`).toContain(r.status);
+      if (r.text) expect(r.text).not.toContain("not_implemented");
     }
-    expect(JSON.parse((await raw(s.port, "/api/live/nope")).text).error).toBe("not_found"); // a stub falls through off its routes
+    expect(JSON.parse((await raw(s.port, "/api/recaps/rcp_x")).text).error).toBe("unknown_recap");
   });
   it("plugins route before the core and get OPTIONS for their prefixes; errors are 500 plugin_error", async () => {
     expect(JSON.parse((await raw(s.port, "/api/probe")).text)).toEqual({ probe: true });
@@ -168,7 +173,8 @@ describe("hub server with the stub plugins", () => {
     expect(sent).toBe(1);
     expect(ctx!.broadcastToScreens(codeA, "practice.meters", { takeId: "take_room_test", frame: 2 })).toBe(0); // <= 20 Hz per room
     await sleep(150);
-    const got = (c: { frames: any[] }) => c.frames.filter((f) => f.type === "app" && f.topic === "practice.meters");
+    // only this test's frames: the earlier route test starts a demo take that plays to every room
+    const got = (c: { frames: any[] }) => c.frames.filter((f) => f.type === "app" && f.topic === "practice.meters" && f.payload?.takeId === "take_room_test");
     expect(got(tvA)).toHaveLength(1);
     expect(got(tvA)[0].payload).toEqual({ takeId: "take_room_test", frame: 1 });
     expect(got(phoneA)).toHaveLength(0);
