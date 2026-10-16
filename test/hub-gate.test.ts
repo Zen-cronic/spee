@@ -1,0 +1,122 @@
+// The public-access gate (src/hub/gate.ts): a tunnel must expose only /alexa, the static phone and
+// simulator pages, /mcp with the bearer token and /ws with the pair token.
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { bearerOk, hostIsLocal, isPublicRequest, resolveTokens, tokenEquals } from "../src/hub/gate.js";
+import { startHubServer, type HubServer } from "../src/hub/server.js";
+import { demoSetup } from "../src/hub/setup.js";
+import { raw, wsOutcome } from "./helpers-http.js";
+
+const PAIR = "pair-token-for-tests-0001";
+const MCP = "mcp-token-for-tests-00001";
+const NGROK = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https" };
+const PUBLIC = "abc123.ngrok-free.app";
+let s: HubServer;
+
+beforeAll(async () => {
+  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: null });
+});
+afterAll(async () => s.close());
+
+describe("gate: what counts as public", () => {
+  it("loopback and LAN hosts are local; tunnel hosts and missing hosts are not", () => {
+    for (const h of ["localhost:8791", "127.0.0.1:8791", "[::1]:8791", "192.168.1.20:8791", "10.0.0.5", "172.20.1.1:8791", "mybox.local", "169.254.3.4", "[fd12::1]:8791"]) expect(hostIsLocal(h), h).toBe(true);
+    for (const h of [PUBLIC, "example.com", "8.8.8.8:8791", "172.32.0.1", "100.64.0.1", "", undefined]) expect(hostIsLocal(h), String(h)).toBe(false);
+  });
+  it("an x-forwarded-for from ngrok makes a loopback-Host request public", () => {
+    expect(isPublicRequest({ headers: { host: "127.0.0.1:8791" } })).toBe(false);
+    expect(isPublicRequest({ headers: { host: "127.0.0.1:8791", ...NGROK } })).toBe(true);
+    expect(isPublicRequest({ headers: { host: "localhost:8791", forwarded: "for=203.0.113.7" } })).toBe(true);
+    expect(isPublicRequest({ headers: { host: PUBLIC } })).toBe(true);
+  });
+  it("tokens: compared in constant time; bearer parsing", () => {
+    expect(tokenEquals(PAIR, PAIR)).toBe(true);
+    expect(tokenEquals("nope", PAIR)).toBe(false);
+    expect(tokenEquals("", PAIR)).toBe(false);
+    expect(tokenEquals(null, PAIR)).toBe(false);
+    expect(bearerOk(`Bearer ${MCP}`, MCP)).toBe(true);
+    expect(bearerOk(`bearer ${MCP}`, MCP)).toBe(true);
+    expect(bearerOk(MCP, MCP)).toBe(false);
+    expect(bearerOk(undefined, MCP)).toBe(false);
+  });
+  it("unset tokens are generated and printed once; set ones are kept and never printed", () => {
+    const lines: string[] = [];
+    const t = resolveTokens({}, (l) => lines.push(l));
+    expect(t.source).toEqual({ pair: "generated", mcp: "generated" });
+    expect(t.pairToken.length).toBeGreaterThanOrEqual(20);
+    expect(lines.filter((l) => l.includes(t.pairToken))).toHaveLength(1);
+    expect(lines.filter((l) => l.includes(t.mcpToken))).toHaveLength(1);
+    const kept: string[] = [];
+    const k = resolveTokens({ PAIR_TOKEN: PAIR, MCP_TOKEN: MCP }, (l) => kept.push(l));
+    expect(k).toMatchObject({ pairToken: PAIR, mcpToken: MCP, source: { pair: "env", mcp: "env" } });
+    expect(kept.join("\n")).not.toContain(PAIR);
+  });
+});
+
+describe("gate: the hub server", () => {
+  it("LAN requests reach /api/*", async () => {
+    expect((await raw(s.port, "/api/health", { headers: { host: `127.0.0.1:${s.port}` } })).status).toBe(200);
+    expect((await raw(s.port, "/api/stats", { headers: { host: `192.168.1.20:${s.port}` } })).status).toBe(200);
+  });
+  it("a public /api/* request is blocked with 403 forbidden", async () => {
+    for (const [p, h] of [
+      ["/api/health", { ...NGROK, host: `127.0.0.1:${s.port}` }],
+      ["/api/stats", { host: PUBLIC }],
+      ["/api/events/recent", { ...NGROK, host: PUBLIC }],
+      ["/api/events", { ...NGROK, host: PUBLIC }],
+      ["/api/live", { ...NGROK, host: PUBLIC }],
+      ["/tv/", { ...NGROK, host: PUBLIC }],
+    ] as [string, Record<string, string>][]) {
+      const r = await raw(s.port, p, { headers: h });
+      expect(r.status, p).toBe(403);
+      expect(JSON.parse(r.text).error).toBe("forbidden");
+    }
+    expect((await raw(s.port, "/p/../api/health", { headers: { ...NGROK, host: PUBLIC } })).status).toBe(403);
+  });
+  it("public POST /alexa and GET /p/, /sim/ pass the gate", async () => {
+    const a = await raw(s.port, "/alexa", { method: "POST", headers: { ...NGROK, host: PUBLIC, "content-type": "application/json" }, body: "{}" });
+    expect(a.status).not.toBe(403);
+    expect((await raw(s.port, "/alexa", { headers: { ...NGROK, host: PUBLIC } })).status).toBe(403);
+    expect((await raw(s.port, "/p/HJ3H?k=x", { headers: { ...NGROK, host: PUBLIC } })).status).not.toBe(403);
+    expect((await raw(s.port, "/sim/", { headers: { ...NGROK, host: PUBLIC } })).status).not.toBe(403);
+  });
+  it("public /mcp needs Authorization: Bearer $MCP_TOKEN (preflight excepted)", async () => {
+    const h = { ...NGROK, host: PUBLIC, "content-type": "application/json" };
+    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect((await raw(s.port, "/mcp", { method: "POST", headers: h, body })).status).toBe(403);
+    expect((await raw(s.port, "/mcp", { method: "POST", headers: { ...h, authorization: "Bearer wrong" }, body })).status).toBe(403);
+    expect((await raw(s.port, "/mcp", { method: "POST", headers: { ...h, authorization: `Bearer ${MCP}` }, body })).status).not.toBe(403);
+    expect((await raw(s.port, "/mcp", { method: "OPTIONS", headers: h })).status).not.toBe(403);
+    expect((await raw(s.port, "/mcp", { method: "POST", headers: { "content-type": "application/json" }, body })).status).not.toBe(403); // LAN
+  });
+  it("public /ws needs k=$PAIR_TOKEN; LAN /ws does not", async () => {
+    expect((await wsOutcome(s.port, "", NGROK)).result).toBe("rejected");
+    expect((await wsOutcome(s.port, "?k=wrong", NGROK)).result).toBe("rejected");
+    expect((await wsOutcome(s.port, "", { host: PUBLIC })).result).toBe("rejected");
+    expect((await wsOutcome(s.port, `?k=${PAIR}`, NGROK)).result).toBe("welcome");
+    const lan = await wsOutcome(s.port, "");
+    expect(lan.result).toBe("welcome");
+    expect(lan.welcome.joinUrl).toMatch(new RegExp(`/p/${lan.welcome.code}\\?k=${PAIR}$`));
+    expect((await raw(s.port, "/api/health")).status).toBe(200); // the server survives refused upgrades
+  });
+  it("never puts a token in a response", async () => {
+    for (const p of ["/api/health", "/api/live", "/api/state", "/api/nope"]) {
+      const r = await raw(s.port, p);
+      expect(r.text, p).not.toContain(PAIR);
+      expect(r.text, p).not.toContain(MCP);
+    }
+    const h = JSON.parse((await raw(s.port, "/api/health")).text);
+    expect(h.gate).toEqual({ publicRoutes: expect.any(Array), pairToken: "env", mcpToken: "env" });
+  });
+});
+
+describe("joinUrl", () => {
+  it("uses PUBLIC_BASE_URL when set and appends ?k=<PAIR_TOKEN>", async () => {
+    const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
+    try {
+      const w = await wsOutcome(t.port, "");
+      expect(w.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${w.welcome.code}?k=${PAIR}`);
+    } finally {
+      await t.close();
+    }
+  });
+});

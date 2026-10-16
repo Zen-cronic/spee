@@ -1,0 +1,33 @@
+// The fixed plugin registry (contract v2, lead-owned). Order matters: routing and onApp fall
+// through in this order. A packet fills in its own module; it never edits this list.
+//   live    src/hub/live/plugin.ts  packet A   /api/live, /api/recaps, /api/coach, /api/demo/live
+//   mirror  src/hub/mirror.ts       packet B   /api/demo/mirror; practice.* and mirror.focus frames
+//   static  src/hub/static.ts       lead       /tv/, /p/, /sim/
+//   alexa   src/alexa/plugin.ts     packet C   /alexa
+//   mcp     src/mcp/plugin.ts       packet C   /mcp
+import { createAlexaPlugin } from "../alexa/plugin.js";
+import { createMcpPlugin } from "../mcp/plugin.js";
+import { createLivePlugin } from "./live/plugin.js";
+import { createMirrorPlugin } from "./mirror.js";
+import type { HubPlugin } from "./plugin.js";
+import { createStaticPlugin } from "./static.js";
+
+export const PLUGIN_NAMES = ["live", "mirror", "static", "alexa", "mcp"] as const;
+export type PluginName = (typeof PLUGIN_NAMES)[number];
+
+export const PLUGIN_MODULES: Record<PluginName, { file: string; owner: string; create: () => HubPlugin }> = {
+  live: { file: "src/hub/live/plugin.ts", owner: "packet A", create: createLivePlugin },
+  mirror: { file: "src/hub/mirror.ts", owner: "packet B", create: createMirrorPlugin },
+  static: { file: "src/hub/static.ts", owner: "lead", create: () => createStaticPlugin() },
+  alexa: { file: "src/alexa/plugin.ts", owner: "packet C", create: createAlexaPlugin },
+  mcp: { file: "src/mcp/plugin.ts", owner: "packet C", create: createMcpPlugin },
+};
+
+// Fresh plugin instances for one hub server, in registry order.
+export function createPlugins(): HubPlugin[] {
+  return PLUGIN_NAMES.map((n) => {
+    const p = PLUGIN_MODULES[n].create();
+    if (p.name !== n) throw new Error(`plugin module ${PLUGIN_MODULES[n].file} must create a plugin named "${n}" (got "${p.name}")`);
+    return p;
+  });
+}

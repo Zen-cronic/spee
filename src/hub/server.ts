@@ -4,9 +4,13 @@
 //   npm run hub -- --demo             # demo: synthetic fixtures + Bee replay (no Watch, no network)
 //   npm run hub -- --demo --pace 0.1  # demo with Bee replay and timeouts 10x faster
 //   npm run hub -- --no-bee           # live without the stream (attempts end "unverified")
+//   npm run hub -- --demo --fixture-v2  # demo, and the v2 live routes answer from fixtures/contract-v2/
 //
-// Logs are JSON lines with event names and ids only: never transcript text, never the Bee token.
-// docs/CONTRACT.md is the contract for every endpoint and event.
+// Logs are JSON lines with event names and ids only: never transcript text, never the Bee token,
+// never a gate token. docs/CONTRACT.md is the contract for every endpoint and event.
+//
+// Request order: the public-access gate (gate.ts), fixture mode, the plugins (plugins.ts) for
+// their prefixes, the generic OPTIONS answer, the v1 core routes, then 404.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { networkInterfaces } from "node:os";
 import { BridgeHub, type Room } from "@rackboard/tv-voice-bridge/hub";
@@ -17,8 +21,13 @@ import { parseRange, parseSource } from "./stats.js";
 import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
+import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, type PluginInfo, type RoomTopic } from "./contract.js";
+import { bearerOk, gateHttp, installUpgradeGate, isPublicRequest, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateTokens } from "./gate.js";
+import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
+import { createPlugins } from "./plugins.js";
+import { createFixtureRouter } from "./fixtureV2.js";
 
-export const CONTRACT_VERSION = 1;
+export { CONTRACT_VERSION };
 export const DEFAULT_PORT = 8791; // Rack Board uses 8792, the bridge example 8800
 
 export interface HubServerOptions {
@@ -30,12 +39,20 @@ export interface HubServerOptions {
   stateDir?: string | null;
   quiet?: boolean;
   setup?: Setup; // inject (tests)
+  fixtureV2?: boolean; // demo only: the v2 live routes answer from fixtures/contract-v2/
+  plugins?: HubPlugin[]; // inject (tests); default: the fixed registry (plugins.ts)
+  pairToken?: string; // default: env PAIR_TOKEN, else generated and printed once
+  mcpToken?: string; // default: env MCP_TOKEN, else generated and printed once
+  publicBaseUrl?: string | null; // default: env PUBLIC_BASE_URL (the tunnel's https origin)
+  extraLanHosts?: string[]; // more Host names to treat as LAN (tests)
 }
 
 export interface HubServer {
   url: string;
   port: number;
   setup: Setup;
+  plugins: HubPlugin[];
+  tokens: GateTokens; // in-process only (tests); never served
   close(): Promise<void>;
 }
 
@@ -64,12 +81,21 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
   const setup = opts.setup ?? (opts.demo ? demoSetup({ pace: opts.pace, stateDir: opts.stateDir }) : await liveSetup({ bee: opts.bee, stateDir: opts.stateDir ?? undefined, log }));
   const { hub } = setup;
   const sse = new Set<ServerResponse>();
+  if (opts.fixtureV2 && !setup.demo) throw new Error("--fixture-v2 needs --demo (fixture payloads are synthetic)");
+  const print = (line: string) => {
+    if (!opts.quiet) console.log(line);
+  };
+  const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print);
+  const publicBaseUrl = ((opts.publicBaseUrl === undefined ? process.env.PUBLIC_BASE_URL : opts.publicBaseUrl) ?? "").trim().replace(/\/+$/, "") || null;
+  const extraLanHosts = opts.extraLanHosts ?? [];
+  const plugins = opts.plugins ?? createPlugins();
 
   const send = (res: ServerResponse, status: number, data: unknown) => {
     res.writeHead(status, { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-store" });
     res.end(JSON.stringify(data, null, 1));
   };
   const fail = (res: ServerResponse, status: number, error: string, message: string) => send(res, status, { error, message });
+  let listeningPort = 0;
 
   const server = createServer((req, res) => {
     handle(req, res).catch((err) => {
@@ -82,7 +108,7 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
     server,
     path: "/ws",
     clock: hub.clock,
-    joinUrl: (code) => `http://${lanIp()}:${(server.address() as { port: number } | null)?.port ?? 0}/p/${code}`,
+    joinUrl: (code) => `${publicBaseUrl ?? `http://${lanIp()}:${(server.address() as { port: number } | null)?.port ?? 0}`}/p/${code}?k=${encodeURIComponent(tokens.pairToken)}`,
     log: (event, data) => log(`bridge.${event}`, data),
     onJoin: (room: Room, peer: PeerInfo) => {
       const p = room.peers.get(peer.clientId);
@@ -94,7 +120,7 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
       if ("error" in r) return { name: "attempt.rejected", ok: false, payload: { error: r.error, message: "open a card first" } };
       return { name: "attempt.provisional", ok: r.provisional!.grade.pass, payload: { attemptId: r.id, cardId: r.cardId, status: r.status, provisionalPass: r.provisional!.grade.pass } };
     },
-    onApp: (_room, msg, from) => {
+    onApp: (room, msg, from) => {
       const p = (msg.payload ?? {}) as Record<string, unknown>;
       const by = from.name ?? from.role;
       switch (msg.topic) {
@@ -116,10 +142,57 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
         case "session.end":
           return { name: "session.end", ok: true, payload: { summary: hub.endSession() } };
         default:
+          for (const pl of plugins) {
+            if (!pl.onApp) continue;
+            const r = pl.onApp(room, msg, from, ctx);
+            if (r !== undefined) return r;
+          }
           return null;
       }
     },
   });
+  installUpgradeGate(server, tokens, log, extraLanHosts);
+
+  // Room-scoped relay: one room's screens only, at most ROOM_RELAY_MAX_HZ per room and topic.
+  const lastRelay = new Map<string, number>();
+  const broadcastToScreens = (room: Room | string | null, topic: RoomTopic, payload: unknown): number => {
+    if (!(ROOM_TOPICS as readonly string[]).includes(topic)) throw new Error(`${topic} is not a room topic`);
+    const rooms = room == null ? [...bridge.rooms.values()] : [typeof room === "string" ? bridge.rooms.get(room.toUpperCase()) : room].filter((r): r is Room => !!r);
+    let n = 0;
+    for (const r of rooms) {
+      const key = `${r.code}:${topic}`;
+      const now = Date.now();
+      if (now - (lastRelay.get(key) ?? -Infinity) < 1000 / ROOM_RELAY_MAX_HZ) continue;
+      lastRelay.set(key, now);
+      for (const p of r.peers.values()) if (p.role === "screen") (bridge.send(p.socket, { type: "app", topic, payload }), n++);
+    }
+    return n;
+  };
+
+  const ctx: PluginCtx = {
+    hub,
+    setup,
+    bridge,
+    stateDir: setup.stateDir,
+    pace: setup.pace,
+    demo: !!setup.demo,
+    fixtureV2: !!opts.fixtureV2,
+    log,
+    publish: (topic, data) => hub.publish(topic, data),
+    broadcastToScreens,
+    selfUrl: () => `http://127.0.0.1:${listeningPort}`,
+    auth: { mcpBearerOk: (h) => bearerOk(h, tokens.mcpToken), pairTokenOk: (k) => tokenEquals(k, tokens.pairToken) },
+    isPublic: (req) => isPublicRequest(req, extraLanHosts),
+    json: (res, status, data) => send(res, status, data),
+    readJson: (req) => body(req),
+  };
+  for (const pl of plugins) pl.attach?.(ctx);
+  const fixture = opts.fixtureV2 ? createFixtureRouter(ctx) : null;
+  const pluginInfo = (): PluginInfo[] =>
+    plugins.map((pl) => {
+      const d = pl.describe?.() ?? { owner: "unknown", status: "ready" as const, routes: [] };
+      return { name: pl.name, prefixes: pl.prefixes, ...d, ...(fixture && fixture.owns(pl.name) ? { status: "stub" as const, note: `fixture mode: ${fixture.routes.join(", ")} answer from fixtures/contract-v2/` } : {}) };
+    });
 
   // Fan every hub event out to every bridge peer (all rooms, all roles) and every SSE client.
   hub.on("event", (ev: HubEvent) => {
@@ -142,8 +215,30 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
     const url = new URL(req.url ?? "/", "http://hub");
     const path = url.pathname;
     const method = req.method ?? "GET";
+    const g = gateHttp(req, path, tokens, extraLanHosts);
+    if (!g.allow) {
+      log("gate.denied", { method, path, reason: g.reason });
+      return fail(res, 403, "forbidden", g.reason);
+    }
+    if (fixture && (await fixture.route(req, res, url))) return;
+    for (const pl of plugins) {
+      if (!pl.route || !pl.prefixes.some((px) => underPrefix(path, px))) continue;
+      try {
+        if (await pl.route(req, res, url, ctx)) return;
+      } catch (err) {
+        log("plugin.error", { plugin: pl.name, path, error: (err as Error).message });
+        if (!res.headersSent) return fail(res, 500, "plugin_error", `${pl.name}: ${(err as Error).message}`);
+        return void res.end();
+      }
+    }
     if (method === "OPTIONS") {
-      res.writeHead(204, { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" });
+      res.writeHead(204, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+        "access-control-allow-headers": "content-type, authorization, mcp-session-id, mcp-protocol-version, last-event-id",
+        "access-control-expose-headers": "mcp-session-id",
+        "access-control-max-age": "600",
+      });
       return res.end();
     }
     const route = `${method} ${path}`;
@@ -154,7 +249,20 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
     }
     switch (route) {
       case "GET /api/health":
-        return send(res, 200, { ok: true, contractVersion: CONTRACT_VERSION, ...setup.describe, dataLabel: hub.dataLabel, now: new Date(hub.clock()).toISOString(), bee: hub.sessionState().bee, ws: "/ws", sse: "/api/events" });
+        return send(res, 200, {
+          ok: true,
+          contractVersion: CONTRACT_VERSION,
+          ...setup.describe,
+          dataLabel: hub.dataLabel,
+          now: new Date(hub.clock()).toISOString(),
+          bee: hub.sessionState().bee,
+          ws: "/ws",
+          sse: "/api/events",
+          fixtureV2: !!fixture,
+          publicBaseUrl,
+          plugins: pluginInfo(),
+          gate: { publicRoutes: PUBLIC_ROUTES, pairToken: tokens.source.pair, mcpToken: tokens.source.mcp },
+        });
       case "GET /api/state":
       case "GET /api/session":
         return send(res, 200, { ...stateSnapshot(), lastSessionSummary: hub.lastSession ? hub.sessionSummary(hub.lastSession) : null, currentSessionSummary: hub.session ? hub.sessionSummary(hub.session) : null });
@@ -265,18 +373,27 @@ export async function startHubServer(opts: HubServerOptions = {}): Promise<HubSe
     });
   } catch (err) {
     clearInterval(tick);
+    fixture?.stop();
+    for (const pl of plugins) pl.stop?.();
+    hub.dispose();
     setup.stop();
     bridge.close();
     throw new Error((err as NodeJS.ErrnoException).code === "EADDRINUSE" ? `port ${wantPort} is already in use: pass --port <n> or set COACH_PORT` : (err as Error).message);
   }
   const port = (server.address() as { port: number }).port;
-  log("hub.listening", { port, ...setup.describe });
+  listeningPort = port;
+  log("hub.listening", { port, ...setup.describe, fixtureV2: !!fixture, plugins: plugins.map((pl) => pl.name) });
   return {
     url: `http://127.0.0.1:${port}`,
     port,
     setup,
+    plugins,
+    tokens,
     close: async () => {
       clearInterval(tick);
+      fixture?.stop();
+      for (const pl of plugins) pl.stop?.();
+      hub.dispose();
       setup.stop();
       for (const r of sse) r.end();
       bridge.close();
@@ -299,6 +416,7 @@ if (process.argv[1] && /server\.(ts|js)$/.test(process.argv[1])) {
     pace: opt("--pace") !== undefined ? Number(opt("--pace")) : undefined,
     bee: !args.includes("--no-bee"),
     stateDir: opt("--state-dir"),
+    fixtureV2: args.includes("--fixture-v2"),
   }).catch((err) => {
     console.error(`hub: ${(err as Error).message}`);
     process.exit(1);

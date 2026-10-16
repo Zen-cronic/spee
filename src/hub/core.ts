@@ -14,6 +14,7 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeEvent, type Poll
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, type DrillEvent, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
@@ -119,12 +120,54 @@ export class CoachHub extends EventEmitter {
 
   // Events
 
-  publish(topic: string, data: Record<string, unknown>): HubEvent {
+  // A sequenced event: every bridge peer, SSE and /api/events/recent. Only the contract's
+  // SEQUENCED_TOPICS; room-scoped topics (practice.meters) go through ctx.broadcastToScreens.
+  publish(topic: SequencedTopic, data: Record<string, unknown>): HubEvent {
+    if ((ROOM_TOPICS as readonly string[]).includes(topic)) throw new Error(`${topic} is room-scoped: send it with broadcastToScreens, never publish`);
+    if (!(SEQUENCED_TOPICS as readonly string[]).includes(topic)) throw new Error(`${topic} is not a contract topic (src/hub/contract.ts SEQUENCED_TOPICS)`);
     const ev: HubEvent = { topic, payload: { seq: ++this.seq, at: this.clock(), ...data } };
     this.recent.push(ev);
     if (this.recent.length > 50) this.recent.shift();
     this.emit("event", ev);
     return ev;
+  }
+
+  // live.window, throttled to at most one per LIVE_WINDOW_MIN_INTERVAL_MS per conversation. A
+  // window that arrives too soon is held (the newest replaces an older held one) and published
+  // when the interval ends, so the last state is never lost. Returns "sent" or "held".
+  private liveWindows = new Map<string, { lastAt: number; held: LiveWindow | null; timer: NodeJS.Timeout | null }>();
+  publishLiveWindow(window: LiveWindow, minIntervalMs = LIVE_WINDOW_MIN_INTERVAL_MS): "sent" | "held" {
+    const s = this.liveWindows.get(window.conversationId) ?? { lastAt: -Infinity, held: null, timer: null };
+    this.liveWindows.set(window.conversationId, s);
+    const wait = s.lastAt + minIntervalMs - this.clock();
+    if (wait <= 0 && !s.timer) {
+      s.lastAt = this.clock();
+      this.publish("live.window", { window });
+      return "sent";
+    }
+    s.held = window;
+    if (!s.timer) {
+      s.timer = setTimeout(() => {
+        s.timer = null;
+        const w = s.held;
+        s.held = null;
+        if (!w) return;
+        s.lastAt = this.clock();
+        this.publish("live.window", { window: w });
+      }, Math.max(0, wait));
+      s.timer.unref?.();
+    }
+    return "held";
+  }
+  // Drop a held window (call it when the conversation ends, before conversation.ended).
+  cancelLiveWindow(conversationId: string) {
+    const s = this.liveWindows.get(conversationId);
+    if (s?.timer) clearTimeout(s.timer);
+    this.liveWindows.delete(conversationId);
+  }
+  // Clear every timer this hub owns (server close).
+  dispose() {
+    for (const id of [...this.liveWindows.keys()]) this.cancelLiveWindow(id);
   }
 
   ingestBee(e: BeeEvent) {

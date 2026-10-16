@@ -20,6 +20,8 @@ export interface Setup {
   calendar: CalendarFn;
   stream: StreamHandle | null;
   demo: DemoDirector | null;
+  stateDir: string | null; // where plugins persist (<stateDir>/<plugin>/): live "real", demo "out/demo" or null (memory only)
+  pace: number; // demo replay pace (1 = real time; live mode is always 1)
   describe: Record<string, unknown>;
   stop(): void;
 }
@@ -86,6 +88,8 @@ export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: 
     calendar: beeCalendar(),
     stream,
     demo: null,
+    stateDir: dir,
+    pace: 1,
     describe: { mode: "live", deckPath, attemptsPath, cards: deck.cards.length, sessions: hub.sessions.length, prereg: prereg ? preregPath : null, beeStream: stream ? "bee stream (spawned)" : "off (--no-bee)", wearerProfile: !!me },
     stop: () => stream?.stop(),
   };
@@ -237,6 +241,8 @@ export function demoSetup(opts: { pace?: number; fixturesDir?: string; stateDir?
     calendar,
     stream: null,
     demo: director,
+    stateDir,
+    pace,
     describe: { mode: "demo", label: DEMO_LABEL, beeStream: "REPLAY of recorded-shape Bee events (no Watch, no network)", pace, demoNow: new Date(DEMO_EPOCH).toISOString(), fixtures: dir, stateDir },
     stop: () => director!.stop(),
   };

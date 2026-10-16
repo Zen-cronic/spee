@@ -10,13 +10,23 @@
 //   G  two-turn Alexa drill: turn 1 returns pending at once, Bee's merged line lands at +16.5 s,
 //      turn 2 (GET /api/attempts/<id>) gets the verdict; the extra sentence is not graded
 // then checks stats, transfer (incl. the pre-registration refusal), brief, deck and session summary.
+// Contract v2 (docs/CONTRACT.md "Contract v2"): plugins registered, every v2 route owned, the
+// public-access gate (LAN vs proxy/public Host, /alexa, /p/, /mcp bearer, /ws k), static traversal
+// refused, practice.meters never on SSE or recent events, the topic table matching contract.ts,
+// fixture mode on a second hub, then each packet's module in scripts/checks/{live,mirror,alexa,mcp}.ts.
 //
 //   npm run contract:check                       # exits 1 on any failed assertion
 //   npm run contract:check -- --write-examples   # also writes docs/contract-examples.json
-import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { spawn, type ChildProcess } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { createInterface } from "node:readline";
 import WebSocket from "ws";
+import { CONTRACT_VERSION, ROOM_TOPICS, V1_TOPICS, V2_TOPICS } from "../src/hub/contract.js";
+import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
+import { PLUGIN_NAMES } from "../src/hub/plugins.js";
+import type { BridgeClient, CheckCtx, CheckResult } from "./checks/types.js";
 
 type Ev = { topic: string; payload: Record<string, any> };
 const PACE = 0.02;
@@ -27,11 +37,16 @@ const check = (ok: unknown, what: string) => {
   else failures.push(what);
   console.log(`${ok ? "  ok  " : "  FAIL"} ${what}`);
 };
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-const child = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", "--pace", String(PACE), "--state-dir", "out/contract-check"], { stdio: ["ignore", "pipe", "inherit"] });
-const port: number = await new Promise((resolve, reject) => {
-  const rl = createInterface({ input: child.stdout! });
+const TOKENS = { pair: randomBytes(18).toString("base64url"), mcp: randomBytes(18).toString("base64url") };
+const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "" };
+const startHub = (args: string[]): { child: ChildProcess; port: Promise<number> } => {
+  const c = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", ...args], { stdio: ["ignore", "pipe", "inherit"], env: hubEnv });
+  return { child: c, port: listeningPort(c) };
+};
+const listeningPort = (c: ChildProcess): Promise<number> => new Promise((resolve, reject) => {
+  const rl = createInterface({ input: c.stdout! });
   const t = setTimeout(() => reject(new Error("hub did not start in 20 s")), 20_000);
   rl.on("line", (l) => {
     try {
@@ -45,6 +60,9 @@ const port: number = await new Promise((resolve, reject) => {
     }
   });
 });
+const main = startHub(["--pace", String(PACE), "--state-dir", "out/contract-check"]);
+const child = main.child;
+const port = await main.port;
 const base = `http://127.0.0.1:${port}`;
 const examples: Record<string, unknown> = {};
 const get = async (p: string, key?: string) => {
@@ -61,8 +79,8 @@ const post = async (p: string, b: unknown = {}, key?: string) => {
 };
 
 // Surfaces
-function bridgeClient(role: "screen" | "mic", clientId: string, code?: string) {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+function bridgeClient(role: "screen" | "mic", clientId: string, code?: string, opts: { query?: string; headers?: Record<string, string>; port?: number } = {}): BridgeClient {
+  const ws = new WebSocket(`ws://127.0.0.1:${opts.port ?? port}/ws${opts.query ?? ""}`, { headers: opts.headers });
   const events: Ev[] = [];
   const intents: any[] = [];
   let offset = 0;
@@ -84,10 +102,11 @@ const tvWelcome = await tv.welcome;
 const phone = bridgeClient("mic", "phone-1", tvWelcome.code);
 await phone.welcome;
 
+function sseClient(b: string) {
 const sseEvents: Ev[] = [];
 const sseAbort = new AbortController();
 void (async () => {
-  const r = await fetch(`${base}/api/events`, { signal: sseAbort.signal });
+  const r = await fetch(`${b}/api/events`, { signal: sseAbort.signal });
   const dec = new TextDecoder();
   let buf = "";
   try {
@@ -106,6 +125,9 @@ void (async () => {
     /* aborted */
   }
 })();
+return { sseEvents, sseAbort };
+}
+const { sseEvents, sseAbort } = sseClient(base);
 await sleep(200);
 
 const waitFor = async (pred: (e: Ev) => boolean, what: string, ms = 5000): Promise<Ev | null> => {
@@ -270,6 +292,216 @@ check(JSON.stringify(seqs(tv.events)) === JSON.stringify(seqs(sseEvents)), "SSE 
 const s = seqs(tv.events).map((x) => Number(x.split(":")[0]));
 check(s.every((x, i) => i === 0 || x > s[i - 1]!), "event seq strictly increasing");
 
+// Contract v2
+
+const raw = (path: string, opts: { method?: string; headers?: Record<string, string>; body?: string; port?: number } = {}): Promise<{ status: number; text: string; headers: Record<string, unknown> }> =>
+  new Promise((resolve, reject) => {
+    const r = request({ host: "127.0.0.1", port: opts.port ?? port, path, method: opts.method ?? "GET", headers: opts.headers }, (res) => {
+      let t = "";
+      res.on("data", (d) => (t += d));
+      res.on("end", () => resolve({ status: res.statusCode ?? 0, text: t, headers: res.headers as Record<string, unknown> }));
+    });
+    r.on("error", reject);
+    if (opts.body) r.write(opts.body);
+    r.end();
+  });
+const json = (t: string) => {
+  try {
+    return JSON.parse(t);
+  } catch {
+    return null;
+  }
+};
+const noTokens = (text: string) => !text.includes(TOKENS.pair) && !text.includes(TOKENS.mcp);
+// A WebSocket attempt: "welcome" when the hub answers hello, "rejected" when the upgrade fails.
+const wsOutcome = (query: string, headers: Record<string, string>, p = port): Promise<"welcome" | "rejected" | "timeout"> =>
+  new Promise((resolve) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${p}/ws${query}`, { headers });
+    const t = setTimeout(() => (ws.terminate(), resolve("timeout")), 3000);
+    const done = (r: "welcome" | "rejected") => (clearTimeout(t), ws.terminate(), resolve(r));
+    ws.on("open", () => ws.send(JSON.stringify({ type: "hello", v: 1, role: "screen", clientId: `gate-${Math.random()}` })));
+    ws.on("message", (d) => JSON.parse(String(d)).type === "welcome" && done("welcome"));
+    ws.on("unexpected-response", () => done("rejected"));
+    ws.on("error", () => done("rejected"));
+  });
+const NGROK = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https" };
+const PUBLIC_HOST = "bee-coach-demo.ngrok-free.app";
+
+console.log("\nv2: plugins and routes");
+const h2 = await raw("/api/health");
+const h2b = json(h2.text);
+check(h2b?.contractVersion === CONTRACT_VERSION && CONTRACT_VERSION === 2, "health: contractVersion 2");
+check(JSON.stringify(h2b?.plugins?.map((p: any) => p.name)) === JSON.stringify(PLUGIN_NAMES), `health lists the plugins in registry order (${PLUGIN_NAMES.join(", ")})`);
+check(h2b?.plugins?.every((p: any) => Array.isArray(p.routes) && p.routes.length > 0 && ["stub", "ready", "degraded", "off"].includes(p.status)), "every plugin describes its routes and status");
+check(h2b?.gate?.pairToken === "env" && h2b?.gate?.mcpToken === "env" && noTokens(h2.text), "health reports token sources, never the tokens");
+const v2Routes: [string, string, unknown?][] = [
+  ["GET", "/api/live"],
+  ["POST", "/api/live/mode", {}],
+  ["GET", "/api/recaps"],
+  ["GET", "/api/recaps/rcp_not_a_recap"],
+  ["GET", "/api/coach/now"],
+  ["POST", "/api/demo/live", { script: "not-a-script" }],
+  ["POST", "/api/demo/mirror", { script: "not-a-script" }],
+  ["POST", "/alexa", {}],
+  ["POST", "/mcp", {}],
+];
+const owned: string[] = [];
+let tokenFree = true;
+for (const [m, p, b] of v2Routes) {
+  const r = await raw(p, { method: m, headers: { "content-type": "application/json", accept: "application/json, text/event-stream" }, body: b === undefined ? undefined : JSON.stringify(b) });
+  if (json(r.text)?.error !== "not_found") owned.push(`${m} ${p}`);
+  tokenFree &&= noTokens(r.text);
+}
+check(owned.length === v2Routes.length, `every v2 route is owned by a plugin, never not_found (${owned.length}/${v2Routes.length})`);
+check(tokenFree, "no v2 route response contains a token");
+
+console.log("\nv2: public-access gate");
+check((await raw("/api/health", { headers: { host: `127.0.0.1:${port}` } })).status === 200, "LAN (loopback Host, no proxy header) reaches /api/health");
+const viaNgrok = await raw("/api/health", { headers: { ...NGROK, host: `127.0.0.1:${port}` } });
+check(viaNgrok.status === 403 && json(viaNgrok.text)?.error === "forbidden", "x-forwarded-for (an ngrok request, even with a loopback Host) is public: /api/health -> 403 forbidden");
+check((await raw("/api/stats", { headers: { host: PUBLIC_HOST } })).status === 403, "a public Host is public: /api/stats -> 403");
+check((await raw("/api/events", { headers: { ...NGROK, host: PUBLIC_HOST } })).status === 403, "public SSE -> 403");
+check((await raw("/tv/", { headers: { ...NGROK, host: PUBLIC_HOST } })).status === 403, "public /tv/ -> 403 (the TV is LAN only)");
+check((await raw("/api/attempt", { method: "POST", headers: { ...NGROK, host: PUBLIC_HOST, "content-type": "application/json" }, body: "{}" })).status === 403, "public POST /api/attempt -> 403");
+check((await raw("/alexa", { method: "POST", headers: { ...NGROK, host: PUBLIC_HOST, "content-type": "application/json" }, body: "{}" })).status !== 403, "public POST /alexa passes the gate");
+check((await raw("/alexa", { headers: { ...NGROK, host: PUBLIC_HOST } })).status === 403, "public GET /alexa -> 403 (POST only)");
+check((await raw("/p/HJ3H?k=x", { headers: { ...NGROK, host: PUBLIC_HOST } })).status !== 403, "public GET /p/<code> passes the gate");
+check((await raw("/sim/", { headers: { ...NGROK, host: PUBLIC_HOST } })).status !== 403, "public GET /sim/ passes the gate");
+const mcpBody = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} });
+const mcpHeaders = { ...NGROK, host: PUBLIC_HOST, "content-type": "application/json", accept: "application/json, text/event-stream" };
+check((await raw("/mcp", { method: "POST", headers: mcpHeaders, body: mcpBody })).status === 403, "public /mcp without a bearer token -> 403");
+check((await raw("/mcp", { method: "POST", headers: { ...mcpHeaders, authorization: "Bearer not-the-token" }, body: mcpBody })).status === 403, "public /mcp with a wrong bearer token -> 403");
+check((await raw("/mcp", { method: "POST", headers: { ...mcpHeaders, authorization: `Bearer ${TOKENS.mcp}` }, body: mcpBody })).status !== 403, "public /mcp with Bearer $MCP_TOKEN passes the gate");
+check((await wsOutcome("", { ...NGROK })) === "rejected", "public /ws without k: upgrade refused");
+check((await wsOutcome("?k=wrong", { ...NGROK })) === "rejected", "public /ws with a wrong k: upgrade refused");
+check((await wsOutcome(`?k=${encodeURIComponent(TOKENS.pair)}`, { ...NGROK })) === "welcome", "public /ws with k=$PAIR_TOKEN: welcome");
+check((await wsOutcome("", {})) === "welcome", "LAN /ws without k: welcome");
+check(typeof tvWelcome.joinUrl === "string" && tvWelcome.joinUrl.endsWith(`/p/${tvWelcome.code}?k=${encodeURIComponent(TOKENS.pair)}`), "welcome.joinUrl is /p/<code>?k=<PAIR_TOKEN>");
+
+console.log("\nv2: static mounts refuse traversal");
+const traversal = ["/p/..%2f..%2fpackage.json", "/p/%2e%2e/%2e%2e/package.json", "/p/..%252f..%252fpackage.json", "/tv/..%5c..%5cpackage.json", "/sim/%2e%2e%2fpackage.json", "/p/.env", "/p/../../package.json", "/sim/x/..%2f..%2f..%2fpackage.json"];
+const leaked: string[] = [];
+for (const t of traversal) {
+  const r = await raw(t);
+  if (r.status === 200 || r.text.includes('"name": "bee-drill-poc"') || !(r.status === 400 || r.status === 404)) leaked.push(`${t} -> ${r.status}`);
+}
+check(!leaked.length, `static traversal refused (400 bad_path or 404) for ${traversal.length} paths${leaked.length ? `: ${leaked.join(", ")}` : ""}`);
+const enc = await raw("/p/..%2f..%2fpackage.json");
+check(enc.status === 400 && json(enc.text)?.error === "bad_path", "an encoded dot-segment under /p/ -> 400 bad_path");
+
+console.log("\nv2: room-scoped practice.meters");
+const meterFrame = { ...(loadFixtureV2()["practice-meters.json"].frames[0] as Record<string, unknown>), takeId: "take_contract_check" };
+const sseBefore = sseEvents.length;
+const phoneBefore = phone.events.length;
+for (let i = 0; i < 3; i++) {
+  phone.ws.send(JSON.stringify({ type: "app", topic: "practice.meters", payload: { ...meterFrame, frame: i } }));
+  await sleep(60);
+}
+await sleep(300);
+const recent2 = await get("/api/events/recent");
+check(!sseEvents.slice(sseBefore).some((e) => e.topic === "practice.meters") && !JSON.stringify(recent2.body).includes("take_contract_check"), "practice.meters from the phone never reaches SSE or /api/events/recent");
+check(!phone.events.slice(phoneBefore).some((e) => e.topic === "practice.meters"), "practice.meters never reaches a mic peer");
+
+console.log("\nv2: topics match the doc");
+const doc = readFileSync("docs/CONTRACT.md", "utf8");
+const table = /<!-- topics:v2 -->([\s\S]*?)<!-- \/topics:v2 -->/.exec(doc)?.[1] ?? "";
+const rows = [...table.matchAll(/^\| `([\w.]+)` \| (sequenced|room) \|/gm)].map((m) => ({ topic: m[1]!, kind: m[2]! }));
+check(JSON.stringify(rows.filter((r) => r.kind === "sequenced").map((r) => r.topic)) === JSON.stringify(V2_TOPICS), "doc topic table: the sequenced v2 topics equal V2_TOPICS (same order)");
+check(JSON.stringify(rows.filter((r) => r.kind === "room").map((r) => r.topic)) === JSON.stringify(ROOM_TOPICS), "doc topic table: the room topics equal ROOM_TOPICS");
+check(V1_TOPICS.every((t) => doc.includes(`| \`${t}\` |`)), "every v1 topic is in the v1 event table");
+check(tv.events.every((e) => e.topic === "hub.state" || e.topic === "practice.meters" || (V1_TOPICS as readonly string[]).includes(e.topic) || (V2_TOPICS as readonly string[]).includes(e.topic)), "every event the TV received is a contract topic");
+
+console.log("\nv2: fixture mode (a second hub: --demo --fixture-v2)");
+const FX_PACE = 0.002;
+const fxHub = startHub(["--fixture-v2", "--pace", String(FX_PACE), "--state-dir", "out/contract-check-fixture"]);
+const fxPort = await fxHub.port;
+const fxBase = `http://127.0.0.1:${fxPort}`;
+const fx = loadFixtureV2();
+const fxGet = async (p: string) => {
+  const r = await fetch(fxBase + p);
+  return { status: r.status, body: (await r.json()) as any };
+};
+const fxPost = async (p: string, b: unknown) => {
+  const r = await fetch(fxBase + p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) });
+  return { status: r.status, body: (await r.json()) as any };
+};
+const fxTv = bridgeClient("screen", "fx-tv", undefined, { port: fxPort });
+const fxTvWelcome = await fxTv.welcome;
+const fxPhone = bridgeClient("mic", "fx-phone", fxTvWelcome.code, { port: fxPort });
+await fxPhone.welcome;
+const fxSse = sseClient(fxBase);
+await sleep(200);
+check((await fxGet("/api/health")).body.fixtureV2 === true, "fixture hub: health fixtureV2 true");
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+check(same((await fxGet("/api/live")).body, fx["live.json"]), "fixture: GET /api/live = live.json");
+check(same((await fxGet("/api/coach/now")).body, fx["coach-now.json"]), "fixture: GET /api/coach/now = coach-now.json");
+check(same((await fxGet("/api/recaps")).body, fx["recaps.json"]), "fixture: GET /api/recaps = recaps.json");
+check(same((await fxGet(`/api/recaps/${fx["recap.json"].id}`)).body, fx["recap.json"]), "fixture: GET /api/recaps/<id> = recap.json");
+const fxMissing = await fxGet("/api/recaps/rcp_nope");
+check(fxMissing.status === 404 && fxMissing.body.error === "unknown_recap", "fixture: an unknown recap id -> 404 unknown_recap");
+const fxMode = await fxPost("/api/live/mode", { enabled: true, minutes: 60, by: "alexa" });
+check(fxMode.status === 200 && same(fxMode.body, fx["live-mode-on.json"]), "fixture: POST /api/live/mode {enabled:true} = live-mode-on.json");
+const fxDemo = await fxPost("/api/demo/live", { script: "story" });
+check(fxDemo.status === 202 && fxDemo.body.conversationId === fx["demo-live.json"].conversationId && fxDemo.body.pace === FX_PACE, "fixture: POST /api/demo/live -> 202 demo-live.json (steps scaled by pace)");
+const wantTopics = ["live.mode", ...fx["events-live.json"].events.map((e: any) => e.topic)];
+const t0fx = Date.now();
+while (fxSse.sseEvents.length < wantTopics.length && Date.now() - t0fx < 8000) await sleep(50);
+check(same(fxSse.sseEvents.map((e) => e.topic), wantTopics), `fixture: SSE carries live.mode then the ${wantTopics.length - 1} story events in order`);
+const fxSeq = (es: Ev[]) => es.filter((e) => e.topic !== "hub.state" && e.topic !== "practice.meters").map((e) => `${e.payload.seq}:${e.topic}`);
+check(same(fxSeq(fxTv.events), fxSeq(fxSse.sseEvents)) && same(fxSeq(fxPhone.events), fxSeq(fxSse.sseEvents)), "fixture: TV, phone and SSE saw the same sequenced events");
+const nudgeEv = fxSse.sseEvents.find((e) => e.topic === "nudge.sent");
+check(nudgeEv && same(nudgeEv.payload.nudge, fx["events-live.json"].events.find((e: any) => e.topic === "nudge.sent").payload.nudge), "fixture: nudge.sent payload (with hops) = the fixture");
+const fxSseBefore = fxSse.sseEvents.length;
+const fxMirror = await fxPost("/api/demo/mirror", { room: fxTvWelcome.code });
+check(fxMirror.status === 202 && fxMirror.body.frames === fx["practice-meters.json"].frames.length && fxMirror.body.rooms === 1, "fixture: POST /api/demo/mirror -> 202");
+const t1fx = Date.now();
+while (!fxSse.sseEvents.slice(fxSseBefore).some((e) => e.topic === "practice.summary") && Date.now() - t1fx < 5000) await sleep(50);
+const meters = fxTv.events.filter((e) => e.topic === "practice.meters");
+check(meters.length === fx["practice-meters.json"].frames.length && meters.every((m) => m.payload.seq === undefined && m.payload.from === "demo-phone"), `fixture: the TV got ${meters.length} practice.meters frames, unsequenced`);
+check(!fxPhone.events.some((e) => e.topic === "practice.meters"), "fixture: the phone (mic) got no practice.meters");
+const fxRecent = await fxGet("/api/events/recent");
+check(!fxSse.sseEvents.some((e) => e.topic === "practice.meters") && !fxRecent.body.events.some((e: any) => e.topic === "practice.meters"), "fixture: practice.meters never on SSE or /api/events/recent");
+check(same(fxSse.sseEvents.slice(fxSseBefore).map((e) => e.topic), ["mirror.focus", "practice.summary"]), "fixture: then mirror.focus and practice.summary, sequenced");
+fxSse.sseAbort.abort();
+fxTv.ws.close();
+fxPhone.ws.close();
+fxHub.child.kill("SIGTERM");
+
+console.log("\nv2: packet check modules");
+const modules: CheckResult[] = [];
+for (const name of ["live", "mirror", "alexa", "mcp"]) {
+  let mp = 0;
+  let mf = 0;
+  const ctx: CheckCtx = {
+    base,
+    port,
+    pace: PACE,
+    tokens: TOKENS,
+    get,
+    post,
+    raw: (p, o) => raw(p, o),
+    check: (ok, what) => (ok ? mp++ : mf++, check(ok, `${name}: ${what}`), !!ok),
+    counts: () => ({ passed: mp, failed: mf }),
+    sleep,
+    tv,
+    phone,
+    tvCode: tvWelcome.code,
+    sse: sseEvents,
+    waitFor,
+    bridgeClient: (role, clientId, code, o) => bridgeClient(role, clientId, code, o),
+    fixtures: fx,
+    examples,
+  };
+  try {
+    const mod = (await import(`./checks/${name}.ts`)) as { run(c: CheckCtx): Promise<CheckResult> };
+    const r = await mod.run(ctx);
+    modules.push(r);
+    console.log(`  ${r.pending ? "pending" : "ran"}  ${r.name}: ${r.passed} passed, ${r.failed} failed${r.note ? ` (${r.note})` : ""}`);
+  } catch (err) {
+    check(false, `${name}: check module threw: ${(err as Error).message}`);
+  }
+}
+
 if (process.argv.includes("--write-examples")) {
   writeFileSync("docs/contract-examples.json", JSON.stringify({ note: "Generated by npm run contract:check -- --write-examples against the demo hub. SYNTHETIC demo data.", examples }, null, 1) + "\n");
   console.log("\nWrote docs/contract-examples.json");
@@ -278,6 +510,7 @@ sseAbort.abort();
 tv.ws.close();
 phone.ws.close();
 child.kill("SIGTERM");
-console.log(`\nCONTRACT CHECK: ${failures.length ? "FAIL" : "PASS"} (${passes} passed, ${failures.length} failed)`);
+const pendingMods = modules.filter((m) => m.pending).map((m) => m.name);
+console.log(`\nCONTRACT CHECK: ${failures.length ? "FAIL" : "PASS"} (${passes} passed, ${failures.length} failed)${pendingMods.length ? `; packet checks pending: ${pendingMods.join(", ")}` : ""}`);
 for (const f of failures) console.log(`  - ${f}`);
 process.exit(failures.length ? 1 : 0);
