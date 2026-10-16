@@ -1,0 +1,661 @@
+{
+  "note": "SYNTHETIC. The sequenced events POST /api/demo/live publishes (script story, pace 1). atMs is after the call; the hub adds seq and at.",
+  "events": [
+    {
+      "atMs": 1000,
+      "topic": "conversation.started",
+      "payload": {
+        "conversationId": "demo-0000-4000-8000-000000000101",
+        "startedAt": 1792517460000,
+        "replay": true
+      }
+    },
+    {
+      "atMs": 31000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517490000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 3,
+            "words": 52,
+            "talkMs": 22000,
+            "wpm": 142
+          },
+          "others": {
+            "lines": 2,
+            "words": 31
+          },
+          "talkShare": 0.63,
+          "monologue": {
+            "currentMs": 9000,
+            "longestMs": 14000
+          },
+          "pauses": {
+            "count": 1,
+            "longestMs": 1200
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 1,
+            "likes": 1,
+            "fillers": 1,
+            "vague": 0,
+            "restarts": 0
+          },
+          "totals": {
+            "hedges": 1,
+            "likes": 1,
+            "fillers": 1,
+            "vague": 0,
+            "restarts": 0
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 1,
+              "threshold": 3,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "like-streak",
+              "value": 1,
+              "threshold": 4,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 9000,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 142,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 96000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517555000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 8,
+            "words": 141,
+            "talkMs": 60000,
+            "wpm": 141
+          },
+          "others": {
+            "lines": 6,
+            "words": 98
+          },
+          "talkShare": 0.59,
+          "monologue": {
+            "currentMs": 0,
+            "longestMs": 31000
+          },
+          "pauses": {
+            "count": 4,
+            "longestMs": 2100
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 3,
+            "likes": 2,
+            "fillers": 2,
+            "vague": 1,
+            "restarts": 0
+          },
+          "totals": {
+            "hedges": 3,
+            "likes": 2,
+            "fillers": 2,
+            "vague": 1,
+            "restarts": 0
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 3,
+              "threshold": 4.04,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "like-streak",
+              "value": 2,
+              "threshold": 5.05,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 0,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 141,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 151000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517610000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 12,
+            "words": 214,
+            "talkMs": 91000,
+            "wpm": 141
+          },
+          "others": {
+            "lines": 9,
+            "words": 152
+          },
+          "talkShare": 0.58,
+          "monologue": {
+            "currentMs": 21000,
+            "longestMs": 48000
+          },
+          "pauses": {
+            "count": 7,
+            "longestMs": 2600
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 5,
+            "likes": 2,
+            "fillers": 3,
+            "vague": 1,
+            "restarts": 1
+          },
+          "totals": {
+            "hedges": 5,
+            "likes": 3,
+            "fillers": 4,
+            "vague": 1,
+            "restarts": 1
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 5,
+              "threshold": 4.72,
+              "unit": "count",
+              "over": true
+            },
+            {
+              "rule": "like-streak",
+              "value": 2,
+              "threshold": 5.91,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 21000,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 141,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 152490,
+      "topic": "nudge.sent",
+      "payload": {
+        "nudge": {
+          "id": "ndg_demo_0001",
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "rule": "hedge-streak",
+          "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+          "evidence": {
+            "rule": "hedge-streak",
+            "value": 5,
+            "threshold": 4.72,
+            "unit": "count",
+            "over": true,
+            "windowMs": 120000,
+            "expected": 2.36
+          },
+          "hops": {
+            "spokenAt": 1792517604100,
+            "beeAt": 1792517610000,
+            "detectedAt": 1792517610040,
+            "todoAt": 1792517611490,
+            "alarmAt": 1792517621490
+          },
+          "latencyMs": {
+            "bee": 5900,
+            "detect": 40,
+            "todo": 1450,
+            "total": 17390
+          },
+          "wrist": {
+            "channel": "replay",
+            "status": "replay",
+            "todoId": null,
+            "leadMs": 10000,
+            "error": null
+          },
+          "replay": true
+        }
+      }
+    },
+    {
+      "atMs": 216000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517675000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 17,
+            "words": 318,
+            "talkMs": 136000,
+            "wpm": 140
+          },
+          "others": {
+            "lines": 13,
+            "words": 221
+          },
+          "talkShare": 0.59,
+          "monologue": {
+            "currentMs": 0,
+            "longestMs": 48000
+          },
+          "pauses": {
+            "count": 11,
+            "longestMs": 2600
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 3,
+            "likes": 1,
+            "fillers": 2,
+            "vague": 0,
+            "restarts": 1
+          },
+          "totals": {
+            "hedges": 7,
+            "likes": 4,
+            "fillers": 5,
+            "vague": 1,
+            "restarts": 2
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 3,
+              "threshold": 4.29,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "like-streak",
+              "value": 1,
+              "threshold": 5.37,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 0,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 140,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 263000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517722000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 21,
+            "words": 391,
+            "talkMs": 168000,
+            "wpm": 139
+          },
+          "others": {
+            "lines": 15,
+            "words": 262
+          },
+          "talkShare": 0.6,
+          "monologue": {
+            "currentMs": 33000,
+            "longestMs": 48000
+          },
+          "pauses": {
+            "count": 14,
+            "longestMs": 3100
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 5,
+            "likes": 2,
+            "fillers": 3,
+            "vague": 0,
+            "restarts": 1
+          },
+          "totals": {
+            "hedges": 9,
+            "likes": 5,
+            "fillers": 6,
+            "vague": 1,
+            "restarts": 2
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 5,
+              "threshold": 4.58,
+              "unit": "count",
+              "over": true
+            },
+            {
+              "rule": "like-streak",
+              "value": 2,
+              "threshold": 5.73,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 33000,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 139,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 263040,
+      "topic": "nudge.skipped",
+      "payload": {
+        "skip": {
+          "id": "skp_demo_0001",
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "rule": "hedge-streak",
+          "reason": "cooldown",
+          "detail": "a nudge went out 1 min 52 s ago; nudges are at least 3 min apart",
+          "at": 1792517722040,
+          "retryAfterMs": 68000,
+          "evidence": {
+            "rule": "hedge-streak",
+            "value": 5,
+            "threshold": 4.58,
+            "unit": "count",
+            "over": true,
+            "windowMs": 120000,
+            "expected": 2.29
+          },
+          "replay": true
+        }
+      }
+    },
+    {
+      "atMs": 319000,
+      "topic": "live.window",
+      "payload": {
+        "window": {
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "updatedAt": 1792517778000,
+          "replay": true,
+          "lang": "en",
+          "wearer": {
+            "lines": 26,
+            "words": 520,
+            "talkMs": 226000,
+            "wpm": 138
+          },
+          "others": {
+            "lines": 17,
+            "words": 392
+          },
+          "talkShare": 0.57,
+          "monologue": {
+            "currentMs": 74000,
+            "longestMs": 74000
+          },
+          "pauses": {
+            "count": 19,
+            "longestMs": 3100
+          },
+          "recent": {
+            "windowMs": 120000,
+            "hedges": 4,
+            "likes": 2,
+            "fillers": 3,
+            "vague": 0,
+            "restarts": 1
+          },
+          "totals": {
+            "hedges": 11,
+            "likes": 6,
+            "fillers": 7,
+            "vague": 1,
+            "restarts": 3
+          },
+          "skipped": {
+            "frenchLines": 0,
+            "drillLines": 0
+          },
+          "rules": [
+            {
+              "rule": "hedge-streak",
+              "value": 4,
+              "threshold": 5.23,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "like-streak",
+              "value": 2,
+              "threshold": 6.55,
+              "unit": "count",
+              "over": false
+            },
+            {
+              "rule": "monologue",
+              "value": 74000,
+              "threshold": 90000,
+              "unit": "ms",
+              "over": false
+            },
+            {
+              "rule": "fast-rate",
+              "value": 138,
+              "threshold": 175,
+              "unit": "wpm",
+              "over": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "atMs": 409000,
+      "topic": "conversation.ended",
+      "payload": {
+        "conversationId": "demo-0000-4000-8000-000000000101",
+        "startedAt": 1792517460000,
+        "endedAt": 1792517868000,
+        "reason": "idle",
+        "wearerWords": 520,
+        "otherLines": 17,
+        "recap": "pending",
+        "replay": true
+      }
+    },
+    {
+      "atMs": 409300,
+      "topic": "recap.ready",
+      "payload": {
+        "recap": {
+          "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+          "synthetic": true,
+          "id": "rcp_demo_0001",
+          "conversationId": "demo-0000-4000-8000-000000000101",
+          "startedAt": 1792517460000,
+          "endedAt": 1792517868000,
+          "durationMs": 408000,
+          "createdAt": 1792517868300,
+          "replay": true,
+          "metrics": {
+            "wearerWords": 520,
+            "wpm": 138,
+            "baselineWpm": 140,
+            "talkShare": 0.57,
+            "longestMonologueMs": 74000,
+            "pauses": {
+              "count": 19,
+              "longestMs": 3100
+            },
+            "habits": [
+              {
+                "key": "hedges",
+                "label": "hedges (I guess, I think, maybe, kind of...)",
+                "count": 11,
+                "per100": 2.12,
+                "baselinePer100": 1.43,
+                "verdict": "worse"
+              },
+              {
+                "key": "filler:like",
+                "label": "\"like\" as a filler",
+                "count": 6,
+                "per100": 1.15,
+                "baselinePer100": 1.79,
+                "verdict": "better"
+              },
+              {
+                "key": "vague",
+                "label": "vague answers",
+                "count": 1,
+                "per100": 0.19,
+                "baselinePer100": 0.64,
+                "verdict": "better"
+              },
+              {
+                "key": "restart",
+                "label": "restarts (the the, I I)",
+                "count": 3,
+                "per100": 0.58,
+                "baselinePer100": 0.86,
+                "verdict": "typical"
+              }
+            ]
+          },
+          "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+          "moment": {
+            "text": "I guess we could maybe ship the export on Friday.",
+            "at": 1792517601000,
+            "habit": "hedges",
+            "rephrase": "We could ship the export on Friday."
+          },
+          "narration": "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
+          "wristText": "[coach] Recap: hedges high, pace steady",
+          "phrasing": "template",
+          "nudges": {
+            "sent": 1,
+            "skipped": 1
+          },
+          "delivery": {
+            "wrist": "replay",
+            "todoId": null
+          }
+        }
+      }
+    }
+  ]
+}

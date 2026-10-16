@@ -1,0 +1,56 @@
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+  "synthetic": true,
+  "generatedAt": 1792517913000,
+  "basis": "recap",
+  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  "mode": {
+    "rules": {
+      "hedge-streak": true,
+      "like-streak": true,
+      "monologue": true,
+      "fast-rate": false
+    },
+    "quietHours": {
+      "startHour": 22,
+      "endHour": 8
+    },
+    "warmupMs": 60000,
+    "cooldownMs": 180000,
+    "ruleCooldownMs": 600000,
+    "capPerHour": 6,
+    "capPerDay": 20,
+    "enabled": true,
+    "since": 1792517430000,
+    "expiresAt": 1792521030000,
+    "changedAt": 1792517430000,
+    "by": "alexa",
+    "reason": "on",
+    "sent": {
+      "lastHour": 1,
+      "today": 1
+    }
+  },
+  "live": null,
+  "lastRecap": {
+    "id": "rcp_demo_0001",
+    "endedAt": 1792517868000,
+    "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down."
+  },
+  "week": {
+    "words": 1400,
+    "hedgesPer100": 1.43,
+    "likesPer100": 1.79,
+    "vaguePer100": 0.64,
+    "topHabit": {
+      "key": "hedges",
+      "label": "hedging",
+      "per100": 1.43
+    }
+  },
+  "drills": {
+    "dueNow": 2,
+    "nextCardId": "demo:hedge-i-guess"
+  },
+  "transferHeadline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat"
+}

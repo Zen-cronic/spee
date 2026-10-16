@@ -1,0 +1,44 @@
+{
+  "note": "SYNTHETIC. The skill id, user id and request id are placeholders; the response speaks GET /api/coach/now narration.",
+  "request": {
+    "version": "1.0",
+    "session": {
+      "new": false,
+      "sessionId": "amzn1.echo-api.session.00000000-demo",
+      "application": {
+        "applicationId": "amzn1.ask.skill.00000000-0000-0000-0000-000000000000"
+      },
+      "attributes": {},
+      "user": {
+        "userId": "amzn1.ask.account.DEMO"
+      }
+    },
+    "request": {
+      "type": "IntentRequest",
+      "requestId": "amzn1.echo-api.request.00000000-demo",
+      "timestamp": "2026-10-20T17:38:33.000Z",
+      "locale": "en-CA",
+      "intent": {
+        "name": "HowAmIDoingIntent",
+        "confirmationStatus": "NONE"
+      }
+    }
+  },
+  "response": {
+    "version": "1.0",
+    "sessionAttributes": {},
+    "response": {
+      "outputSpeech": {
+        "type": "PlainText",
+        "text": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM."
+      },
+      "reprompt": {
+        "outputSpeech": {
+          "type": "PlainText",
+          "text": "Say quiz me to drill, or turn off live coaching."
+        }
+      },
+      "shouldEndSession": false
+    }
+  }
+}

@@ -1,4 +1,6 @@
-# Coach hub contract (v1)
+# Coach hub contract (v2)
+
+Contract v2 (frozen 2026-10-16) keeps every v1 route, event and payload below unchanged and adds live coaching, practice meters, the speaking mirror, Alexa and MCP: see [Contract v2](#contract-v2). The types for both are in [`src/hub/contract.ts`](../src/hub/contract.ts) (import-free, so surfaces can copy it).
 
 The coach hub is the one shared state behind every surface:
 
@@ -26,13 +28,14 @@ npm run hub                          # live: real gitignored data (real/), spawn
 npm run hub -- --demo                # demo: synthetic fixtures (fixtures/demo/), Bee REPLAY, demo clock 2026-10-20 13:30 EDT
 npm run hub -- --demo --pace 0.1     # Bee replay and timeouts 10x faster (5.4 s -> 0.54 s)
 npm run hub -- --port 9000 --no-bee  # live without the stream (every attempt ends "unverified")
+npm run hub -- --demo --fixture-v2   # demo, and the v2 live routes answer from fixtures/contract-v2/
 npm run contract:check               # the cross-surface check below
 ```
 
 - Base URL `http://<host>:8791`. Override it with `--port` or `COACH_PORT`.
 - CORS is `*`. Bodies are JSON.
 - Errors are `{ "error": "<code>", "message": "..." }` with a 4xx status.
-- `GET /api/health` returns `contractVersion: 1`.
+- `GET /api/health` returns `contractVersion: 2` (v2 added fields; nothing was removed).
 
 ## The attempt lifecycle (what a voice UI narrates)
 
@@ -570,3 +573,957 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
   - Never block a turn waiting for Bee. Worst case, the verdict is ready about 45 s after speech end (stream at 30 s, poll, then give up).
 - **What not to do.** Never present a `provisional` grade as the result. Bee's grade is the one that counts.
 - **Web simulator.** It can subscribe to `GET /api/events` (SSE) instead of the WebSocket.
+
+# Contract v2
+
+Frozen on 2026-10-16, before packets A, B and C start. The lead owns the files that define it (see [Ownership](#ownership)); a packet never edits them. If a packet needs a contract change, it stops and asks the lead.
+
+v2 adds:
+
+- live coaching from Bee's stream: a rolling conversation window, opt-in wrist nudges with latency hops, and a recap after each conversation;
+- `coachNow`, a deterministic "how am I doing?" narration for Alexa and MCP;
+- practice meters from the phone mic (room-scoped, 10 Hz) and a practice summary;
+- the speaking mirror's focus, plugins, a public-access gate, static mounts and fixture mode.
+
+The examples below are **hand-written synthetic payloads** for the invented demo wearer "Ada". They live in [`fixtures/contract-v2/`](../fixtures/contract-v2/), are typed against `contract.ts` in [`src/hub/contractExamples.ts`](../src/hub/contractExamples.ts), and the blocks in this document are generated from them (`npm run contract:fixtures`). `test/contract-v2.test.ts` fails if a file or a block drifts. Times are on the demo clock (2026-10-20 13:30 EDT = `1792517400000`).
+
+**Fixture files** (`fixtures/contract-v2/`):
+
+| File | Shape | Used for |
+|---|---|---|
+| `live.json` | `LiveState` | `GET /api/live` (mid-conversation snapshot) |
+| `live-mode-on.json`, `live-mode-off.json` | `LiveModeResponse` | `POST /api/live/mode` |
+| `recap.json` | `Recap` | `GET /api/recaps/<id>`, `recap.ready` |
+| `recaps.json` | `RecapList` | `GET /api/recaps` |
+| `coach-now.json` | `CoachNow` | `GET /api/coach/now` (after the conversation) |
+| `demo-live.json` | `DemoLiveResponse` | `POST /api/demo/live` |
+| `events-live.json` | `{events: {atMs, topic, payload}[]}` | the sequenced events of the demo story |
+| `practice-meters.json` | `{frames: PracticeMeters[]}` | one second of meters at 10 Hz |
+| `events-practice.json` | `{events: [...]}` | `mirror.focus`, `practice.summary` |
+| `demo-mirror.json` | `DemoMirrorResponse` | `POST /api/demo/mirror` |
+| `requests.json` | request bodies and bridge frames | every v2 request and client frame |
+| `mcp-tools.json` | `MCP_TOOLS` | the MCP tool list |
+| `alexa-how-am-i-doing.json` | Alexa request and response envelopes | one `HowAmIDoingIntent` turn |
+
+## Privacy rules (v2)
+
+1. **Wearer-only text.** The only transcript text a v2 route or topic may carry is the wearer's own words:
+   - `Recap.moment.text` (at most 12 words) and its `rephrase`;
+   - `PracticeMeters.caption`, the interim words of the person practising. It is room-scoped, sent only to that room's screens, and never persisted.
+
+   `LiveWindow`, `Nudge`, `NudgeSkipped`, `ConversationEnded`, `LiveState` and `CoachNow` carry **no** transcript text. Nudge and wrist text is generated from the rule (`"[coach] 5 hedges in 2 min. ..."`, at most 60 characters) and never quotes a transcript.
+2. **Other speakers are counted only.** They appear as `others.lines`, `others.words`, `otherLines` and `talkShare`. Their text is never stored, served, logged, put in a fixture or sent to a model. The live engine keeps the v1 rule: stream text stays in memory until Bee tags it as the wearer (score at least 0.5), and anything else is forgotten after 3 minutes.
+3. **The coaching principles are never served.** `coach/principles.local.md` (the operator's own notes, gitignored) is read at runtime by packet A only, to set thresholds and to phrase optional model recaps.
+   - Its text never appears in a response, an event, a log, a fixture, a commit or a model output. A model phrasing that shares a 5-word shingle with it is rejected, and the template phrasing is used instead.
+   - The committed [`coach/principles.template.md`](../coach/principles.template.md) is a generic default.
+   - `npm run leak-check` fails on any 5-word shingle of the private principles, and on any term listed in `coach/private-terms.local.txt`, found in a committable file.
+4. **Persistence.** Live state goes under `<stateDir>/live/`: `real/live/` in live mode (gitignored, and screened as wearer text by the leak check) or `out/demo/live/` in demo mode.
+5. **No model call in a request path.** `/alexa`, `/mcp`, `GET /api/coach/now` and every other route answer deterministically. The only model call in v2 is the optional recap phrasing: off the request path, serialized, with a 6 s timeout and the template as the fallback.
+6. **Bee is still the input of record.** Phone meters and summaries are `provisional: true`. Alexa and phone drill text is provisional exactly as in v1.
+
+## Public-access gate (`src/hub/gate.ts`)
+
+A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's words, so every request passes the gate first.
+
+- **When a request is public.** It carries a proxy header (`x-forwarded-for`, `forwarded`, `x-forwarded-host`, `x-real-ip`, `cf-connecting-ip`; ngrok adds `x-forwarded-for`), or its `Host` is not loopback or LAN. Loopback means `localhost`, `127.0.0.0/8` or `::1`. LAN means `10/8`, `172.16/12`, `192.168/16`, `169.254/16`, IPv6 ULA or link-local, `*.local`, `*.home.arpa`, or this machine's hostname. A missing `Host` counts as public.
+- **What a public request may reach:**
+
+  | Public request | Allowed when |
+  |---|---|
+  | `POST /alexa` | always (the skill itself checks the skill id and timestamp) |
+  | `GET`/`HEAD` `/p/*`, `/sim/*` | always (static files only) |
+  | `/mcp` (any method) | `Authorization: Bearer $MCP_TOKEN`; `OPTIONS` without it |
+  | `/ws` WebSocket upgrade | `?k=$PAIR_TOKEN` |
+  | anything else | never: `403 {"error":"forbidden","message":"..."}`; a refused upgrade gets a 403 line and its socket destroyed |
+
+- **LAN and loopback** requests are not gated. The TV joins `/ws` without `k`. MCP on the LAN needs no token, and a plugin must not weaken the gate for public requests.
+- **Tokens.** `PAIR_TOKEN` and `MCP_TOKEN` come from the environment. When one is unset, the hub generates a random one at startup and prints it once on the console (`hub: PAIR_TOKEN is unset; generated for this run: ...`). Tokens never appear in an HTTP response, an event or a log line. The one exception is by design: the pair token is in the bridge `welcome.joinUrl` that a joined peer receives (the TV needs it for the QR code). `/api/health` reports only whether each token came from `env` or was `generated`.
+- **`PUBLIC_BASE_URL`** (for example the ngrok `https://` origin) is the base of the phone join URL. `welcome.joinUrl` is `<PUBLIC_BASE_URL or http://<lan-ip>:<port>>/p/<code>?k=<PAIR_TOKEN>`; the TV turns it into a QR code. The phone page reads `k` from its own URL and connects to `wss://<host>/ws?k=<k>` (or `ws://` on the LAN).
+- **SSE and `/api/*` are LAN-only.** The simulator shows the SSE feed only when it is opened on the LAN. Opened through the tunnel, it uses `/mcp` alone. It takes the MCP token from its URL fragment (`/sim/#t=<MCP_TOKEN>`, which is never sent to a server) or from a prompt.
+
+## Plugins (`src/hub/plugin.ts`, `src/hub/plugins.ts`)
+
+```ts
+interface HubPlugin {
+  name: string;
+  prefixes: string[]; // path prefixes it owns, matched on segment boundaries ("/api/live" matches /api/live and /api/live/mode)
+  attach?(ctx: PluginCtx): void; // once, before the server listens
+  route?(req, res, url: URL, ctx: PluginCtx): Promise<boolean>; // true = answered; false = fall through
+  onApp?(room, msg: AppMsg, from: PeerInfo, ctx: PluginCtx): IntentResult | undefined; // undefined = not mine
+  describe?(): { owner; status: "stub" | "ready" | "degraded" | "off"; routes: string[]; topics?: string[]; note?: string };
+  stop?(): void;
+}
+interface PluginCtx {
+  hub: CoachHub; setup: Setup; bridge: BridgeHub;
+  stateDir: string | null; // "real" (live), "out/demo" or null (demo); write under <stateDir>/<plugin>/
+  pace: number; demo: boolean; fixtureV2: boolean;
+  log(event, data?): void; // JSON lines: event names and ids only
+  publish(topic: SequencedTopic, data): HubEvent; // seq + SSE + recent + every peer; throws for room topics
+  broadcastToScreens(room: Room | string | null, topic: RoomTopic, payload): number; // one room's screens (null: every room); <= 20 Hz per room and topic; returns screens reached (0 when throttled)
+  selfUrl(): string; // http://127.0.0.1:<port>, for a loopback hub client (a LAN request for the gate)
+  auth: { mcpBearerOk(authorization): boolean; pairTokenOk(k): boolean }; // the tokens themselves are never handed out
+  isPublic(req): boolean;
+  json(res, status, data): void; readJson(req): Promise<object>;
+}
+```
+
+**Registry.** The registry is fixed, in this order. Each module exports the named factory, and packets keep the export names, prefixes and routes.
+
+| Plugin | Module (factory) | Owner | Prefixes |
+|---|---|---|---|
+| `live` | `src/hub/live/plugin.ts` (`createLivePlugin`) | packet A | `/api/live`, `/api/recaps`, `/api/coach`, `/api/demo/live` |
+| `mirror` | `src/hub/mirror.ts` (`createMirrorPlugin`) | packet B | `/api/demo/mirror` |
+| `static` | `src/hub/static.ts` (`createStaticPlugin`) | lead | `/tv/`, `/p/`, `/sim/` |
+| `alexa` | `src/alexa/plugin.ts` (`createAlexaPlugin`) | packet C | `/alexa` |
+| `mcp` | `src/mcp/plugin.ts` (`createMcpPlugin`) | packet C | `/mcp` |
+
+**Request order.**
+
+1. The gate.
+2. Fixture mode, if it is on.
+3. The plugins, in registry order, for a path under their prefixes. `OPTIONS` requests reach the plugins too, so the MCP plugin can answer its own preflight.
+4. The generic `OPTIONS` answer: `204` with CORS `*`, methods `GET, POST, DELETE, OPTIONS`, and headers `content-type, authorization, mcp-session-id, mcp-protocol-version, last-event-id`.
+5. The v1 routes.
+6. `404 not_found`.
+
+A plugin that throws gets `500 {"error":"plugin_error"}`.
+
+**Bridge frames.** For bridge `app` frames, the v1 topics are handled first. Any other topic is offered to each plugin's `onApp` in order, and the first result that is not `undefined` wins: `null` means handled with no intent.
+
+**Stubs.** Until a packet lands, its plugin is a stub. Each planned route answers `501 {"error":"not_implemented","message":"...","plugin","owner","routes"}`, and `describe().status` is `"stub"`.
+
+**`core.ts` helpers** (packet A owns `core.ts` and must keep these):
+
+- `hub.publish(topic, data)` throws for a room topic or for any topic not in `SEQUENCED_TOPICS`.
+- `hub.publishLiveWindow(window)` publishes `live.window` at most once per 3 s per `conversationId`. A window that arrives too soon is held (a newer one replaces it) and published when the 3 s are up. It returns `"sent"` or `"held"`.
+- `hub.cancelLiveWindow(conversationId)` drops a held window. Call it before `conversation.ended`.
+- `hub.dispose()` clears the timers.
+
+`Setup` gains `stateDir` and `pace`.
+
+## Routes (v2)
+
+| Method and path | Owner | Request | 2xx response | Errors |
+|---|---|---|---|---|
+| `GET /api/live` | A (`live`) | | `200 LiveState` | |
+| `POST /api/live/mode` | A (`live`) | `LiveModeRequest {enabled, minutes? (1-180, default 60), by?, rules?}` | `200 LiveModeResponse {mode, narration}`, then `live.mode` | `400 bad_request` |
+| `GET /api/recaps?limit=10` | A (`live`) | `limit` 1-50 | `200 RecapList {dataLabel, synthetic, recaps[]}` (newest first) | |
+| `GET /api/recaps/<id>` | A (`live`) | | `200 Recap` | `404 unknown_recap` |
+| `GET /api/coach/now` | A (`live`) | | `200 CoachNow` | |
+| `POST /api/demo/live` | A (`live`) | `DemoLiveRequest {script?: "story" \| "monologue" \| "short"}` | `202 DemoLiveResponse` | `400 demo_only`, `400 bad_request` |
+| `POST /api/demo/mirror` | B (`mirror`) | `DemoMirrorRequest {script?: "practice-take" \| "focus", view?, room?}` | `202 DemoMirrorResponse` | `400 demo_only`, `400 bad_request` |
+| `POST /alexa` | C (`alexa`) | Alexa request envelope | `200` Alexa response envelope | `400 alexa_rejected` (bad skill id, or a timestamp more than 150 s off) |
+| `POST /mcp` (`GET`/`DELETE` answer 405) | C (`mcp`) | MCP JSON-RPC over Streamable HTTP, stateless | JSON-RPC result | JSON-RPC errors; tool errors as `isError: true` |
+| `GET /tv/*`, `/p/*`, `/sim/*` | lead (`static`) | | the built files; paths without an extension fall back to `index.html` | `404 not_built` (with the build command), `404 not_found`, `400 bad_path`, `405 method_not_allowed` |
+
+New error codes: `not_implemented` (501), `forbidden` (403), `unknown_recap` (404), `not_built` (404), `bad_path` (400), `method_not_allowed` (405), `plugin_error` (500), `alexa_rejected` (400).
+
+**Live mode policy** (frozen numbers; packet A implements them):
+
+- Off by default. Turning it on lasts `minutes` (default 60), then it turns itself off with `reason: "expired"` and a `live.mode` event.
+- Nudges are at least 3 min apart, and the same rule fires at most once per 10 min. Caps: 6 per hour, 20 per day.
+- No nudge in a conversation's first 60 s, in quiet hours (22:00 to 08:00 local) or while a drill card is open.
+- Every suppression publishes `nudge.skipped` with its reason. When live mode is off, a rule that fires is `nudge.skipped` with reason `off`.
+- Rules (thresholds relative to the wearer's baseline):
+  - `hedge-streak`: at least max(3, 2 × expected) hedges in 120 s;
+  - `like-streak`: at least max(4, 2 × expected) "like" fillers in 120 s;
+  - `monologue`: 90 s or more;
+  - `fast-rate`: off by default.
+- Recaps are computed for every conversation with at least 60 wearer words, live mode or not. They go to the wrist only when live mode is on; otherwise `delivery.wrist` is `"off"`.
+
+### `POST /api/live/mode` (Alexa: "turn on live coaching")
+
+Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
+
+<!-- fixture: live-mode-on.json -->
+```json
+{
+  "mode": {
+    "rules": {
+      "hedge-streak": true,
+      "like-streak": true,
+      "monologue": true,
+      "fast-rate": false
+    },
+    "quietHours": {
+      "startHour": 22,
+      "endHour": 8
+    },
+    "warmupMs": 60000,
+    "cooldownMs": 180000,
+    "ruleCooldownMs": 600000,
+    "capPerHour": 6,
+    "capPerDay": 20,
+    "enabled": true,
+    "since": 1792517430000,
+    "expiresAt": 1792521030000,
+    "changedAt": 1792517430000,
+    "by": "alexa",
+    "reason": "on",
+    "sent": {
+      "lastHour": 0,
+      "today": 0
+    }
+  },
+  "narration": "Live coaching is on for 60 minutes. I'll tap your wrist if a habit streaks."
+}
+```
+<!-- /fixture -->
+
+### `GET /api/live`
+
+[`live.json`](../fixtures/contract-v2/live.json) is a snapshot taken mid-conversation, just after the nudge. It has the `mode`, the current `conversation` (`LiveWindow`, or null), `drillActive`, `baseline`, `wrist` (`WristStatus`), `lastNudge`, `recentNudges`, `recentSkips` (newest first, at most 10) and `lastRecapId`. The baseline:
+
+<!-- fixture: live.json#/baseline -->
+```json
+{
+  "source": "bee week (non-drill conversations; synthetic)",
+  "words": 1400,
+  "hedgesPer100": 1.43,
+  "likesPer100": 1.79,
+  "fillersPer100": 2.43,
+  "wpm": 140
+}
+```
+<!-- /fixture -->
+
+### `GET /api/recaps/<id>` (and `recap.ready`)
+
+<!-- fixture: recap.json -->
+```json
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+  "synthetic": true,
+  "id": "rcp_demo_0001",
+  "conversationId": "demo-0000-4000-8000-000000000101",
+  "startedAt": 1792517460000,
+  "endedAt": 1792517868000,
+  "durationMs": 408000,
+  "createdAt": 1792517868300,
+  "replay": true,
+  "metrics": {
+    "wearerWords": 520,
+    "wpm": 138,
+    "baselineWpm": 140,
+    "talkShare": 0.57,
+    "longestMonologueMs": 74000,
+    "pauses": {
+      "count": 19,
+      "longestMs": 3100
+    },
+    "habits": [
+      {
+        "key": "hedges",
+        "label": "hedges (I guess, I think, maybe, kind of...)",
+        "count": 11,
+        "per100": 2.12,
+        "baselinePer100": 1.43,
+        "verdict": "worse"
+      },
+      {
+        "key": "filler:like",
+        "label": "\"like\" as a filler",
+        "count": 6,
+        "per100": 1.15,
+        "baselinePer100": 1.79,
+        "verdict": "better"
+      },
+      {
+        "key": "vague",
+        "label": "vague answers",
+        "count": 1,
+        "per100": 0.19,
+        "baselinePer100": 0.64,
+        "verdict": "better"
+      },
+      {
+        "key": "restart",
+        "label": "restarts (the the, I I)",
+        "count": 3,
+        "per100": 0.58,
+        "baselinePer100": 0.86,
+        "verdict": "typical"
+      }
+    ]
+  },
+  "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+  "moment": {
+    "text": "I guess we could maybe ship the export on Friday.",
+    "at": 1792517601000,
+    "habit": "hedges",
+    "rephrase": "We could ship the export on Friday."
+  },
+  "narration": "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
+  "wristText": "[coach] Recap: hedges high, pace steady",
+  "phrasing": "template",
+  "nudges": {
+    "sent": 1,
+    "skipped": 1
+  },
+  "delivery": {
+    "wrist": "replay",
+    "todoId": null
+  }
+}
+```
+<!-- /fixture -->
+
+### `GET /api/coach/now` (Alexa: "how am I doing?"; MCP `how_am_i_doing`)
+
+The narration is deterministic, with at most 3 sentences. It leads with the live conversation (`basis: "live"`), else the last recap of the day (`"recap"`), else the week (`"week"`). It then adds the week's top habit, due drills and the live-mode status.
+
+<!-- fixture: coach-now.json -->
+```json
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+  "synthetic": true,
+  "generatedAt": 1792517913000,
+  "basis": "recap",
+  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  "mode": {
+    "rules": {
+      "hedge-streak": true,
+      "like-streak": true,
+      "monologue": true,
+      "fast-rate": false
+    },
+    "quietHours": {
+      "startHour": 22,
+      "endHour": 8
+    },
+    "warmupMs": 60000,
+    "cooldownMs": 180000,
+    "ruleCooldownMs": 600000,
+    "capPerHour": 6,
+    "capPerDay": 20,
+    "enabled": true,
+    "since": 1792517430000,
+    "expiresAt": 1792521030000,
+    "changedAt": 1792517430000,
+    "by": "alexa",
+    "reason": "on",
+    "sent": {
+      "lastHour": 1,
+      "today": 1
+    }
+  },
+  "live": null,
+  "lastRecap": {
+    "id": "rcp_demo_0001",
+    "endedAt": 1792517868000,
+    "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down."
+  },
+  "week": {
+    "words": 1400,
+    "hedgesPer100": 1.43,
+    "likesPer100": 1.79,
+    "vaguePer100": 0.64,
+    "topHabit": {
+      "key": "hedges",
+      "label": "hedging",
+      "per100": 1.43
+    }
+  },
+  "drills": {
+    "dueNow": 2,
+    "nextCardId": "demo:hedge-i-guess"
+  },
+  "transferHeadline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat"
+}
+```
+<!-- /fixture -->
+
+### `POST /api/demo/live` (demo only)
+
+The demo replays a scripted Bee conversation for Ada through the same engine as live events:
+
+- `story`: a nudge, a cooldown skip, then a recap;
+- `monologue`: a 90 s monologue nudge;
+- `short`: under 60 wearer words, so `conversation.ended` has `recap: "skipped-short"`.
+
+The scripts do not change live mode. Turn it on first with `POST /api/live/mode`, or the first streak becomes `nudge.skipped` (reason `off`). Times scale with `--pace`.
+
+<!-- fixture: demo-live.json -->
+```json
+{
+  "replay": true,
+  "script": "story",
+  "conversationId": "demo-0000-4000-8000-000000000101",
+  "description": "Ada's 7-minute conversation (synthetic): 5 hedges in 2 minutes -> nudge.sent; a second streak inside the 3-minute cooldown -> nudge.skipped; 90 s idle -> conversation.ended -> recap.ready. With live coaching off, the first streak is nudge.skipped (reason off).",
+  "pace": 1,
+  "steps": [
+    {
+      "atMs": 1000,
+      "what": "conversation.started"
+    },
+    {
+      "atMs": 31000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 96000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 151000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 152490,
+      "what": "nudge.sent"
+    },
+    {
+      "atMs": 216000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 263000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 263040,
+      "what": "nudge.skipped"
+    },
+    {
+      "atMs": 319000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 409000,
+      "what": "conversation.ended"
+    },
+    {
+      "atMs": 409300,
+      "what": "recap.ready"
+    }
+  ]
+}
+```
+<!-- /fixture -->
+
+## Topics (v2)
+
+All sequenced topics go to every bridge peer in every room, to SSE (`GET /api/events`) and to `GET /api/events/recent`, with a strictly increasing `seq`. The payloads below omit the `seq` and `at` the hub adds.
+
+<!-- topics:v2 -->
+| Topic | Kind | Published by | Payload | When |
+|---|---|---|---|---|
+| `conversation.started` | sequenced | A (`live`) | `ConversationStarted {conversationId, startedAt, replay}` | Bee `new-conversation`, or the first wearer line of a new uuid |
+| `live.window` | sequenced | A (`live`), via `hub.publishLiveWindow` | `{window: LiveWindow}` | after wearer lines; at most 1 per 3 s per conversation |
+| `nudge.sent` | sequenced | A (`live`) | `{nudge: Nudge}` | a rule fired, the policy allowed it, and the wrist call returned |
+| `nudge.skipped` | sequenced | A (`live`) | `{skip: NudgeSkipped}` | a rule fired and the policy suppressed it (`reason`) |
+| `conversation.ended` | sequenced | A (`live`) | `ConversationEnded` | Bee leaves CAPTURING, 90 s idle, or a new conversation uuid |
+| `recap.ready` | sequenced | A (`live`) | `{recap: Recap}` | after `conversation.ended` (unless skipped), before the wrist |
+| `live.mode` | sequenced | A (`live`) | `{mode: LiveMode}` | `POST /api/live/mode`, expiry, wrist circuit open |
+| `practice.summary` | sequenced | B (`mirror`) | `{summary: PracticeSummary}` | a mic sends its take summary |
+| `mirror.focus` | sequenced | B (`mirror`) | `MirrorFocus {view, by, reason, recapId, takeId}` | a peer asks the mirror to show a view (`app mirror.focus`), or the demo |
+| `practice.meters` | room | B (`mirror`), via `ctx.broadcastToScreens` | `PracticeMeters` (+ `from`) | the mic's 10 Hz frames, relayed to that room's screens only (at most 20 Hz) |
+<!-- /topics:v2 -->
+
+**Room-scoped** means no `seq`, never on SSE, never in `/api/events/recent`, never persisted, and never sent to `mic` peers. `hub.publish("practice.meters", ...)` throws.
+
+**Rendering.** Render sequenced events in `seq` order and drop duplicates. Render room frames as they arrive; they are disposable.
+
+**Client to hub (v2 bridge frames):**
+
+| Frame | From | Effect |
+|---|---|---|
+| `app {topic:"practice.meters", payload: PracticeMeters}` | mic | relayed to the screens of the mic's room; no intent back |
+| `app {topic:"practice.summary", payload: PracticeSummary}` | mic | published as `practice.summary`; intent `practice.summary` |
+| `app {topic:"mirror.focus", payload:{view, reason?}}` | any | published as `mirror.focus` with `by` = the peer's name |
+
+`MirrorView` is `week | transfer | drill | live | practice | recap`.
+
+### `conversation.started`
+
+<!-- fixture: events-live.json#/events/0/payload -->
+```json
+{
+  "conversationId": "demo-0000-4000-8000-000000000101",
+  "startedAt": 1792517460000,
+  "replay": true
+}
+```
+<!-- /fixture -->
+
+### `live.window`
+
+`recent` counts the last 120 s. `rules` gives each rule's current value against its threshold, with `over` true when the value reaches it.
+
+<!-- fixture: events-live.json#/events/3/payload -->
+```json
+{
+  "window": {
+    "conversationId": "demo-0000-4000-8000-000000000101",
+    "startedAt": 1792517460000,
+    "updatedAt": 1792517610000,
+    "replay": true,
+    "lang": "en",
+    "wearer": {
+      "lines": 12,
+      "words": 214,
+      "talkMs": 91000,
+      "wpm": 141
+    },
+    "others": {
+      "lines": 9,
+      "words": 152
+    },
+    "talkShare": 0.58,
+    "monologue": {
+      "currentMs": 21000,
+      "longestMs": 48000
+    },
+    "pauses": {
+      "count": 7,
+      "longestMs": 2600
+    },
+    "recent": {
+      "windowMs": 120000,
+      "hedges": 5,
+      "likes": 2,
+      "fillers": 3,
+      "vague": 1,
+      "restarts": 1
+    },
+    "totals": {
+      "hedges": 5,
+      "likes": 3,
+      "fillers": 4,
+      "vague": 1,
+      "restarts": 1
+    },
+    "skipped": {
+      "frenchLines": 0,
+      "drillLines": 0
+    },
+    "rules": [
+      {
+        "rule": "hedge-streak",
+        "value": 5,
+        "threshold": 4.72,
+        "unit": "count",
+        "over": true
+      },
+      {
+        "rule": "like-streak",
+        "value": 2,
+        "threshold": 5.91,
+        "unit": "count",
+        "over": false
+      },
+      {
+        "rule": "monologue",
+        "value": 21000,
+        "threshold": 90000,
+        "unit": "ms",
+        "over": false
+      },
+      {
+        "rule": "fast-rate",
+        "value": 141,
+        "threshold": 175,
+        "unit": "wpm",
+        "over": false
+      }
+    ]
+  }
+}
+```
+<!-- /fixture -->
+
+### `nudge.sent`: the latency hops
+
+The hops come in this order (`NUDGE_HOP_ORDER`):
+
+1. `spokenAt`: the end of the wearer line that crossed the threshold.
+2. `beeAt`: Bee's wearer tag for that line reached the hub.
+3. `detectedAt`: the rule fired and the policy allowed it.
+4. `todoAt`: `bee todos create` returned.
+5. `alarmAt`: the to-do's alarm, when the Watch buzzes.
+
+`latencyMs` gives the differences: `bee` = `beeAt` − `spokenAt`, `detect`, `todo`, and `total` = `alarmAt` − `spokenAt`. In this example: Bee 5.9 s, detection 40 ms, the to-do 1.45 s and a 10 s alarm lead, so the Watch buzzes **17.4 s** after Ada stopped speaking. If the wrist call failed, `todoAt` and `alarmAt` are null and `wrist.status` is `"failed"`.
+
+<!-- fixture: events-live.json#/events/4/payload -->
+```json
+{
+  "nudge": {
+    "id": "ndg_demo_0001",
+    "conversationId": "demo-0000-4000-8000-000000000101",
+    "rule": "hedge-streak",
+    "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+    "evidence": {
+      "rule": "hedge-streak",
+      "value": 5,
+      "threshold": 4.72,
+      "unit": "count",
+      "over": true,
+      "windowMs": 120000,
+      "expected": 2.36
+    },
+    "hops": {
+      "spokenAt": 1792517604100,
+      "beeAt": 1792517610000,
+      "detectedAt": 1792517610040,
+      "todoAt": 1792517611490,
+      "alarmAt": 1792517621490
+    },
+    "latencyMs": {
+      "bee": 5900,
+      "detect": 40,
+      "todo": 1450,
+      "total": 17390
+    },
+    "wrist": {
+      "channel": "replay",
+      "status": "replay",
+      "todoId": null,
+      "leadMs": 10000,
+      "error": null
+    },
+    "replay": true
+  }
+}
+```
+<!-- /fixture -->
+
+### `nudge.skipped`
+
+<!-- fixture: events-live.json#/events/7/payload -->
+```json
+{
+  "skip": {
+    "id": "skp_demo_0001",
+    "conversationId": "demo-0000-4000-8000-000000000101",
+    "rule": "hedge-streak",
+    "reason": "cooldown",
+    "detail": "a nudge went out 1 min 52 s ago; nudges are at least 3 min apart",
+    "at": 1792517722040,
+    "retryAfterMs": 68000,
+    "evidence": {
+      "rule": "hedge-streak",
+      "value": 5,
+      "threshold": 4.58,
+      "unit": "count",
+      "over": true,
+      "windowMs": 120000,
+      "expected": 2.29
+    },
+    "replay": true
+  }
+}
+```
+<!-- /fixture -->
+
+### `conversation.ended`
+
+<!-- fixture: events-live.json#/events/9/payload -->
+```json
+{
+  "conversationId": "demo-0000-4000-8000-000000000101",
+  "startedAt": 1792517460000,
+  "endedAt": 1792517868000,
+  "reason": "idle",
+  "wearerWords": 520,
+  "otherLines": 17,
+  "recap": "pending",
+  "replay": true
+}
+```
+<!-- /fixture -->
+
+### `practice.meters` (10 Hz, room-scoped)
+
+[`practice-meters.json`](../fixtures/contract-v2/practice-meters.json) holds one second of a take: 10 frames. The phone sends `{"type":"app","topic":"practice.meters","payload":<frame>}`. The hub relays `{"type":"app","topic":"practice.meters","payload":{...frame,"from":"phone-1"}}` to the room's screens. Measurement:
+
+- volume is RMS dBFS (with the mic's automatic gain control off);
+- pitch is YIN, 70 to 400 Hz;
+- `monotone` means a range under 3 semitones over the last 5 s;
+- `wpm` is estimated from the syllable rate;
+- a pause is 250 ms or more.
+
+The Vega app renders at most 5 Hz. One frame:
+
+<!-- fixture: practice-meters.json#/frames/3 -->
+```json
+{
+  "takeId": "take_demo_01",
+  "frame": 123,
+  "t": 12300,
+  "at": 1792518012300,
+  "rmsDbfs": -24.1,
+  "band": "ok",
+  "voiced": true,
+  "pitchHz": 205.1,
+  "pitchRangeSt": 4.6,
+  "monotone": false,
+  "wpm": 152,
+  "pause": {
+    "active": false,
+    "currentMs": 0,
+    "count": 5
+  },
+  "caption": "So the export"
+}
+```
+<!-- /fixture -->
+
+### `practice.summary`
+
+<!-- fixture: events-practice.json#/events/1/payload -->
+```json
+{
+  "summary": {
+    "takeId": "take_demo_01",
+    "room": "HJ3H",
+    "from": "phone-1",
+    "startedAt": 1792518000000,
+    "endedAt": 1792518030000,
+    "durationMs": 30000,
+    "frames": 300,
+    "volume": {
+      "meanDbfs": -24.5,
+      "p10Dbfs": -31.2,
+      "p90Dbfs": -19.6,
+      "quietShare": 0.08,
+      "loudShare": 0.02
+    },
+    "pitch": {
+      "medianHz": 192,
+      "rangeSt": 5.8,
+      "voicedShare": 0.71,
+      "monotone": false
+    },
+    "rate": {
+      "wpm": 178
+    },
+    "pauses": {
+      "count": 9,
+      "perMin": 18,
+      "meanMs": 520,
+      "longestMs": 1400
+    },
+    "words": 89,
+    "flags": [
+      "fast"
+    ],
+    "provisional": true
+  }
+}
+```
+<!-- /fixture -->
+
+### `mirror.focus`
+
+<!-- fixture: events-practice.json#/events/0/payload -->
+```json
+{
+  "view": "practice",
+  "by": "phone-1",
+  "reason": "practice take started",
+  "recapId": null,
+  "takeId": "take_demo_01"
+}
+```
+<!-- /fixture -->
+
+### `POST /api/demo/mirror` (demo only)
+
+The mirror plays a synthetic practice take: meter frames to the screens at 10 Hz, then `practice.summary`. With `script: "focus"`, it publishes `mirror.focus` for `view` instead.
+
+<!-- fixture: demo-mirror.json -->
+```json
+{
+  "replay": true,
+  "script": "practice-take",
+  "takeId": "take_demo_01",
+  "frames": 10,
+  "hz": 10,
+  "durationMs": 1000,
+  "rooms": 1
+}
+```
+<!-- /fixture -->
+
+## Alexa and MCP (packet C)
+
+**Alexa** (`POST /alexa`). The skill checks the skill id (`ALEXA_SKILL_ID`) and that the timestamp is within 150 s, then maps each intent onto a hub route through a loopback hub client (`ctx.selfUrl()`):
+
+| Intent | Route |
+|---|---|
+| `LaunchRequest`, `StartDrillIntent` | `POST /api/session/start` |
+| `AttemptIntent` | `POST /api/attempt {source:"alexa"}`; says "checking with Bee" and keeps the session open |
+| `HowDidIDoIntent` | `GET /api/attempts/<id>` (polled for at most 6.5 s, with a progressive response) |
+| `HowAmIDoingIntent` | `GET /api/coach/now` |
+| `LiveCoachOnIntent` and `LiveCoachOffIntent` | `POST /api/live/mode` |
+| `DidItTransferIntent` | `GET /api/transfer` |
+| `AMAZON.NextIntent` | `POST /api/session/next` |
+| `AMAZON.StopIntent` and `AMAZON.CancelIntent` | `POST /api/session/end` |
+
+The catch-all slot rescues "how did I do", "how am I doing", "next" and "stop". The skill package uses generic sample values only. [`alexa-how-am-i-doing.json`](../fixtures/contract-v2/alexa-how-am-i-doing.json) shows one turn.
+
+**MCP** (`/mcp`). The server is stateless Streamable HTTP. Each tool calls one route, and its result is `content: [{type:"text", text: <narration>}]` plus `structuredContent` (the route's JSON), with `isError: true` when the route answers 400 or more.
+
+<!-- fixture: mcp-tools.json#/tools -->
+```json
+[
+  {
+    "name": "start_drill",
+    "route": "POST /api/session/start",
+    "args": "{ size?: number }"
+  },
+  {
+    "name": "submit_attempt",
+    "route": "POST /api/attempt",
+    "args": "{ text: string, card_id?: string }"
+  },
+  {
+    "name": "get_verdict",
+    "route": "GET /api/attempts/<id>",
+    "args": "{ attempt_id: string }"
+  },
+  {
+    "name": "drill_status",
+    "route": "GET /api/session",
+    "args": "{}"
+  },
+  {
+    "name": "next_card",
+    "route": "POST /api/session/next",
+    "args": "{}"
+  },
+  {
+    "name": "end_drill",
+    "route": "POST /api/session/end",
+    "args": "{}"
+  },
+  {
+    "name": "how_am_i_doing",
+    "route": "GET /api/coach/now",
+    "args": "{}"
+  },
+  {
+    "name": "habit_stats",
+    "route": "GET /api/stats",
+    "args": "{ range?: string, source?: \"bee\" | \"all\" }"
+  },
+  {
+    "name": "did_it_transfer",
+    "route": "GET /api/transfer",
+    "args": "{ habit?: string }"
+  },
+  {
+    "name": "pre_meeting_brief",
+    "route": "GET /api/brief",
+    "args": "{}"
+  },
+  {
+    "name": "live_coach",
+    "route": "POST /api/live/mode",
+    "args": "{ enabled: boolean, minutes?: number }"
+  },
+  {
+    "name": "last_recap",
+    "route": "GET /api/recaps?limit=1",
+    "args": "{}"
+  }
+]
+```
+<!-- /fixture -->
+
+## Health (v2)
+
+`GET /api/health` (LAN only) adds the following fields. It never includes a token.
+
+```json
+{ "ok": true, "contractVersion": 2, "mode": "demo", "fixtureV2": false, "publicBaseUrl": null,
+  "plugins": [
+    { "name": "live", "prefixes": ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live"], "owner": "packet A", "status": "stub",
+      "routes": ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "POST /api/demo/live"], "topics": ["..."] },
+    { "name": "static", "prefixes": ["/tv/", "/p/", "/sim/"], "owner": "lead", "status": "ready", "routes": ["GET /tv/*", "GET /p/*", "GET /sim/*"],
+      "note": "/tv/ not built (npm run tv:web:build); /p/ not built (npm run web:build); /sim/ not built (npm run web:build)" },
+    "..."
+  ],
+  "gate": { "publicRoutes": ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (?k=$PAIR_TOKEN)"], "pairToken": "generated", "mcpToken": "env" },
+  "...": "the v1 fields" }
+```
+
+## Fixture mode (`npm run hub -- --demo --fixture-v2`)
+
+Fixture mode lets B and C build against the v2 routes before A lands.
+
+- **It needs `--demo`.** It answers before the plugins, so it behaves the same before and after packet A replaces the live stub.
+- **The live routes** `GET /api/live`, `GET /api/recaps`, `GET /api/recaps/<id>` and `GET /api/coach/now` return the fixture files.
+  - `POST /api/live/mode` returns `live-mode-on.json` or `live-mode-off.json`, depending on `enabled`, and publishes `live.mode`.
+  - `POST /api/demo/live` returns `demo-live.json` (202) and publishes every event in `events-live.json` at `atMs × pace`. Use `--pace 0.05` to see the 7-minute story in about 20 s.
+- **`POST /api/demo/mirror` `{room?}`** returns `demo-mirror.json` (202). It relays the 10 frames of `practice-meters.json` to the screens at 10 Hz (not paced), then publishes `events-practice.json` (`mirror.focus`, then `practice.summary`).
+- **Everything else** (v1, `/alexa`, `/mcp`, the static mounts) behaves as usual.
+- **`/api/health`** shows `fixtureV2: true`.
+
+## Static mounts (`src/hub/static.ts`)
+
+| Mount | Directory | Built by | Public |
+|---|---|---|---|
+| `/tv/` | `tv/web/dist` | `npm run tv:web:build` (B: `tv/web/package.json`, Vite `base: "/tv/"`) | no |
+| `/p/` | `dist/web/phone` | `npm run web:phone:build` (B: `web/phone/vite.config.ts`) | yes |
+| `/sim/` | `dist/web/sim` | `npm run web:sim:build` (C: `web/sim/vite.config.ts`) | yes |
+
+- **Vite configs.** `web/phone` and `web/sim` are built with the root `vite`, so each config must set `root` to its own directory, `base` (`"/p/"`, `"/sim/"`), `build.outDir` (`"../../dist/web/phone"`, `"../../dist/web/sim"`) and `build.emptyOutDir: true`.
+- **Errors.** A mount that is not built answers `404 not_built` with the build command.
+- **Single-page fallback.** Paths without an extension fall back to the mount's `index.html`, so `/p/HJ3H?k=...` works.
+- **Refused paths.** Dot segments (raw or encoded), encoded slashes, backslashes, NUL bytes, dotfiles and symlinks that leave the mount get `400 bad_path`.
+
+## Coaching principles and thresholds
+
+[`coach/principles.template.md`](../coach/principles.template.md) is the generic default rubric. It covers:
+
+- rate, volume, melody and pitch, tonality and pauses;
+- clarity (hedges and vague answers);
+- turn-taking and monologue length.
+
+For each habit it says what Bee can measure (words, rate from timing, pauses, monologue) and what only the phone mic can (volume, pitch). It ends with a fenced JSON block of thresholds (`CoachThresholds` in `contract.ts`) that packet A reads. The operator may replace the template with `coach/principles.local.md` (gitignored; same structure, same JSON block). Its text is never served (see the privacy rules).
+
+## Ownership
+
+Each packet edits only its own files. The lead's files are frozen for the packets.
+
+| Owner | Files | Fills in | Check module |
+|---|---|---|---|
+| **A: live** | `src/hub/live/**`, `src/hub/core.ts`, `src/hub/bee.ts`, `src/hub/setup.ts`, `src/hub/demoData.ts`, `scripts/wrist-probe.ts`, `scripts/demo-replay.ts`, `docs/live.md`, `test/live-*.test.ts` | `src/hub/live/plugin.ts` (`createLivePlugin`) | `scripts/checks/live.ts` |
+| **B: mirror** | `src/hub/mirror.ts`, `tv/web/**`, `tv/vega/**`, `web/phone/**`, `scripts/tv-sync.ts`, `test/mirror-*.test.ts`, `test/tv-*.test.ts`, `test/phone-*.test.ts` | `src/hub/mirror.ts` (`createMirrorPlugin`) | `scripts/checks/mirror.ts` |
+| **C: Alexa and MCP** | `src/alexa/**`, `src/mcp/**`, `alexa/**`, `web/sim/**`, `scripts/alexa-deploy.ts`, `test/alexa-*.test.ts`, `test/mcp-*.test.ts` | `src/alexa/plugin.ts` (`createAlexaPlugin`), `src/mcp/plugin.ts` (`createMcpPlugin`) | `scripts/checks/alexa.ts`, `scripts/checks/mcp.ts` |
+| **lead (frozen)** | `src/hub/contract.ts`, `src/hub/plugin.ts`, `src/hub/plugins.ts`, `src/hub/server.ts`, `src/hub/gate.ts`, `src/hub/static.ts`, `src/hub/fixtureV2.ts`, `src/hub/contractExamples.ts`, `docs/CONTRACT.md`, `fixtures/contract-v2/**`, `coach/principles.template.md`, `scripts/contract-check.ts`, `scripts/checks/types.ts`, `scripts/contract-v2-examples.ts`, `scripts/leak-check.ts`, `package.json`, `package-lock.json`, `tsconfig.json`, `vitest.config.ts`, `.gitignore`, `test/contract-*.test.ts`, `test/hub-gate.test.ts`, `test/hub-static.test.ts`, `test/hub-plugins.test.ts`, `test/deps-mcp-sdk.test.ts` | | |
+
+Packet A keeps the `core.ts` helpers above and the `Setup` fields `stateDir` and `pace`. A dependency a packet needs in the root `package.json` goes through the lead. `tv/web` and `tv/vega` have their own `package.json` (B).
+
+## npm scripts (v2)
+
+| Script | Runs | Owner of the target |
+|---|---|---|
+| `tv:web:dev` and `tv:web:build` | `npm --prefix tv/web run dev` / `build` | B |
+| `tv:vega:build` | `npm --prefix tv/vega run build` | B |
+| `tv:sync` | `tsx scripts/tv-sync.ts` (copies the shared views from web to Vega) | B |
+| `web:phone:build`, `web:sim:build`, `web:build` (both) | `vite build --config web/<x>/vite.config.ts` | B (phone), C (sim) |
+| `alexa:deploy` | `tsx scripts/alexa-deploy.ts` (updates the existing dev skill via `ask smapi`) | C |
+| `wrist:probe` | `tsx scripts/wrist-probe.ts` (Watch alarm lead at 5, 10, 20 and 30 s) | A |
+| `demo:replay` | `tsx scripts/demo-replay.ts` (the whole story, no Bee, no AWS, with a hop timeline) | A |
+| `contract:fixtures` | `tsx scripts/contract-v2-examples.ts` | lead |
+| `check` | `typecheck` + `test` + `contract:check` + `leak-check` | lead |
+
+## The cross-surface check, v2 additions
+
+After the v1 flows, `npm run contract:check` asserts:
+
+- **Plugins.** Health reports `contractVersion: 2` and the five plugins in registry order. No token appears in health or in any other HTTP response.
+- **Routes.** Every v2 route is owned: it never answers `not_found`.
+- **Gate.**
+  - LAN requests pass.
+  - A request with `x-forwarded-for` (ngrok), or with a public `Host`, gets 403 on `/api/*`.
+  - Public `POST /alexa` and `GET /p/` pass.
+  - Public `/mcp` needs the bearer token.
+  - Public `/ws` needs `k`.
+- **Static.** Traversal attempts (raw, encoded and double-encoded) never serve a file from outside the mount.
+- **Room topics.** `practice.meters` frames from a phone never appear on SSE or in `/api/events/recent`.
+- **Topics.** The topic table above matches `V2_TOPICS` and `ROOM_TOPICS`, and every v1 topic is in the v1 event table.
+- **Fixture mode.** A second hub (`--demo --fixture-v2`) serves the fixture files. `POST /api/demo/live` publishes the fixture events in order on SSE and to the TV. `POST /api/demo/mirror` sends meters to the room's screens, but never to the phone, SSE or recent events.
+- **Packet checks.** The check then imports `scripts/checks/{live,mirror,alexa,mcp}.ts`. Each one exports `run(ctx): Promise<{name, passed, failed, pending?}>` (see `scripts/checks/types.ts`) and asserts its packet's flows against the same demo hub. They report "pending" until the packet lands.

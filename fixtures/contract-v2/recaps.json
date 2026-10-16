@@ -1,0 +1,80 @@
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+  "synthetic": true,
+  "recaps": [
+    {
+      "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+      "synthetic": true,
+      "id": "rcp_demo_0001",
+      "conversationId": "demo-0000-4000-8000-000000000101",
+      "startedAt": 1792517460000,
+      "endedAt": 1792517868000,
+      "durationMs": 408000,
+      "createdAt": 1792517868300,
+      "replay": true,
+      "metrics": {
+        "wearerWords": 520,
+        "wpm": 138,
+        "baselineWpm": 140,
+        "talkShare": 0.57,
+        "longestMonologueMs": 74000,
+        "pauses": {
+          "count": 19,
+          "longestMs": 3100
+        },
+        "habits": [
+          {
+            "key": "hedges",
+            "label": "hedges (I guess, I think, maybe, kind of...)",
+            "count": 11,
+            "per100": 2.12,
+            "baselinePer100": 1.43,
+            "verdict": "worse"
+          },
+          {
+            "key": "filler:like",
+            "label": "\"like\" as a filler",
+            "count": 6,
+            "per100": 1.15,
+            "baselinePer100": 1.79,
+            "verdict": "better"
+          },
+          {
+            "key": "vague",
+            "label": "vague answers",
+            "count": 1,
+            "per100": 0.19,
+            "baselinePer100": 0.64,
+            "verdict": "better"
+          },
+          {
+            "key": "restart",
+            "label": "restarts (the the, I I)",
+            "count": 3,
+            "per100": 0.58,
+            "baselinePer100": 0.86,
+            "verdict": "typical"
+          }
+        ]
+      },
+      "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+      "moment": {
+        "text": "I guess we could maybe ship the export on Friday.",
+        "at": 1792517601000,
+        "habit": "hedges",
+        "rephrase": "We could ship the export on Friday."
+      },
+      "narration": "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
+      "wristText": "[coach] Recap: hedges high, pace steady",
+      "phrasing": "template",
+      "nudges": {
+        "sent": 1,
+        "skipped": 1
+      },
+      "delivery": {
+        "wrist": "replay",
+        "todoId": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "note": "SYNTHETIC. One second of a practice take: 10 meter frames at 10 Hz from the phone (mic -> hub -> that room's screens only).",
+  "frames": [
+    {
+      "takeId": "take_demo_01",
+      "frame": 120,
+      "t": 12000,
+      "at": 1792518012000,
+      "rmsDbfs": -41.5,
+      "band": "quiet",
+      "voiced": false,
+      "pitchHz": null,
+      "pitchRangeSt": 4.2,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": true,
+        "currentMs": 100,
+        "count": 4
+      },
+      "caption": null
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 121,
+      "t": 12100,
+      "at": 1792518012100,
+      "rmsDbfs": -30.2,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 184.2,
+      "pitchRangeSt": 4.2,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 122,
+      "t": 12200,
+      "at": 1792518012200,
+      "rmsDbfs": -26.8,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 196.8,
+      "pitchRangeSt": 4.3,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 123,
+      "t": 12300,
+      "at": 1792518012300,
+      "rmsDbfs": -24.1,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 205.1,
+      "pitchRangeSt": 4.6,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 124,
+      "t": 12400,
+      "at": 1792518012400,
+      "rmsDbfs": -23.5,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 189.7,
+      "pitchRangeSt": 4.6,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 125,
+      "t": 12500,
+      "at": 1792518012500,
+      "rmsDbfs": -25.9,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 176.3,
+      "pitchRangeSt": 4.6,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export is"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 126,
+      "t": 12600,
+      "at": 1792518012600,
+      "rmsDbfs": -22.7,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 211.4,
+      "pitchRangeSt": 4.9,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export is ready"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 127,
+      "t": 12700,
+      "at": 1792518012700,
+      "rmsDbfs": -38.4,
+      "band": "quiet",
+      "voiced": false,
+      "pitchHz": null,
+      "pitchRangeSt": 4.9,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": true,
+        "currentMs": 100,
+        "count": 5
+      },
+      "caption": "So the export is ready"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 128,
+      "t": 12800,
+      "at": 1792518012800,
+      "rmsDbfs": -24.6,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 198.2,
+      "pitchRangeSt": 4.9,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export is ready for"
+    },
+    {
+      "takeId": "take_demo_01",
+      "frame": 129,
+      "t": 12900,
+      "at": 1792518012900,
+      "rmsDbfs": -23.9,
+      "band": "ok",
+      "voiced": true,
+      "pitchHz": 182.6,
+      "pitchRangeSt": 4.9,
+      "monotone": false,
+      "wpm": 152,
+      "pause": {
+        "active": false,
+        "currentMs": 0,
+        "count": 5
+      },
+      "caption": "So the export is ready for review"
+    }
+  ]
+}

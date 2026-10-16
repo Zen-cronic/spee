@@ -1,0 +1,30 @@
+{
+  "mode": {
+    "rules": {
+      "hedge-streak": true,
+      "like-streak": true,
+      "monologue": true,
+      "fast-rate": false
+    },
+    "quietHours": {
+      "startHour": 22,
+      "endHour": 8
+    },
+    "warmupMs": 60000,
+    "cooldownMs": 180000,
+    "ruleCooldownMs": 600000,
+    "capPerHour": 6,
+    "capPerDay": 20,
+    "enabled": false,
+    "since": null,
+    "expiresAt": null,
+    "changedAt": 1792518600000,
+    "by": "alexa",
+    "reason": "off",
+    "sent": {
+      "lastHour": 1,
+      "today": 1
+    }
+  },
+  "narration": "Live coaching is off. I'll still recap your conversations."
+}

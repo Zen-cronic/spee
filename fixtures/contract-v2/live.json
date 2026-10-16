@@ -1,0 +1,199 @@
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+  "synthetic": true,
+  "mode": {
+    "rules": {
+      "hedge-streak": true,
+      "like-streak": true,
+      "monologue": true,
+      "fast-rate": false
+    },
+    "quietHours": {
+      "startHour": 22,
+      "endHour": 8
+    },
+    "warmupMs": 60000,
+    "cooldownMs": 180000,
+    "ruleCooldownMs": 600000,
+    "capPerHour": 6,
+    "capPerDay": 20,
+    "enabled": true,
+    "since": 1792517430000,
+    "expiresAt": 1792521030000,
+    "changedAt": 1792517430000,
+    "by": "alexa",
+    "reason": "on",
+    "sent": {
+      "lastHour": 1,
+      "today": 1
+    }
+  },
+  "conversation": {
+    "conversationId": "demo-0000-4000-8000-000000000101",
+    "startedAt": 1792517460000,
+    "updatedAt": 1792517675000,
+    "replay": true,
+    "lang": "en",
+    "wearer": {
+      "lines": 17,
+      "words": 318,
+      "talkMs": 136000,
+      "wpm": 140
+    },
+    "others": {
+      "lines": 13,
+      "words": 221
+    },
+    "talkShare": 0.59,
+    "monologue": {
+      "currentMs": 0,
+      "longestMs": 48000
+    },
+    "pauses": {
+      "count": 11,
+      "longestMs": 2600
+    },
+    "recent": {
+      "windowMs": 120000,
+      "hedges": 3,
+      "likes": 1,
+      "fillers": 2,
+      "vague": 0,
+      "restarts": 1
+    },
+    "totals": {
+      "hedges": 7,
+      "likes": 4,
+      "fillers": 5,
+      "vague": 1,
+      "restarts": 2
+    },
+    "skipped": {
+      "frenchLines": 0,
+      "drillLines": 0
+    },
+    "rules": [
+      {
+        "rule": "hedge-streak",
+        "value": 3,
+        "threshold": 4.29,
+        "unit": "count",
+        "over": false
+      },
+      {
+        "rule": "like-streak",
+        "value": 1,
+        "threshold": 5.37,
+        "unit": "count",
+        "over": false
+      },
+      {
+        "rule": "monologue",
+        "value": 0,
+        "threshold": 90000,
+        "unit": "ms",
+        "over": false
+      },
+      {
+        "rule": "fast-rate",
+        "value": 140,
+        "threshold": 175,
+        "unit": "wpm",
+        "over": false
+      }
+    ]
+  },
+  "drillActive": false,
+  "baseline": {
+    "source": "bee week (non-drill conversations; synthetic)",
+    "words": 1400,
+    "hedgesPer100": 1.43,
+    "likesPer100": 1.79,
+    "fillersPer100": 2.43,
+    "wpm": 140
+  },
+  "wrist": {
+    "channel": "replay",
+    "healthy": true,
+    "failures": 0,
+    "circuitOpenUntil": null,
+    "leadMs": 10000,
+    "pendingTodos": 1
+  },
+  "lastNudge": {
+    "id": "ndg_demo_0001",
+    "conversationId": "demo-0000-4000-8000-000000000101",
+    "rule": "hedge-streak",
+    "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+    "evidence": {
+      "rule": "hedge-streak",
+      "value": 5,
+      "threshold": 4.72,
+      "unit": "count",
+      "over": true,
+      "windowMs": 120000,
+      "expected": 2.36
+    },
+    "hops": {
+      "spokenAt": 1792517604100,
+      "beeAt": 1792517610000,
+      "detectedAt": 1792517610040,
+      "todoAt": 1792517611490,
+      "alarmAt": 1792517621490
+    },
+    "latencyMs": {
+      "bee": 5900,
+      "detect": 40,
+      "todo": 1450,
+      "total": 17390
+    },
+    "wrist": {
+      "channel": "replay",
+      "status": "replay",
+      "todoId": null,
+      "leadMs": 10000,
+      "error": null
+    },
+    "replay": true
+  },
+  "recentNudges": [
+    {
+      "id": "ndg_demo_0001",
+      "conversationId": "demo-0000-4000-8000-000000000101",
+      "rule": "hedge-streak",
+      "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+      "evidence": {
+        "rule": "hedge-streak",
+        "value": 5,
+        "threshold": 4.72,
+        "unit": "count",
+        "over": true,
+        "windowMs": 120000,
+        "expected": 2.36
+      },
+      "hops": {
+        "spokenAt": 1792517604100,
+        "beeAt": 1792517610000,
+        "detectedAt": 1792517610040,
+        "todoAt": 1792517611490,
+        "alarmAt": 1792517621490
+      },
+      "latencyMs": {
+        "bee": 5900,
+        "detect": 40,
+        "todo": 1450,
+        "total": 17390
+      },
+      "wrist": {
+        "channel": "replay",
+        "status": "replay",
+        "todoId": null,
+        "leadMs": 10000,
+        "error": null
+      },
+      "replay": true
+    }
+  ],
+  "recentSkips": [],
+  "lastRecapId": null
+}

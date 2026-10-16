@@ -1,0 +1,58 @@
+{
+  "note": "SYNTHETIC. The sequenced events around a practice take. atMs is after the last meter frame; the hub adds seq and at.",
+  "events": [
+    {
+      "atMs": 0,
+      "topic": "mirror.focus",
+      "payload": {
+        "view": "practice",
+        "by": "phone-1",
+        "reason": "practice take started",
+        "recapId": null,
+        "takeId": "take_demo_01"
+      }
+    },
+    {
+      "atMs": 200,
+      "topic": "practice.summary",
+      "payload": {
+        "summary": {
+          "takeId": "take_demo_01",
+          "room": "HJ3H",
+          "from": "phone-1",
+          "startedAt": 1792518000000,
+          "endedAt": 1792518030000,
+          "durationMs": 30000,
+          "frames": 300,
+          "volume": {
+            "meanDbfs": -24.5,
+            "p10Dbfs": -31.2,
+            "p90Dbfs": -19.6,
+            "quietShare": 0.08,
+            "loudShare": 0.02
+          },
+          "pitch": {
+            "medianHz": 192,
+            "rangeSt": 5.8,
+            "voicedShare": 0.71,
+            "monotone": false
+          },
+          "rate": {
+            "wpm": 178
+          },
+          "pauses": {
+            "count": 9,
+            "perMin": 18,
+            "meanMs": 520,
+            "longestMs": 1400
+          },
+          "words": 89,
+          "flags": [
+            "fast"
+          ],
+          "provisional": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "replay": true,
+  "script": "practice-take",
+  "takeId": "take_demo_01",
+  "frames": 10,
+  "hz": 10,
+  "durationMs": 1000,
+  "rooms": 1
+}

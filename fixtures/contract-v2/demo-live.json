@@ -1,0 +1,53 @@
+{
+  "replay": true,
+  "script": "story",
+  "conversationId": "demo-0000-4000-8000-000000000101",
+  "description": "Ada's 7-minute conversation (synthetic): 5 hedges in 2 minutes -> nudge.sent; a second streak inside the 3-minute cooldown -> nudge.skipped; 90 s idle -> conversation.ended -> recap.ready. With live coaching off, the first streak is nudge.skipped (reason off).",
+  "pace": 1,
+  "steps": [
+    {
+      "atMs": 1000,
+      "what": "conversation.started"
+    },
+    {
+      "atMs": 31000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 96000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 151000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 152490,
+      "what": "nudge.sent"
+    },
+    {
+      "atMs": 216000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 263000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 263040,
+      "what": "nudge.skipped"
+    },
+    {
+      "atMs": 319000,
+      "what": "live.window"
+    },
+    {
+      "atMs": 409000,
+      "what": "conversation.ended"
+    },
+    {
+      "atMs": 409300,
+      "what": "recap.ready"
+    }
+  ]
+}

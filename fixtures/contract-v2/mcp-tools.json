@@ -1,0 +1,66 @@
+{
+  "note": "The MCP tools at /mcp (stateless Streamable HTTP). Each result is content [{type:'text', text: narration}] plus structuredContent (the route's JSON); isError when the route answers >= 400.",
+  "contractVersion": 2,
+  "tools": [
+    {
+      "name": "start_drill",
+      "route": "POST /api/session/start",
+      "args": "{ size?: number }"
+    },
+    {
+      "name": "submit_attempt",
+      "route": "POST /api/attempt",
+      "args": "{ text: string, card_id?: string }"
+    },
+    {
+      "name": "get_verdict",
+      "route": "GET /api/attempts/<id>",
+      "args": "{ attempt_id: string }"
+    },
+    {
+      "name": "drill_status",
+      "route": "GET /api/session",
+      "args": "{}"
+    },
+    {
+      "name": "next_card",
+      "route": "POST /api/session/next",
+      "args": "{}"
+    },
+    {
+      "name": "end_drill",
+      "route": "POST /api/session/end",
+      "args": "{}"
+    },
+    {
+      "name": "how_am_i_doing",
+      "route": "GET /api/coach/now",
+      "args": "{}"
+    },
+    {
+      "name": "habit_stats",
+      "route": "GET /api/stats",
+      "args": "{ range?: string, source?: \"bee\" | \"all\" }"
+    },
+    {
+      "name": "did_it_transfer",
+      "route": "GET /api/transfer",
+      "args": "{ habit?: string }"
+    },
+    {
+      "name": "pre_meeting_brief",
+      "route": "GET /api/brief",
+      "args": "{}"
+    },
+    {
+      "name": "live_coach",
+      "route": "POST /api/live/mode",
+      "args": "{ enabled: boolean, minutes?: number }"
+    },
+    {
+      "name": "last_recap",
+      "route": "GET /api/recaps?limit=1",
+      "args": "{}"
+    }
+  ]
+}
