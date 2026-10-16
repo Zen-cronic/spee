@@ -1,0 +1,65 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "speech coach",
+      "intents": [
+        {
+          "name": "StartDrillIntent",
+          "slots": [],
+          "samples": ["quiz me", "drill me", "start a drill", "start drilling", "let's drill", "let's practice", "give me a card", "start a session"]
+        },
+        {
+          "name": "AttemptIntent",
+          "slots": [{ "name": "attempt", "type": "ATTEMPT_TEXT" }],
+          "samples": ["{attempt}"]
+        },
+        {
+          "name": "HowDidIDoIntent",
+          "slots": [],
+          "samples": ["how did i do", "how did that go", "how was that", "did i pass", "what's the verdict", "how did i do on that"]
+        },
+        {
+          "name": "HowAmIDoingIntent",
+          "slots": [],
+          "samples": ["how am i doing", "how am i doing today", "how is my speaking", "give me a coaching update"]
+        },
+        {
+          "name": "LiveCoachOnIntent",
+          "slots": [{ "name": "minutes", "type": "AMAZON.NUMBER" }],
+          "samples": ["turn on live coaching", "start live coaching", "turn live coaching on", "turn on live coaching for {minutes} minutes", "start live coaching for {minutes} minutes"]
+        },
+        {
+          "name": "LiveCoachOffIntent",
+          "slots": [],
+          "samples": ["turn off live coaching", "stop live coaching", "turn live coaching off", "pause live coaching"]
+        },
+        {
+          "name": "DidItTransferIntent",
+          "slots": [],
+          "samples": ["did it transfer", "is the drilling working", "did my habits drop", "did the drilling work"]
+        },
+        { "name": "AMAZON.NextIntent", "samples": ["next card", "skip this one"] },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+      ],
+      "types": [
+        {
+          "name": "ATTEMPT_TEXT",
+          "values": [
+            { "name": { "value": "the report is ready for review" } },
+            { "name": { "value": "we moved the meeting to thursday" } },
+            { "name": { "value": "i will send the update this afternoon" } },
+            { "name": { "value": "the build passed on the second run" } },
+            { "name": { "value": "our team finished the first draft" } },
+            { "name": { "value": "the client approved the new schedule" } },
+            { "name": { "value": "i need two more days for testing" } },
+            { "name": { "value": "the numbers look better than last month" } }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-CA": {
+          "name": "Speech Coach",
+          "summary": "Speaking drills graded from your own wearable.",
+          "description": "A personal speaking coach. It runs short drills that your Bee wearable grades from your own voice, tells you how you are doing, and turns opt-in live coaching on or off. Development skill.",
+          "examplePhrases": ["Alexa, open speech coach", "Alexa, ask speech coach how am I doing", "Alexa, ask speech coach to turn on live coaching"],
+          "keywords": ["speaking", "coach", "drill"]
+        },
+        "en-US": {
+          "name": "Speech Coach",
+          "summary": "Speaking drills graded from your own wearable.",
+          "description": "A personal speaking coach. It runs short drills that your Bee wearable grades from your own voice, tells you how you are doing, and turns opt-in live coaching on or off. Development skill.",
+          "examplePhrases": ["Alexa, open speech coach", "Alexa, ask speech coach how am I doing", "Alexa, ask speech coach to turn on live coaching"],
+          "keywords": ["speaking", "coach", "drill"]
+        }
+      },
+      "isAvailableWorldwide": false,
+      "distributionCountries": ["CA", "US"],
+      "testingInstructions": "Development only. Say: open speech coach, repeat the sentence, then ask: how did I do.",
+      "category": "EDUCATION_AND_REFERENCE"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://PUBLIC_BASE_URL.invalid/alexa",
+          "sslCertificateType": "Wildcard"
+        }
+      }
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": false,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": { "en-CA": {}, "en-US": {} }
+    }
+  }
+}

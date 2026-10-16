@@ -1,0 +1,46 @@
+{
+  "note": "SYNTHETIC Alexa request envelope (placeholder ids). Tests substitute the skill id, the timestamp and, for AttemptIntent, the open card sentence.",
+  "request": {
+    "version": "1.0",
+    "session": {
+      "new": true,
+      "sessionId": "amzn1.echo-api.session.00000000-demo",
+      "application": {
+        "applicationId": "amzn1.ask.skill.00000000-0000-0000-0000-000000000000"
+      },
+      "attributes": {},
+      "user": {
+        "userId": "amzn1.ask.account.DEMO"
+      }
+    },
+    "context": {
+      "System": {
+        "application": {
+          "applicationId": "amzn1.ask.skill.00000000-0000-0000-0000-000000000000"
+        },
+        "user": {
+          "userId": "amzn1.ask.account.DEMO"
+        },
+        "apiEndpoint": "https://api.amazonalexa.com",
+        "apiAccessToken": "DEMO.ACCESS.TOKEN"
+      }
+    },
+    "request": {
+      "requestId": "amzn1.echo-api.request.00000000-live-coach-on",
+      "timestamp": "2026-10-20T17:30:10.000Z",
+      "locale": "en-CA",
+      "type": "IntentRequest",
+      "intent": {
+        "name": "LiveCoachOnIntent",
+        "confirmationStatus": "NONE",
+        "slots": {
+          "minutes": {
+            "name": "minutes",
+            "value": "30",
+            "confirmationStatus": "NONE"
+          }
+        }
+      }
+    }
+  }
+}
