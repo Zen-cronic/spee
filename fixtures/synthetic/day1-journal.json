@@ -1,0 +1,14 @@
+{
+  "id": "00000000-0000-4000-8000-0000000d1a01",
+  "text": "Bonjour! Um, aujourd'hui je veux parler de ma semaine. Je suis trente ans et j'habite à Toronto. J'ai étudié le français depuis deux ans, parce que c'est important pour mon travail. Hier soir, j'ai allé à mon cours de français. Uh, la problème, c'est que je suis toujours fatigué après le travail. Ben, le week-end, je vais à faire du sport chez moi, des tractions et des dips. C'est un difficile exercice, mais j'aime ça. Je mange aussi beaucoup des légumes. Si j'aurais plus de temps, je ferais du sport tous les jours. Et je suis vraiment excité pour mon prochain examen. Voilà, c'est tout pour aujourd'hui.",
+  "state": "READY",
+  "created_at": 1792090000000,
+  "updated_at": 1792090030000,
+  "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bonjour ! Aujourd'hui je veux parler de ma semaine. J'ai trente ans et j'habite à Toronto. J'étudie le français depuis deux ans, parce que c'est important pour mon travail. Hier soir, je suis allé à mon cours de français. Le problème, c'est que je suis toujours fatigué après le travail. Le week-end, je vais faire du sport chez moi. C'est un exercice difficile, mais j'aime ça. Je mange aussi beaucoup de légumes. Si j'avais plus de temps, je ferais du sport tous les jours. J'ai vraiment hâte de passer mon prochain examen.",
+    "followUp": null,
+    "todos": []
+  },
+  "timezone": "America/Toronto"
+}
