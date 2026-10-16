@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="data:," />
+    <title>Speech coach: Alexa+ simulator</title>
+  </head>
+  <body>
+    <header>
+      <h1>Speech coach <span class="sub">Alexa+ simulator</span></h1>
+      <p class="banner" id="banner">
+        A real MCP client on <code>/mcp</code>. The intent router is a <strong>stand-in for Alexa+'s model</strong> (keyword rules, no model). What the mic hears is provisional: <strong>Bee grades every attempt</strong>.
+      </p>
+      <p class="label" id="data-label" hidden></p>
+    </header>
+    <main>
+      <section class="talk">
+        <div class="status"><span id="conn" class="dot off"></span><span id="conn-text">connecting</span></div>
+        <div class="card" id="card" hidden>
+          <div class="card-k">Say this</div>
+          <div class="card-v" id="card-text"></div>
+        </div>
+        <ol id="turns" class="turns" aria-live="polite"></ol>
+        <form id="say" autocomplete="off">
+          <button type="button" id="mic" title="Hold a turn with the microphone">Mic</button>
+          <input id="text" placeholder='Type what you would say, e.g. "quiz me"' />
+          <button type="submit">Say</button>
+        </form>
+        <div class="quick" id="quick">
+          <button data-say="quiz me">Quiz me</button>
+          <button data-say="how did I do?">How did I do?</button>
+          <button data-say="how am I doing?">How am I doing?</button>
+          <button data-say="next">Next</button>
+          <button data-say="did it transfer?">Did it transfer?</button>
+          <button data-say="turn on live coaching">Live coaching on</button>
+          <button data-say="turn off live coaching">Live coaching off</button>
+          <button data-say="stop">Stop</button>
+        </div>
+        <label class="voice"><input type="checkbox" id="voice" checked /> speak replies</label>
+      </section>
+      <section class="logs">
+        <h2>JSON-RPC <span class="sub">POST /mcp</span></h2>
+        <ol id="rpc" class="log"></ol>
+        <h2>Hub events <span class="sub" id="sse-state">SSE /api/events</span></h2>
+        <ol id="sse" class="log"></ol>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
