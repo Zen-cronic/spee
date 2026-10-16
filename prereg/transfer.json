@@ -1,0 +1,17 @@
+{
+  "kind": "transfer",
+  "registered_at": "2026-10-16T20:11:28.000Z",
+  "registered_local": "2026-10-16 16:11 EDT",
+  "lang": "en",
+  "basis": "Written before any coach-hub drill attempt existed (no post-period data). Drilled: hedges as one habit (every hedge phrase: I guess, I think, maybe, kind of, ...; the hero habit) and the filler 'like' (the most frequent filler in the wearer's real English speech so far). Control: restarts, which the coach will never drill, so a change in restarts measures general drift in how the wearer talks rather than drill transfer.",
+  "drilled": [
+    { "habit": "hedges", "why": "hero habit: hedging a finished result or a commitment (all hedge phrases, counted together)" },
+    { "habit": "filler:like", "why": "the most frequent filler in the wearer's real English speech" }
+  ],
+  "control": [
+    { "habit": "restart", "why": "never drilled: separates drill transfer from general drift" }
+  ],
+  "min_words_per_period": 400,
+  "cutover_rule": "drilled habit: its first Bee-verified (counted) drill attempt; a drill on a specific hedge (e.g. 'I guess') counts toward 'hedges'. Control: the earliest first drill of any drilled habit. Sessions are Bee conversations by default (meeting captions only with source=all); drill attempts and voice notes never count.",
+  "note": "Amended 2026-10-16 before any drill attempt (was: 'I guess' + 'like'); 'I guess' occurred once in 1,635 Bee words, too rare to measure. Do not edit after the first drill attempt. A habit drilled but not listed here is never reported as drilled; drilling the control habit invalidates it."
+}

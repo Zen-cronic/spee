@@ -1,0 +1,34 @@
+{
+  "lang": "fr",
+  "registered_at": "2026-10-14T19:13:57.789Z",
+  "cutover_ms": 1791345599000,
+  "basis": "error types detected (citation-valid, grounded, not ASR-suspect) in >= 2 distinct pre-cutover sessions, all channels, cleaned variant",
+  "pre_items_sha256": "a12eecf457d8de316bcb5ae5156357de13cb964f40d59ab3ecd5c5c8e16efdfc",
+  "seed": "ebf38ff56edd726e054ac570a0595566d439e15222034aa6188de347e7b5e1bb",
+  "recurring": {
+    "FR_AGE_ETRE": 3,
+    "FR_ANGLICISM": 5,
+    "FR_AUX_ETRE_AVOIR": 6,
+    "FR_CONTRACTION": 6,
+    "FR_DEPUIS_TENSE": 5,
+    "FR_GENDER": 6,
+    "FR_MISSING_NE": 6,
+    "FR_PARTITIVE": 3,
+    "FR_PREPOSITION_PLACE": 4,
+    "FR_REFLEXIVE": 4
+  },
+  "drilled": [
+    "FR_DEPUIS_TENSE",
+    "FR_MISSING_NE",
+    "FR_PARTITIVE",
+    "FR_PREPOSITION_PLACE",
+    "FR_REFLEXIVE"
+  ],
+  "control": [
+    "FR_AGE_ETRE",
+    "FR_ANGLICISM",
+    "FR_AUX_ETRE_AVOIR",
+    "FR_CONTRACTION",
+    "FR_GENDER"
+  ]
+}

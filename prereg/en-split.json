@@ -1,0 +1,30 @@
+{
+  "lang": "en",
+  "registered_at": "2026-10-14T19:13:57.789Z",
+  "cutover_ms": 1791345599000,
+  "basis": "error types detected (citation-valid, grounded, not ASR-suspect) in >= 2 distinct pre-cutover sessions, all channels, cleaned variant",
+  "pre_items_sha256": "e15ebfc9d4fe15c513cf84f0937f2268eb7bc72c6d9db9439d38d0de0235f692",
+  "seed": "b2fb70b0dd15ed0d691b4caae4d3b0ad5b67ac902608c8fd0eb0e05d5d6e831e",
+  "recurring": {
+    "EN_BURIED_BLOCKER": 5,
+    "EN_HEDGE_STACK": 7,
+    "EN_NO_ETA": 7,
+    "EN_OVER_APOLOGY": 4,
+    "EN_PASSIVE_NO_OWNER": 4,
+    "EN_RUN_ON": 5,
+    "EN_VAGUE_REFERENT": 5,
+    "EN_VAGUE_STATUS": 4
+  },
+  "drilled": [
+    "EN_BURIED_BLOCKER",
+    "EN_NO_ETA",
+    "EN_OVER_APOLOGY",
+    "EN_VAGUE_STATUS"
+  ],
+  "control": [
+    "EN_HEDGE_STACK",
+    "EN_PASSIVE_NO_OWNER",
+    "EN_RUN_ON",
+    "EN_VAGUE_REFERENT"
+  ]
+}
