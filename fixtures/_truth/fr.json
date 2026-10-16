@@ -1,0 +1,2760 @@
+{
+ "lang": "fr",
+ "note": "SYNTHETIC ground truth for the PoC. Never read by the analyzer.",
+ "cutover_ms": 1791345599000,
+ "split_used": {
+  "lang": "fr",
+  "drilled": [
+   "FR_DEPUIS_TENSE",
+   "FR_MISSING_NE",
+   "FR_PARTITIVE",
+   "FR_PREPOSITION_PLACE",
+   "FR_REFLEXIVE"
+  ],
+  "control": [
+   "FR_AGE_ETRE",
+   "FR_ANGLICISM",
+   "FR_AUX_ETRE_AVOIR",
+   "FR_CONTRACTION",
+   "FR_GENDER"
+  ]
+ },
+ "planted_effect": {
+  "FR_AUX_ETRE_AVOIR": 1,
+  "FR_GENDER": 1,
+  "FR_DEPUIS_TENSE": 0.2,
+  "FR_PREPOSITION_PLACE": 0.2,
+  "FR_CONTRACTION": 1,
+  "FR_MISSING_NE": 1,
+  "FR_ANGLICISM": 1,
+  "FR_REFLEXIVE": 0.2
+ },
+ "wearer_rates": {
+  "FR_AUX_ETRE_AVOIR": 1.5,
+  "FR_GENDER": 1.3,
+  "FR_DEPUIS_TENSE": 1,
+  "FR_PREPOSITION_PLACE": 1,
+  "FR_CONTRACTION": 0.8,
+  "FR_MISSING_NE": 1,
+  "FR_ANGLICISM": 1,
+  "FR_REFLEXIVE": 0.8
+ },
+ "stubborn": [
+  "FR_GENDER",
+  "FR_ANGLICISM",
+  "FR_MISSING_NE"
+ ],
+ "others": {
+  "Tom": {
+   "FR_AGE_ETRE": 1,
+   "FR_GENDER": 0.8,
+   "FR_ANGLICISM": 0.5
+  },
+  "Aisha": {
+   "FR_PARTITIVE": 1,
+   "FR_MISSING_NE": 0.8,
+   "FR_PREPOSITION_PLACE": 0.5
+  }
+ },
+ "sessions": [
+  {
+   "key": "fr-class-10-1",
+   "kind": "conversation",
+   "id": "6101",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "id": "596d7175-8cca-46ca-ad73-a7ffb5866d39",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-class-10-3",
+   "kind": "conversation",
+   "id": "6102",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "id": "8684e963-5605-4f26-ab2c-90ff4788d67e",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-class-10-6",
+   "kind": "conversation",
+   "id": "6103",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "id": "f2abb5cd-dbb0-4188-a058-752171156fd2",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "fr-class-10-8",
+   "kind": "conversation",
+   "id": "6104",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "fr-drill-10-8",
+   "kind": "conversation",
+   "id": "6105",
+   "startMs": 1791507600000,
+   "phase": "post",
+   "deleted": true
+  },
+  {
+   "key": "fr-voice-10-9",
+   "kind": "voice_note",
+   "id": "be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad",
+   "startMs": 1791590400000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "fr-class-10-10",
+   "kind": "conversation",
+   "id": "6106",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "id": "0022dce0-6a40-459a-abc8-c38c32a0d7ec",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "fr-class-10-13",
+   "kind": "conversation",
+   "id": "6107",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "fr-voice-10-13",
+   "kind": "voice_note",
+   "id": "ab9f2afe-9c28-46ae-a8a8-11814d773a5f",
+   "startMs": 1791936000000,
+   "phase": "post",
+   "deleted": false
+  }
+ ],
+ "utterances": {
+  "u:6101001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonjour tout le monde, on commence?"
+  },
+  "u:6101002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6101003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, vous voulez répondre?"
+  },
+  "u:6101004": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh c'est un bonne idée pour le projet."
+  },
+  "u:6101005": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6101006": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'ai parlé à les voisins de la fête."
+  },
+  "u:6101007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben le dimanche je repose beaucoup."
+  },
+  "u:6101008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "u:6101009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Hier soir soir j'ai resté à la genre maison parce que j'étais fatigué."
+  },
+  "u:6101010": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6101011": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il y a pas de problème."
+  },
+  "u:6101012": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Euh je suis suis d'accord avec vous."
+  },
+  "u:6101013": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, vous voulez répondre?"
+  },
+  "u:6101014": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "On a mangé euh dans un petit restaurant italienne près ben de chez moi."
+  },
+  "u:6101015": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6101016": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je suis vingt-cinq ans et je travaille à Toronto."
+  },
+  "u:6101017": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6101018": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Ben moi, je suis allée au restaurant euh avec ma ben copine."
+  },
+  "u:6101019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, à vous."
+  },
+  "u:6101020": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon quartier est est calme euh et il genre y a un beau parc."
+  },
+  "u:6101021": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6101022": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je prends le métro pour aller au travail."
+  },
+  "u:6101023": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai travaillé dans la même entreprise depuis 2022."
+  },
+  "u:6101024": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6101025": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben j'ai fait genre un voyage à Mexique l'année dernière."
+  },
+  "u:6101026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6101027": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je suis excité pour euh partir en euh vacances."
+  },
+  "u:6101028": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6101029": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il bah y a trop des gens dans le métro."
+  },
+  "u:6101030": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il a fait très beau samedi."
+  },
+  "u:6101031": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6101032": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Du coup ça fait du sens euh pour moi."
+  },
+  "u:6101033": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je travaille ben comme infirmier à l'hôpital."
+  },
+  "u:6101034": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est pas grave, on continue."
+  },
+  "u:6101035": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bon travail aujourd'hui, à jeudi."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "C'est la fin de le mois donc je suis suis très occupé."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai habité à Toronto depuis trois ans."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'aime beaucoup cuisiner le dimanche."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben j'ai fait un voyage à Mexique l'année euh dernière."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai pas eu le temps de faire les devoirs."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Hier soir j'ai resté à la ben maison ben parce euh que j'étais fatigué."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:7": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon quartier est calme et il y a ben un beau beau parc."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:8": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon voiture est petit mais mais pratique."
+  },
+  "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:9": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après le souper on a pris une marche au au parc."
+  },
+  "u:6102001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonsoir à tous, installez-vous, on commence."
+  },
+  "u:6102002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6102003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6102004": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Euh moi, je suis allée au restaurant avec ma copine."
+  },
+  "u:6102005": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Mon frère est trente ans cette année."
+  },
+  "u:6102006": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, vous voulez répondre?"
+  },
+  "u:6102007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben j'ai sorti avec des genre collègues vendredi."
+  },
+  "u:6102008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Genre je dois canceller mon rendez-vous de mardi."
+  },
+  "u:6102009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'ai parlé à les voisins de la fête."
+  },
+  "u:6102010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce week-end j'ai fait du ménage et j'ai lu un livre."
+  },
+  "u:6102011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "La euh semaine genre dernière j'ai venu en classe à vélo."
+  },
+  "u:6102012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai habité à Toronto depuis trois ans."
+  },
+  "u:6102013": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, à vous."
+  },
+  "u:6102014": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "On euh a acheté des le pain et du du fromage."
+  },
+  "u:6102015": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "C'est pas bah facile pour moi."
+  },
+  "u:6102016": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6102017": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Euh j'ai fait les devoirs dimanche soir."
+  },
+  "u:6102018": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6102019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est pas grave, on continue."
+  },
+  "u:6102020": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, vous voulez répondre?"
+  },
+  "u:6102021": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Il a fait très beau samedi."
+  },
+  "u:6102022": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Mon voiture est petit mais pratique."
+  },
+  "u:6102023": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6102024": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Ben moi, je suis allée au restaurant avec ma copine."
+  },
+  "u:6102025": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Ben j'ai fait un euh voyage à Mexique l'année dernière."
+  },
+  "u:6102026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6102027": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Kai?"
+  },
+  "u:6102028": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "C'est pas facile pour moi."
+  },
+  "u:6102029": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6102030": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Le euh soir euh je regarde des séries en français avec des sous-titres."
+  },
+  "u:6102031": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "En semaine je lève à six heures et euh demie."
+  },
+  "u:6102032": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh c'est un bonne idée pour ben le projet."
+  },
+  "u:6102033": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "On veut euh aller dans Montréal pour le long week-end."
+  },
+  "u:6102034": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Il y a pas de mauvaise réponse ici."
+  },
+  "u:6102035": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est tout pour aujourd'hui, bonne soirée."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon voiture est petit mais pratique."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Genre je dois canceller mon rendez-vous de mardi."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce week-end j'ai fait du ménage et euh j'ai lu un livre."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce week-end j'ai fait du ménage et j'ai lu lu un livre."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben j'ai sorti avec des collègues vendredi."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "C'est la fin de le mois donc je euh suis très occupé."
+  },
+  "v:8684e963-5605-4f26-ab2c-90ff4788d67e:7": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "u:6103001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonsoir à tous, installez-vous, on commence."
+  },
+  "u:6103002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6103003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Aisha?"
+  },
+  "u:6103004": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Je comprends pas la différence entre les deux."
+  },
+  "u:6103005": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "J'ai fait les bah devoirs dimanche soir."
+  },
+  "u:6103006": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Kai?"
+  },
+  "u:6103007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "C'est la fin de le mois donc je suis très occupé."
+  },
+  "u:6103008": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6103009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben euh j'ai fait un voyage à Mexique l'année dernière."
+  },
+  "u:6103010": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé."
+  },
+  "u:6103011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "u:6103012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce matin j'ai parti très tôt pour le travail."
+  },
+  "u:6103013": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6103014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après genre le sport je douche ben et je prépare le souper."
+  },
+  "u:6103015": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6103016": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Tom?"
+  },
+  "u:6103017": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Euh ma fille fille est six ans maintenant."
+  },
+  "u:6103018": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je suis excité pour partir en vacances."
+  },
+  "u:6103019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6103020": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je suis d'accord avec vous."
+  },
+  "u:6103021": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Il y a pas de mauvaise réponse ici."
+  },
+  "u:6103022": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Tom?"
+  },
+  "u:6103023": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Euh c'est un bonne idée pour le projet."
+  },
+  "u:6103024": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention au genre, on dit la maison, c'est féminin."
+  },
+  "u:6103025": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je travaille comme infirmier à l'hôpital."
+  },
+  "u:6103026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé."
+  },
+  "u:6103027": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6103028": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il a fait très euh beau samedi."
+  },
+  "u:6103029": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Parfait, c'est une très bonne réponse."
+  },
+  "u:6103030": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "On a acheté des le pain et du fromage."
+  },
+  "u:6103031": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Kai?"
+  },
+  "u:6103032": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben je euh voudrais améliorer mon français pour le travail."
+  },
+  "u:6103033": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aujourd'hui on révise le passé composé avec être."
+  },
+  "u:6103034": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'ai appris le français depuis huit mois."
+  },
+  "u:6103035": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'aime beaucoup cuisiner le dimanche."
+  },
+  "u:6103036": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai écouté le chanson que vous avez partagée."
+  },
+  "u:6103037": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après le souper euh on a pris une marche au parc."
+  },
+  "u:6103038": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bon travail aujourd'hui, à jeudi."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben j'ai sorti avec des collègues vendredi."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je comprends pas la différence entre les deux."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je euh vais appliquer pour euh un nouveau poste."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après le sport je douche et je prépare le souper."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon ben collègue habite en Japon euh maintenant."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Dimanche on est allés à le cinéma."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:7": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'ai appris le français depuis genre huit mois."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:8": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh mon quartier est calme et il y a un beau parc."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:9": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je travaille dans l'informatique, je suis développeur."
+  },
+  "v:f2abb5cd-dbb0-4188-a058-752171156fd2:10": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "On a mangé dans un petit restaurant italienne près de chez moi."
+  },
+  "u:6104001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonsoir à tous, installez-vous, on commence."
+  },
+  "u:6104002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6104003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, à vous."
+  },
+  "u:6104004": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il a fait très beau samedi."
+  },
+  "u:6104005": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "C'est pas facile bah pour bah moi."
+  },
+  "u:6104006": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "On a acheté des le pain et du fromage."
+  },
+  "u:6104007": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, à vous."
+  },
+  "u:6104008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh j'aime beaucoup ben cuisiner le dimanche."
+  },
+  "u:6104009": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6104010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Hier soir j'ai resté à la maison parce euh que j'étais fatigué."
+  },
+  "u:6104011": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention au genre, on dit la maison, c'est féminin."
+  },
+  "u:6104012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je suis excité pour partir en vacances."
+  },
+  "u:6104013": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6104014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai pas ben eu le euh temps de faire les devoirs."
+  },
+  "u:6104015": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6104016": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6104017": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je suis vingt-cinq ans et je travaille à Toronto."
+  },
+  "u:6104018": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Ben moi, euh je suis allée au restaurant avec ma copine."
+  },
+  "u:6104019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est pas grave, on continue."
+  },
+  "u:6104020": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Aisha?"
+  },
+  "u:6104021": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Ma sœur travaille en États-Unis depuis depuis janvier."
+  },
+  "u:6104022": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "J'ai euh fait les devoirs dimanche soir."
+  },
+  "u:6104023": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6104024": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6104025": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "J'ai regardé un film film avec ma famille."
+  },
+  "u:6104026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6104027": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "J'ai écouté le chanson que vous avez partagée."
+  },
+  "u:6104028": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé."
+  },
+  "u:6104029": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Kai?"
+  },
+  "u:6104030": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce week-end j'ai fait du ménage et j'ai lu un livre."
+  },
+  "u:6104031": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Dimanche on est allés à le euh cinéma."
+  },
+  "u:6104032": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh c'est un bonne idée pour le euh projet."
+  },
+  "u:6104033": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "La semaine dernière j'ai venu en classe à à vélo."
+  },
+  "u:6104034": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6104035": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bon travail aujourd'hui, à jeudi."
+  },
+  "u:6105001": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je suis allé au marché samedi."
+  },
+  "u:6105002": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je suis resté à la maison hier soir."
+  },
+  "u:6105003": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je me lève à six heures et demie."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon quartier est calme et il y a un beau parc."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben je euh prends le métro pour aller au travail."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Du coup ça fait du sens pour pour moi."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après le sport sport je douche et je prépare le genre souper."
+  },
+  "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai écouté le chanson que vous avez partagée."
+  },
+  "u:6106001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonjour tout le monde, on commence?"
+  },
+  "u:6106002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6106003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, à vous."
+  },
+  "u:6106004": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je travaille dans l'informatique, je je suis développeur."
+  },
+  "u:6106005": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon voiture est petit mais euh pratique."
+  },
+  "u:6106006": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "On a mangé dans un petit restaurant italienne près de chez moi."
+  },
+  "u:6106007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "u:6106008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je parle souvent de le travail avec mes amis."
+  },
+  "u:6106009": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, à vous."
+  },
+  "u:6106010": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Il y a a trop des gens dans le métro."
+  },
+  "u:6106011": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Euh j'ai regardé un film avec euh ma famille."
+  },
+  "u:6106012": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6106013": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Ben j'ai fait les devoirs dimanche soir."
+  },
+  "u:6106014": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Du coup ça fait du sens pour moi."
+  },
+  "u:6106015": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6106016": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "J'ai écouté le chanson que vous avez partagée."
+  },
+  "u:6106017": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention au genre, on dit la maison, c'est féminin."
+  },
+  "u:6106018": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Il y a pas de mauvaise réponse ici."
+  },
+  "u:6106019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, vous voulez répondre?"
+  },
+  "u:6106020": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Après le sport je douche et je prépare le souper."
+  },
+  "u:6106021": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Genre je dois canceller mon rendez-vous de mardi."
+  },
+  "u:6106022": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh samedi j'ai allé au marché avec ma sœur."
+  },
+  "u:6106023": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6106024": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je travaille dans l'informatique, je suis développeur."
+  },
+  "u:6106025": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce matin j'ai parti très très tôt pour le travail."
+  },
+  "u:6106026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, vous voulez répondre?"
+  },
+  "u:6106027": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Mon frère est trente ans cette année."
+  },
+  "u:6106028": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Euh je suis d'accord avec vous."
+  },
+  "u:6106029": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6106030": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Moi, je suis allée au restaurant avec ma copine."
+  },
+  "u:6106031": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Qui veut continuer?"
+  },
+  "u:6106032": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "J'ai pas eu le temps de faire les devoirs."
+  },
+  "u:6106033": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est pas grave, on continue."
+  },
+  "u:6106034": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "C'est tout pour aujourd'hui, bonne soirée."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je parle souvent de le travail avec mes amis."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "J'ai acheté un nouvelle voiture le mois dernier."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh samedi j'ai allé euh au marché avec ma sœur."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je voudrais améliorer mon français pour ben le travail."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben le ben soir je regarde des des séries en français avec des genre sous-titres."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Du coup ça fait du sens pour moi."
+  },
+  "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:7": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "u:6107001": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bonsoir à tous, installez-vous, on commence."
+  },
+  "u:6107002": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Alors, qu'est-ce que vous avez fait ce week-end?"
+  },
+  "u:6107003": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Kai, vous voulez répondre?"
+  },
+  "u:6107004": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "La semaine dernière j'ai venu en classe à vélo."
+  },
+  "u:6107005": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "La semaine dernière j'ai venu en classe à vélo."
+  },
+  "u:6107006": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Je parle souvent de le genre travail avec mes amis."
+  },
+  "u:6107007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Du coup ça fait du sens euh pour moi."
+  },
+  "u:6107008": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6107009": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "J'ai regardé un film avec ma famille."
+  },
+  "u:6107010": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "J'ai beaucoup des amis dans mon quartier."
+  },
+  "u:6107011": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé."
+  },
+  "u:6107012": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Tom, à vous."
+  },
+  "u:6107013": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Après le souper on on a pris une marche au parc."
+  },
+  "u:6107014": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Parfait, c'est une très bonne réponse."
+  },
+  "u:6107015": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Je travaille comme infirmier ben à l'hôpital."
+  },
+  "u:6107016": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "D'accord, et pourquoi?"
+  },
+  "u:6107017": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Euh moi, je suis allée au restaurant avec ma copine."
+  },
+  "u:6107018": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Il y a pas de mauvaise réponse ici."
+  },
+  "u:6107019": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Tom?"
+  },
+  "u:6107020": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Mon frère est trente ans cette année."
+  },
+  "u:6107021": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Pour les devoirs, écrivez dix phrases sur vos vacances."
+  },
+  "u:6107022": {
+   "speaker": "Tom",
+   "role": "other",
+   "text": "Mon voiture est petit mais pratique."
+  },
+  "u:6107023": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Aisha, vous voulez répondre?"
+  },
+  "u:6107024": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Je comprends pas la différence entre les deux."
+  },
+  "u:6107025": {
+   "speaker": "Aisha",
+   "role": "other",
+   "text": "Ben je suis d'accord avec vous."
+  },
+  "u:6107026": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Et vous, Kai?"
+  },
+  "u:6107027": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon quartier est calme euh et il y a un beau parc."
+  },
+  "u:6107028": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "C'est pas facile pour moi."
+  },
+  "u:6107029": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Très bien, merci beaucoup."
+  },
+  "u:6107030": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon quartier est calme et il y a genre un beau parc."
+  },
+  "u:6107031": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon voiture est petit mais pratique."
+  },
+  "u:6107032": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Il y a pas de mauvaise réponse ici."
+  },
+  "u:6107033": {
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "text": "Bon travail aujourd'hui, à jeudi."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh bon, je pratique un peu mon français ce soir."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Il y a pas de problème."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Dimanche on est allés à le cinéma."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ben je genre voudrais améliorer mon français pour le travail."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Euh samedi j'ai allé euh au marché avec ma sœur."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Ce week-end euh j'ai fait euh du ménage euh et j'ai lu un livre."
+  },
+  "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Mon voiture est petit mais pratique."
+  }
+ },
+ "instances": [
+  {
+   "key": "u:6101004",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un bonne idée"
+  },
+  {
+   "key": "u:6101006",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à les"
+  },
+  {
+   "key": "u:6101007",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je repose"
+  },
+  {
+   "key": "u:6101008",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6101009",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai resté"
+  },
+  {
+   "key": "u:6101011",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6101014",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "un petit restaurant italienne"
+  },
+  {
+   "key": "u:6101016",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "Je suis vingt-cinq ans"
+  },
+  {
+   "key": "u:6101023",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_DEPUIS_TENSE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "J'ai travaillé"
+  },
+  {
+   "key": "u:6101025",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à Mexique"
+  },
+  {
+   "key": "u:6101027",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Je suis excité pour"
+  },
+  {
+   "key": "u:6101029",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "trop des gens"
+  },
+  {
+   "key": "u:6101032",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "ça fait du sens"
+  },
+  {
+   "key": "u:6101034",
+   "session_key": "fr-class-10-1",
+   "kind": "conversation",
+   "startMs": 1790893800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:1",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:2",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_DEPUIS_TENSE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "J'ai habité"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:4",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à Mexique"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:5",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "J'ai pas"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:6",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai resté"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:8",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "v:596d7175-8cca-46ca-ad73-a7ffb5866d39:9",
+   "session_key": "fr-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790985600000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "pris une marche"
+  },
+  {
+   "key": "u:6102005",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "est trente ans"
+  },
+  {
+   "key": "u:6102007",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai sorti"
+  },
+  {
+   "key": "u:6102008",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "canceller"
+  },
+  {
+   "key": "u:6102009",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à les"
+  },
+  {
+   "key": "u:6102011",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai venu"
+  },
+  {
+   "key": "u:6102012",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_DEPUIS_TENSE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "J'ai habité"
+  },
+  {
+   "key": "u:6102014",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "des le pain"
+  },
+  {
+   "key": "u:6102015",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6102019",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6102022",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "u:6102025",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "à Mexique"
+  },
+  {
+   "key": "u:6102028",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6102031",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je lève"
+  },
+  {
+   "key": "u:6102032",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un bonne idée"
+  },
+  {
+   "key": "u:6102033",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "dans Montréal"
+  },
+  {
+   "key": "u:6102034",
+   "session_key": "fr-class-10-3",
+   "kind": "conversation",
+   "startMs": 1791036000000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "v:8684e963-5605-4f26-ab2c-90ff4788d67e:1",
+   "session_key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "v:8684e963-5605-4f26-ab2c-90ff4788d67e:2",
+   "session_key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "canceller"
+  },
+  {
+   "key": "v:8684e963-5605-4f26-ab2c-90ff4788d67e:5",
+   "session_key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai sorti"
+  },
+  {
+   "key": "v:8684e963-5605-4f26-ab2c-90ff4788d67e:6",
+   "session_key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "v:8684e963-5605-4f26-ab2c-90ff4788d67e:7",
+   "session_key": "fr-voice-10-4",
+   "kind": "voice_note",
+   "startMs": 1791158400000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6103004",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "Je comprends pas"
+  },
+  {
+   "key": "u:6103007",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "u:6103009",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à Mexique"
+  },
+  {
+   "key": "u:6103011",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6103012",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai parti"
+  },
+  {
+   "key": "u:6103014",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je douche"
+  },
+  {
+   "key": "u:6103017",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "est six ans"
+  },
+  {
+   "key": "u:6103018",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "Je suis excité pour"
+  },
+  {
+   "key": "u:6103021",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6103023",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "un bonne idée"
+  },
+  {
+   "key": "u:6103030",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "des le pain"
+  },
+  {
+   "key": "u:6103034",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_DEPUIS_TENSE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai appris"
+  },
+  {
+   "key": "u:6103036",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "le chanson"
+  },
+  {
+   "key": "u:6103037",
+   "session_key": "fr-class-10-6",
+   "kind": "conversation",
+   "startMs": 1791325800000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "pris une marche"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:1",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai sorti"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:2",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Je comprends pas"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:3",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "appliquer pour"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:4",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je douche"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:5",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "en Japon"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:6",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à le"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:7",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_DEPUIS_TENSE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai appris"
+  },
+  {
+   "key": "v:f2abb5cd-dbb0-4188-a058-752171156fd2:10",
+   "session_key": "fr-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791331200000,
+   "phase": "pre",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un petit restaurant italienne"
+  },
+  {
+   "key": "u:6104005",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6104006",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "des le pain"
+  },
+  {
+   "key": "u:6104010",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai resté"
+  },
+  {
+   "key": "u:6104012",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Je suis excité pour"
+  },
+  {
+   "key": "u:6104014",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "J'ai pas"
+  },
+  {
+   "key": "u:6104017",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "Je suis vingt-cinq ans"
+  },
+  {
+   "key": "u:6104019",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6104021",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_PREPOSITION_PLACE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "en États-Unis"
+  },
+  {
+   "key": "u:6104027",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "le chanson"
+  },
+  {
+   "key": "u:6104031",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à le"
+  },
+  {
+   "key": "u:6104032",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un bonne idée"
+  },
+  {
+   "key": "u:6104033",
+   "session_key": "fr-class-10-8",
+   "kind": "conversation",
+   "startMs": 1791498600000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai venu"
+  },
+  {
+   "key": "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:3",
+   "session_key": "fr-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791590400000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "ça fait du sens"
+  },
+  {
+   "key": "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:4",
+   "session_key": "fr-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791590400000,
+   "phase": "post",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je douche"
+  },
+  {
+   "key": "v:be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad:5",
+   "session_key": "fr-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791590400000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "le chanson"
+  },
+  {
+   "key": "u:6106005",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "u:6106006",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un petit restaurant italienne"
+  },
+  {
+   "key": "u:6106007",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6106008",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "u:6106010",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "trop des gens"
+  },
+  {
+   "key": "u:6106014",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "ça fait du sens"
+  },
+  {
+   "key": "u:6106016",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "le chanson"
+  },
+  {
+   "key": "u:6106018",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6106020",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_REFLEXIVE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "je douche"
+  },
+  {
+   "key": "u:6106021",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "canceller"
+  },
+  {
+   "key": "u:6106022",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai allé"
+  },
+  {
+   "key": "u:6106025",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai parti"
+  },
+  {
+   "key": "u:6106027",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "est trente ans"
+  },
+  {
+   "key": "u:6106032",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "J'ai pas"
+  },
+  {
+   "key": "u:6106033",
+   "session_key": "fr-class-10-10",
+   "kind": "conversation",
+   "startMs": 1791640800000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:1",
+   "session_key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:2",
+   "session_key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "un nouvelle voiture"
+  },
+  {
+   "key": "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:3",
+   "session_key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai allé"
+  },
+  {
+   "key": "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:6",
+   "session_key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "ça fait du sens"
+  },
+  {
+   "key": "v:0022dce0-6a40-459a-abc8-c38c32a0d7ec:7",
+   "session_key": "fr-voice-10-11",
+   "kind": "voice_note",
+   "startMs": 1791763200000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6107004",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai venu"
+  },
+  {
+   "key": "u:6107005",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai venu"
+  },
+  {
+   "key": "u:6107006",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "de le"
+  },
+  {
+   "key": "u:6107007",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "ça fait du sens"
+  },
+  {
+   "key": "u:6107010",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_PARTITIVE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "beaucoup des amis"
+  },
+  {
+   "key": "u:6107013",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_ANGLICISM",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "pris une marche"
+  },
+  {
+   "key": "u:6107018",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "u:6107020",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_AGE_ETRE",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "est trente ans"
+  },
+  {
+   "key": "u:6107022",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Tom",
+   "role": "other",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "u:6107024",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Aisha",
+   "role": "other",
+   "excerpt": "Je comprends pas"
+  },
+  {
+   "key": "u:6107028",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "C'est pas"
+  },
+  {
+   "key": "u:6107031",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Mon voiture est petit"
+  },
+  {
+   "key": "u:6107032",
+   "session_key": "fr-class-10-13",
+   "kind": "conversation",
+   "startMs": 1791930600000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Mme Lefebvre",
+   "role": "other",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:1",
+   "session_key": "fr-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791936000000,
+   "phase": "post",
+   "type": "FR_MISSING_NE",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Il y a pas"
+  },
+  {
+   "key": "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:2",
+   "session_key": "fr-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791936000000,
+   "phase": "post",
+   "type": "FR_CONTRACTION",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "à le"
+  },
+  {
+   "key": "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:4",
+   "session_key": "fr-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791936000000,
+   "phase": "post",
+   "type": "FR_AUX_ETRE_AVOIR",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "j'ai allé"
+  },
+  {
+   "key": "v:ab9f2afe-9c28-46ae-a8a8-11814d773a5f:6",
+   "session_key": "fr-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791936000000,
+   "phase": "post",
+   "type": "FR_GENDER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Mon voiture est petit"
+  }
+ ]
+}

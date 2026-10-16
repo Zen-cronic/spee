@@ -1,0 +1,59 @@
+{
+ "conversation": {
+  "id": 5104,
+  "start_time": 1791216600000,
+  "end_time": 1791216609727,
+  "device_type": "unknown",
+  "summary": "Short exchange.",
+  "short_summary": "Short exchange.",
+  "state": "COMPLETED",
+  "created_at": 1791216600000,
+  "updated_at": 1791216699727,
+  "transcriptions": [
+   {
+    "id": 51041,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5104001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.32,
+      "spoken_at": 1791216600600,
+      "text": "Coffee run, you want anything?",
+      "speaker": "Unknown",
+      "created_at": 1791216603074
+     },
+     {
+      "id": 5104002,
+      "realtime": false,
+      "start": 2.91,
+      "end": 5.71,
+      "spoken_at": 1791216602910,
+      "text": "Yeah, an oat latte please, thanks.",
+      "speaker": "Unknown",
+      "created_at": 1791216605494
+     },
+     {
+      "id": 5104003,
+      "realtime": false,
+      "start": 7.21,
+      "end": 8.93,
+      "spoken_at": 1791216607210,
+      "text": "Sure, back in ten minutes.",
+      "speaker": "Unknown",
+      "created_at": 1791216610238
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791216600000
+  }
+ },
+ "timezone": "America/Toronto"
+}

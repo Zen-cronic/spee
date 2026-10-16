@@ -1,0 +1,239 @@
+{
+ "conversation": {
+  "id": 5107,
+  "start_time": 1791466200000,
+  "end_time": 1791466316122,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791466200000,
+  "updated_at": 1791466406122,
+  "transcriptions": [
+   {
+    "id": 51071,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5107001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1791466200600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1791466203220
+     },
+     {
+      "id": 5107002,
+      "realtime": false,
+      "start": 3.33,
+      "end": 4.4,
+      "spoken_at": 1791466203330,
+      "text": "Dan, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791466205925
+     },
+     {
+      "id": 5107003,
+      "realtime": false,
+      "start": 5.76,
+      "end": 19.55,
+      "spoken_at": 1791466205760,
+      "text": "So I picked up the notifications queue and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review.",
+      "speaker": "Unknown",
+      "created_at": 1791466209028
+     },
+     {
+      "id": 5107004,
+      "realtime": false,
+      "start": 20.13,
+      "end": 25.65,
+      "spoken_at": 1791466220130,
+      "text": "Yesterday I fixed the rate limiter flake, it was a race in the setup code.",
+      "speaker": "Unknown",
+      "created_at": 1791466222613
+     },
+     {
+      "id": 5107005,
+      "realtime": false,
+      "start": 26.48,
+      "end": 29.58,
+      "spoken_at": 1791466226480,
+      "text": "I can take the search indexer review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791466228816
+     },
+     {
+      "id": 5107006,
+      "realtime": false,
+      "start": 30.37,
+      "end": 33.13,
+      "spoken_at": 1791466230370,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791466232212
+     },
+     {
+      "id": 5107007,
+      "realtime": false,
+      "start": 34.06,
+      "end": 36.82,
+      "spoken_at": 1791466234060,
+      "text": "It's coming along on the mobile login screen.",
+      "speaker": "Unknown",
+      "created_at": 1791466237210
+     },
+     {
+      "id": 5107008,
+      "realtime": false,
+      "start": 37.51,
+      "end": 38.94,
+      "spoken_at": 1791466237510,
+      "text": "Okay Kai, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791466239526
+     },
+     {
+      "id": 5107009,
+      "realtime": false,
+      "start": 40.1,
+      "end": 44.5,
+      "spoken_at": 1791466240100,
+      "text": "I wrote the search indexer runbook section on rollbacks.",
+      "speaker": "Unknown",
+      "created_at": 1791466241903
+     },
+     {
+      "id": 5107010,
+      "realtime": false,
+      "start": 45.6,
+      "end": 51.2,
+      "spoken_at": 1791466245600,
+      "text": "Next up for me is the rate limiter load test.",
+      "speaker": "Unknown",
+      "created_at": 1791466248352
+     },
+     {
+      "id": 5107011,
+      "realtime": false,
+      "start": 51.86,
+      "end": 56.26,
+      "spoken_at": 1791466251860,
+      "text": "Things are going well with the CSV export, so yeah.",
+      "speaker": "Unknown",
+      "created_at": 1791466254389
+     },
+     {
+      "id": 5107012,
+      "realtime": false,
+      "start": 57.21,
+      "end": 70.81,
+      "spoken_at": 1791466257210,
+      "text": "And then after that I worked on the notifications queue and then the code review for Dan and then I was going to start the export but then the meeting ran long so.",
+      "speaker": "Unknown",
+      "created_at": 1791466259740
+     },
+     {
+      "id": 5107013,
+      "realtime": false,
+      "start": 71.55,
+      "end": 75.15,
+      "spoken_at": 1791466271550,
+      "text": "Can someone look at the thing in staging today?",
+      "speaker": "Unknown",
+      "created_at": 1791466273791
+     },
+     {
+      "id": 5107014,
+      "realtime": false,
+      "start": 76.37,
+      "end": 83.97,
+      "spoken_at": 1791466276370,
+      "text": "I guess I'd probably sort of say the Postgres migration refactor is about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791466278972
+     },
+     {
+      "id": 5107015,
+      "realtime": false,
+      "start": 85.22,
+      "end": 87.01,
+      "spoken_at": 1791466285220,
+      "text": "Thanks. Priya, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1791466288253
+     },
+     {
+      "id": 5107016,
+      "realtime": false,
+      "start": 88.46,
+      "end": 90.31,
+      "spoken_at": 1791466288460,
+      "text": "No blockers for me.",
+      "speaker": "Unknown",
+      "created_at": 1791466291514
+     },
+     {
+      "id": 5107017,
+      "realtime": false,
+      "start": 91.15,
+      "end": 97.82,
+      "spoken_at": 1791466291150,
+      "text": "I mean I think it's probably kind of safe to merge the mobile login screen change after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791466294267
+     },
+     {
+      "id": 5107018,
+      "realtime": false,
+      "start": 99.29,
+      "end": 102.25,
+      "spoken_at": 1791466299290,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791466301362
+     },
+     {
+      "id": 5107019,
+      "realtime": false,
+      "start": 103.66,
+      "end": 107.73,
+      "spoken_at": 1791466303660,
+      "text": "I can take the notifications queue review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791466306440
+     },
+     {
+      "id": 5107020,
+      "realtime": false,
+      "start": 108.53,
+      "end": 112.46,
+      "spoken_at": 1791466308530,
+      "text": "The feature flag service incident will get looked at this week.",
+      "speaker": "Unknown",
+      "created_at": 1791466311564
+     },
+     {
+      "id": 5107021,
+      "realtime": false,
+      "start": 112.96,
+      "end": 114.75,
+      "spoken_at": 1791466312960,
+      "text": "Great, that's everyone, thanks all.",
+      "speaker": "Unknown",
+      "created_at": 1791466315200
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791466200000
+  }
+ },
+ "timezone": "America/Toronto"
+}

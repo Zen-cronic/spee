@@ -1,0 +1,2261 @@
+{
+ "lang": "en",
+ "note": "SYNTHETIC ground truth for the PoC. Never read by the analyzer.",
+ "cutover_ms": 1791345599000,
+ "split_used": {
+  "lang": "en",
+  "drilled": [
+   "EN_BURIED_BLOCKER",
+   "EN_NO_ETA",
+   "EN_OVER_APOLOGY",
+   "EN_VAGUE_STATUS"
+  ],
+  "control": [
+   "EN_HEDGE_STACK",
+   "EN_PASSIVE_NO_OWNER",
+   "EN_RUN_ON",
+   "EN_VAGUE_REFERENT"
+  ]
+ },
+ "planted_effect": {
+  "EN_HEDGE_STACK": 1,
+  "EN_VAGUE_STATUS": 1,
+  "EN_NO_ETA": 0.2,
+  "EN_BURIED_BLOCKER": 0.2,
+  "EN_RUN_ON": 1,
+  "EN_OVER_APOLOGY": 0.2,
+  "EN_VAGUE_REFERENT": 1
+ },
+ "wearer_rates": {
+  "EN_HEDGE_STACK": 1.5,
+  "EN_VAGUE_STATUS": 1.2,
+  "EN_NO_ETA": 1,
+  "EN_BURIED_BLOCKER": 0.8,
+  "EN_RUN_ON": 1,
+  "EN_OVER_APOLOGY": 0.8,
+  "EN_VAGUE_REFERENT": 1
+ },
+ "stubborn": [
+  "EN_RUN_ON",
+  "EN_VAGUE_STATUS"
+ ],
+ "others": {
+  "Priya": {
+   "EN_HEDGE_STACK": 0.8
+  },
+  "Dan": {
+   "EN_VAGUE_STATUS": 0.8,
+   "EN_RUN_ON": 0.6
+  },
+  "Marcus": {
+   "EN_PASSIVE_NO_OWNER": 1
+  }
+ },
+ "sessions": [
+  {
+   "key": "en-standup-10-1",
+   "kind": "conversation",
+   "id": "5101",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-voice-10-2",
+   "kind": "voice_note",
+   "id": "21652d90-b92f-4229-a534-5a7d5079d666",
+   "startMs": 1790945400000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-2",
+   "kind": "conversation",
+   "id": "5102",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-voice-10-5",
+   "kind": "voice_note",
+   "id": "60779922-ae47-4879-aeb2-51b35ea64752",
+   "startMs": 1791204600000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-5",
+   "kind": "conversation",
+   "id": "5103",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-hallway-10-5",
+   "kind": "conversation",
+   "id": "5104",
+   "startMs": 1791216600000,
+   "phase": "pre",
+   "deleted": true
+  },
+  {
+   "key": "en-voice-10-6",
+   "kind": "voice_note",
+   "id": "22212c50-205a-411b-a2bf-eefa67cbca00",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-6",
+   "kind": "conversation",
+   "id": "5105",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "deleted": false
+  },
+  {
+   "key": "en-voice-10-7",
+   "kind": "voice_note",
+   "id": "dabb5e44-c361-4717-af32-d4ca3b1112bf",
+   "startMs": 1791377400000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-7",
+   "kind": "conversation",
+   "id": "5106",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-8",
+   "kind": "conversation",
+   "id": "5107",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-voice-10-9",
+   "kind": "voice_note",
+   "id": "9f815418-129e-4e58-a84c-40995446d2b9",
+   "startMs": 1791550200000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-9",
+   "kind": "conversation",
+   "id": "5108",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-voice-10-13",
+   "kind": "voice_note",
+   "id": "9291c820-bd68-4184-a6a1-dae6f0e359c3",
+   "startMs": 1791895800000,
+   "phase": "post",
+   "deleted": false
+  },
+  {
+   "key": "en-standup-10-13",
+   "kind": "conversation",
+   "id": "5109",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "deleted": false
+  }
+ ],
+ "utterances": {
+  "u:5101001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5101002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Priya, you're up."
+  },
+  "u:5101003": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "The Postgres migration on-call rotation rotation is updated in the wiki."
+  },
+  "u:5101004": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'm deploying the onboarding flow to staging at eleven."
+  },
+  "u:5101005": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Um today I'm on um the Postgres migration integration tests."
+  },
+  "u:5101006": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I mean I think it's probably kind of safe to merge the mobile login screen change after lunch."
+  },
+  "u:5101007": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Kai, what about you?"
+  },
+  "u:5101008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "This is probably a dumb question but should the CSV export go behind a feature flag?"
+  },
+  "u:5101009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Things are going well with the mobile login screen, uh so yeah."
+  },
+  "u:5101010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I merged the search indexer fix yesterday afternoon."
+  },
+  "u:5101011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "That other thing is still on my list."
+  },
+  "u:5101012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Yesterday I worked on the CSV export and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident."
+  },
+  "u:5101013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "The CSV export work will be done soonish."
+  },
+  "u:5101014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the notifications queue refactor is uh about half done."
+  },
+  "u:5101015": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I added alerts for the notifications queue error rate."
+  },
+  "u:5101016": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5101017": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I kept chipping away at the CSV export."
+  },
+  "u:5101018": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "No blockers uh for me."
+  },
+  "u:5101019": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'm deploying the notifications queue to staging at eleven."
+  },
+  "u:5101020": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "The CSV export on-call rotation is updated in the wiki."
+  },
+  "u:5101021": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Mistakes were made on the notifications queue last night."
+  },
+  "u:5101022": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay, let's take the blockers offline, thanks everyone."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um not much from me, sorry, I'm still still on the notifications queue."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Next up for me is the feature flag service load like test."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I'll demo the onboarding flow at Thursday's sprint review."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh hopefully maybe I think the fix for the Postgres migration lands before the release cut."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Hoping to wrap the Postgres migration this week-ish, uh we'll see."
+  },
+  "v:21652d90-b92f-4229-a534-5a7d5079d666:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Last thing, not a big deal, but I still don't have the mobile login screen API key."
+  },
+  "u:5102001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5102002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5102003": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Yesterday I fixed the auth service flake, it was a race in the setup code."
+  },
+  "u:5102004": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Today I'm on the onboarding flow integration tests."
+  },
+  "u:5102005": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um i'll be out Friday afternoon for an appointment."
+  },
+  "u:5102006": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Kai, go ahead."
+  },
+  "u:5102007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "This is probably a dumb question but should the Postgres migration go behind a feature flag?"
+  },
+  "u:5102008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I kept chipping away at the auth service."
+  },
+  "u:5102009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Yesterday I worked on the billing webhook and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident."
+  },
+  "u:5102010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Next up for like me is the mobile login screen load test."
+  },
+  "u:5102011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the feature flag service refactor is uh about half done."
+  },
+  "u:5102012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I'll ping design about the auth service eventually."
+  },
+  "u:5102013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh the auth service dashboard now shows p95 latency."
+  },
+  "u:5102014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh the stuff with the config should be sorted now."
+  },
+  "u:5102015": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh and I guess the rate limiter tests failing on main is slowing me down a bit."
+  },
+  "u:5102016": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Priya, you're up."
+  },
+  "u:5102017": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Um i finished the auth service pagination and it's in review."
+  },
+  "u:5102018": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Uh hopefully maybe I think the fix for the search indexer lands before the release cut."
+  },
+  "u:5102019": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'm deploying the rate limiter to staging at eleven."
+  },
+  "u:5102020": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Yesterday I I fixed the auth service flake, it was a race in the setup code."
+  },
+  "u:5102021": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "The mobile login screen incident will get looked at this week."
+  },
+  "u:5102022": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Great, that's everyone, thanks all."
+  },
+  "v:60779922-ae47-4879-aeb2-51b35ea64752:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:60779922-ae47-4879-aeb2-51b35ea64752:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I merged merged the feature flag service fix yesterday afternoon."
+  },
+  "v:60779922-ae47-4879-aeb2-51b35ea64752:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I'll ping you know design about the search indexer eventually."
+  },
+  "v:60779922-ae47-4879-aeb2-51b35ea64752:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh you know i'll demo the rate limiter at Thursday's sprint review."
+  },
+  "v:60779922-ae47-4879-aeb2-51b35ea64752:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say um the notifications queue refactor refactor is uh about half done."
+  },
+  "u:5103001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5103002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Kai, what about you?"
+  },
+  "u:5103003": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "This is probably a dumb question but should the rate limiter go behind a feature flag?"
+  },
+  "u:5103004": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Today I'm pairing with Priya on the mobile login screen."
+  },
+  "u:5103005": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the mobile login screen refactor is uh about half done."
+  },
+  "u:5103006": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Things are going well with the billing webhook, uh so yeah."
+  },
+  "u:5103007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "That other thing is still on my list."
+  },
+  "u:5103008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um um I should have the rate limiter PR up at some point."
+  },
+  "u:5103009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Today I'm pairing with like Priya on the Postgres migration."
+  },
+  "u:5103010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "So I picked up the onboarding flow and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review."
+  },
+  "u:5103011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh and I guess the feature flag service tests failing on main is slowing me down a bit."
+  },
+  "u:5103012": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Priya, you're up."
+  },
+  "u:5103013": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I can like take the notifications queue review after lunch."
+  },
+  "u:5103014": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I guess I'd probably sort of say the Postgres migration refactor is uh about half done."
+  },
+  "u:5103015": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I can take the onboarding flow review like after lunch."
+  },
+  "u:5103016": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I can take the feature flag service review after lunch."
+  },
+  "u:5103017": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Dan, what about you?"
+  },
+  "u:5103018": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the mobile login screen review after lunch."
+  },
+  "u:5103019": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um and then after that I worked on the onboarding flow and then the code review for Dan and then I was going to start the export but then the meeting ran long so."
+  },
+  "u:5103020": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Things are going well with the auth service, uh so yeah."
+  },
+  "u:5103021": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'm deploying the onboarding flow to staging at eleven."
+  },
+  "u:5103022": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'm deploying the Postgres migration to uh staging at eleven."
+  },
+  "u:5103023": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "It was decided that the CSV export gets pushed to next sprint."
+  },
+  "u:5103024": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Great, that's everyone, thanks all."
+  },
+  "u:5104001": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Coffee run, you want anything?"
+  },
+  "u:5104002": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um yeah, an oat latte please, thanks."
+  },
+  "u:5104003": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Sure, back in ten minutes."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um so for the Postgres migration I think it should maybe kind of be ready for review today."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Things are going well with the auth service, uh so yeah."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Code review for the feature flag service is ready if anyone has time."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Yesterday I worked on the Postgres migration and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I also fixed that thing from before um that Dan mentioned."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:6": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I added alerts for the mobile login screen error you know rate."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:7": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I'll ping design about the auth service eventually."
+  },
+  "v:22212c50-205a-411b-a2bf-eefa67cbca00:8": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Last thing, not a big deal, but I still don't have the CSV export API key."
+  },
+  "u:5105001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay, let's get started, we have ten minutes."
+  },
+  "u:5105002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5105003": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Things are going well with the Postgres migration, uh so yeah."
+  },
+  "u:5105004": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the rate limiter review after lunch."
+  },
+  "u:5105005": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5105006": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "The billing webhook like on-call rotation is updated in the wiki."
+  },
+  "u:5105007": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Kai, you're up."
+  },
+  "u:5105008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "So I picked up the rate limiter and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review."
+  },
+  "u:5105009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Can someone like look at the thing in staging today?"
+  },
+  "u:5105010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Like i added alerts like for the onboarding flow error rate."
+  },
+  "u:5105011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um yesterday I made some good progress on the CSV export."
+  },
+  "u:5105012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "The rate limiter is pretty much almost there."
+  },
+  "u:5105013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "The onboarding flow work will be done soonish."
+  },
+  "u:5105014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um so for the feature flag service I think it should maybe kind of be ready for review uh today."
+  },
+  "u:5105015": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh next up for for me is the search indexer load test."
+  },
+  "u:5105016": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um like so for the billing webhook I think it should maybe kind of be ready for review today."
+  },
+  "u:5105017": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Oh one more tiny thing, I'm sort of waiting on the CSV export credentials, no big deal."
+  },
+  "u:5105018": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Priya, what about you?"
+  },
+  "u:5105019": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "The onboarding flow on-call rotation is updated in the wiki."
+  },
+  "u:5105020": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Yesterday I fixed the search indexer flake, it was a race in the setup code."
+  },
+  "u:5105021": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "No blockers for me."
+  },
+  "u:5105022": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I mean I think it's probably kind of safe to merge the notifications queue um change after lunch."
+  },
+  "u:5105023": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Mistakes were made on the search indexer last night."
+  },
+  "u:5105024": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Great, that's everyone, thanks all."
+  },
+  "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "It's coming along on the mobile login screen."
+  },
+  "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "And like I feel like maybe we could possibly split the feature flag service you know ticket you know into two."
+  },
+  "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Like next up for like me is the rate limiter load test."
+  },
+  "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Like um i'll demo the CSV export at at Thursday's sprint review."
+  },
+  "u:5106001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay, let's get started, we have ten minutes."
+  },
+  "u:5106002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Priya, what about you?"
+  },
+  "u:5106003": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I finished the notifications queue pagination and it's in review."
+  },
+  "u:5106004": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Uh i can take the feature flag service review after lunch."
+  },
+  "u:5106005": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5106006": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "And like I feel like maybe we could possibly split the Postgres migration ticket into two."
+  },
+  "u:5106007": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Kai, you're up."
+  },
+  "u:5106008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um uh i added alerts um for the onboarding flow error rate."
+  },
+  "u:5106009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "It's coming along on the auth service."
+  },
+  "u:5106010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh the stuff with the config should be uh sorted now."
+  },
+  "u:5106011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "So I picked up the CSV export and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review."
+  },
+  "u:5106012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Like today I'm pairing with Priya on the CSV export."
+  },
+  "u:5106013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "And like I feel like maybe we could possibly split the billing webhook ticket into two."
+  },
+  "u:5106014": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5106015": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the search indexer review after lunch."
+  },
+  "u:5106016": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the auth service review after lunch."
+  },
+  "u:5106017": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "It's coming along on the Postgres migration."
+  },
+  "u:5106018": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5106019": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "The billing webhook incident will get looked at this week."
+  },
+  "u:5106020": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay, let's take the blockers offline, thanks everyone."
+  },
+  "u:5107001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5107002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Dan, you're up."
+  },
+  "u:5107003": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "So I picked up the notifications queue and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review."
+  },
+  "u:5107004": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um yesterday I fixed the rate limiter flake, it was a race in the setup code."
+  },
+  "u:5107005": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the search indexer review after lunch."
+  },
+  "u:5107006": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5107007": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "It's coming along on the mobile login screen."
+  },
+  "u:5107008": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Kai, go ahead."
+  },
+  "u:5107009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh i wrote wrote the search indexer runbook section on rollbacks."
+  },
+  "u:5107010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Next like up for you know me is the the rate limiter load test."
+  },
+  "u:5107011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Things are going well with the CSV export, uh so yeah."
+  },
+  "u:5107012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um and then after that I worked on the notifications queue and then the code review for Dan and then I was going to start the export but then the meeting ran long so."
+  },
+  "u:5107013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Can someone look at the thing in staging today?"
+  },
+  "u:5107014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the Postgres migration you know refactor is uh about like half done."
+  },
+  "u:5107015": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Thanks. Priya, what about you?"
+  },
+  "u:5107016": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Uh no blockers for me."
+  },
+  "u:5107017": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I mean I think it's probably kind of safe to merge the mobile login screen change after lunch."
+  },
+  "u:5107018": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5107019": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Um i can take the notifications queue like review after lunch."
+  },
+  "u:5107020": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "The feature flag service incident will get looked at this week."
+  },
+  "u:5107021": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Great, that's everyone, thanks all."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "The mobile login screen is pretty much almost there."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the feature flag service refactor is uh about half done."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh i merged the rate limiter fix yesterday afternoon."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I'll demo the feature flag service at Thursday's sprint review."
+  },
+  "v:9f815418-129e-4e58-a84c-40995446d2b9:5": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I need to look into into the issue we talked about after this."
+  },
+  "u:5108001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5108002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Kai, go ahead."
+  },
+  "u:5108003": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the notifications queue refactor is uh about about half done."
+  },
+  "u:5108004": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um and then after that I worked on the CSV export and then the code review for Dan and then I was going to start the export but then the meeting ran long so."
+  },
+  "u:5108005": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "It's coming along on you know the search indexer."
+  },
+  "u:5108006": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "That other thing is still on my list."
+  },
+  "u:5108007": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "You know um the feature flag service dashboard now shows p95 latency."
+  },
+  "u:5108008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I added like alerts for the mobile login screen error rate."
+  },
+  "u:5108009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Last thing, not a big deal, but I still don't have the billing webhook API key."
+  },
+  "u:5108010": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5108011": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um no blockers for me."
+  },
+  "u:5108012": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "No blockers for me."
+  },
+  "u:5108013": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "It's coming along on the mobile login screen."
+  },
+  "u:5108014": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I'll be out out Friday afternoon for an appointment."
+  },
+  "u:5108015": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Priya, go ahead."
+  },
+  "u:5108016": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Yesterday I fixed the CSV export flake, it was a race in the setup code."
+  },
+  "u:5108017": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "The mobile login screen on-call rotation is updated in the wiki."
+  },
+  "u:5108018": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I guess I'd probably sort of say the billing webhook refactor is uh about half done."
+  },
+  "u:5108019": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for an appointment."
+  },
+  "u:5108020": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "It was decided that the Postgres migration gets pushed to next sprint."
+  },
+  "u:5108021": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay, let's take the blockers offline, thanks everyone."
+  },
+  "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:0": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um okay, quick rehearsal for standup."
+  },
+  "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:1": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I kept chipping away at the search indexer."
+  },
+  "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:2": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh next up for me is the notifications queue load test."
+  },
+  "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:3": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Uh hopefully maybe I think the fix like for the notifications queue lands before the like release cut."
+  },
+  "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:4": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um code review for the feature flag service is ready if like anyone has time."
+  },
+  "u:5109001": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Morning everyone, let's keep this quick."
+  },
+  "u:5109002": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Priya, you're up."
+  },
+  "u:5109003": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I finished the search indexer pagination and it's in review."
+  },
+  "u:5109004": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "I'll be out Friday afternoon for for an appointment."
+  },
+  "u:5109005": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "The billing webhook like on-call like rotation is updated in the wiki."
+  },
+  "u:5109006": {
+   "speaker": "Priya",
+   "role": "other",
+   "text": "Uh hopefully maybe I think the fix for the onboarding flow lands before the release cut."
+  },
+  "u:5109007": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Kai, you're up."
+  },
+  "u:5109008": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "It's coming along on the search indexer."
+  },
+  "u:5109009": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I mean I think it's probably kind of safe to merge the search indexer change after like lunch."
+  },
+  "u:5109010": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Today I'm pairing with Priya on the Postgres migration."
+  },
+  "u:5109011": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "I guess I'd probably sort of say the billing webhook refactor is uh um about half done."
+  },
+  "u:5109012": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Um and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so."
+  },
+  "u:5109013": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "Can someone look at the thing in staging today?"
+  },
+  "u:5109014": {
+   "speaker": "Kai",
+   "role": "wearer",
+   "text": "You know the onboarding flow dashboard dashboard now shows p95 latency."
+  },
+  "u:5109015": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Okay Dan, go ahead."
+  },
+  "u:5109016": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I kept chipping away at the notifications queue."
+  },
+  "u:5109017": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so."
+  },
+  "u:5109018": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "I can take the Postgres migration review after lunch."
+  },
+  "u:5109019": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um today I'm on the billing webhook integration tests."
+  },
+  "u:5109020": {
+   "speaker": "Dan",
+   "role": "other",
+   "text": "Um today I'm on the billing webhook integration like tests."
+  },
+  "u:5109021": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "It was decided that the rate limiter gets pushed to next sprint."
+  },
+  "u:5109022": {
+   "speaker": "Marcus",
+   "role": "other",
+   "text": "Great, that's everyone, thanks all."
+  }
+ },
+ "instances": [
+  {
+   "key": "u:5101006",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I mean I think it's probably kind of"
+  },
+  {
+   "key": "u:5101008",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_OVER_APOLOGY",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "This is probably a dumb question but"
+  },
+  {
+   "key": "u:5101009",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "u:5101011",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "That other thing"
+  },
+  {
+   "key": "u:5101012",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Yesterday I worked on the CSV export and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident"
+  },
+  {
+   "key": "u:5101013",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "soonish"
+  },
+  {
+   "key": "u:5101014",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5101017",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "kept chipping away at"
+  },
+  {
+   "key": "u:5101021",
+   "session_key": "en-standup-10-1",
+   "kind": "conversation",
+   "startMs": 1790861400000,
+   "phase": "pre",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "Mistakes were made on"
+  },
+  {
+   "key": "v:21652d90-b92f-4229-a534-5a7d5079d666:1",
+   "session_key": "en-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790945400000,
+   "phase": "pre",
+   "type": "EN_OVER_APOLOGY",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "not much from me, sorry,"
+  },
+  {
+   "key": "v:21652d90-b92f-4229-a534-5a7d5079d666:4",
+   "session_key": "en-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790945400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "hopefully maybe I think"
+  },
+  {
+   "key": "v:21652d90-b92f-4229-a534-5a7d5079d666:5",
+   "session_key": "en-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790945400000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "this week-ish"
+  },
+  {
+   "key": "v:21652d90-b92f-4229-a534-5a7d5079d666:6",
+   "session_key": "en-voice-10-2",
+   "kind": "voice_note",
+   "startMs": 1790945400000,
+   "phase": "pre",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Last thing, not a big deal, but I still don't have the mobile login screen API key"
+  },
+  {
+   "key": "u:5102007",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_OVER_APOLOGY",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "This is probably a dumb question but"
+  },
+  {
+   "key": "u:5102008",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "kept chipping away at"
+  },
+  {
+   "key": "u:5102009",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Yesterday I worked on the billing webhook and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident"
+  },
+  {
+   "key": "u:5102011",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5102012",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "eventually"
+  },
+  {
+   "key": "u:5102014",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the stuff with the config"
+  },
+  {
+   "key": "u:5102015",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "and I guess the rate limiter tests failing on main is slowing me down a bit"
+  },
+  {
+   "key": "u:5102018",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "hopefully maybe I think"
+  },
+  {
+   "key": "u:5102021",
+   "session_key": "en-standup-10-2",
+   "kind": "conversation",
+   "startMs": 1790947800000,
+   "phase": "pre",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "The mobile login screen incident will get looked at"
+  },
+  {
+   "key": "v:60779922-ae47-4879-aeb2-51b35ea64752:2",
+   "session_key": "en-voice-10-5",
+   "kind": "voice_note",
+   "startMs": 1791204600000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "eventually"
+  },
+  {
+   "key": "v:60779922-ae47-4879-aeb2-51b35ea64752:4",
+   "session_key": "en-voice-10-5",
+   "kind": "voice_note",
+   "startMs": 1791204600000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5103003",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_OVER_APOLOGY",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "This is probably a dumb question but"
+  },
+  {
+   "key": "u:5103005",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5103006",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "u:5103007",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "That other thing"
+  },
+  {
+   "key": "u:5103008",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "at some point"
+  },
+  {
+   "key": "u:5103010",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "So I picked up the onboarding flow and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review"
+  },
+  {
+   "key": "u:5103011",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "and I guess the feature flag service tests failing on main is slowing me down a bit"
+  },
+  {
+   "key": "u:5103014",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5103019",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "and then after that I worked on the onboarding flow and then the code review for Dan and then I was going to start the export but then the meeting ran long so"
+  },
+  {
+   "key": "u:5103020",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "u:5103023",
+   "session_key": "en-standup-10-5",
+   "kind": "conversation",
+   "startMs": 1791207000000,
+   "phase": "pre",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "It was decided that"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:1",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I think it should maybe kind of be"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:2",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:4",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Yesterday I worked on the Postgres migration and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:5",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "that thing from before"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:7",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "eventually"
+  },
+  {
+   "key": "v:22212c50-205a-411b-a2bf-eefa67cbca00:8",
+   "session_key": "en-voice-10-6",
+   "kind": "voice_note",
+   "startMs": 1791291000000,
+   "phase": "pre",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Last thing, not a big deal, but I still don't have the CSV export API key"
+  },
+  {
+   "key": "u:5105003",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "u:5105008",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "So I picked up the rate limiter and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review"
+  },
+  {
+   "key": "u:5105009",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the thing in staging"
+  },
+  {
+   "key": "u:5105011",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "made some good progress on"
+  },
+  {
+   "key": "u:5105012",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "pretty much almost there"
+  },
+  {
+   "key": "u:5105013",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_NO_ETA",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "soonish"
+  },
+  {
+   "key": "u:5105014",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I think it should maybe kind of be"
+  },
+  {
+   "key": "u:5105016",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I think it should maybe kind of be"
+  },
+  {
+   "key": "u:5105017",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Oh one more tiny thing, I'm sort of waiting on the CSV export credentials, no big deal"
+  },
+  {
+   "key": "u:5105022",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I mean I think it's probably kind of"
+  },
+  {
+   "key": "u:5105023",
+   "session_key": "en-standup-10-6",
+   "kind": "conversation",
+   "startMs": 1791293400000,
+   "phase": "pre",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "Mistakes were made on"
+  },
+  {
+   "key": "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:1",
+   "session_key": "en-voice-10-7",
+   "kind": "voice_note",
+   "startMs": 1791377400000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "v:dabb5e44-c361-4717-af32-d4ca3b1112bf:2",
+   "session_key": "en-voice-10-7",
+   "kind": "voice_note",
+   "startMs": 1791377400000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I feel like maybe we could possibly"
+  },
+  {
+   "key": "u:5106006",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I feel like maybe we could possibly"
+  },
+  {
+   "key": "u:5106009",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5106010",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the stuff with the config"
+  },
+  {
+   "key": "u:5106011",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "So I picked up the CSV export and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review"
+  },
+  {
+   "key": "u:5106013",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I feel like maybe we could possibly"
+  },
+  {
+   "key": "u:5106017",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5106019",
+   "session_key": "en-standup-10-7",
+   "kind": "conversation",
+   "startMs": 1791379800000,
+   "phase": "post",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "The billing webhook incident will get looked at"
+  },
+  {
+   "key": "u:5107003",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "So I picked up the notifications queue and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review"
+  },
+  {
+   "key": "u:5107007",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5107011",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Things are going well with"
+  },
+  {
+   "key": "u:5107012",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "and then after that I worked on the notifications queue and then the code review for Dan and then I was going to start the export but then the meeting ran long so"
+  },
+  {
+   "key": "u:5107013",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the thing in staging"
+  },
+  {
+   "key": "u:5107014",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5107017",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I mean I think it's probably kind of"
+  },
+  {
+   "key": "u:5107020",
+   "session_key": "en-standup-10-8",
+   "kind": "conversation",
+   "startMs": 1791466200000,
+   "phase": "post",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "The feature flag service incident will get looked at"
+  },
+  {
+   "key": "v:9f815418-129e-4e58-a84c-40995446d2b9:1",
+   "session_key": "en-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791550200000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "pretty much almost there"
+  },
+  {
+   "key": "v:9f815418-129e-4e58-a84c-40995446d2b9:2",
+   "session_key": "en-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791550200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "v:9f815418-129e-4e58-a84c-40995446d2b9:5",
+   "session_key": "en-voice-10-9",
+   "kind": "voice_note",
+   "startMs": 1791550200000,
+   "phase": "post",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the issue we talked about"
+  },
+  {
+   "key": "u:5108003",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5108004",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "and then after that I worked on the CSV export and then the code review for Dan and then I was going to start the export but then the meeting ran long so"
+  },
+  {
+   "key": "u:5108005",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5108006",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "That other thing"
+  },
+  {
+   "key": "u:5108009",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_BURIED_BLOCKER",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "Last thing, not a big deal, but I still don't have the billing webhook API key"
+  },
+  {
+   "key": "u:5108013",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5108018",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5108020",
+   "session_key": "en-standup-10-9",
+   "kind": "conversation",
+   "startMs": 1791552600000,
+   "phase": "post",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "It was decided that"
+  },
+  {
+   "key": "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:1",
+   "session_key": "en-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791895800000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "kept chipping away at"
+  },
+  {
+   "key": "v:9291c820-bd68-4184-a6a1-dae6f0e359c3:3",
+   "session_key": "en-voice-10-13",
+   "kind": "voice_note",
+   "startMs": 1791895800000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "hopefully maybe I think"
+  },
+  {
+   "key": "u:5109006",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Priya",
+   "role": "other",
+   "excerpt": "hopefully maybe I think"
+  },
+  {
+   "key": "u:5109008",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "It's coming along"
+  },
+  {
+   "key": "u:5109009",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I mean I think it's probably kind of"
+  },
+  {
+   "key": "u:5109011",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_HEDGE_STACK",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "I guess I'd probably sort of say"
+  },
+  {
+   "key": "u:5109012",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so"
+  },
+  {
+   "key": "u:5109013",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_VAGUE_REFERENT",
+   "speaker": "Kai",
+   "role": "wearer",
+   "excerpt": "the thing in staging"
+  },
+  {
+   "key": "u:5109016",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_VAGUE_STATUS",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "kept chipping away at"
+  },
+  {
+   "key": "u:5109017",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_RUN_ON",
+   "speaker": "Dan",
+   "role": "other",
+   "excerpt": "and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so"
+  },
+  {
+   "key": "u:5109021",
+   "session_key": "en-standup-10-13",
+   "kind": "conversation",
+   "startMs": 1791898200000,
+   "phase": "post",
+   "type": "EN_PASSIVE_NO_OWNER",
+   "speaker": "Marcus",
+   "role": "other",
+   "excerpt": "It was decided that"
+  }
+ ]
+}

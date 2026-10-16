@@ -1,0 +1,269 @@
+{
+ "conversation": {
+  "id": 5105,
+  "start_time": 1791293400000,
+  "end_time": 1791293529905,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791293400000,
+  "updated_at": 1791293619905,
+  "transcriptions": [
+   {
+    "id": 51051,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5105001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 3.46,
+      "spoken_at": 1791293400600,
+      "text": "Okay, let's get started, we have ten minutes.",
+      "speaker": "Unknown",
+      "created_at": 1791293402866
+     },
+     {
+      "id": 5105002,
+      "realtime": false,
+      "start": 4.82,
+      "end": 6.25,
+      "spoken_at": 1791293404820,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791293407332
+     },
+     {
+      "id": 5105003,
+      "realtime": false,
+      "start": 7.02,
+      "end": 10.81,
+      "spoken_at": 1791293407020,
+      "text": "Things are going well with the Postgres migration, so yeah.",
+      "speaker": "Unknown",
+      "created_at": 1791293409957
+     },
+     {
+      "id": 5105004,
+      "realtime": false,
+      "start": 11.23,
+      "end": 14.33,
+      "spoken_at": 1791293411230,
+      "text": "I can take the rate limiter review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791293413510
+     },
+     {
+      "id": 5105005,
+      "realtime": false,
+      "start": 15.09,
+      "end": 17.85,
+      "spoken_at": 1791293415090,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791293417587
+     },
+     {
+      "id": 5105006,
+      "realtime": false,
+      "start": 18.52,
+      "end": 22.31,
+      "spoken_at": 1791293418520,
+      "text": "The billing webhook on-call rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1791293421083
+     },
+     {
+      "id": 5105007,
+      "realtime": false,
+      "start": 22.89,
+      "end": 23.96,
+      "spoken_at": 1791293422890,
+      "text": "Kai, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791293424957
+     },
+     {
+      "id": 5105008,
+      "realtime": false,
+      "start": 25.22,
+      "end": 41.22,
+      "spoken_at": 1791293425220,
+      "text": "So I picked up the rate limiter and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review.",
+      "speaker": "Unknown",
+      "created_at": 1791293428295
+     },
+     {
+      "id": 5105009,
+      "realtime": false,
+      "start": 42.46,
+      "end": 46.46,
+      "spoken_at": 1791293442460,
+      "text": "Can someone look at the thing in staging today?",
+      "speaker": "Unknown",
+      "created_at": 1791293444540
+     },
+     {
+      "id": 5105010,
+      "realtime": false,
+      "start": 47.49,
+      "end": 51.89,
+      "spoken_at": 1791293447490,
+      "text": "I added alerts for the onboarding flow error rate.",
+      "speaker": "Unknown",
+      "created_at": 1791293450557
+     },
+     {
+      "id": 5105011,
+      "realtime": false,
+      "start": 52.35,
+      "end": 56.75,
+      "spoken_at": 1791293452350,
+      "text": "Yesterday I made some good progress on the CSV export.",
+      "speaker": "Unknown",
+      "created_at": 1791293454368
+     },
+     {
+      "id": 5105012,
+      "realtime": false,
+      "start": 58.22,
+      "end": 61.42,
+      "spoken_at": 1791293458220,
+      "text": "The rate limiter is pretty much almost there.",
+      "speaker": "Unknown",
+      "created_at": 1791293460545
+     },
+     {
+      "id": 5105013,
+      "realtime": false,
+      "start": 61.86,
+      "end": 65.06,
+      "spoken_at": 1791293461860,
+      "text": "The onboarding flow work will be done soonish.",
+      "speaker": "Unknown",
+      "created_at": 1791293463898
+     },
+     {
+      "id": 5105014,
+      "realtime": false,
+      "start": 66.41,
+      "end": 74.41,
+      "spoken_at": 1791293466410,
+      "text": "So for the feature flag service I think it should maybe kind of be ready for review today.",
+      "speaker": "Unknown",
+      "created_at": 1791293469428
+     },
+     {
+      "id": 5105015,
+      "realtime": false,
+      "start": 75.81,
+      "end": 80.61,
+      "spoken_at": 1791293475810,
+      "text": "Next up for me is the search indexer load test.",
+      "speaker": "Unknown",
+      "created_at": 1791293478315
+     },
+     {
+      "id": 5105016,
+      "realtime": false,
+      "start": 82.16,
+      "end": 89.76,
+      "spoken_at": 1791293482160,
+      "text": "So for the billing webhook I think it should maybe kind of be ready for review today.",
+      "speaker": "Unknown",
+      "created_at": 1791293485286
+     },
+     {
+      "id": 5105017,
+      "realtime": false,
+      "start": 90.6,
+      "end": 97.4,
+      "spoken_at": 1791293490600,
+      "text": "Oh one more tiny thing, I'm sort of waiting on the CSV export credentials, no big deal.",
+      "speaker": "Unknown",
+      "created_at": 1791293493290
+     },
+     {
+      "id": 5105018,
+      "realtime": false,
+      "start": 98.47,
+      "end": 100.26,
+      "spoken_at": 1791293498470,
+      "text": "Thanks. Priya, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1791293500747
+     },
+     {
+      "id": 5105019,
+      "realtime": false,
+      "start": 101.07,
+      "end": 104.77,
+      "spoken_at": 1791293501070,
+      "text": "The onboarding flow on-call rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1791293504323
+     },
+     {
+      "id": 5105020,
+      "realtime": false,
+      "start": 105.21,
+      "end": 110.77,
+      "spoken_at": 1791293505210,
+      "text": "Yesterday I fixed the search indexer flake, it was a race in the setup code.",
+      "speaker": "Unknown",
+      "created_at": 1791293508335
+     },
+     {
+      "id": 5105021,
+      "realtime": false,
+      "start": 112.17,
+      "end": 113.65,
+      "spoken_at": 1791293512170,
+      "text": "No blockers for me.",
+      "speaker": "Unknown",
+      "created_at": 1791293514642
+     },
+     {
+      "id": 5105022,
+      "realtime": false,
+      "start": 114.99,
+      "end": 121.66,
+      "spoken_at": 1791293514990,
+      "text": "I mean I think it's probably kind of safe to merge the notifications queue change after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791293516870
+     },
+     {
+      "id": 5105023,
+      "realtime": false,
+      "start": 122.83,
+      "end": 126.04,
+      "spoken_at": 1791293522830,
+      "text": "Mistakes were made on the search indexer last night.",
+      "speaker": "Unknown",
+      "created_at": 1791293525625
+     },
+     {
+      "id": 5105024,
+      "realtime": false,
+      "start": 127.1,
+      "end": 128.89,
+      "spoken_at": 1791293527100,
+      "text": "Great, that's everyone, thanks all.",
+      "speaker": "Unknown",
+      "created_at": 1791293529226
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791293400000
+  }
+ },
+ "timezone": "America/Toronto"
+}

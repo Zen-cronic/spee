@@ -1,0 +1,249 @@
+{
+ "conversation": {
+  "id": 5101,
+  "start_time": 1790861400000,
+  "end_time": 1790861513138,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1790861400000,
+  "updated_at": 1790861603138,
+  "transcriptions": [
+   {
+    "id": 51011,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5101001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1790861400600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1790861403787
+     },
+     {
+      "id": 5101002,
+      "realtime": false,
+      "start": 3.65,
+      "end": 4.72,
+      "spoken_at": 1790861403650,
+      "text": "Priya, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1790861406150
+     },
+     {
+      "id": 5101003,
+      "realtime": false,
+      "start": 5.8,
+      "end": 9.87,
+      "spoken_at": 1790861405800,
+      "text": "The Postgres migration on-call rotation rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1790861408511
+     },
+     {
+      "id": 5101004,
+      "realtime": false,
+      "start": 11.06,
+      "end": 14.39,
+      "spoken_at": 1790861411060,
+      "text": "I'm deploying the onboarding flow to staging at eleven.",
+      "speaker": "Unknown",
+      "created_at": 1790861414230
+     },
+     {
+      "id": 5101005,
+      "realtime": false,
+      "start": 15.44,
+      "end": 19.14,
+      "spoken_at": 1790861415440,
+      "text": "Um today I'm on um the Postgres migration integration tests.",
+      "speaker": "Unknown",
+      "created_at": 1790861418169
+     },
+     {
+      "id": 5101006,
+      "realtime": false,
+      "start": 20.41,
+      "end": 27.08,
+      "spoken_at": 1790861420410,
+      "text": "I mean I think it's probably kind of safe to merge the mobile login screen change after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1790861422498
+     },
+     {
+      "id": 5101007,
+      "realtime": false,
+      "start": 27.79,
+      "end": 29.58,
+      "spoken_at": 1790861427790,
+      "text": "Thanks. Kai, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1790861430103
+     },
+     {
+      "id": 5101008,
+      "realtime": false,
+      "start": 30.24,
+      "end": 36.64,
+      "spoken_at": 1790861430240,
+      "text": "This is probably a dumb question but should the CSV export go behind a feature flag?",
+      "speaker": "Unknown",
+      "created_at": 1790861432268
+     },
+     {
+      "id": 5101009,
+      "realtime": false,
+      "start": 38.02,
+      "end": 42.82,
+      "spoken_at": 1790861438020,
+      "text": "Things are going well with the mobile login screen, uh so yeah.",
+      "speaker": "Unknown",
+      "created_at": 1790861441132
+     },
+     {
+      "id": 5101010,
+      "realtime": false,
+      "start": 44.08,
+      "end": 47.28,
+      "spoken_at": 1790861444080,
+      "text": "I merged the search indexer fix yesterday afternoon.",
+      "speaker": "Unknown",
+      "created_at": 1790861445933
+     },
+     {
+      "id": 5101011,
+      "realtime": false,
+      "start": 47.91,
+      "end": 51.11,
+      "spoken_at": 1790861447910,
+      "text": "That other thing is still on my list.",
+      "speaker": "Unknown",
+      "created_at": 1790861450406
+     },
+     {
+      "id": 5101012,
+      "realtime": false,
+      "start": 51.51,
+      "end": 66.71,
+      "spoken_at": 1790861451510,
+      "text": "Yesterday I worked on the CSV export and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident.",
+      "speaker": "Unknown",
+      "created_at": 1790861454759
+     },
+     {
+      "id": 5101013,
+      "realtime": false,
+      "start": 67.88,
+      "end": 71.08,
+      "spoken_at": 1790861467880,
+      "text": "The CSV export work will be done soonish.",
+      "speaker": "Unknown",
+      "created_at": 1790861470207
+     },
+     {
+      "id": 5101014,
+      "realtime": false,
+      "start": 72.5,
+      "end": 78.9,
+      "spoken_at": 1790861472500,
+      "text": "I guess I'd probably sort of say the notifications queue refactor is uh about half done.",
+      "speaker": "Unknown",
+      "created_at": 1790861475555
+     },
+     {
+      "id": 5101015,
+      "realtime": false,
+      "start": 80.39,
+      "end": 83.99,
+      "spoken_at": 1790861480390,
+      "text": "I added alerts for the notifications queue error rate.",
+      "speaker": "Unknown",
+      "created_at": 1790861482707
+     },
+     {
+      "id": 5101016,
+      "realtime": false,
+      "start": 84.72,
+      "end": 86.15,
+      "spoken_at": 1790861484720,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1790861486894
+     },
+     {
+      "id": 5101017,
+      "realtime": false,
+      "start": 87.74,
+      "end": 90.5,
+      "spoken_at": 1790861487740,
+      "text": "I kept chipping away at the CSV export.",
+      "speaker": "Unknown",
+      "created_at": 1790861490388
+     },
+     {
+      "id": 5101018,
+      "realtime": false,
+      "start": 91.87,
+      "end": 93.59,
+      "spoken_at": 1790861491870,
+      "text": "No blockers uh for me.",
+      "speaker": "Unknown",
+      "created_at": 1790861495119
+     },
+     {
+      "id": 5101019,
+      "realtime": false,
+      "start": 95.17,
+      "end": 98.27,
+      "spoken_at": 1790861495170,
+      "text": "I'm deploying the notifications queue to staging at eleven.",
+      "speaker": "Unknown",
+      "created_at": 1790861498238
+     },
+     {
+      "id": 5101020,
+      "realtime": false,
+      "start": 99.64,
+      "end": 103.09,
+      "spoken_at": 1790861499640,
+      "text": "The CSV export on-call rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1790861502162
+     },
+     {
+      "id": 5101021,
+      "realtime": false,
+      "start": 104.56,
+      "end": 107.77,
+      "spoken_at": 1790861504560,
+      "text": "Mistakes were made on the notifications queue last night.",
+      "speaker": "Unknown",
+      "created_at": 1790861506466
+     },
+     {
+      "id": 5101022,
+      "realtime": false,
+      "start": 109.17,
+      "end": 112.03,
+      "spoken_at": 1790861509170,
+      "text": "Okay, let's take the blockers offline, thanks everyone.",
+      "speaker": "Unknown",
+      "created_at": 1790861512073
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1790861400000
+  }
+ },
+ "timezone": "America/Toronto"
+}

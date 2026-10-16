@@ -1,0 +1,229 @@
+{
+ "conversation": {
+  "id": 5106,
+  "start_time": 1791379800000,
+  "end_time": 1791379897768,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791379800000,
+  "updated_at": 1791379987768,
+  "transcriptions": [
+   {
+    "id": 51061,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5106001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 3.46,
+      "spoken_at": 1791379800600,
+      "text": "Okay, let's get started, we have ten minutes.",
+      "speaker": "Unknown",
+      "created_at": 1791379803216
+     },
+     {
+      "id": 5106002,
+      "realtime": false,
+      "start": 4.32,
+      "end": 6.11,
+      "spoken_at": 1791379804320,
+      "text": "Thanks. Priya, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1791379806652
+     },
+     {
+      "id": 5106003,
+      "realtime": false,
+      "start": 6.83,
+      "end": 10.53,
+      "spoken_at": 1791379806830,
+      "text": "I finished the notifications queue pagination and it's in review.",
+      "speaker": "Unknown",
+      "created_at": 1791379809752
+     },
+     {
+      "id": 5106004,
+      "realtime": false,
+      "start": 11.47,
+      "end": 15.54,
+      "spoken_at": 1791379811470,
+      "text": "I can take the feature flag service review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791379814487
+     },
+     {
+      "id": 5106005,
+      "realtime": false,
+      "start": 16.09,
+      "end": 19.05,
+      "spoken_at": 1791379816090,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791379819320
+     },
+     {
+      "id": 5106006,
+      "realtime": false,
+      "start": 20.27,
+      "end": 26.2,
+      "spoken_at": 1791379820270,
+      "text": "And I feel like maybe we could possibly split the Postgres migration ticket into two.",
+      "speaker": "Unknown",
+      "created_at": 1791379822356
+     },
+     {
+      "id": 5106007,
+      "realtime": false,
+      "start": 27.35,
+      "end": 28.42,
+      "spoken_at": 1791379827350,
+      "text": "Kai, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791379830417
+     },
+     {
+      "id": 5106008,
+      "realtime": false,
+      "start": 28.97,
+      "end": 33.77,
+      "spoken_at": 1791379828970,
+      "text": "I added alerts for the onboarding flow error rate.",
+      "speaker": "Unknown",
+      "created_at": 1791379831173
+     },
+     {
+      "id": 5106009,
+      "realtime": false,
+      "start": 34.56,
+      "end": 37.36,
+      "spoken_at": 1791379834560,
+      "text": "It's coming along on the auth service.",
+      "speaker": "Unknown",
+      "created_at": 1791379836474
+     },
+     {
+      "id": 5106010,
+      "realtime": false,
+      "start": 38.96,
+      "end": 43.36,
+      "spoken_at": 1791379838960,
+      "text": "The stuff with the config should be sorted now.",
+      "speaker": "Unknown",
+      "created_at": 1791379840969
+     },
+     {
+      "id": 5106011,
+      "realtime": false,
+      "start": 44.4,
+      "end": 60.4,
+      "spoken_at": 1791379844400,
+      "text": "So I picked up the CSV export and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review.",
+      "speaker": "Unknown",
+      "created_at": 1791379846404
+     },
+     {
+      "id": 5106012,
+      "realtime": false,
+      "start": 61.97,
+      "end": 65.97,
+      "spoken_at": 1791379861970,
+      "text": "Today I'm pairing with Priya on the CSV export.",
+      "speaker": "Unknown",
+      "created_at": 1791379865036
+     },
+     {
+      "id": 5106013,
+      "realtime": false,
+      "start": 66.7,
+      "end": 73.1,
+      "spoken_at": 1791379866700,
+      "text": "And I feel like maybe we could possibly split the billing webhook ticket into two.",
+      "speaker": "Unknown",
+      "created_at": 1791379869123
+     },
+     {
+      "id": 5106014,
+      "realtime": false,
+      "start": 73.62,
+      "end": 75.05,
+      "spoken_at": 1791379873620,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791379876260
+     },
+     {
+      "id": 5106015,
+      "realtime": false,
+      "start": 75.52,
+      "end": 78.62,
+      "spoken_at": 1791379875520,
+      "text": "I can take the search indexer review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791379877611
+     },
+     {
+      "id": 5106016,
+      "realtime": false,
+      "start": 79.65,
+      "end": 82.75,
+      "spoken_at": 1791379879650,
+      "text": "I can take the auth service review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791379882869
+     },
+     {
+      "id": 5106017,
+      "realtime": false,
+      "start": 84.17,
+      "end": 86.58,
+      "spoken_at": 1791379884170,
+      "text": "It's coming along on the Postgres migration.",
+      "speaker": "Unknown",
+      "created_at": 1791379886381
+     },
+     {
+      "id": 5106018,
+      "realtime": false,
+      "start": 87.02,
+      "end": 89.78,
+      "spoken_at": 1791379887020,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791379890235
+     },
+     {
+      "id": 5106019,
+      "realtime": false,
+      "start": 90.25,
+      "end": 93.82,
+      "spoken_at": 1791379890250,
+      "text": "The billing webhook incident will get looked at this week.",
+      "speaker": "Unknown",
+      "created_at": 1791379892447
+     },
+     {
+      "id": 5106020,
+      "realtime": false,
+      "start": 94.44,
+      "end": 97.3,
+      "spoken_at": 1791379894440,
+      "text": "Okay, let's take the blockers offline, thanks everyone.",
+      "speaker": "Unknown",
+      "created_at": 1791379897661
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791379800000
+  }
+ },
+ "timezone": "America/Toronto"
+}

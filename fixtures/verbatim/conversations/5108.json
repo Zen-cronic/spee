@@ -1,0 +1,239 @@
+{
+ "conversation": {
+  "id": 5108,
+  "start_time": 1791552600000,
+  "end_time": 1791552707876,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791552600000,
+  "updated_at": 1791552797876,
+  "transcriptions": [
+   {
+    "id": 51081,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5108001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1791552600600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1791552603489
+     },
+     {
+      "id": 5108002,
+      "realtime": false,
+      "start": 4,
+      "end": 5.43,
+      "spoken_at": 1791552604000,
+      "text": "Okay Kai, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791552605980
+     },
+     {
+      "id": 5108003,
+      "realtime": false,
+      "start": 6.81,
+      "end": 13.61,
+      "spoken_at": 1791552606810,
+      "text": "I guess I'd probably sort of say the notifications queue refactor is uh about about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791552609473
+     },
+     {
+      "id": 5108004,
+      "realtime": false,
+      "start": 15.06,
+      "end": 28.66,
+      "spoken_at": 1791552615060,
+      "text": "Um and then after that I worked on the CSV export and then the code review for Dan and then I was going to start the export but then the meeting ran long so.",
+      "speaker": "Unknown",
+      "created_at": 1791552617171
+     },
+     {
+      "id": 5108005,
+      "realtime": false,
+      "start": 29.26,
+      "end": 32.86,
+      "spoken_at": 1791552629260,
+      "text": "It's coming along on you know the search indexer.",
+      "speaker": "Unknown",
+      "created_at": 1791552632024
+     },
+     {
+      "id": 5108006,
+      "realtime": false,
+      "start": 34.04,
+      "end": 37.24,
+      "spoken_at": 1791552634040,
+      "text": "That other thing is still on my list.",
+      "speaker": "Unknown",
+      "created_at": 1791552635927
+     },
+     {
+      "id": 5108007,
+      "realtime": false,
+      "start": 37.69,
+      "end": 42.49,
+      "spoken_at": 1791552637690,
+      "text": "You know um the feature flag service dashboard now shows p95 latency.",
+      "speaker": "Unknown",
+      "created_at": 1791552640245
+     },
+     {
+      "id": 5108008,
+      "realtime": false,
+      "start": 43.8,
+      "end": 48.2,
+      "spoken_at": 1791552643800,
+      "text": "I added like alerts for the mobile login screen error rate.",
+      "speaker": "Unknown",
+      "created_at": 1791552646299
+     },
+     {
+      "id": 5108009,
+      "realtime": false,
+      "start": 48.96,
+      "end": 55.36,
+      "spoken_at": 1791552648960,
+      "text": "Last thing, not a big deal, but I still don't have the billing webhook API key.",
+      "speaker": "Unknown",
+      "created_at": 1791552651909
+     },
+     {
+      "id": 5108010,
+      "realtime": false,
+      "start": 56.03,
+      "end": 57.46,
+      "spoken_at": 1791552656030,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791552658287
+     },
+     {
+      "id": 5108011,
+      "realtime": false,
+      "start": 58.98,
+      "end": 60.7,
+      "spoken_at": 1791552658980,
+      "text": "Um no blockers for me.",
+      "speaker": "Unknown",
+      "created_at": 1791552661527
+     },
+     {
+      "id": 5108012,
+      "realtime": false,
+      "start": 61.52,
+      "end": 62.9,
+      "spoken_at": 1791552661520,
+      "text": "No blockers for me.",
+      "speaker": "Unknown",
+      "created_at": 1791552664658
+     },
+     {
+      "id": 5108013,
+      "realtime": false,
+      "start": 64.43,
+      "end": 67.19,
+      "spoken_at": 1791552664430,
+      "text": "It's coming along on the mobile login screen.",
+      "speaker": "Unknown",
+      "created_at": 1791552667348
+     },
+     {
+      "id": 5108014,
+      "realtime": false,
+      "start": 68.18,
+      "end": 71.28,
+      "spoken_at": 1791552668180,
+      "text": "I'll be out out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791552671173
+     },
+     {
+      "id": 5108015,
+      "realtime": false,
+      "start": 72.68,
+      "end": 74.11,
+      "spoken_at": 1791552672680,
+      "text": "Okay Priya, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791552674919
+     },
+     {
+      "id": 5108016,
+      "realtime": false,
+      "start": 75.34,
+      "end": 80.9,
+      "spoken_at": 1791552675340,
+      "text": "Yesterday I fixed the CSV export flake, it was a race in the setup code.",
+      "speaker": "Unknown",
+      "created_at": 1791552678629
+     },
+     {
+      "id": 5108017,
+      "realtime": false,
+      "start": 82.23,
+      "end": 86.3,
+      "spoken_at": 1791552682230,
+      "text": "The mobile login screen on-call rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1791552684214
+     },
+     {
+      "id": 5108018,
+      "realtime": false,
+      "start": 87.47,
+      "end": 93.4,
+      "spoken_at": 1791552687470,
+      "text": "I guess I'd probably sort of say the billing webhook refactor is uh about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791552690735
+     },
+     {
+      "id": 5108019,
+      "realtime": false,
+      "start": 93.82,
+      "end": 96.78,
+      "spoken_at": 1791552693820,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791552696244
+     },
+     {
+      "id": 5108020,
+      "realtime": false,
+      "start": 98.25,
+      "end": 102.54,
+      "spoken_at": 1791552698250,
+      "text": "It was decided that the Postgres migration gets pushed to next sprint.",
+      "speaker": "Unknown",
+      "created_at": 1791552700177
+     },
+     {
+      "id": 5108021,
+      "realtime": false,
+      "start": 103.54,
+      "end": 106.4,
+      "spoken_at": 1791552703540,
+      "text": "Okay, let's take the blockers offline, thanks everyone.",
+      "speaker": "Unknown",
+      "created_at": 1791552706366
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791552600000
+  }
+ },
+ "timezone": "America/Toronto"
+}

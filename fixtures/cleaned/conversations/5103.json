@@ -1,0 +1,269 @@
+{
+ "conversation": {
+  "id": 5103,
+  "start_time": 1791207000000,
+  "end_time": 1791207138060,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791207000000,
+  "updated_at": 1791207228060,
+  "transcriptions": [
+   {
+    "id": 51031,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5103001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1791207000600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1791207003227
+     },
+     {
+      "id": 5103002,
+      "realtime": false,
+      "start": 3.32,
+      "end": 5.11,
+      "spoken_at": 1791207003320,
+      "text": "Thanks. Kai, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1791207006426
+     },
+     {
+      "id": 5103003,
+      "realtime": false,
+      "start": 5.98,
+      "end": 12.38,
+      "spoken_at": 1791207005980,
+      "text": "This is probably a dumb question but should the rate limiter go behind a feature flag?",
+      "speaker": "Unknown",
+      "created_at": 1791207008147
+     },
+     {
+      "id": 5103004,
+      "realtime": false,
+      "start": 13.82,
+      "end": 17.82,
+      "spoken_at": 1791207013820,
+      "text": "Today I'm pairing with Priya on the mobile login screen.",
+      "speaker": "Unknown",
+      "created_at": 1791207017028
+     },
+     {
+      "id": 5103005,
+      "realtime": false,
+      "start": 19.06,
+      "end": 25.86,
+      "spoken_at": 1791207019060,
+      "text": "I guess I'd probably sort of say the mobile login screen refactor is about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791207021806
+     },
+     {
+      "id": 5103006,
+      "realtime": false,
+      "start": 27.31,
+      "end": 31.71,
+      "spoken_at": 1791207027310,
+      "text": "Things are going well with the billing webhook, so yeah.",
+      "speaker": "Unknown",
+      "created_at": 1791207030339
+     },
+     {
+      "id": 5103007,
+      "realtime": false,
+      "start": 32.91,
+      "end": 36.11,
+      "spoken_at": 1791207032910,
+      "text": "That other thing is still on my list.",
+      "speaker": "Unknown",
+      "created_at": 1791207035611
+     },
+     {
+      "id": 5103008,
+      "realtime": false,
+      "start": 37.54,
+      "end": 42.74,
+      "spoken_at": 1791207037540,
+      "text": "I should have the rate limiter PR up at some point.",
+      "speaker": "Unknown",
+      "created_at": 1791207040429
+     },
+     {
+      "id": 5103009,
+      "realtime": false,
+      "start": 43.48,
+      "end": 47.48,
+      "spoken_at": 1791207043480,
+      "text": "Today I'm pairing with Priya on the Postgres migration.",
+      "speaker": "Unknown",
+      "created_at": 1791207045569
+     },
+     {
+      "id": 5103010,
+      "realtime": false,
+      "start": 47.97,
+      "end": 63.97,
+      "spoken_at": 1791207047970,
+      "text": "So I picked up the onboarding flow and fixed the null check and then wrote a test and then the test broke the build so I reverted it and then I fixed it again and so it's back in review.",
+      "speaker": "Unknown",
+      "created_at": 1791207051038
+     },
+     {
+      "id": 5103011,
+      "realtime": false,
+      "start": 65.1,
+      "end": 72.3,
+      "spoken_at": 1791207065100,
+      "text": "And I guess the feature flag service tests failing on main is slowing me down a bit.",
+      "speaker": "Unknown",
+      "created_at": 1791207068138
+     },
+     {
+      "id": 5103012,
+      "realtime": false,
+      "start": 73.14,
+      "end": 74.21,
+      "spoken_at": 1791207073140,
+      "text": "Priya, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791207075350
+     },
+     {
+      "id": 5103013,
+      "realtime": false,
+      "start": 75.42,
+      "end": 79.12,
+      "spoken_at": 1791207075420,
+      "text": "I can take the notifications queue review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791207077912
+     },
+     {
+      "id": 5103014,
+      "realtime": false,
+      "start": 79.75,
+      "end": 85.68,
+      "spoken_at": 1791207079750,
+      "text": "I guess I'd probably sort of say the Postgres migration refactor is about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791207081866
+     },
+     {
+      "id": 5103015,
+      "realtime": false,
+      "start": 87.25,
+      "end": 90.95,
+      "spoken_at": 1791207087250,
+      "text": "I can take the onboarding flow review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791207090383
+     },
+     {
+      "id": 5103016,
+      "realtime": false,
+      "start": 91.57,
+      "end": 95.27,
+      "spoken_at": 1791207091570,
+      "text": "I can take the feature flag service review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791207093761
+     },
+     {
+      "id": 5103017,
+      "realtime": false,
+      "start": 96.75,
+      "end": 98.54,
+      "spoken_at": 1791207096750,
+      "text": "Thanks. Dan, what about you?",
+      "speaker": "Unknown",
+      "created_at": 1791207099721
+     },
+     {
+      "id": 5103018,
+      "realtime": false,
+      "start": 99.59,
+      "end": 103.04,
+      "spoken_at": 1791207099590,
+      "text": "I can take the mobile login screen review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791207101819
+     },
+     {
+      "id": 5103019,
+      "realtime": false,
+      "start": 103.95,
+      "end": 115.67,
+      "spoken_at": 1791207103950,
+      "text": "And then after that I worked on the onboarding flow and then the code review for Dan and then I was going to start the export but then the meeting ran long so.",
+      "speaker": "Unknown",
+      "created_at": 1791207106703
+     },
+     {
+      "id": 5103020,
+      "realtime": false,
+      "start": 116.99,
+      "end": 120.78,
+      "spoken_at": 1791207116990,
+      "text": "Things are going well with the auth service, so yeah.",
+      "speaker": "Unknown",
+      "created_at": 1791207118878
+     },
+     {
+      "id": 5103021,
+      "realtime": false,
+      "start": 121.76,
+      "end": 124.86,
+      "spoken_at": 1791207121760,
+      "text": "I'm deploying the onboarding flow to staging at eleven.",
+      "speaker": "Unknown",
+      "created_at": 1791207124351
+     },
+     {
+      "id": 5103022,
+      "realtime": false,
+      "start": 125.63,
+      "end": 129.08,
+      "spoken_at": 1791207125630,
+      "text": "I'm deploying the Postgres migration to staging at eleven.",
+      "speaker": "Unknown",
+      "created_at": 1791207127818
+     },
+     {
+      "id": 5103023,
+      "realtime": false,
+      "start": 129.64,
+      "end": 133.93,
+      "spoken_at": 1791207129640,
+      "text": "It was decided that the CSV export gets pushed to next sprint.",
+      "speaker": "Unknown",
+      "created_at": 1791207131449
+     },
+     {
+      "id": 5103024,
+      "realtime": false,
+      "start": 135.47,
+      "end": 137.26,
+      "spoken_at": 1791207135470,
+      "text": "Great, that's everyone, thanks all.",
+      "speaker": "Unknown",
+      "created_at": 1791207138693
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791207000000
+  }
+ },
+ "timezone": "America/Toronto"
+}

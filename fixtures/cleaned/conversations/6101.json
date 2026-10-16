@@ -1,0 +1,379 @@
+{
+ "conversation": {
+  "id": 6101,
+  "start_time": 1790893800000,
+  "end_time": 1790893968977,
+  "device_type": "unknown",
+  "summary": "French conversation class: weekend recap and passé composé practice.",
+  "short_summary": "French conversation class",
+  "state": "COMPLETED",
+  "created_at": 1790893800000,
+  "updated_at": 1790894058977,
+  "transcriptions": [
+   {
+    "id": 61011,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 6101001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.91,
+      "spoken_at": 1790893800600,
+      "text": "Bonjour tout le monde, on commence?",
+      "speaker": "Unknown",
+      "created_at": 1790893803468
+     },
+     {
+      "id": 6101002,
+      "realtime": false,
+      "start": 3.56,
+      "end": 6.64,
+      "spoken_at": 1790893803560,
+      "text": "Alors, qu'est-ce que vous avez fait ce week-end?",
+      "speaker": "Unknown",
+      "created_at": 1790893806370
+     },
+     {
+      "id": 6101003,
+      "realtime": false,
+      "start": 7.72,
+      "end": 9.26,
+      "spoken_at": 1790893807720,
+      "text": "Kai, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1790893809781
+     },
+     {
+      "id": 6101004,
+      "realtime": false,
+      "start": 10.73,
+      "end": 15.73,
+      "spoken_at": 1790893810730,
+      "text": "C'est un bonne idée pour le projet.",
+      "speaker": "Unknown",
+      "created_at": 1790893814000
+     },
+     {
+      "id": 6101005,
+      "realtime": false,
+      "start": 16.28,
+      "end": 17.82,
+      "spoken_at": 1790893816280,
+      "text": "Très bien, merci beaucoup.",
+      "speaker": "Unknown",
+      "created_at": 1790893819531
+     },
+     {
+      "id": 6101006,
+      "realtime": false,
+      "start": 18.97,
+      "end": 24.6,
+      "spoken_at": 1790893818970,
+      "text": "J'ai parlé à les voisins de la fête.",
+      "speaker": "Unknown",
+      "created_at": 1790893822155
+     },
+     {
+      "id": 6101007,
+      "realtime": false,
+      "start": 25.97,
+      "end": 29.72,
+      "spoken_at": 1790893825970,
+      "text": "Le dimanche je repose beaucoup.",
+      "speaker": "Unknown",
+      "created_at": 1790893829192
+     },
+     {
+      "id": 6101008,
+      "realtime": false,
+      "start": 30.95,
+      "end": 34.7,
+      "spoken_at": 1790893830950,
+      "text": "Il y a pas de problème.",
+      "speaker": "Unknown",
+      "created_at": 1790893833659
+     },
+     {
+      "id": 6101009,
+      "realtime": false,
+      "start": 35.82,
+      "end": 43.95,
+      "spoken_at": 1790893835820,
+      "text": "Hier soir j'ai resté à la maison parce que j'étais fatigué.",
+      "speaker": "Unknown",
+      "created_at": 1790893838440
+     },
+     {
+      "id": 6101010,
+      "realtime": false,
+      "start": 45.19,
+      "end": 46.73,
+      "spoken_at": 1790893845190,
+      "text": "Aisha, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1790893847116
+     },
+     {
+      "id": 6101011,
+      "realtime": false,
+      "start": 47.7,
+      "end": 51.03,
+      "spoken_at": 1790893847700,
+      "text": "Il y a pas de problème.",
+      "speaker": "Unknown",
+      "created_at": 1790893849743
+     },
+     {
+      "id": 6101012,
+      "realtime": false,
+      "start": 52.07,
+      "end": 55.96,
+      "spoken_at": 1790893852070,
+      "text": "Je suis d'accord avec vous.",
+      "speaker": "Unknown",
+      "created_at": 1790893853909
+     },
+     {
+      "id": 6101013,
+      "realtime": false,
+      "start": 57.53,
+      "end": 59.07,
+      "spoken_at": 1790893857530,
+      "text": "Tom, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1790893859632
+     },
+     {
+      "id": 6101014,
+      "realtime": false,
+      "start": 60.46,
+      "end": 68.7,
+      "spoken_at": 1790893860460,
+      "text": "On a mangé dans un petit restaurant italienne près de chez moi.",
+      "speaker": "Unknown",
+      "created_at": 1790893862483
+     },
+     {
+      "id": 6101015,
+      "realtime": false,
+      "start": 69.45,
+      "end": 72.91,
+      "spoken_at": 1790893869450,
+      "text": "Pour les devoirs, écrivez dix phrases sur vos vacances.",
+      "speaker": "Unknown",
+      "created_at": 1790893872025
+     },
+     {
+      "id": 6101016,
+      "realtime": false,
+      "start": 73.38,
+      "end": 78.67,
+      "spoken_at": 1790893873380,
+      "text": "Je suis vingt-cinq ans et je travaille à Toronto.",
+      "speaker": "Unknown",
+      "created_at": 1790893876360
+     },
+     {
+      "id": 6101017,
+      "realtime": false,
+      "start": 79.89,
+      "end": 83.35,
+      "spoken_at": 1790893879890,
+      "text": "Pour les devoirs, écrivez dix phrases sur vos vacances.",
+      "speaker": "Unknown",
+      "created_at": 1790893882413
+     },
+     {
+      "id": 6101018,
+      "realtime": false,
+      "start": 83.76,
+      "end": 90.82,
+      "spoken_at": 1790893883760,
+      "text": "Moi, je suis allée au restaurant avec ma copine.",
+      "speaker": "Unknown",
+      "created_at": 1790893886483
+     },
+     {
+      "id": 6101019,
+      "realtime": false,
+      "start": 92,
+      "end": 93.15,
+      "spoken_at": 1790893892000,
+      "text": "Kai, à vous.",
+      "speaker": "Unknown",
+      "created_at": 1790893894986
+     },
+     {
+      "id": 6101020,
+      "realtime": false,
+      "start": 94.13,
+      "end": 102.88,
+      "spoken_at": 1790893894130,
+      "text": "Mon quartier est calme et il y a un beau parc.",
+      "speaker": "Unknown",
+      "created_at": 1790893896624
+     },
+     {
+      "id": 6101021,
+      "realtime": false,
+      "start": 103.34,
+      "end": 104.49,
+      "spoken_at": 1790893903340,
+      "text": "Qui veut continuer?",
+      "speaker": "Unknown",
+      "created_at": 1790893905922
+     },
+     {
+      "id": 6101022,
+      "realtime": false,
+      "start": 105.19,
+      "end": 110.19,
+      "spoken_at": 1790893905190,
+      "text": "Je prends le métro pour aller au travail.",
+      "speaker": "Unknown",
+      "created_at": 1790893908131
+     },
+     {
+      "id": 6101023,
+      "realtime": false,
+      "start": 110.74,
+      "end": 115.74,
+      "spoken_at": 1790893910740,
+      "text": "J'ai travaillé dans la même entreprise depuis 2022.",
+      "speaker": "Unknown",
+      "created_at": 1790893912898
+     },
+     {
+      "id": 6101024,
+      "realtime": false,
+      "start": 117.22,
+      "end": 118.37,
+      "spoken_at": 1790893917220,
+      "text": "Qui veut continuer?",
+      "speaker": "Unknown",
+      "created_at": 1790893919228
+     },
+     {
+      "id": 6101025,
+      "realtime": false,
+      "start": 119.38,
+      "end": 125.63,
+      "spoken_at": 1790893919380,
+      "text": "J'ai fait un voyage à Mexique l'année dernière.",
+      "speaker": "Unknown",
+      "created_at": 1790893921438
+     },
+     {
+      "id": 6101026,
+      "realtime": false,
+      "start": 126.46,
+      "end": 127.61,
+      "spoken_at": 1790893926460,
+      "text": "Qui veut continuer?",
+      "speaker": "Unknown",
+      "created_at": 1790893928570
+     },
+     {
+      "id": 6101027,
+      "realtime": false,
+      "start": 129.04,
+      "end": 134.67,
+      "spoken_at": 1790893929040,
+      "text": "Je suis excité pour partir en vacances.",
+      "speaker": "Unknown",
+      "created_at": 1790893931517
+     },
+     {
+      "id": 6101028,
+      "realtime": false,
+      "start": 136.07,
+      "end": 137.61,
+      "spoken_at": 1790893936070,
+      "text": "Aisha, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1790893938797
+     },
+     {
+      "id": 6101029,
+      "realtime": false,
+      "start": 138.92,
+      "end": 144.48,
+      "spoken_at": 1790893938920,
+      "text": "Il y a trop des gens dans le métro.",
+      "speaker": "Unknown",
+      "created_at": 1790893941663
+     },
+     {
+      "id": 6101030,
+      "realtime": false,
+      "start": 145.2,
+      "end": 148.53,
+      "spoken_at": 1790893945200,
+      "text": "Il a fait très beau samedi.",
+      "speaker": "Unknown",
+      "created_at": 1790893948302
+     },
+     {
+      "id": 6101031,
+      "realtime": false,
+      "start": 149.96,
+      "end": 151.11,
+      "spoken_at": 1790893949960,
+      "text": "Tom, à vous.",
+      "speaker": "Unknown",
+      "created_at": 1790893953014
+     },
+     {
+      "id": 6101032,
+      "realtime": false,
+      "start": 152.1,
+      "end": 157.39,
+      "spoken_at": 1790893952100,
+      "text": "Ça fait du sens pour moi.",
+      "speaker": "Unknown",
+      "created_at": 1790893954059
+     },
+     {
+      "id": 6101033,
+      "realtime": false,
+      "start": 158.12,
+      "end": 162.24,
+      "spoken_at": 1790893958120,
+      "text": "Je travaille comme infirmier à l'hôpital.",
+      "speaker": "Unknown",
+      "created_at": 1790893961094
+     },
+     {
+      "id": 6101034,
+      "realtime": false,
+      "start": 163.24,
+      "end": 165.16,
+      "spoken_at": 1790893963240,
+      "text": "C'est pas grave, on continue.",
+      "speaker": "Unknown",
+      "created_at": 1790893966358
+     },
+     {
+      "id": 6101035,
+      "realtime": false,
+      "start": 165.89,
+      "end": 167.81,
+      "spoken_at": 1790893965890,
+      "text": "Bon travail aujourd'hui, à jeudi.",
+      "speaker": "Unknown",
+      "created_at": 1790893968475
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "Spadina Ave, Toronto, ON",
+   "latitude": 43.6629,
+   "longitude": -79.4001,
+   "created_at": 1790893800000
+  }
+ },
+ "timezone": "America/Toronto"
+}

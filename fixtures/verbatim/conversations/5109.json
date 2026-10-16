@@ -1,0 +1,249 @@
+{
+ "conversation": {
+  "id": 5109,
+  "start_time": 1791898200000,
+  "end_time": 1791898318791,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1791898200000,
+  "updated_at": 1791898408791,
+  "transcriptions": [
+   {
+    "id": 51091,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5109001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1791898200600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1791898203740
+     },
+     {
+      "id": 5109002,
+      "realtime": false,
+      "start": 3.41,
+      "end": 4.48,
+      "spoken_at": 1791898203410,
+      "text": "Priya, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791898206409
+     },
+     {
+      "id": 5109003,
+      "realtime": false,
+      "start": 5.39,
+      "end": 9.09,
+      "spoken_at": 1791898205390,
+      "text": "I finished the search indexer pagination and it's in review.",
+      "speaker": "Unknown",
+      "created_at": 1791898207586
+     },
+     {
+      "id": 5109004,
+      "realtime": false,
+      "start": 10.35,
+      "end": 13.68,
+      "spoken_at": 1791898210350,
+      "text": "I'll be out Friday afternoon for for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1791898212894
+     },
+     {
+      "id": 5109005,
+      "realtime": false,
+      "start": 14.96,
+      "end": 19.4,
+      "spoken_at": 1791898214960,
+      "text": "The billing webhook like on-call like rotation is updated in the wiki.",
+      "speaker": "Unknown",
+      "created_at": 1791898216948
+     },
+     {
+      "id": 5109006,
+      "realtime": false,
+      "start": 20.35,
+      "end": 26.28,
+      "spoken_at": 1791898220350,
+      "text": "Uh hopefully maybe I think the fix for the onboarding flow lands before the release cut.",
+      "speaker": "Unknown",
+      "created_at": 1791898222940
+     },
+     {
+      "id": 5109007,
+      "realtime": false,
+      "start": 26.9,
+      "end": 27.97,
+      "spoken_at": 1791898226900,
+      "text": "Kai, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1791898229128
+     },
+     {
+      "id": 5109008,
+      "realtime": false,
+      "start": 29.5,
+      "end": 32.3,
+      "spoken_at": 1791898229500,
+      "text": "It's coming along on the search indexer.",
+      "speaker": "Unknown",
+      "created_at": 1791898232270
+     },
+     {
+      "id": 5109009,
+      "realtime": false,
+      "start": 33.35,
+      "end": 40.55,
+      "spoken_at": 1791898233350,
+      "text": "I mean I think it's probably kind of safe to merge the search indexer change after like lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791898235382
+     },
+     {
+      "id": 5109010,
+      "realtime": false,
+      "start": 41.47,
+      "end": 45.07,
+      "spoken_at": 1791898241470,
+      "text": "Today I'm pairing with Priya on the Postgres migration.",
+      "speaker": "Unknown",
+      "created_at": 1791898243886
+     },
+     {
+      "id": 5109011,
+      "realtime": false,
+      "start": 46.59,
+      "end": 53.39,
+      "spoken_at": 1791898246590,
+      "text": "I guess I'd probably sort of say the billing webhook refactor is uh um about half done.",
+      "speaker": "Unknown",
+      "created_at": 1791898249717
+     },
+     {
+      "id": 5109012,
+      "realtime": false,
+      "start": 54.01,
+      "end": 67.61,
+      "spoken_at": 1791898254010,
+      "text": "Um and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so.",
+      "speaker": "Unknown",
+      "created_at": 1791898256150
+     },
+     {
+      "id": 5109013,
+      "realtime": false,
+      "start": 68.68,
+      "end": 72.28,
+      "spoken_at": 1791898268680,
+      "text": "Can someone look at the thing in staging today?",
+      "speaker": "Unknown",
+      "created_at": 1791898270807
+     },
+     {
+      "id": 5109014,
+      "realtime": false,
+      "start": 73.39,
+      "end": 77.79,
+      "spoken_at": 1791898273390,
+      "text": "You know the onboarding flow dashboard dashboard now shows p95 latency.",
+      "speaker": "Unknown",
+      "created_at": 1791898276541
+     },
+     {
+      "id": 5109015,
+      "realtime": false,
+      "start": 78.77,
+      "end": 80.2,
+      "spoken_at": 1791898278770,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1791898280782
+     },
+     {
+      "id": 5109016,
+      "realtime": false,
+      "start": 80.73,
+      "end": 83.49,
+      "spoken_at": 1791898280730,
+      "text": "I kept chipping away at the notifications queue.",
+      "speaker": "Unknown",
+      "created_at": 1791898282668
+     },
+     {
+      "id": 5109017,
+      "realtime": false,
+      "start": 84.39,
+      "end": 96.11,
+      "spoken_at": 1791898284390,
+      "text": "Um and then after that I worked on the Postgres migration and then the code review for Dan and then I was going to start the export but then the meeting ran long so.",
+      "speaker": "Unknown",
+      "created_at": 1791898286817
+     },
+     {
+      "id": 5109018,
+      "realtime": false,
+      "start": 97.69,
+      "end": 100.79,
+      "spoken_at": 1791898297690,
+      "text": "I can take the Postgres migration review after lunch.",
+      "speaker": "Unknown",
+      "created_at": 1791898299749
+     },
+     {
+      "id": 5109019,
+      "realtime": false,
+      "start": 101.68,
+      "end": 104.78,
+      "spoken_at": 1791898301680,
+      "text": "Um today I'm on the billing webhook integration tests.",
+      "speaker": "Unknown",
+      "created_at": 1791898303787
+     },
+     {
+      "id": 5109020,
+      "realtime": false,
+      "start": 105.83,
+      "end": 109.28,
+      "spoken_at": 1791898305830,
+      "text": "Um today I'm on the billing webhook integration like tests.",
+      "speaker": "Unknown",
+      "created_at": 1791898309026
+     },
+     {
+      "id": 5109021,
+      "realtime": false,
+      "start": 110.72,
+      "end": 115.01,
+      "spoken_at": 1791898310720,
+      "text": "It was decided that the rate limiter gets pushed to next sprint.",
+      "speaker": "Unknown",
+      "created_at": 1791898313742
+     },
+     {
+      "id": 5109022,
+      "realtime": false,
+      "start": 115.86,
+      "end": 117.65,
+      "spoken_at": 1791898315860,
+      "text": "Great, that's everyone, thanks all.",
+      "speaker": "Unknown",
+      "created_at": 1791898318310
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791898200000
+  }
+ },
+ "timezone": "America/Toronto"
+}

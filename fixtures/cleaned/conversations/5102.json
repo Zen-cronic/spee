@@ -1,0 +1,249 @@
+{
+ "conversation": {
+  "id": 5102,
+  "start_time": 1790947800000,
+  "end_time": 1790947920517,
+  "device_type": "unknown",
+  "summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "short_summary": "Daily engineering stand-up with status updates, review requests and blockers.",
+  "state": "COMPLETED",
+  "created_at": 1790947800000,
+  "updated_at": 1790948010517,
+  "transcriptions": [
+   {
+    "id": 51021,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 5102001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.74,
+      "spoken_at": 1790947800600,
+      "text": "Morning everyone, let's keep this quick.",
+      "speaker": "Unknown",
+      "created_at": 1790947803164
+     },
+     {
+      "id": 5102002,
+      "realtime": false,
+      "start": 3.75,
+      "end": 5.18,
+      "spoken_at": 1790947803750,
+      "text": "Okay Dan, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1790947806938
+     },
+     {
+      "id": 5102003,
+      "realtime": false,
+      "start": 6.16,
+      "end": 11.33,
+      "spoken_at": 1790947806160,
+      "text": "Yesterday I fixed the auth service flake, it was a race in the setup code.",
+      "speaker": "Unknown",
+      "created_at": 1790947808302
+     },
+     {
+      "id": 5102004,
+      "realtime": false,
+      "start": 12.57,
+      "end": 15.33,
+      "spoken_at": 1790947812570,
+      "text": "Today I'm on the onboarding flow integration tests.",
+      "speaker": "Unknown",
+      "created_at": 1790947815085
+     },
+     {
+      "id": 5102005,
+      "realtime": false,
+      "start": 15.79,
+      "end": 18.89,
+      "spoken_at": 1790947815790,
+      "text": "I'll be out Friday afternoon for an appointment.",
+      "speaker": "Unknown",
+      "created_at": 1790947817889
+     },
+     {
+      "id": 5102006,
+      "realtime": false,
+      "start": 19.6,
+      "end": 21.03,
+      "spoken_at": 1790947819600,
+      "text": "Okay Kai, go ahead.",
+      "speaker": "Unknown",
+      "created_at": 1790947821732
+     },
+     {
+      "id": 5102007,
+      "realtime": false,
+      "start": 22.34,
+      "end": 28.74,
+      "spoken_at": 1790947822340,
+      "text": "This is probably a dumb question but should the Postgres migration go behind a feature flag?",
+      "speaker": "Unknown",
+      "created_at": 1790947824469
+     },
+     {
+      "id": 5102008,
+      "realtime": false,
+      "start": 29.88,
+      "end": 33.08,
+      "spoken_at": 1790947829880,
+      "text": "I kept chipping away at the auth service.",
+      "speaker": "Unknown",
+      "created_at": 1790947832498
+     },
+     {
+      "id": 5102009,
+      "realtime": false,
+      "start": 34.52,
+      "end": 49.72,
+      "spoken_at": 1790947834520,
+      "text": "Yesterday I worked on the billing webhook and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident.",
+      "speaker": "Unknown",
+      "created_at": 1790947837565
+     },
+     {
+      "id": 5102010,
+      "realtime": false,
+      "start": 51.06,
+      "end": 55.86,
+      "spoken_at": 1790947851060,
+      "text": "Next up for me is the mobile login screen load test.",
+      "speaker": "Unknown",
+      "created_at": 1790947854026
+     },
+     {
+      "id": 5102011,
+      "realtime": false,
+      "start": 57.34,
+      "end": 64.14,
+      "spoken_at": 1790947857340,
+      "text": "I guess I'd probably sort of say the feature flag service refactor is about half done.",
+      "speaker": "Unknown",
+      "created_at": 1790947860066
+     },
+     {
+      "id": 5102012,
+      "realtime": false,
+      "start": 65.01,
+      "end": 68.21,
+      "spoken_at": 1790947865010,
+      "text": "I'll ping design about the auth service eventually.",
+      "speaker": "Unknown",
+      "created_at": 1790947868108
+     },
+     {
+      "id": 5102013,
+      "realtime": false,
+      "start": 69,
+      "end": 72.6,
+      "spoken_at": 1790947869000,
+      "text": "The auth service dashboard now shows p95 latency.",
+      "speaker": "Unknown",
+      "created_at": 1790947872162
+     },
+     {
+      "id": 5102014,
+      "realtime": false,
+      "start": 74.12,
+      "end": 78.12,
+      "spoken_at": 1790947874120,
+      "text": "The stuff with the config should be sorted now.",
+      "speaker": "Unknown",
+      "created_at": 1790947876157
+     },
+     {
+      "id": 5102015,
+      "realtime": false,
+      "start": 78.78,
+      "end": 85.58,
+      "spoken_at": 1790947878780,
+      "text": "And I guess the rate limiter tests failing on main is slowing me down a bit.",
+      "speaker": "Unknown",
+      "created_at": 1790947880760
+     },
+     {
+      "id": 5102016,
+      "realtime": false,
+      "start": 87.01,
+      "end": 88.08,
+      "spoken_at": 1790947887010,
+      "text": "Priya, you're up.",
+      "speaker": "Unknown",
+      "created_at": 1790947889767
+     },
+     {
+      "id": 5102017,
+      "realtime": false,
+      "start": 89.22,
+      "end": 93.29,
+      "spoken_at": 1790947889220,
+      "text": "I finished the auth service pagination and it's in review.",
+      "speaker": "Unknown",
+      "created_at": 1790947891605
+     },
+     {
+      "id": 5102018,
+      "realtime": false,
+      "start": 94.81,
+      "end": 100.74,
+      "spoken_at": 1790947894810,
+      "text": "Hopefully maybe I think the fix for the search indexer lands before the release cut.",
+      "speaker": "Unknown",
+      "created_at": 1790947897873
+     },
+     {
+      "id": 5102019,
+      "realtime": false,
+      "start": 101.97,
+      "end": 105.3,
+      "spoken_at": 1790947901970,
+      "text": "I'm deploying the rate limiter to staging at eleven.",
+      "speaker": "Unknown",
+      "created_at": 1790947905190
+     },
+     {
+      "id": 5102020,
+      "realtime": false,
+      "start": 106.47,
+      "end": 112.4,
+      "spoken_at": 1790947906470,
+      "text": "Yesterday I fixed the auth service flake, it was a race in the setup code.",
+      "speaker": "Unknown",
+      "created_at": 1790947908795
+     },
+     {
+      "id": 5102021,
+      "realtime": false,
+      "start": 113.12,
+      "end": 117.05,
+      "spoken_at": 1790947913120,
+      "text": "The mobile login screen incident will get looked at this week.",
+      "speaker": "Unknown",
+      "created_at": 1790947915290
+     },
+     {
+      "id": 5102022,
+      "realtime": false,
+      "start": 117.94,
+      "end": 119.73,
+      "spoken_at": 1790947917940,
+      "text": "Great, that's everyone, thanks all.",
+      "speaker": "Unknown",
+      "created_at": 1790947919838
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1790947800000
+  }
+ },
+ "timezone": "America/Toronto"
+}

@@ -1,0 +1,162 @@
+{
+ "journals": [
+  {
+   "id": "21652d90-b92f-4229-a534-5a7d5079d666",
+   "text": "Um okay, quick rehearsal for standup. Um not much from me, sorry, I'm still still on the notifications queue. Next up for me is the feature flag service load like test. I'll demo the onboarding flow at Thursday's sprint review. Uh hopefully maybe I think the fix for the Postgres migration lands before the release cut. Hoping to wrap the Postgres migration this week-ish, uh we'll see. Last thing, not a big deal, but I still don't have the mobile login screen API key.",
+   "state": "READY",
+   "created_at": 1790945400000,
+   "updated_at": 1790945445000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. I'm still on the notifications queue. Next up for me is the feature flag service load test. I'll demo the onboarding flow at Thursday's sprint review. I expect the fix for the Postgres migration lands before the release cut. Hoping to wrap the Postgres migration by Friday, we'll see. I'm blocked without the mobile login screen API key and need it today.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "60779922-ae47-4879-aeb2-51b35ea64752",
+   "text": "Um okay, quick rehearsal for standup. I merged merged the feature flag service fix yesterday afternoon. I'll ping you know design about the search indexer eventually. Uh you know i'll demo the rate limiter at Thursday's sprint review. I guess I'd probably sort of say um the notifications queue refactor refactor is uh about half done.",
+   "state": "READY",
+   "created_at": 1791204600000,
+   "updated_at": 1791204645000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. I merged the feature flag service fix yesterday afternoon. I'll ping design about the search indexer today. I'll demo the rate limiter at Thursday's sprint review. I'd say the notifications queue refactor is about half done.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "22212c50-205a-411b-a2bf-eefa67cbca00",
+   "text": "Um okay, quick rehearsal for standup. Um so for the Postgres migration I think it should maybe kind of be ready for review today. Things are going well with the auth service, uh so yeah. Code review for the feature flag service is ready if anyone has time. Yesterday I worked on the Postgres migration and then I looked at the flaky test and then I paired with Priya on the cache and then I started the docs and then I got pulled into the incident. I also fixed that thing from before um that Dan mentioned. I added alerts for the mobile login screen error you know rate. I'll ping design about the auth service eventually. Last thing, not a big deal, but I still don't have the CSV export API key.",
+   "state": "READY",
+   "created_at": 1791291000000,
+   "updated_at": 1791291045000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. So for the Postgres migration it will be ready for review today. I merged the schema change for the auth service, so yeah. Code review for the feature flag service is ready if anyone has time. Yesterday I finished the Postgres migration; I also paired with Priya on caching and joined the incident. I also fixed the timeout bug in the billing webhook that Dan mentioned. I added alerts for the mobile login screen error rate. I'll ping design about the auth service today. I'm blocked without the CSV export API key and need it today.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "dabb5e44-c361-4717-af32-d4ca3b1112bf",
+   "text": "Um okay, quick rehearsal for standup. It's coming along on the mobile login screen. And like I feel like maybe we could possibly split the feature flag service you know ticket you know into two. Like next up for like me is the rate limiter load test. Like um i'll demo the CSV export at at Thursday's sprint review.",
+   "state": "READY",
+   "created_at": 1791377400000,
+   "updated_at": 1791377445000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. The API side is done and the UI is left on the mobile login screen. And we should split the feature flag service ticket into two. Next up for me is the rate limiter load test. I'll demo the CSV export at Thursday's sprint review.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "9f815418-129e-4e58-a84c-40995446d2b9",
+   "text": "Um okay, quick rehearsal for standup. The mobile login screen is pretty much almost there. I guess I'd probably sort of say the feature flag service refactor is uh about half done. Uh i merged the rate limiter fix yesterday afternoon. I'll demo the feature flag service at Thursday's sprint review. I need to look into into the issue we talked about after this.",
+   "state": "READY",
+   "created_at": 1791550200000,
+   "updated_at": 1791550245000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. The mobile login screen is done except the two failing tests. I'd say the feature flag service refactor is about half done. I merged the rate limiter fix yesterday afternoon. I'll demo the feature flag service at Thursday's sprint review. I need to look into the search indexer memory leak after this.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "9291c820-bd68-4184-a6a1-dae6f0e359c3",
+   "text": "Um okay, quick rehearsal for standup. I kept chipping away at the search indexer. Uh next up for me is the notifications queue load test. Uh hopefully maybe I think the fix like for the notifications queue lands before the like release cut. Um code review for the feature flag service is ready if like anyone has time.",
+   "state": "READY",
+   "created_at": 1791895800000,
+   "updated_at": 1791895845000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Okay, quick rehearsal for standup. I closed three of the five subtasks on the search indexer. Next up for me is the notifications queue load test. I expect the fix for the notifications queue lands before the release cut. Code review for the feature flag service is ready if anyone has time.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "596d7175-8cca-46ca-ad73-a7ffb5866d39",
+   "text": "Euh bon, je pratique un peu mon français ce soir. C'est la fin de le mois donc je suis suis très occupé. J'ai habité à Toronto depuis trois ans. Euh j'aime beaucoup cuisiner le dimanche. Ben j'ai fait un voyage à Mexique l'année euh dernière. J'ai pas eu le temps de faire les devoirs. Hier soir j'ai resté à la ben maison ben parce euh que j'étais fatigué. Mon quartier est calme et il y a ben un beau beau parc. Mon voiture est petit mais mais pratique. Après le souper on a pris une marche au au parc.",
+   "state": "READY",
+   "created_at": 1790985600000,
+   "updated_at": 1790985645000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. C'est la fin du mois donc je suis très occupé. J'habite à Toronto depuis trois ans. J'aime beaucoup cuisiner le dimanche. J'ai fait un voyage au Mexique l'année dernière. Je n'ai pas eu le temps de faire les devoirs. Hier soir je suis resté à la maison parce que j'étais fatigué. Mon quartier est calme et il y a un beau parc. Ma voiture est petite mais pratique. Après le souper on a fait une promenade au parc.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "8684e963-5605-4f26-ab2c-90ff4788d67e",
+   "text": "Euh bon, je pratique un peu mon français ce soir. Mon voiture est petit mais pratique. Genre je dois canceller mon rendez-vous de mardi. Ce week-end j'ai fait du ménage et euh j'ai lu un livre. Ce week-end j'ai fait du ménage et j'ai lu lu un livre. Ben j'ai sorti avec des collègues vendredi. C'est la fin de le mois donc je euh suis très occupé. Il y a pas de problème.",
+   "state": "READY",
+   "created_at": 1791158400000,
+   "updated_at": 1791158445000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. Ma voiture est petite mais pratique. Je dois annuler mon rendez-vous de mardi. Ce week-end j'ai fait du ménage et j'ai lu un livre. Ce week-end j'ai fait du ménage et j'ai lu un livre. Je suis sorti avec des collègues vendredi. C'est la fin du mois donc je suis très occupé. Il n'y a pas de problème.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "f2abb5cd-dbb0-4188-a058-752171156fd2",
+   "text": "Euh bon, je pratique un peu mon français ce soir. Ben j'ai sorti avec des collègues vendredi. Je comprends pas la différence entre les deux. Je euh vais appliquer pour euh un nouveau poste. Après le sport je douche et je prépare le souper. Mon ben collègue habite en Japon euh maintenant. Dimanche on est allés à le cinéma. Euh j'ai appris le français depuis genre huit mois. Euh mon quartier est calme et il y a un beau parc. Je travaille dans l'informatique, je suis développeur. On a mangé dans un petit restaurant italienne près de chez moi.",
+   "state": "READY",
+   "created_at": 1791331200000,
+   "updated_at": 1791331245000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. Je suis sorti avec des collègues vendredi. Je ne comprends pas la différence entre les deux. Je vais postuler à un nouveau poste. Après le sport je me douche et je prépare le souper. Mon collègue habite au Japon maintenant. Dimanche on est allés au cinéma. J'apprends le français depuis huit mois. Mon quartier est calme et il y a un beau parc. Je travaille dans l'informatique, je suis développeur. On a mangé dans un petit restaurant italien près de chez moi.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "be3ea9e1-f8ed-4d19-a4a4-6e08e307c0ad",
+   "text": "Euh bon, je pratique un peu mon français ce soir. Mon quartier est calme et il y a un beau parc. Ben je euh prends le métro pour aller au travail. Du coup ça fait du sens pour pour moi. Après le sport sport je douche et je prépare le genre souper. J'ai écouté le chanson que vous avez partagée.",
+   "state": "READY",
+   "created_at": 1791590400000,
+   "updated_at": 1791590445000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. Mon quartier est calme et il y a un beau parc. Je prends le métro pour aller au travail. Ça a du sens pour moi. Après le sport je me douche et je prépare le souper. J'ai écouté la chanson que vous avez partagée.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "0022dce0-6a40-459a-abc8-c38c32a0d7ec",
+   "text": "Euh bon, je pratique un peu mon français ce soir. Je parle souvent de le travail avec mes amis. J'ai acheté un nouvelle voiture le mois dernier. Euh samedi j'ai allé euh au marché avec ma sœur. Je voudrais améliorer mon français pour ben le travail. Ben le ben soir je regarde des des séries en français avec des genre sous-titres. Du coup ça fait du sens pour moi. Il y a pas de problème.",
+   "state": "READY",
+   "created_at": 1791763200000,
+   "updated_at": 1791763245000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. Je parle souvent du travail avec mes amis. J'ai acheté une nouvelle voiture le mois dernier. Samedi je suis allé au marché avec ma sœur. Je voudrais améliorer mon français pour le travail. Le soir je regarde des séries en français avec des sous-titres. Ça a du sens pour moi. Il n'y a pas de problème.",
+    "followUp": null,
+    "todos": []
+   }
+  },
+  {
+   "id": "ab9f2afe-9c28-46ae-a8a8-11814d773a5f",
+   "text": "Euh bon, je pratique un peu mon français ce soir. Il y a pas de problème. Dimanche on est allés à le cinéma. Ben je genre voudrais améliorer mon français pour le travail. Euh samedi j'ai allé euh au marché avec ma sœur. Ce week-end euh j'ai fait euh du ménage euh et j'ai lu un livre. Mon voiture est petit mais pratique.",
+   "state": "READY",
+   "created_at": 1791936000000,
+   "updated_at": 1791936045000,
+   "aiResponse": {
+    "message": null,
+    "cleanedUpText": "Bon, je pratique un peu mon français ce soir. Il n'y a pas de problème. Dimanche on est allés au cinéma. Je voudrais améliorer mon français pour le travail. Samedi je suis allé au marché avec ma sœur. Ce week-end j'ai fait du ménage et j'ai lu un livre. Ma voiture est petite mais pratique.",
+    "followUp": null,
+    "todos": []
+   }
+  }
+ ],
+ "next_cursor": null,
+ "timezone": "America/Toronto"
+}

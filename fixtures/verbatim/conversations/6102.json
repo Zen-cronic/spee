@@ -1,0 +1,379 @@
+{
+ "conversation": {
+  "id": 6102,
+  "start_time": 1791036000000,
+  "end_time": 1791036165987,
+  "device_type": "unknown",
+  "summary": "French conversation class: weekend recap and passé composé practice.",
+  "short_summary": "French conversation class",
+  "state": "COMPLETED",
+  "created_at": 1791036000000,
+  "updated_at": 1791036255987,
+  "transcriptions": [
+   {
+    "id": 61021,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 6102001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.91,
+      "spoken_at": 1791036000600,
+      "text": "Bonsoir à tous, installez-vous, on commence.",
+      "speaker": "Unknown",
+      "created_at": 1791036002816
+     },
+     {
+      "id": 6102002,
+      "realtime": false,
+      "start": 4.16,
+      "end": 7.24,
+      "spoken_at": 1791036004160,
+      "text": "Alors, qu'est-ce que vous avez fait ce week-end?",
+      "speaker": "Unknown",
+      "created_at": 1791036005989
+     },
+     {
+      "id": 6102003,
+      "realtime": false,
+      "start": 8.82,
+      "end": 9.97,
+      "spoken_at": 1791036008820,
+      "text": "Tom, à vous.",
+      "speaker": "Unknown",
+      "created_at": 1791036011625
+     },
+     {
+      "id": 6102004,
+      "realtime": false,
+      "start": 11.15,
+      "end": 17.03,
+      "spoken_at": 1791036011150,
+      "text": "Euh moi, je suis allée au restaurant avec ma copine.",
+      "speaker": "Unknown",
+      "created_at": 1791036013676
+     },
+     {
+      "id": 6102005,
+      "realtime": false,
+      "start": 18.21,
+      "end": 22.33,
+      "spoken_at": 1791036018210,
+      "text": "Mon frère est trente ans cette année.",
+      "speaker": "Unknown",
+      "created_at": 1791036020432
+     },
+     {
+      "id": 6102006,
+      "realtime": false,
+      "start": 23,
+      "end": 24.54,
+      "spoken_at": 1791036023000,
+      "text": "Kai, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1791036025653
+     },
+     {
+      "id": 6102007,
+      "realtime": false,
+      "start": 25.49,
+      "end": 30.49,
+      "spoken_at": 1791036025490,
+      "text": "Ben j'ai sorti avec des genre collègues vendredi.",
+      "speaker": "Unknown",
+      "created_at": 1791036028432
+     },
+     {
+      "id": 6102008,
+      "realtime": false,
+      "start": 31.48,
+      "end": 36.48,
+      "spoken_at": 1791036031480,
+      "text": "Genre je dois canceller mon rendez-vous de mardi.",
+      "speaker": "Unknown",
+      "created_at": 1791036033890
+     },
+     {
+      "id": 6102009,
+      "realtime": false,
+      "start": 37.13,
+      "end": 42.76,
+      "spoken_at": 1791036037130,
+      "text": "Euh j'ai parlé à les voisins de la fête.",
+      "speaker": "Unknown",
+      "created_at": 1791036039619
+     },
+     {
+      "id": 6102010,
+      "realtime": false,
+      "start": 43.82,
+      "end": 50.7,
+      "spoken_at": 1791036043820,
+      "text": "Ce week-end j'ai fait du ménage et j'ai lu un livre.",
+      "speaker": "Unknown",
+      "created_at": 1791036046231
+     },
+     {
+      "id": 6102011,
+      "realtime": false,
+      "start": 51.21,
+      "end": 58.09,
+      "spoken_at": 1791036051210,
+      "text": "La euh semaine genre dernière j'ai venu en classe à vélo.",
+      "speaker": "Unknown",
+      "created_at": 1791036053632
+     },
+     {
+      "id": 6102012,
+      "realtime": false,
+      "start": 59.48,
+      "end": 63.86,
+      "spoken_at": 1791036059480,
+      "text": "J'ai habité à Toronto depuis trois ans.",
+      "speaker": "Unknown",
+      "created_at": 1791036061361
+     },
+     {
+      "id": 6102013,
+      "realtime": false,
+      "start": 64.59,
+      "end": 65.74,
+      "spoken_at": 1791036064590,
+      "text": "Aisha, à vous.",
+      "speaker": "Unknown",
+      "created_at": 1791036067037
+     },
+     {
+      "id": 6102014,
+      "realtime": false,
+      "start": 66.26,
+      "end": 72.37,
+      "spoken_at": 1791036066260,
+      "text": "On euh a acheté des le pain et du du fromage.",
+      "speaker": "Unknown",
+      "created_at": 1791036068068
+     },
+     {
+      "id": 6102015,
+      "realtime": false,
+      "start": 73.12,
+      "end": 76.45,
+      "spoken_at": 1791036073120,
+      "text": "C'est pas bah facile pour moi.",
+      "speaker": "Unknown",
+      "created_at": 1791036076213
+     },
+     {
+      "id": 6102016,
+      "realtime": false,
+      "start": 77.82,
+      "end": 78.97,
+      "spoken_at": 1791036077820,
+      "text": "D'accord, et pourquoi?",
+      "speaker": "Unknown",
+      "created_at": 1791036080690
+     },
+     {
+      "id": 6102017,
+      "realtime": false,
+      "start": 79.43,
+      "end": 83.32,
+      "spoken_at": 1791036079430,
+      "text": "Euh j'ai fait les devoirs dimanche soir.",
+      "speaker": "Unknown",
+      "created_at": 1791036082439
+     },
+     {
+      "id": 6102018,
+      "realtime": false,
+      "start": 84.51,
+      "end": 85.66,
+      "spoken_at": 1791036084510,
+      "text": "D'accord, et pourquoi?",
+      "speaker": "Unknown",
+      "created_at": 1791036086381
+     },
+     {
+      "id": 6102019,
+      "realtime": false,
+      "start": 86.55,
+      "end": 88.47,
+      "spoken_at": 1791036086550,
+      "text": "C'est pas grave, on continue.",
+      "speaker": "Unknown",
+      "created_at": 1791036089154
+     },
+     {
+      "id": 6102020,
+      "realtime": false,
+      "start": 89.16,
+      "end": 90.7,
+      "spoken_at": 1791036089160,
+      "text": "Tom, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1791036092178
+     },
+     {
+      "id": 6102021,
+      "realtime": false,
+      "start": 91.2,
+      "end": 94.73,
+      "spoken_at": 1791036091200,
+      "text": "Il a fait très beau samedi.",
+      "speaker": "Unknown",
+      "created_at": 1791036093233
+     },
+     {
+      "id": 6102022,
+      "realtime": false,
+      "start": 95.9,
+      "end": 99.43,
+      "spoken_at": 1791036095900,
+      "text": "Mon voiture est petit mais pratique.",
+      "speaker": "Unknown",
+      "created_at": 1791036098739
+     },
+     {
+      "id": 6102023,
+      "realtime": false,
+      "start": 100.48,
+      "end": 102.02,
+      "spoken_at": 1791036100480,
+      "text": "Aisha, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1791036103750
+     },
+     {
+      "id": 6102024,
+      "realtime": false,
+      "start": 103.38,
+      "end": 108.94,
+      "spoken_at": 1791036103380,
+      "text": "Ben moi, je suis allée au restaurant avec ma copine.",
+      "speaker": "Unknown",
+      "created_at": 1791036106071
+     },
+     {
+      "id": 6102025,
+      "realtime": false,
+      "start": 110.25,
+      "end": 115.81,
+      "spoken_at": 1791036110250,
+      "text": "Ben j'ai fait un euh voyage à Mexique l'année dernière.",
+      "speaker": "Unknown",
+      "created_at": 1791036112930
+     },
+     {
+      "id": 6102026,
+      "realtime": false,
+      "start": 116.87,
+      "end": 118.02,
+      "spoken_at": 1791036116870,
+      "text": "D'accord, et pourquoi?",
+      "speaker": "Unknown",
+      "created_at": 1791036119314
+     },
+     {
+      "id": 6102027,
+      "realtime": false,
+      "start": 119.24,
+      "end": 120.39,
+      "spoken_at": 1791036119240,
+      "text": "Et vous, Kai?",
+      "speaker": "Unknown",
+      "created_at": 1791036121108
+     },
+     {
+      "id": 6102028,
+      "realtime": false,
+      "start": 120.94,
+      "end": 124.07,
+      "spoken_at": 1791036120940,
+      "text": "C'est pas facile pour moi.",
+      "speaker": "Unknown",
+      "created_at": 1791036123239
+     },
+     {
+      "id": 6102029,
+      "realtime": false,
+      "start": 125.56,
+      "end": 127.1,
+      "spoken_at": 1791036125560,
+      "text": "Très bien, merci beaucoup.",
+      "speaker": "Unknown",
+      "created_at": 1791036128845
+     },
+     {
+      "id": 6102030,
+      "realtime": false,
+      "start": 128.36,
+      "end": 136.49,
+      "spoken_at": 1791036128360,
+      "text": "Le euh soir euh je regarde des séries en français avec des sous-titres.",
+      "speaker": "Unknown",
+      "created_at": 1791036130679
+     },
+     {
+      "id": 6102031,
+      "realtime": false,
+      "start": 137.06,
+      "end": 143.31,
+      "spoken_at": 1791036137060,
+      "text": "En semaine je lève à six heures et euh demie.",
+      "speaker": "Unknown",
+      "created_at": 1791036139210
+     },
+     {
+      "id": 6102032,
+      "realtime": false,
+      "start": 144.31,
+      "end": 149.94,
+      "spoken_at": 1791036144310,
+      "text": "Euh c'est un bonne idée pour ben le projet.",
+      "speaker": "Unknown",
+      "created_at": 1791036147160
+     },
+     {
+      "id": 6102033,
+      "realtime": false,
+      "start": 151.38,
+      "end": 157.63,
+      "spoken_at": 1791036151380,
+      "text": "On veut euh aller dans Montréal pour le long week-end.",
+      "speaker": "Unknown",
+      "created_at": 1791036153437
+     },
+     {
+      "id": 6102034,
+      "realtime": false,
+      "start": 158.73,
+      "end": 161.81,
+      "spoken_at": 1791036158730,
+      "text": "Il y a pas de mauvaise réponse ici.",
+      "speaker": "Unknown",
+      "created_at": 1791036160861
+     },
+     {
+      "id": 6102035,
+      "realtime": false,
+      "start": 162.48,
+      "end": 164.79,
+      "spoken_at": 1791036162480,
+      "text": "C'est tout pour aujourd'hui, bonne soirée.",
+      "speaker": "Unknown",
+      "created_at": 1791036164495
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "Spadina Ave, Toronto, ON",
+   "latitude": 43.6629,
+   "longitude": -79.4001,
+   "created_at": 1791036000000
+  }
+ },
+ "timezone": "America/Toronto"
+}

@@ -1,0 +1,409 @@
+{
+ "conversation": {
+  "id": 6103,
+  "start_time": 1791325800000,
+  "end_time": 1791325977094,
+  "device_type": "unknown",
+  "summary": "French conversation class: weekend recap and passé composé practice.",
+  "short_summary": "French conversation class",
+  "state": "COMPLETED",
+  "created_at": 1791325800000,
+  "updated_at": 1791326067094,
+  "transcriptions": [
+   {
+    "id": 61031,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 6103001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 2.91,
+      "spoken_at": 1791325800600,
+      "text": "Bonsoir à tous, installez-vous, on commence.",
+      "speaker": "Unknown",
+      "created_at": 1791325803374
+     },
+     {
+      "id": 6103002,
+      "realtime": false,
+      "start": 4.3,
+      "end": 7.38,
+      "spoken_at": 1791325804300,
+      "text": "Alors, qu'est-ce que vous avez fait ce week-end?",
+      "speaker": "Unknown",
+      "created_at": 1791325806365
+     },
+     {
+      "id": 6103003,
+      "realtime": false,
+      "start": 8.64,
+      "end": 9.79,
+      "spoken_at": 1791325808640,
+      "text": "Et vous, Aisha?",
+      "speaker": "Unknown",
+      "created_at": 1791325811024
+     },
+     {
+      "id": 6103004,
+      "realtime": false,
+      "start": 10.75,
+      "end": 15.19,
+      "spoken_at": 1791325810750,
+      "text": "Je comprends pas la différence entre les deux.",
+      "speaker": "Unknown",
+      "created_at": 1791325812736
+     },
+     {
+      "id": 6103005,
+      "realtime": false,
+      "start": 16.19,
+      "end": 20.08,
+      "spoken_at": 1791325816190,
+      "text": "J'ai fait les devoirs dimanche soir.",
+      "speaker": "Unknown",
+      "created_at": 1791325819263
+     },
+     {
+      "id": 6103006,
+      "realtime": false,
+      "start": 21.56,
+      "end": 22.71,
+      "spoken_at": 1791325821560,
+      "text": "Et vous, Kai?",
+      "speaker": "Unknown",
+      "created_at": 1791325824745
+     },
+     {
+      "id": 6103007,
+      "realtime": false,
+      "start": 23.42,
+      "end": 30.3,
+      "spoken_at": 1791325823420,
+      "text": "C'est la fin de le mois donc je suis très occupé.",
+      "speaker": "Unknown",
+      "created_at": 1791325825521
+     },
+     {
+      "id": 6103008,
+      "realtime": false,
+      "start": 30.73,
+      "end": 31.88,
+      "spoken_at": 1791325830730,
+      "text": "D'accord, et pourquoi?",
+      "speaker": "Unknown",
+      "created_at": 1791325832887
+     },
+     {
+      "id": 6103009,
+      "realtime": false,
+      "start": 32.38,
+      "end": 38.63,
+      "spoken_at": 1791325832380,
+      "text": "J'ai fait un voyage à Mexique l'année dernière.",
+      "speaker": "Unknown",
+      "created_at": 1791325834964
+     },
+     {
+      "id": 6103010,
+      "realtime": false,
+      "start": 39.53,
+      "end": 44.15,
+      "spoken_at": 1791325839530,
+      "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé.",
+      "speaker": "Unknown",
+      "created_at": 1791325841662
+     },
+     {
+      "id": 6103011,
+      "realtime": false,
+      "start": 45.61,
+      "end": 49.36,
+      "spoken_at": 1791325845610,
+      "text": "Il y a pas de problème.",
+      "speaker": "Unknown",
+      "created_at": 1791325848114
+     },
+     {
+      "id": 6103012,
+      "realtime": false,
+      "start": 50.8,
+      "end": 56.43,
+      "spoken_at": 1791325850800,
+      "text": "Ce matin j'ai parti très tôt pour le travail.",
+      "speaker": "Unknown",
+      "created_at": 1791325854035
+     },
+     {
+      "id": 6103013,
+      "realtime": false,
+      "start": 57.9,
+      "end": 59.05,
+      "spoken_at": 1791325857900,
+      "text": "D'accord, et pourquoi?",
+      "speaker": "Unknown",
+      "created_at": 1791325859861
+     },
+     {
+      "id": 6103014,
+      "realtime": false,
+      "start": 59.92,
+      "end": 67.42,
+      "spoken_at": 1791325859920,
+      "text": "Après le sport je douche et je prépare le souper.",
+      "speaker": "Unknown",
+      "created_at": 1791325862537
+     },
+     {
+      "id": 6103015,
+      "realtime": false,
+      "start": 68.57,
+      "end": 72.03,
+      "spoken_at": 1791325868570,
+      "text": "Pour les devoirs, écrivez dix phrases sur vos vacances.",
+      "speaker": "Unknown",
+      "created_at": 1791325870981
+     },
+     {
+      "id": 6103016,
+      "realtime": false,
+      "start": 72.97,
+      "end": 74.12,
+      "spoken_at": 1791325872970,
+      "text": "Et vous, Tom?",
+      "speaker": "Unknown",
+      "created_at": 1791325874953
+     },
+     {
+      "id": 6103017,
+      "realtime": false,
+      "start": 75.37,
+      "end": 80.08,
+      "spoken_at": 1791325875370,
+      "text": "Ma fille est six ans maintenant.",
+      "speaker": "Unknown",
+      "created_at": 1791325878238
+     },
+     {
+      "id": 6103018,
+      "realtime": false,
+      "start": 80.87,
+      "end": 84.99,
+      "spoken_at": 1791325880870,
+      "text": "Je suis excité pour partir en vacances.",
+      "speaker": "Unknown",
+      "created_at": 1791325883332
+     },
+     {
+      "id": 6103019,
+      "realtime": false,
+      "start": 85.53,
+      "end": 86.68,
+      "spoken_at": 1791325885530,
+      "text": "Qui veut continuer?",
+      "speaker": "Unknown",
+      "created_at": 1791325887635
+     },
+     {
+      "id": 6103020,
+      "realtime": false,
+      "start": 87.2,
+      "end": 90.14,
+      "spoken_at": 1791325887200,
+      "text": "Je suis d'accord avec vous.",
+      "speaker": "Unknown",
+      "created_at": 1791325889237
+     },
+     {
+      "id": 6103021,
+      "realtime": false,
+      "start": 91.62,
+      "end": 94.7,
+      "spoken_at": 1791325891620,
+      "text": "Il y a pas de mauvaise réponse ici.",
+      "speaker": "Unknown",
+      "created_at": 1791325894075
+     },
+     {
+      "id": 6103022,
+      "realtime": false,
+      "start": 95.34,
+      "end": 96.49,
+      "spoken_at": 1791325895340,
+      "text": "Et vous, Tom?",
+      "speaker": "Unknown",
+      "created_at": 1791325898172
+     },
+     {
+      "id": 6103023,
+      "realtime": false,
+      "start": 97.65,
+      "end": 102.36,
+      "spoken_at": 1791325897650,
+      "text": "C'est un bonne idée pour le projet.",
+      "speaker": "Unknown",
+      "created_at": 1791325899746
+     },
+     {
+      "id": 6103024,
+      "realtime": false,
+      "start": 103.62,
+      "end": 107.08,
+      "spoken_at": 1791325903620,
+      "text": "Attention au genre, on dit la maison, c'est féminin.",
+      "speaker": "Unknown",
+      "created_at": 1791325906748
+     },
+     {
+      "id": 6103025,
+      "realtime": false,
+      "start": 107.57,
+      "end": 111.1,
+      "spoken_at": 1791325907570,
+      "text": "Je travaille comme infirmier à l'hôpital.",
+      "speaker": "Unknown",
+      "created_at": 1791325909751
+     },
+     {
+      "id": 6103026,
+      "realtime": false,
+      "start": 112.32,
+      "end": 116.94,
+      "spoken_at": 1791325912320,
+      "text": "Attention, on ne dit pas j'ai allé, on dit je suis allé.",
+      "speaker": "Unknown",
+      "created_at": 1791325915105
+     },
+     {
+      "id": 6103027,
+      "realtime": false,
+      "start": 118.02,
+      "end": 119.56,
+      "spoken_at": 1791325918020,
+      "text": "Aisha, vous voulez répondre?",
+      "speaker": "Unknown",
+      "created_at": 1791325920642
+     },
+     {
+      "id": 6103028,
+      "realtime": false,
+      "start": 120.17,
+      "end": 124.06,
+      "spoken_at": 1791325920170,
+      "text": "Il a fait très beau samedi.",
+      "speaker": "Unknown",
+      "created_at": 1791325922618
+     },
+     {
+      "id": 6103029,
+      "realtime": false,
+      "start": 124.79,
+      "end": 127.1,
+      "spoken_at": 1791325924790,
+      "text": "Parfait, c'est une très bonne réponse.",
+      "speaker": "Unknown",
+      "created_at": 1791325927243
+     },
+     {
+      "id": 6103030,
+      "realtime": false,
+      "start": 127.82,
+      "end": 132.82,
+      "spoken_at": 1791325927820,
+      "text": "On a acheté des le pain et du fromage.",
+      "speaker": "Unknown",
+      "created_at": 1791325930720
+     },
+     {
+      "id": 6103031,
+      "realtime": false,
+      "start": 133.56,
+      "end": 134.71,
+      "spoken_at": 1791325933560,
+      "text": "Et vous, Kai?",
+      "speaker": "Unknown",
+      "created_at": 1791325936518
+     },
+     {
+      "id": 6103032,
+      "realtime": false,
+      "start": 136.03,
+      "end": 142.28,
+      "spoken_at": 1791325936030,
+      "text": "Je voudrais améliorer mon français pour le travail.",
+      "speaker": "Unknown",
+      "created_at": 1791325938105
+     },
+     {
+      "id": 6103033,
+      "realtime": false,
+      "start": 143.23,
+      "end": 146.31,
+      "spoken_at": 1791325943230,
+      "text": "Aujourd'hui on révise le passé composé avec être.",
+      "speaker": "Unknown",
+      "created_at": 1791325945311
+     },
+     {
+      "id": 6103034,
+      "realtime": false,
+      "start": 147.56,
+      "end": 152.56,
+      "spoken_at": 1791325947560,
+      "text": "J'ai appris le français depuis huit mois.",
+      "speaker": "Unknown",
+      "created_at": 1791325949643
+     },
+     {
+      "id": 6103035,
+      "realtime": false,
+      "start": 153.66,
+      "end": 157.41,
+      "spoken_at": 1791325953660,
+      "text": "J'aime beaucoup cuisiner le dimanche.",
+      "speaker": "Unknown",
+      "created_at": 1791325955874
+     },
+     {
+      "id": 6103036,
+      "realtime": false,
+      "start": 158.79,
+      "end": 163.79,
+      "spoken_at": 1791325958790,
+      "text": "J'ai écouté le chanson que vous avez partagée.",
+      "speaker": "Unknown",
+      "created_at": 1791325961574
+     },
+     {
+      "id": 6103037,
+      "realtime": false,
+      "start": 165.25,
+      "end": 172.13,
+      "spoken_at": 1791325965250,
+      "text": "Après le souper on a pris une marche au parc.",
+      "speaker": "Unknown",
+      "created_at": 1791325967806
+     },
+     {
+      "id": 6103038,
+      "realtime": false,
+      "start": 173.7,
+      "end": 175.62,
+      "spoken_at": 1791325973700,
+      "text": "Bon travail aujourd'hui, à jeudi.",
+      "speaker": "Unknown",
+      "created_at": 1791325976041
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "Spadina Ave, Toronto, ON",
+   "latitude": 43.6629,
+   "longitude": -79.4001,
+   "created_at": 1791325800000
+  }
+ },
+ "timezone": "America/Toronto"
+}

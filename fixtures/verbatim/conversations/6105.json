@@ -1,0 +1,59 @@
+{
+ "conversation": {
+  "id": 6105,
+  "start_time": 1791507600000,
+  "end_time": 1791507616958,
+  "device_type": "unknown",
+  "summary": "Short exchange.",
+  "short_summary": "Short exchange.",
+  "state": "COMPLETED",
+  "created_at": 1791507600000,
+  "updated_at": 1791507706958,
+  "transcriptions": [
+   {
+    "id": 61051,
+    "realtime": false,
+    "utterances": [
+     {
+      "id": 6105001,
+      "realtime": false,
+      "start": 0.6,
+      "end": 4.35,
+      "spoken_at": 1791507600600,
+      "text": "Je suis allé au marché samedi.",
+      "speaker": "Unknown",
+      "created_at": 1791507602508
+     },
+     {
+      "id": 6105002,
+      "realtime": false,
+      "start": 5.85,
+      "end": 10.85,
+      "spoken_at": 1791507605850,
+      "text": "Je suis resté à la maison hier soir.",
+      "speaker": "Unknown",
+      "created_at": 1791507607771
+     },
+     {
+      "id": 6105003,
+      "realtime": false,
+      "start": 11.48,
+      "end": 16.48,
+      "spoken_at": 1791507611480,
+      "text": "Je me lève à six heures et demie.",
+      "speaker": "Unknown",
+      "created_at": 1791507614519
+     }
+    ]
+   }
+  ],
+  "suggested_links": [],
+  "primary_location": {
+   "address": "King St W, Toronto, ON",
+   "latitude": 43.6447,
+   "longitude": -79.3958,
+   "created_at": 1791507600000
+  }
+ },
+ "timezone": "America/Toronto"
+}
