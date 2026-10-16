@@ -49,6 +49,9 @@ const CLEAN = [
   "The mobile crash rate fell after the image library upgrade.",
 ];
 
+// Clean (habit-free) synthetic sentences, also used by the live demo scripts (src/hub/live/demoScripts.ts).
+export const DEMO_SENTENCES: readonly string[] = CLEAN;
+
 // Deterministic PRNG (LCG) so the fixtures are identical on every run.
 function rng(seed: number) {
   let a = seed >>> 0;

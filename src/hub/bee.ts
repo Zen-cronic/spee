@@ -12,6 +12,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
 import { z } from "zod";
+import { wordCount } from "../real/text.js";
 import { align, normTokens, type Lang } from "./fuzzy.js";
 
 // Event schemas (defensive: extra fields pass through; spoken_at is an ISO string on the stream
@@ -42,12 +43,33 @@ export const NewConversationSchema = z.object({
   type: z.literal("new-conversation"),
   conversation: z.object({ id: z.number(), conversation_uuid: z.string().optional(), start_time: When, state: z.string().optional() }).passthrough(),
 });
+// Observed 2026-10-16 (a text-stripped capture of `bee stream --types all`): when a recording
+// stops, `update-conversation` arrives at once with `end_time` set and `state: "PROCESSING"`,
+// and `delete-conversation` (same object) follows about 0.4 s later. Both carry the full
+// conversation object; only id, uuid, times and state are read.
+export const UpdateConversationSchema = z.object({
+  type: z.enum(["update-conversation", "delete-conversation"]),
+  conversation: z.object({ id: z.number(), conversation_uuid: z.string().optional(), start_time: When, end_time: When, state: z.string().nullable().optional() }).passthrough(),
+});
+// `todo-deleted` (seen with --types all): {todo:{id, conversationId, text, completed, alarmAt,
+// appleId}}. Only the id, completion and alarm are read (the text is never passed on).
+export const TodoDeletedSchema = z.object({
+  type: z.literal("todo-deleted"),
+  todo: z.object({ id: z.union([z.number(), z.string()]), completed: z.boolean().nullable().optional(), alarmAt: z.number().nullable().optional() }).passthrough(),
+});
 export type NewUtterance = z.infer<typeof NewUtteranceSchema>;
 export type TaggedUtterance = z.infer<typeof TaggedUtteranceSchema>;
 export type NewConversation = z.infer<typeof NewConversationSchema>;
-export type BeeEvent = NewUtterance | TaggedUtterance | NewConversation | { type: "keepalive"; timestamp: number };
+export type UpdateConversation = z.infer<typeof UpdateConversationSchema>;
+export type TodoDeleted = z.infer<typeof TodoDeletedSchema>;
+export type BeeEvent = NewUtterance | TaggedUtterance | NewConversation | UpdateConversation | TodoDeleted | { type: "keepalive"; timestamp: number };
 
-export const STREAM_TYPES = "new-utterance,tagged-utterance,new-conversation";
+// update-conversation ends a live conversation; delete-conversation retracts it; todo-deleted
+// reconciles the wrist ledger. All three names were seen on the real stream (--types all,
+// 2026-10-16). If the CLI rejects the list (the stream exits at once), spawnBeeStream falls back
+// to STREAM_TYPES_MIN, whose names the CLI documents.
+export const STREAM_TYPES = "new-utterance,tagged-utterance,new-conversation,update-conversation,delete-conversation,todo-deleted";
+export const STREAM_TYPES_MIN = "new-utterance,tagged-utterance,new-conversation,update-conversation";
 
 export const toMs = (t: string | number | null | undefined): number | null => {
   if (t == null) return null;
@@ -70,7 +92,7 @@ export function parseStreamLine(line: string): BeeEvent | null {
   if (!o || typeof o !== "object") return null;
   const r = o as Record<string, unknown>;
   if (r.type === undefined && typeof r.timestamp === "number") return { type: "keepalive", timestamp: r.timestamp };
-  for (const s of [NewUtteranceSchema, TaggedUtteranceSchema, NewConversationSchema]) {
+  for (const s of [NewUtteranceSchema, TaggedUtteranceSchema, NewConversationSchema, UpdateConversationSchema, TodoDeletedSchema]) {
     const p = s.safeParse(o);
     if (p.success) return p.data;
   }
@@ -92,13 +114,17 @@ export function spawnBeeStream(opts: { bin?: string; onEvent: (e: BeeEvent) => v
   let stopped = false;
   let backoff = 1000;
   let timer: NodeJS.Timeout | null = null;
+  let types = STREAM_TYPES;
+  let lines = 0;
   const start = () => {
     if (stopped) return;
     const startedAt = Date.now();
-    child = (opts.spawnFn ?? spawn)(bin, ["stream", "--types", STREAM_TYPES, "--json"], { stdio: ["ignore", "pipe", "pipe"] });
-    log("bee.stream.start", { pid: child.pid });
+    lines = 0;
+    child = (opts.spawnFn ?? spawn)(bin, ["stream", "--types", types, "--json"], { stdio: ["ignore", "pipe", "pipe"] });
+    log("bee.stream.start", { pid: child.pid, types });
     const rl = createInterface({ input: child.stdout! });
     rl.on("line", (l) => {
+      lines++;
       const e = parseStreamLine(l);
       if (e) opts.onEvent(e);
     });
@@ -108,6 +134,11 @@ export function spawnBeeStream(opts: { bin?: string; onEvent: (e: BeeEvent) => v
     child.on("close", (code) => {
       log("bee.stream.exit", { code, stderrBytes: errBytes });
       if (stopped) return;
+      // An immediate failure with no output: the CLI may not accept every type name.
+      if (types !== STREAM_TYPES_MIN && code !== 0 && lines === 0 && Date.now() - startedAt < 10_000) {
+        types = STREAM_TYPES_MIN;
+        log("bee.stream.types.fallback", { types });
+      }
       if (Date.now() - startedAt > 60_000) backoff = 1000;
       timer = setTimeout(start, backoff);
       backoff = Math.min(backoff * 2, 30_000);
@@ -194,6 +225,35 @@ export interface Verification {
   reason: string;
 }
 
+// One Bee line as the live engine sees it (hub -> `bee.line`). PRIVACY: `text` is present only for
+// a line Bee tagged as the wearer with a sufficient score; for anyone else the line is a word count.
+export type LineSpeaker = "wearer" | "other" | "low-score" | "untagged";
+export interface BeeLine {
+  utteranceId: number;
+  conversationUuid: string | null;
+  speaker: LineSpeaker;
+  text?: string; // wearer lines only
+  words: number;
+  spokenAt: number; // Bee spoken_at (start of the line), hub-clock ms
+  durMs: number | null; // Bee end - start (recording seconds), when both are present
+  startS: number | null; // Bee utterance start/end: seconds from the start of the recording
+  endS: number | null;
+  receivedAt: number; // new-utterance reached the hub
+  resolvedAt: number; // the speaker was decided (wearer tag, other tag, or tag timeout)
+  score: number | null;
+  drill: boolean; // the line confirmed a drill attempt (consumed by the verifier)
+}
+// A Bee conversation event (hub -> `bee.conversation`).
+export interface BeeConversationEvent {
+  type: "new-conversation" | "update-conversation" | "delete-conversation";
+  id: number;
+  uuid: string | null;
+  state: string | null;
+  startMs: number | null;
+  endMs: number | null;
+  receivedAt: number;
+}
+
 export interface BeeAttempt {
   cardId: string;
   text: string;
@@ -214,6 +274,9 @@ interface Utt {
   tag: "pending" | "wearer" | "other" | "low-score" | "timeout";
   score: number | null;
   consumed: boolean;
+  startS?: number | null;
+  endS?: number | null;
+  emitted?: LineSpeaker; // the speaker last reported through onLine
 }
 
 export interface OpenCard {
@@ -243,6 +306,9 @@ export class BeeVerifier {
       onVerification: (v: Verification) => void;
       onBeeAttempt: (a: BeeAttempt) => void;
       onPolling?: (attemptId: string) => void;
+      onLine?: (l: BeeLine) => void; // the live engine: every line once its speaker is decided
+      onConversation?: (c: BeeConversationEvent) => void;
+      onTodoDeleted?: (t: { id: string; completed: boolean | null; alarmAt: number | null; receivedAt: number }) => void;
     },
   ) {}
 
@@ -277,8 +343,15 @@ export class BeeVerifier {
     this.counters.events++;
     this.lastEventAt = now;
     if (e.type === "keepalive") return;
-    if (e.type === "new-conversation") {
-      if (e.conversation.conversation_uuid) this.convIds.set(e.conversation.conversation_uuid, e.conversation.id);
+    if (e.type === "todo-deleted") {
+      this.opts.onTodoDeleted?.({ id: String(e.todo.id), completed: e.todo.completed ?? null, alarmAt: e.todo.alarmAt ?? null, receivedAt: now });
+      return;
+    }
+    if (e.type === "new-conversation" || e.type === "update-conversation" || e.type === "delete-conversation") {
+      const c = e.conversation;
+      if (c.conversation_uuid) this.convIds.set(c.conversation_uuid, c.id);
+      const end = "end_time" in c ? toMs(c.end_time as string | number | null | undefined) : null;
+      this.opts.onConversation?.({ type: e.type, id: c.id, uuid: c.conversation_uuid ?? null, state: c.state ?? null, startMs: toMs(c.start_time), endMs: end, receivedAt: now });
       return;
     }
     if (e.type === "new-utterance") {
@@ -290,7 +363,7 @@ export class BeeVerifier {
       this.counters.utterances++;
       const spoken = toMs(u.spoken_at) ?? now - 5000;
       const dur = u.start != null && u.end != null ? Math.max(0, (u.end - u.start) * 1000) : 0;
-      const utt: Utt = { id: u.id, uuid: e.conversation_uuid, text: u.text, startMs: spoken, endMs: spoken + dur, receivedAt: now, tag: "pending", score: null, consumed: false };
+      const utt: Utt = { id: u.id, uuid: e.conversation_uuid, text: u.text, startMs: spoken, endMs: spoken + dur, receivedAt: now, tag: "pending", score: null, consumed: false, startS: u.start ?? null, endS: u.end ?? null };
       this.utts.set(u.id, utt);
       const early = this.earlyTags.get(u.id);
       if (early) {
@@ -324,6 +397,33 @@ export class BeeVerifier {
       this.counters.wearerTags++;
       this.tryMatch(utt);
     }
+    this.emitLine(utt);
+  }
+
+  // Report a line to the live engine once its speaker is known (again if a late tag changes it).
+  // Only a wearer line carries text.
+  private emitLine(u: Utt) {
+    if (!this.opts.onLine) return;
+    if (u.tag === "pending") return;
+    const speaker: LineSpeaker = u.tag === "timeout" ? "untagged" : u.tag;
+    if (u.emitted === speaker) return;
+    u.emitted = speaker;
+    const durMs = u.startS != null && u.endS != null ? Math.max(0, (u.endS - u.startS) * 1000) : null;
+    this.opts.onLine({
+      utteranceId: u.id,
+      conversationUuid: u.uuid ?? null,
+      speaker,
+      ...(speaker === "wearer" ? { text: u.text } : {}),
+      words: wordCount(u.text),
+      spokenAt: u.startMs,
+      durMs,
+      startS: u.startS ?? null,
+      endS: u.endS ?? null,
+      receivedAt: u.receivedAt,
+      resolvedAt: this.opts.clock(),
+      score: u.score,
+      drill: speaker === "wearer" && u.consumed,
+    });
   }
 
   // A line counts for a card only if Bee delivered it after the card opened and it was spoken no
@@ -407,7 +507,10 @@ export class BeeVerifier {
   async tick(): Promise<void> {
     const now = this.opts.clock();
     for (const u of this.utts.values()) {
-      if (u.tag === "pending" && now - u.receivedAt >= this.t.tagWaitMs) u.tag = "timeout";
+      if (u.tag === "pending" && now - u.receivedAt >= this.t.tagWaitMs) {
+        u.tag = "timeout";
+        this.emitLine(u);
+      }
       if (now - u.receivedAt >= this.t.bufferTtlMs) this.utts.delete(u.id);
     }
     for (const [id] of this.earlyTags) if (!this.utts.has(id) && this.earlyTags.size > 200) this.earlyTags.delete(id);

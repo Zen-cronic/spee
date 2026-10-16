@@ -10,7 +10,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { localDate } from "../real/deck.js";
-import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeEvent, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
+import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
@@ -107,7 +107,35 @@ export class CoachHub extends EventEmitter {
       onVerification: (v) => this.onVerification(v),
       onBeeAttempt: (a) => this.onBeeAttempt(a),
       onPolling: (id) => this.onPolling(id),
+      // Internal (unsequenced) events for the live engine (src/hub/live). Never published to a
+      // surface: a non-wearer line carries a word count only, never text.
+      onLine: (l) => this.emit("bee.line", l),
+      onConversation: (c) => this.emit("bee.conversation", c),
+      onTodoDeleted: (t) => this.emit("bee.todo-deleted", t),
     });
+  }
+
+  // Internal Bee events for the live engine: `bee.line` (BeeLine), `bee.conversation`
+  // (BeeConversationEvent) and `bee.todo-deleted` ({id, completed, alarmAt}; never the to-do
+  // text). Returns an unsubscribe function.
+  onBee(handlers: { line?: (l: BeeLine) => void; conversation?: (c: BeeConversationEvent) => void; todoDeleted?: (t: { id: string; completed: boolean | null; alarmAt: number | null; receivedAt: number }) => void }): () => void {
+    const pairs: [string, ((...args: any[]) => void) | undefined][] = [
+      ["bee.line", handlers.line],
+      ["bee.conversation", handlers.conversation],
+      ["bee.todo-deleted", handlers.todoDeleted],
+    ];
+    for (const [ev, h] of pairs) if (h) this.on(ev, h);
+    return () => {
+      for (const [ev, h] of pairs) if (h) this.off(ev, h);
+    };
+  }
+
+  // A drill is in progress: a session is running, a card was opened recently, or an attempt is
+  // waiting for Bee. Live nudges are suppressed meanwhile (reason "drill-active").
+  drillActive(recentMs = 5 * 60_000): boolean {
+    if (this.session) return true;
+    if (this.verifier.pendingCount() > 0) return true;
+    return !!this.open && this.clock() - this.open.openedAt < recentMs;
   }
 
   get dataLabel() {
@@ -147,14 +175,23 @@ export class CoachHub extends EventEmitter {
     }
     s.held = window;
     if (!s.timer) {
-      s.timer = setTimeout(() => {
+      // Real timers run on a monotonic clock and can fire a millisecond before the wall clock
+      // says the interval is over: re-arm for the remainder, so the gap is never under it.
+      const fire = () => {
+        const left = s.lastAt + minIntervalMs - this.clock();
+        if (left > 0) {
+          s.timer = setTimeout(fire, left);
+          s.timer.unref?.();
+          return;
+        }
         s.timer = null;
         const w = s.held;
         s.held = null;
         if (!w) return;
         s.lastAt = this.clock();
         this.publish("live.window", { window: w });
-      }, Math.max(0, wait));
+      };
+      s.timer = setTimeout(fire, Math.max(0, wait));
       s.timer.unref?.();
     }
     return "held";

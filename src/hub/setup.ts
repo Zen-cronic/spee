@@ -12,6 +12,7 @@ import { CoachHub, loadAttempts, type Attempt } from "./core.js";
 import { DEMO_DEFAULT_CYCLE, DEMO_EPOCH, DEMO_LABEL, DEMO_TZ, DEMO_WEARER, type DemoScenario } from "./demoData.js";
 import { loadHubDeck, saveHubDeck, type HubDeck } from "./scheduler.js";
 import { loadPrereg, loadRealSessions, type StatSession, type TransferPrereg } from "./stats.js";
+import { BEE_LINE_LAG_MS, BEE_TAG_LAG_MS, type Schedule } from "./live/demoScripts.js";
 
 export const MIN_SPEAKER_SCORE = 0.5; // observed wearer scores 0.64-0.86 (2026-10-16)
 
@@ -174,6 +175,29 @@ export class DemoDirector {
     else if (scenario !== "untagged") steps.push({ dtMs: at + 500, event: this.tag(u.id, DEMO_WEARER.first_name, 0.82) });
     this.emitLater(steps);
     return scenario;
+  }
+
+  // Replay a scripted live conversation (src/hub/live/demoScripts.ts) shaped like the recorded
+  // stream: new-conversation, then per line new-utterance 5.4 s after it ends and, for the wearer
+  // only, tagged-utterance 0.5 s later. Colleagues are never tagged (as on the real stream), so the
+  // verifier hands the live engine their word counts only. Times scale with the pace; Bee's
+  // utterance start/end stay in recording seconds. Returns the conversation uuid.
+  private convN = 100;
+  replayConversation(s: Schedule): { conversationId: string; conversationNumber: number } {
+    const n = ++this.convN;
+    const uuid = `demo-0000-4000-8000-${String(n).padStart(12, "0")}`;
+    const convId = 99_000_000 + n;
+    const t0 = this.hub.clock();
+    const at = (storyMs: number) => new Date(t0 + storyMs * this.pace).toISOString();
+    const steps: ReplayStep[] = [{ dtMs: s.convStartMs, event: { type: "new-conversation", conversation: { id: convId, conversation_uuid: uuid, start_time: at(s.convStartMs), state: "CAPTURING" } } }];
+    for (const l of s.lines) {
+      const id = ++this.uttId;
+      steps.push({ dtMs: l.endMs + BEE_LINE_LAG_MS, event: { type: "new-utterance", conversation_uuid: uuid, utterance: { id, sample_id: `demo-sample-${id}`, start: (l.startMs - s.convStartMs) / 1000, end: (l.endMs - s.convStartMs) / 1000, text: l.text, spoken_at: at(l.startMs) } } });
+      if (l.who === "ada") steps.push({ dtMs: l.endMs + BEE_TAG_LAG_MS, event: this.tag(id, DEMO_WEARER.first_name, 0.82) });
+    }
+    for (const st of steps) if (st.event.type === "tagged-utterance") st.event.conversation_uuid = uuid;
+    this.emitLater(steps.sort((a, b) => a.dtMs - b.dtMs));
+    return { conversationId: uuid, conversationNumber: n };
   }
 
   // Bee hears the wearer say the open card with no phone/Alexa preview.

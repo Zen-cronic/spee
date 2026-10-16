@@ -1,7 +1,7 @@
 // Bee live-feed parsing and attempt verification, on synthetic events shaped like the recorded
 // stream (FL-8). No CLI, no network: a manual clock drives every timeout.
 import { describe, expect, it } from "vitest";
-import { BeeVerifier, DEFAULT_TIMINGS, parseStreamLine, type BeeAttempt, type BeeEvent, type PolledUtterance, type Verification } from "../src/hub/bee.js";
+import { BeeVerifier, DEFAULT_TIMINGS, parseStreamLine, spawnBeeStream, STREAM_TYPES, STREAM_TYPES_MIN, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type PolledUtterance, type Verification } from "../src/hub/bee.js";
 import { wearerRule } from "../src/hub/setup.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
@@ -34,7 +34,15 @@ describe("stream parsing", () => {
     expect(u).toMatchObject({ type: "new-utterance", utterance: { id: 5, text: "hello there" } });
     expect(parseStreamLine('{"type":"tagged-utterance","utterance_id":5,"person_id":1,"person_first_name":"Ada","speaker_score":0.8,"conversation_uuid":"x"}')).toMatchObject({ type: "tagged-utterance", utterance_id: 5 });
     expect(parseStreamLine('{"type":"new-conversation","conversation":{"id":9,"conversation_uuid":"x","start_time":"2026-10-16T18:37:01.229Z","state":"CAPTURING","extra":1}}')).toMatchObject({ type: "new-conversation", conversation: { id: 9 } });
-    expect(parseStreamLine('{"type":"update-conversation","conversation":{}}')).toBeNull();
+    expect(parseStreamLine('{"type":"update-conversation","conversation":{}}')).toBeNull(); // no id: not a conversation
+    // The real shape (text-stripped capture, 2026-10-16): end_time set, state PROCESSING; delete follows.
+    const upd = '{"type":"update-conversation","conversation":{"id":11338934,"start_time":"2026-10-16T20:30:50.381Z","end_time":"2026-10-16T20:40:30.539Z","conversation_uuid":"ecb12ebb","device_type":"unknown","device_id":null,"summary":null,"short_summary":null,"state":"PROCESSING","primary_location":null,"template":null,"city":null,"business":null,"bookmarked":false}}';
+    expect(parseStreamLine(upd)).toMatchObject({ type: "update-conversation", conversation: { id: 11338934, state: "PROCESSING", end_time: "2026-10-16T20:40:30.539Z" } });
+    expect(parseStreamLine(upd.replace("update-conversation", "delete-conversation"))).toMatchObject({ type: "delete-conversation" });
+    expect(parseStreamLine('{"type":"todo-deleted","todo":{"id":1,"conversationId":null,"text":"x","completed":false,"alarmAt":1792182210000,"appleId":null}}')).toMatchObject({ type: "todo-deleted", todo: { id: 1 } });
+    expect(parseStreamLine('{"type":"todo-deleted","todo":{}}')).toBeNull();
+    expect(STREAM_TYPES.split(",")).toEqual(["new-utterance", "tagged-utterance", "new-conversation", "update-conversation", "delete-conversation", "todo-deleted"]);
+    expect(STREAM_TYPES_MIN.split(",")).toEqual(["new-utterance", "tagged-utterance", "new-conversation", "update-conversation"]);
     expect(parseStreamLine("start 1792175733.152 14:35:33 EDT")).toBeNull();
     expect(parseStreamLine("{not json")).toBeNull();
   });
@@ -158,5 +166,86 @@ describe("Bee verification", () => {
     await r.advance(DEFAULT_TIMINGS.giveUpAfterMs + 5000);
     expect(r.beeOnly.filter((b) => b.cardId === "c2")).toHaveLength(0);
     expect(r.verifications.find((v) => v.attemptId === "a2")).toMatchObject({ status: "unverified" });
+  });
+});
+
+describe("live hooks (bee.line / bee.conversation)", () => {
+  function hooked() {
+    let now = T0;
+    const lines: BeeLine[] = [];
+    const convs: BeeConversationEvent[] = [];
+    const v = new BeeVerifier({ clock: () => now, rule: wearerRule(ME, ""), onVerification: () => {}, onBeeAttempt: () => {}, onLine: (l) => lines.push(l), onConversation: (c) => convs.push(c) });
+    return { v, lines, convs, advance: async (ms: number) => ((now += ms), await v.tick()), now: () => now };
+  }
+  it("a wearer line carries its text; another speaker's line is a word count only", async () => {
+    const r = hooked();
+    r.v.ingest(utt(20, "I guess the export is ready", T0));
+    expect(r.lines).toHaveLength(0); // waits for the speaker
+    r.v.ingest(tag(20));
+    expect(r.lines[0]).toMatchObject({ utteranceId: 20, speaker: "wearer", text: "I guess the export is ready", words: 6, startS: 10, endS: 13, durMs: 3000, drill: false, conversationUuid: "conv-1" });
+    r.v.ingest(utt(21, "the vault code is 4417", T0 + 1000));
+    r.v.ingest(tag(21, "Sam", 0.9));
+    expect(r.lines[1]).toMatchObject({ utteranceId: 21, speaker: "other", words: 5 });
+    expect(r.lines[1]).not.toHaveProperty("text");
+    r.v.ingest(utt(22, "a low score line", T0 + 2000));
+    r.v.ingest(tag(22, "Ada", 0.3));
+    expect(r.lines[2]).toMatchObject({ speaker: "low-score" });
+    expect(r.lines[2]).not.toHaveProperty("text");
+    expect(JSON.stringify(r.lines)).not.toContain("4417");
+  });
+  it("an untagged line is reported (count only) when the tag wait runs out; a late wearer tag re-reports it once", async () => {
+    const r = hooked();
+    r.v.ingest(utt(23, "nobody tagged this line", T0));
+    await r.advance(DEFAULT_TIMINGS.tagWaitMs + 1);
+    expect(r.lines).toEqual([expect.objectContaining({ utteranceId: 23, speaker: "untagged" })]);
+    expect(r.lines[0]).not.toHaveProperty("text");
+    await r.advance(1000);
+    expect(r.lines).toHaveLength(1);
+    r.v.ingest(tag(23));
+    expect(r.lines[1]).toMatchObject({ utteranceId: 23, speaker: "wearer", text: "nobody tagged this line" });
+    r.v.ingest(tag(23));
+    expect(r.lines).toHaveLength(2);
+  });
+  it("a line that confirms a drill attempt is flagged drill", () => {
+    const r = hooked();
+    r.v.openCard({ cardId: "c1", resay: TARGET, lang: "en", openedAt: T0 - 2000 });
+    r.v.expect({ attemptId: "a1", cardId: "c1", text: TARGET, speechStartMs: T0 - 3000, speechEndMs: T0 });
+    r.v.ingest(utt(24, TARGET, T0));
+    r.v.ingest(tag(24));
+    expect(r.lines[0]).toMatchObject({ speaker: "wearer", drill: true });
+  });
+  it("conversation events: new, update (leaving CAPTURING) and delete, with times", () => {
+    const r = hooked();
+    r.v.ingest(parseStreamLine('{"type":"new-conversation","conversation":{"id":9,"conversation_uuid":"u9","start_time":"2026-10-20T17:30:00.000Z","end_time":null,"state":"CAPTURING"}}')!);
+    r.v.ingest(parseStreamLine('{"type":"update-conversation","conversation":{"id":9,"conversation_uuid":"u9","start_time":"2026-10-20T17:30:00.000Z","end_time":"2026-10-20T17:40:00.000Z","state":"PROCESSING"}}')!);
+    r.v.ingest(parseStreamLine('{"type":"delete-conversation","conversation":{"id":9,"conversation_uuid":"u9","start_time":"2026-10-20T17:30:00.000Z","end_time":"2026-10-20T17:40:00.000Z","state":"PROCESSING"}}')!);
+    expect(r.convs.map((c) => [c.type, c.uuid, c.state])).toEqual([
+      ["new-conversation", "u9", "CAPTURING"],
+      ["update-conversation", "u9", "PROCESSING"],
+      ["delete-conversation", "u9", "PROCESSING"],
+    ]);
+    expect(r.convs[0]).toMatchObject({ id: 9, startMs: Date.parse("2026-10-20T17:30:00.000Z"), endMs: null });
+    expect(r.convs[1]!.endMs).toBe(Date.parse("2026-10-20T17:40:00.000Z"));
+  });
+});
+
+describe("bee stream subscription", () => {
+  it("falls back to the documented type list when the CLI rejects the full list at once", async () => {
+    const { EventEmitter } = await import("node:events");
+    const { PassThrough } = await import("node:stream");
+    const spawned: string[][] = [];
+    const spawnFn = ((_bin: string, args: string[]) => {
+      spawned.push(args);
+      const child = Object.assign(new EventEmitter(), { stdout: new PassThrough(), stderr: new PassThrough(), pid: spawned.length, kill: () => {} });
+      if (spawned.length === 1) setTimeout(() => child.emit("close", 2), 5);
+      return child;
+    }) as never;
+    const logs: string[] = [];
+    const h = spawnBeeStream({ bin: "bee", onEvent: () => {}, log: (e) => logs.push(e), spawnFn });
+    await new Promise((r) => setTimeout(r, 1100));
+    h.stop();
+    expect(spawned[0]).toEqual(["stream", "--types", STREAM_TYPES, "--json"]);
+    expect(spawned[1]).toEqual(["stream", "--types", STREAM_TYPES_MIN, "--json"]);
+    expect(logs).toContain("bee.stream.types.fallback");
   });
 });
