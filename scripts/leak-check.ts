@@ -14,14 +14,23 @@
 //    or tagged as someone else) counts as other-speaker text, conservatively.
 // 7. Coach-hub attempts (real/hub-attempts.json, gitignored) are the wearer's own words: their
 //    shingles count as wearer shingles.
-// 8. Private outputs: real/, out/, cache/ and the hub's state files must be git-ignored.
+// 8. Private outputs: real/, out/, cache/, the hub's state files, the live-coaching state, the
+//    private coach principles and the build outputs must be git-ignored.
+// 9. Live-coaching state (real/live/**/*.json, gitignored) holds the wearer's own words (recap
+//    moments): every string in it counts as wearer shingles.
+// 10. Coach principles (contract v2): when coach/principles.local.md exists, any of its 5-word
+//    shingles in a committable file FAILS the check, whatever the file's age. Shingles also in the
+//    committed generic template, or made only of function words, are not private. When
+//    coach/private-terms.local.txt exists, every non-empty line not starting with "#" is a banned
+//    term (case-insensitive, whole words); any hit FAILS. Counts only are printed, never the text.
 // Provenance: a file last modified before a conversation or meeting started cannot contain its
 // text, so such a shingle hit is reported as "predates" and does not fail the check (generic
 // phrases in synthetic fixtures written before a later recording). A fresh checkout resets
 // mtimes to now, which only makes the check stricter.
-// Exit code 1 when 1-3, 5, 6 (other-speaker) or 8 find anything.
+// Exit code 1 when 1-3, 5, 6 (other-speaker), 8 or 10 find anything.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { parseStreamLine, toMs } from "../src/hub/bee.js";
 import { matchesProfile } from "../src/real/wearer.js";
 import { CliBeeSource, pickUtterances } from "../src/bee/source.js";
@@ -109,8 +118,59 @@ if (existsSync(hubAttempts)) {
     for (const t of [a.provisional?.text, a.bee?.text]) if (t) (hubLines++, shingles(t).forEach((g) => mine.add(g)));
   }
 }
+// Live-coaching state: the wearer's own words (recap moments and rephrases).
+let liveStrings = 0;
+const walkStrings = (v: unknown, f: (s: string) => void): void => {
+  if (typeof v === "string") f(v);
+  else if (Array.isArray(v)) v.forEach((x) => walkStrings(x, f));
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => walkStrings(x, f));
+};
+const jsonFiles = (dir: string): string[] =>
+  existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? jsonFiles(join(dir, d.name)) : d.name.endsWith(".json") ? [join(dir, d.name)] : [])) : [];
+for (const f of jsonFiles("real/live")) {
+  try {
+    walkStrings(JSON.parse(readFileSync(f, "utf8")), (t) => {
+      const gs = shingles(t);
+      if (gs.length) (liveStrings++, gs.forEach((g) => mine.add(g)));
+    });
+  } catch {
+    /* a half-written file: skipped */
+  }
+}
+// Coach principles and banned terms (held in memory only; never printed).
+const principlesPath = "coach/principles.local.md";
+const templatePath = "coach/principles.template.md";
+const principles = new Set<string>();
+if (existsSync(principlesPath)) {
+  const generic = new Set(existsSync(templatePath) ? shingles(readFileSync(templatePath, "utf8")) : []);
+  for (const g of shingles(readFileSync(principlesPath, "utf8"))) if (!generic.has(g)) principles.add(g);
+}
+const termsPath = "coach/private-terms.local.txt";
+const terms = existsSync(termsPath)
+  ? [...new Set(readFileSync(termsPath, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")).map(fold).filter(Boolean))]
+  : [];
 // Private outputs must be git-ignored.
-const PRIVATE = ["real/deck.json", "real/hub-attempts.json", "real/corpus.json", "out/demo/deck.json", "out/contract-check/attempts.json", "cache/x.json", "fixtures/private/x.json"];
+const PRIVATE = [
+  "real/deck.json",
+  "real/hub-attempts.json",
+  "real/corpus.json",
+  "real/live/recaps.json",
+  "out/demo/deck.json",
+  "out/contract-check/attempts.json",
+  "out/alexa/skill.json",
+  "cache/x.json",
+  "fixtures/private/x.json",
+  "coach/principles.local.md",
+  "coach/private-terms.local.txt",
+  "tv/web/dist/index.html",
+  "tv/vega/build/x.js",
+  "tv/vega/buildinfo.json",
+  "tv/web/node_modules/x/index.js",
+  "tv/vega/node_modules/x/index.js",
+  "dist/web/phone/index.html",
+  "dist/web/sim/index.html",
+  "alexa/.ask/ask-states.json",
+];
 const notIgnored = PRIVATE.filter((p) => {
   try {
     execFileSync("git", ["check-ignore", "-q", "--no-index", p]);
@@ -119,12 +179,13 @@ const notIgnored = PRIVATE.filter((p) => {
     return true;
   }
 });
-for (const s of [other, mine]) for (const g of [...s.keys()]) if (g.split(" ").every((w) => FUNCTION.has(w))) s.delete(g);
+for (const s of [other, mine, principles]) for (const g of [...s.keys()]) if (g.split(" ").every((w) => FUNCTION.has(w))) s.delete(g);
 for (const g of mine) other.delete(g);
 
 let bad = 0;
 const JWT = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}/g;
-if (streams.length || hubLines) console.log(`Also screened: ${streamLines} Bee stream line(s) from ${streams.length} capture(s), ${hubLines} hub attempt text(s).`);
+if (streams.length || hubLines || liveStrings) console.log(`Also screened: ${streamLines} Bee stream line(s) from ${streams.length} capture(s), ${hubLines} hub attempt text(s), ${liveStrings} live-coaching string(s).`);
+console.log(`Coach principles: ${existsSync(principlesPath) ? `${principles.size} private shingles` : "no local principles file"}; banned terms: ${existsSync(termsPath) ? terms.length : "no local terms file"}.`);
 if (notIgnored.length) {
   bad++;
   console.log(`  private paths NOT git-ignored: ${notIgnored.join(", ")}`);
@@ -141,9 +202,12 @@ for (const f of files) {
   const addrHits = [...streets].filter((w) => text.includes(` ${w} `)).length;
   const jwt = (raw.match(JWT) ?? []).length + (raw.match(/Bearer\s+[A-Za-z0-9._-]{20,}/g) ?? []).length;
   const nameHits = [...names].filter((w) => text.includes(` ${w} `)).length;
-  if (otherHits || addrHits || jwt || nameHits) bad++;
-  if (otherHits || mineHits || addrHits || jwt || nameHits) console.log(`  ${f}: other-speaker ${otherHits}, wearer ${mineHits}, address ${addrHits}, token-like ${jwt}, colleague-name/title ${nameHits}${predates ? ` (+${predates} other-speaker shingle(s) in a file older than the recording: predates)` : ""}`);
+  const principleHits = [...principles].filter((g) => text.includes(` ${g} `)).length;
+  const termHits = terms.filter((t) => text.includes(` ${t} `)).length;
+  if (otherHits || addrHits || jwt || nameHits || principleHits || termHits) bad++;
+  if (otherHits || mineHits || addrHits || jwt || nameHits || principleHits || termHits)
+    console.log(`  ${f}: other-speaker ${otherHits}, wearer ${mineHits}, address ${addrHits}, token-like ${jwt}, colleague-name/title ${nameHits}, private-principles ${principleHits}, banned-term ${termHits}${predates ? ` (+${predates} other-speaker shingle(s) in a file older than the recording: predates)` : ""}`);
   else if (predates) console.log(`  ${f}: predates ${predates} (other-speaker shingle(s) in a file last modified before the recording; not a leak)`);
 }
-console.log(bad ? `LEAK CHECK: FAIL (${bad} file(s))` : "LEAK CHECK: PASS (no other-speaker text, colleague name, meeting title, address or token in committable files)");
+console.log(bad ? `LEAK CHECK: FAIL (${bad} file(s))` : "LEAK CHECK: PASS (no other-speaker text, colleague name, meeting title, address, token, private principle or banned term in committable files)");
 process.exit(bad ? 1 : 0);
