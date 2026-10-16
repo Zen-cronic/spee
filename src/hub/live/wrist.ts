@@ -1,0 +1,427 @@
+// The wrist: how a nudge or a recap reaches the wearer.
+//
+// BeeTodoWrist creates a Bee to-do with an alarm a few seconds ahead
+// (`bee todos create --text "[coach] ..." --alarm-at <iso> --json`). Verified 2026-10-16: the alarm
+// fires with as little as 5-10 s of lead, and it reaches the Apple Watch only while Bee is
+// recording and the iPhone is locked; otherwise it lands on the iPhone. Recaps fire after the
+// recording stopped, so they land on the wrist or the phone.
+//
+//   - execFile, never a shell; the CLI owns authentication (this code never reads the token).
+//   - One call at a time, at least MIN_GAP_MS apart, each with a 10 s timeout. A create is retried
+//     twice; after a timeout the to-do list is checked first, so a slow create is not duplicated.
+//   - Circuit breaker: 3 consecutive failed creates open it for 10 min (the live engine then
+//     turns live mode off with reason "wrist-down").
+//   - Ledger: <stateDir>/live/todos.json (ids, generated text, alarm times; never transcript text).
+//   - Cleanup: a nudge to-do is deleted 10 min after its alarm; a recap to-do is completed (it
+//     shows ticked in the Bee app) 30 min after its alarm. At startup and every hour, any open
+//     "[coach]" to-do whose alarm passed more than 30 min ago and that the ledger does not track
+//     is deleted.
+//
+// ReplayWrist is the demo and test channel: no CLI; it reports the hops a real to-do would have
+// (create ~1.45 s, alarm lead), scaled by the demo pace.
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+import { promisify } from "node:util";
+import { WRIST_TEXT_MAX, type WristChannel, type WristStatus } from "../contract.js";
+
+export const DEFAULT_LEAD_MS = Number(process.env.NUDGE_ALARM_LEAD_S ?? 10) * 1000 || 10_000;
+export const MIN_GAP_MS = 1500;
+export const CALL_TIMEOUT_MS = 10_000;
+export const CREATE_RETRIES = 2;
+export const BREAKER_THRESHOLD = 3;
+export const BREAKER_OPEN_MS = 10 * 60_000;
+export const NUDGE_CLEANUP_MS = 10 * 60_000;
+export const RECAP_CLEANUP_MS = 30 * 60_000;
+export const STALE_MS = 30 * 60_000;
+export const SWEEP_EVERY_MS = 60 * 60_000;
+export const REPLAY_TODO_MS = 1450; // a measured create round trip, for the replay hops
+
+export interface WristRequest {
+  kind: "nudge" | "recap";
+  refId: string; // the nudge or recap id
+  text: string; // generated "[coach] ..." text, <= WRIST_TEXT_MAX
+}
+export interface WristResult {
+  channel: WristChannel;
+  status: "scheduled" | "failed" | "replay";
+  todoId: string | null;
+  todoAt: number | null;
+  alarmAt: number | null;
+  leadMs: number;
+  error: string | null;
+}
+export interface Wrist {
+  readonly channel: WristChannel;
+  send(req: WristRequest): Promise<WristResult>;
+  status(): WristStatus;
+  circuitOpenUntil(): number | null;
+  start(): void;
+  stop(): void;
+  onCircuitOpen?: () => void;
+  reconcileDeleted?(todoId: string): void; // Bee's todo-deleted event (by us or by the wearer)
+}
+
+export function assertWristText(text: string) {
+  if (!text.startsWith("[coach] ") || text.length > WRIST_TEXT_MAX) throw new Error(`wrist text must start "[coach] " and be at most ${WRIST_TEXT_MAX} characters`);
+}
+
+// Replay (demo, tests, COACH_WRIST=replay)
+
+export class ReplayWrist implements Wrist {
+  readonly channel = "replay" as const;
+  private timers = new Set<NodeJS.Timeout>();
+  private waiting = new Set<() => void>();
+  sent: WristRequest[] = [];
+  constructor(private opts: { clock: () => number; pace: number; leadMs?: number; todoMs?: number }) {}
+  get leadMs() {
+    return this.opts.leadMs ?? DEFAULT_LEAD_MS;
+  }
+  async send(req: WristRequest): Promise<WristResult> {
+    assertWristText(req.text);
+    this.sent.push(req);
+    await new Promise<void>((resolve) => {
+      const done = () => (this.waiting.delete(done), resolve());
+      this.waiting.add(done);
+      const t = setTimeout(() => (this.timers.delete(t), done()), (this.opts.todoMs ?? REPLAY_TODO_MS) * this.opts.pace);
+      this.timers.add(t);
+    });
+    const todoAt = this.opts.clock();
+    return { channel: "replay", status: "replay", todoId: null, todoAt, alarmAt: todoAt + Math.round(this.leadMs * this.opts.pace), leadMs: this.leadMs, error: null };
+  }
+  status(): WristStatus {
+    return { channel: "replay", healthy: true, failures: 0, circuitOpenUntil: null, leadMs: this.leadMs, pendingTodos: 0 };
+  }
+  circuitOpenUntil() {
+    return null;
+  }
+  start() {}
+  stop() {
+    for (const t of this.timers) clearTimeout(t);
+    this.timers.clear();
+    for (const w of [...this.waiting]) w();
+  }
+}
+
+// Bee to-dos
+
+export type ExecFn = (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string; stderr?: string }>;
+const execFileP = promisify(execFile);
+export const defaultExec: ExecFn = async (file, args, opts) => {
+  const r = await execFileP(file, args, { timeout: opts.timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true });
+  return { stdout: String(r.stdout), stderr: String(r.stderr) };
+};
+
+export interface TodoEntry {
+  todoId: string;
+  kind: "nudge" | "recap";
+  refId: string;
+  text: string; // generated coach text only
+  createdAt: number;
+  alarmAt: number;
+  cleanup: "delete" | "complete";
+  cleanupAt: number;
+  state: "pending" | "done" | "gone" | "error";
+  attempts: number;
+}
+
+// "2026-10-16T20:22:10Z": whole seconds, rounded up, the format the probe verified.
+export const alarmIso = (ms: number) => new Date(Math.ceil(ms / 1000) * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+const toMs = (v: unknown): number | null => {
+  if (typeof v === "number" && Number.isFinite(v)) return v < 1e12 ? v * 1000 : v;
+  if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return Date.parse(v);
+  return null;
+};
+// `bee todos create --json` printed {id, text, alarm_at (ms), completed, created_at, ...} on
+// 2026-10-16; read defensively (a wrapper object, string ids).
+export function parseTodo(stdout: string): { id: string; alarmAt: number | null } | null {
+  try {
+    const o = JSON.parse(stdout) as Record<string, any>;
+    const t = (o && (o.todo ?? o.data ?? o)) as Record<string, unknown>;
+    const id = t?.id;
+    if (typeof id !== "number" && typeof id !== "string") return null;
+    return { id: String(id), alarmAt: toMs(t.alarm_at ?? t.alarmAt) };
+  } catch {
+    return null;
+  }
+}
+export interface ListedTodo {
+  id: string;
+  text: string;
+  completed: boolean;
+  alarmAt: number | null;
+}
+export function parseTodoList(stdout: string): ListedTodo[] {
+  try {
+    const o = JSON.parse(stdout) as unknown;
+    const arr = (Array.isArray(o) ? o : ((o as Record<string, unknown>).todos ?? (o as Record<string, unknown>).items ?? (o as Record<string, unknown>).data ?? [])) as Record<string, unknown>[];
+    return (Array.isArray(arr) ? arr : [])
+      .filter((t) => t && (typeof t.id === "number" || typeof t.id === "string"))
+      .map((t) => ({ id: String(t.id), text: typeof t.text === "string" ? t.text : "", completed: t.completed === true, alarmAt: toMs(t.alarm_at ?? t.alarmAt) }));
+  } catch {
+    return [];
+  }
+}
+
+const errText = (e: unknown) => {
+  const x = e as { killed?: boolean; signal?: string; code?: unknown; message?: string };
+  if (x?.killed || x?.signal === "SIGTERM") return "timeout";
+  return (x?.message ?? String(e)).split("\n")[0]!.slice(0, 160);
+};
+
+interface Job {
+  run: () => Promise<void>;
+  priority: boolean;
+}
+
+export interface BeeTodoWristOptions {
+  bin?: string;
+  exec?: ExecFn;
+  clock?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+  ledgerPath: string | null;
+  leadMs?: number;
+  minGapMs?: number;
+  timeoutMs?: number;
+  retries?: number;
+  breakerThreshold?: number;
+  breakerOpenMs?: number;
+  cleanupCheckMs?: number;
+  sweepEveryMs?: number;
+  maxQueueWaitMs?: number;
+  log?: (event: string, data?: Record<string, unknown>) => void;
+}
+
+export class BeeTodoWrist implements Wrist {
+  readonly channel = "bee-todo" as const;
+  onCircuitOpen?: () => void;
+  private q: Job[] = [];
+  private running = false;
+  private lastCallEnd = -Infinity;
+  private failures = 0;
+  private openUntil: number | null = null;
+  private ledger: TodoEntry[] = [];
+  private queuedCleanup = new Set<string>();
+  private timers: NodeJS.Timeout[] = [];
+  private stopped = false;
+  readonly calls: { args: string[]; at: number; ok: boolean }[] = []; // for tests and describe()
+
+  constructor(private o: BeeTodoWristOptions) {
+    if (o.ledgerPath && existsSync(o.ledgerPath)) {
+      try {
+        this.ledger = (JSON.parse(readFileSync(o.ledgerPath, "utf8")) as { todos?: TodoEntry[] }).todos ?? [];
+      } catch {
+        this.ledger = [];
+      }
+    }
+  }
+
+  private get clock() {
+    return this.o.clock ?? Date.now;
+  }
+  get leadMs() {
+    return this.o.leadMs ?? DEFAULT_LEAD_MS;
+  }
+  private log(event: string, data?: Record<string, unknown>) {
+    this.o.log?.(event, data);
+  }
+  private sleep(ms: number) {
+    return this.o.sleep ? this.o.sleep(ms) : new Promise<void>((r) => setTimeout(r, ms));
+  }
+
+  entries(): readonly TodoEntry[] {
+    return this.ledger;
+  }
+
+  status(): WristStatus {
+    const open = this.circuitOpenUntil();
+    return { channel: "bee-todo", healthy: open == null && this.failures < (this.o.breakerThreshold ?? BREAKER_THRESHOLD), failures: this.failures, circuitOpenUntil: open, leadMs: this.leadMs, pendingTodos: this.ledger.filter((t) => t.state === "pending").length };
+  }
+
+  circuitOpenUntil(): number | null {
+    return this.openUntil != null && this.clock() < this.openUntil ? this.openUntil : null;
+  }
+
+  start() {
+    const tick = this.o.cleanupCheckMs ?? 60_000;
+    const t1 = setInterval(() => this.cleanupDue(), tick);
+    const t2 = setInterval(() => this.sweep(), this.o.sweepEveryMs ?? SWEEP_EVERY_MS);
+    t1.unref?.();
+    t2.unref?.();
+    this.timers.push(t1, t2);
+    this.sweep();
+    this.cleanupDue();
+  }
+
+  stop() {
+    this.stopped = true;
+    for (const t of this.timers) clearInterval(t);
+    this.timers = [];
+    this.q = [];
+  }
+
+  // The serialized queue: creates jump ahead of cleanups; calls are at least minGapMs apart.
+  private enqueue<T>(fn: () => Promise<T>, priority: boolean): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const job: Job = { priority, run: () => fn().then(resolve, reject) };
+      if (priority) {
+        const i = this.q.findIndex((j) => !j.priority);
+        if (i < 0) this.q.push(job);
+        else this.q.splice(i, 0, job);
+      } else this.q.push(job);
+      void this.pump();
+    });
+  }
+  private async pump() {
+    if (this.running) return;
+    this.running = true;
+    try {
+      while (this.q.length && !this.stopped) {
+        const j = this.q.shift()!;
+        await j.run().catch(() => {});
+      }
+    } finally {
+      this.running = false;
+    }
+  }
+  private async call(args: string[]): Promise<string> {
+    const wait = this.lastCallEnd + (this.o.minGapMs ?? MIN_GAP_MS) - this.clock();
+    if (wait > 0) await this.sleep(wait);
+    try {
+      const r = await (this.o.exec ?? defaultExec)(this.o.bin ?? process.env.BEE_BIN ?? "bee", args, { timeout: this.o.timeoutMs ?? CALL_TIMEOUT_MS });
+      this.calls.push({ args: args.slice(0, 2), at: this.clock(), ok: true });
+      return r.stdout;
+    } catch (e) {
+      this.calls.push({ args: args.slice(0, 2), at: this.clock(), ok: false });
+      throw e;
+    } finally {
+      this.lastCallEnd = this.clock();
+    }
+  }
+
+  private saveLedger() {
+    const p = this.o.ledgerPath;
+    if (!p) return;
+    const keepFrom = this.clock() - 7 * 24 * 3600_000;
+    this.ledger = this.ledger.filter((t) => t.state === "pending" || t.createdAt >= keepFrom).slice(-500);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(`${p}.tmp`, JSON.stringify({ note: "Bee to-dos created by the live coach (generated text only; no transcript text)", todos: this.ledger }, null, 1) + "\n");
+    renameSync(`${p}.tmp`, p);
+  }
+
+  private fail(error: string): WristResult {
+    return { channel: "bee-todo", status: "failed", todoId: null, todoAt: null, alarmAt: null, leadMs: this.leadMs, error };
+  }
+
+  private noteFailure() {
+    this.failures++;
+    if (this.failures >= (this.o.breakerThreshold ?? BREAKER_THRESHOLD) && this.circuitOpenUntil() == null) {
+      this.openUntil = this.clock() + (this.o.breakerOpenMs ?? BREAKER_OPEN_MS);
+      this.log("wrist.circuit.open", { failures: this.failures, until: this.openUntil });
+      this.onCircuitOpen?.();
+    }
+  }
+
+  send(req: WristRequest): Promise<WristResult> {
+    try {
+      assertWristText(req.text);
+    } catch (e) {
+      return Promise.resolve(this.fail((e as Error).message));
+    }
+    const queuedAt = this.clock();
+    return this.enqueue(async () => {
+      if (this.clock() - queuedAt > (this.o.maxQueueWaitMs ?? 30_000)) return this.fail("stale: waited too long in the wrist queue");
+      const attempts = 1 + (this.o.retries ?? CREATE_RETRIES);
+      let last = "";
+      for (let i = 0; i < attempts; i++) {
+        if (this.circuitOpenUntil() != null) return this.fail(`wrist circuit open after ${this.failures} failures`);
+        const alarm = Math.ceil((this.clock() + this.leadMs) / 1000) * 1000;
+        try {
+          const out = await this.call(["todos", "create", "--text", req.text, "--alarm-at", alarmIso(alarm), "--json"]);
+          const t = parseTodo(out);
+          if (!t) throw new Error("bee todos create: no id in the output");
+          return this.created(req, t.id, t.alarmAt ?? alarm);
+        } catch (e) {
+          last = errText(e);
+          this.noteFailure();
+          this.log("wrist.create.failed", { kind: req.kind, refId: req.refId, attempt: i + 1, error: last });
+          if (last === "timeout") {
+            // The create may have landed after all: adopt it rather than create a duplicate.
+            const found = await this.call(["todos", "list", "--limit", "50", "--json"]).then(parseTodoList, () => [] as ListedTodo[]);
+            const hit = found.find((x) => x.text === req.text && x.alarmAt != null && Math.abs(x.alarmAt - alarm) <= 2000);
+            if (hit) return this.created(req, hit.id, hit.alarmAt!);
+          }
+        }
+      }
+      return this.fail(last || "bee todos create failed");
+    }, true);
+  }
+
+  private created(req: WristRequest, id: string, alarmAt: number): WristResult {
+    this.failures = 0;
+    const now = this.clock();
+    const cleanup = req.kind === "nudge" ? "delete" : "complete";
+    this.ledger.push({ todoId: id, kind: req.kind, refId: req.refId, text: req.text, createdAt: now, alarmAt, cleanup, cleanupAt: alarmAt + (req.kind === "nudge" ? NUDGE_CLEANUP_MS : RECAP_CLEANUP_MS), state: "pending", attempts: 0 });
+    this.saveLedger();
+    this.log("wrist.todo.created", { kind: req.kind, refId: req.refId, todoId: id, alarmAt });
+    return { channel: "bee-todo", status: "scheduled", todoId: id, todoAt: now, alarmAt, leadMs: this.leadMs, error: null };
+  }
+
+  // Bee reported a to-do deleted (our cleanup, or the wearer in the Bee app): a pending ledger
+  // entry for it needs no cleanup any more.
+  reconcileDeleted(todoId: string) {
+    const t = this.ledger.find((x) => x.todoId === todoId && x.state === "pending");
+    if (!t) return;
+    t.state = "gone";
+    this.saveLedger();
+    this.log("wrist.todo.gone", { todoId, kind: t.kind });
+  }
+
+  // Delete nudges 10 min after their alarm; complete recaps 30 min after theirs.
+  cleanupDue(): Promise<void[]> {
+    const now = this.clock();
+    const due = this.ledger.filter((t) => t.state === "pending" && t.cleanupAt <= now && !this.queuedCleanup.has(t.todoId));
+    return Promise.all(
+      due.map((t) => {
+        this.queuedCleanup.add(t.todoId);
+        return this.enqueue(async () => {
+          try {
+            await this.call(["todos", t.cleanup, t.todoId, "--json"]);
+            t.state = "done";
+          } catch (e) {
+            const msg = errText(e);
+            t.attempts++;
+            if (/not found|404|no such/i.test(msg)) t.state = "gone";
+            else if (t.attempts >= 3) t.state = "error";
+            this.log("wrist.cleanup.failed", { todoId: t.todoId, action: t.cleanup, error: msg });
+          } finally {
+            this.queuedCleanup.delete(t.todoId);
+            this.saveLedger();
+          }
+        }, false);
+      }),
+    );
+  }
+
+  // Delete open "[coach]" to-dos that are stale and untracked (a crash, a lost ledger, probes).
+  async sweep(): Promise<number> {
+    let deleted = 0;
+    try {
+      const list = await this.enqueue(() => this.call(["todos", "list", "--limit", "100", "--json"]).then(parseTodoList), false);
+      const now = this.clock();
+      const tracked = new Set(this.ledger.filter((t) => t.state === "pending").map((t) => t.todoId));
+      const stale = list.filter((t) => t.text.startsWith("[coach]") && !t.completed && !tracked.has(t.id) && t.alarmAt != null && now - t.alarmAt > STALE_MS);
+      for (const t of stale) {
+        await this.enqueue(() => this.call(["todos", "delete", t.id, "--json"]), false).then(
+          () => deleted++,
+          (e) => this.log("wrist.sweep.failed", { todoId: t.id, error: errText(e) }),
+        );
+      }
+      this.log("wrist.sweep", { listed: list.length, stale: stale.length, deleted });
+    } catch (e) {
+      this.log("wrist.sweep.failed", { error: errText(e) });
+    }
+    return deleted;
+  }
+}

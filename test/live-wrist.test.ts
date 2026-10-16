@@ -1,0 +1,143 @@
+// The wrist (src/hub/live/wrist.ts) against a fake Bee CLI and a virtual clock: execFile-style
+// argument arrays, a serialized queue with gaps, timeouts, retries without duplicates, the circuit
+// breaker, the ledger and the cleanup sweeps. No real to-do is ever created here.
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { alarmIso, BeeTodoWrist, MIN_GAP_MS, parseTodo, parseTodoList, ReplayWrist, type ExecFn } from "../src/hub/live/wrist.js";
+
+const T0 = Date.parse("2026-10-20T17:30:00Z");
+type Call = { file: string; args: string[]; timeout: number; start: number; end: number };
+
+function rig(script: (args: string[], n: number) => string | Error = () => "{}", opts: { ledger?: boolean } = {}) {
+  let now = T0;
+  const calls: Call[] = [];
+  const exec: ExecFn = async (file, args, o) => {
+    const start = now;
+    now += 400; // the CLI takes 0.4 s
+    calls.push({ file, args, timeout: o.timeout, start, end: now });
+    const r = script(args, calls.length);
+    if (r instanceof Error) throw r;
+    return { stdout: r };
+  };
+  const dir = opts.ledger === false ? null : mkdtempSync(join(tmpdir(), "wrist-"));
+  const opened: number[] = [];
+  const w = new BeeTodoWrist({ exec, bin: "bee", clock: () => now, sleep: async (ms) => void (now += ms), ledgerPath: dir ? join(dir, "live", "todos.json") : null });
+  w.onCircuitOpen = () => opened.push(now);
+  return { w, calls, dir, opened, now: () => now, advance: (ms: number) => void (now += ms) };
+}
+let nextId = 29_200_000;
+const created = (args: string[]) => {
+  const i = args.indexOf("--alarm-at");
+  return JSON.stringify({ id: ++nextId, text: args[args.indexOf("--text") + 1], alarm_at: Date.parse(args[i + 1]!), completed: false, created_at: T0, corrections: [], timezone: "America/Toronto" });
+};
+const timeoutErr = () => Object.assign(new Error("Command failed: bee todos create"), { killed: true, signal: "SIGTERM" });
+
+describe("BeeTodoWrist", () => {
+  it("creates a to-do with execFile arguments (no shell), a 10 s timeout and an alarm 10 s ahead", async () => {
+    const r = rig((a) => (a[1] === "create" ? created(a) : "[]"));
+    const text = `[coach] 5 hedges in 2 min. "Say it"; $(plainly)`;
+    const res = await r.w.send({ kind: "nudge", refId: "ndg_1", text });
+    expect(r.calls[0]).toMatchObject({ file: "bee", timeout: 10_000, args: ["todos", "create", "--text", text, "--alarm-at", alarmIso(T0 + 10_000), "--json"] });
+    expect(res).toMatchObject({ channel: "bee-todo", status: "scheduled", todoId: String(nextId), todoAt: T0 + 400, alarmAt: Date.parse(alarmIso(T0 + 10_000)), leadMs: 10_000, error: null });
+    const ledger = JSON.parse(readFileSync(join(r.dir!, "live", "todos.json"), "utf8"));
+    expect(ledger.todos[0]).toMatchObject({ todoId: String(nextId), kind: "nudge", refId: "ndg_1", text, cleanup: "delete", state: "pending" });
+    expect(r.w.status()).toMatchObject({ channel: "bee-todo", healthy: true, failures: 0, pendingTodos: 1, leadMs: 10_000 });
+  });
+  it("rejects text that is not generated coach text, without calling the CLI", async () => {
+    const r = rig();
+    expect((await r.w.send({ kind: "nudge", refId: "x", text: "I guess we could maybe ship it" })).status).toBe("failed");
+    expect((await r.w.send({ kind: "nudge", refId: "x", text: `[coach] ${"x".repeat(60)}` })).status).toBe("failed");
+    expect(r.calls).toHaveLength(0);
+  });
+  it("serializes calls at least 1.5 s apart, creates ahead of cleanups", async () => {
+    const r = rig((a) => (a[1] === "create" ? created(a) : "{}"));
+    await Promise.all([1, 2, 3].map((i) => r.w.send({ kind: "nudge", refId: `n${i}`, text: `[coach] nudge ${i}` })));
+    expect(r.calls.map((c) => c.args[1])).toEqual(["create", "create", "create"]);
+    for (let i = 1; i < r.calls.length; i++) expect(r.calls[i]!.start - r.calls[i - 1]!.end).toBeGreaterThanOrEqual(MIN_GAP_MS);
+  });
+  it("retries a failed create, and adopts a create that timed out but landed (no duplicate)", async () => {
+    const r = rig((a, n) => (a[1] === "create" ? (n <= 2 ? new Error("network down") : created(a)) : "[]"));
+    const res = await r.w.send({ kind: "nudge", refId: "n1", text: "[coach] retry me" });
+    expect(res.status).toBe("scheduled");
+    expect(r.calls.map((c) => c.args[1])).toEqual(["create", "create", "create"]);
+    expect(r.w.status().failures).toBe(0);
+
+    let landed = "";
+    const t = rig((a) => {
+      if (a[1] === "create") return (landed = created(a)), timeoutErr();
+      if (a[1] === "list") return JSON.stringify([JSON.parse(landed)]);
+      return "{}";
+    });
+    const res2 = await t.w.send({ kind: "nudge", refId: "n2", text: "[coach] slow create" });
+    expect(res2).toMatchObject({ status: "scheduled", todoId: String(JSON.parse(landed).id) });
+    expect(t.calls.map((c) => c.args[1])).toEqual(["create", "list"]);
+  });
+  it("opens the circuit after 3 consecutive failures, then fails fast", async () => {
+    const r = rig(() => new Error("bee: not logged in"));
+    const res = await r.w.send({ kind: "nudge", refId: "n1", text: "[coach] fail" });
+    expect(res).toMatchObject({ status: "failed", todoId: null, todoAt: null, alarmAt: null });
+    expect(r.calls).toHaveLength(3);
+    expect(r.opened).toHaveLength(1);
+    expect(r.w.status()).toMatchObject({ healthy: false, failures: 3 });
+    expect(r.w.circuitOpenUntil()).toBeGreaterThan(r.now());
+    const again = await r.w.send({ kind: "nudge", refId: "n2", text: "[coach] fail again" });
+    expect(again.error).toMatch(/circuit open/);
+    expect(r.calls).toHaveLength(3);
+  });
+  it("cleanup: deletes a nudge 10 min after its alarm, completes a recap 30 min after its alarm", async () => {
+    const r = rig((a) => (a[1] === "create" ? created(a) : "{}"));
+    const n = await r.w.send({ kind: "nudge", refId: "n1", text: "[coach] nudge" });
+    const c = await r.w.send({ kind: "recap", refId: "r1", text: "[coach] Recap: hedges high" });
+    r.advance(9 * 60_000);
+    await r.w.cleanupDue();
+    expect(r.calls.filter((x) => x.args[1] !== "create")).toHaveLength(0);
+    r.advance(2 * 60_000);
+    await r.w.cleanupDue();
+    expect(r.calls.at(-1)!.args).toEqual(["todos", "delete", n.todoId, "--json"]);
+    r.advance(20 * 60_000);
+    await r.w.cleanupDue();
+    expect(r.calls.at(-1)!.args).toEqual(["todos", "complete", c.todoId, "--json"]);
+    expect(r.w.entries().map((e) => e.state)).toEqual(["done", "done"]);
+    expect(r.w.status().pendingTodos).toBe(0);
+  });
+  it("sweep: deletes only stale, untracked, open [coach] to-dos", async () => {
+    const r = rig((a) =>
+      a[1] === "list"
+        ? JSON.stringify({ todos: [
+            { id: 1, text: "[coach] probe 10s", completed: false, alarm_at: T0 - 3600_000 },
+            { id: 2, text: "Buy milk", completed: false, alarm_at: T0 - 3600_000 },
+            { id: 3, text: "[coach] Recap: old", completed: true, alarm_at: T0 - 3600_000 },
+            { id: 4, text: "[coach] fresh", completed: false, alarm_at: T0 - 60_000 },
+          ] })
+        : "{}",
+    );
+    expect(await r.w.sweep()).toBe(1);
+    expect(r.calls.map((c) => c.args)).toEqual([
+      ["todos", "list", "--limit", "100", "--json"],
+      ["todos", "delete", "1", "--json"],
+    ]);
+  });
+  it("parses the create and list outputs defensively", () => {
+    expect(parseTodo('{"id":29154389,"text":"x","alarm_at":1792177029000}')).toEqual({ id: "29154389", alarmAt: 1792177029000 });
+    expect(parseTodo('{"todo":{"id":"7","alarmAt":"2026-10-20T17:30:10Z"}}')).toEqual({ id: "7", alarmAt: T0 + 10_000 });
+    expect(parseTodo("not json")).toBeNull();
+    expect(parseTodoList('[{"id":1,"text":"a","completed":false,"alarm_at":null}]')).toEqual([{ id: "1", text: "a", completed: false, alarmAt: null }]);
+    expect(parseTodoList('{"items":[{"id":2}]}')[0]!.id).toBe("2");
+    expect(alarmIso(T0 + 10_400)).toBe("2026-10-20T17:30:11Z");
+  });
+});
+
+describe("ReplayWrist", () => {
+  it("reports replay hops: ~1.45 s to the to-do and the alarm lead, scaled by the pace", async () => {
+    let now = T0;
+    const w = new ReplayWrist({ clock: () => now, pace: 0.001 });
+    const t = setInterval(() => (now += 1), 1);
+    const r = await w.send({ kind: "nudge", refId: "n", text: "[coach] 5 hedges in 2 min. Say it plainly." });
+    clearInterval(t);
+    expect(r).toMatchObject({ channel: "replay", status: "replay", todoId: null, leadMs: 10_000, error: null });
+    expect(r.alarmAt! - r.todoAt!).toBe(10);
+    expect(w.status()).toMatchObject({ channel: "replay", healthy: true, pendingTodos: 0 });
+  });
+});
