@@ -1,0 +1,35 @@
+// The mirror is restyled from the Rack Board shells: no UI string may still say Rack Board.
+// The vendored bridge package name (@rackboard/tv-voice-bridge and its tarball) is exempt.
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const ROOT = new URL("../", import.meta.url).pathname;
+const DIRS = ["tv/web", "tv/vega", "web/phone"];
+const SKIP = new Set(["node_modules", "dist", "build", ".tmp"]);
+const TEXT = /\.(ts|tsx|js|json|toml|html|css|md)$/;
+const walk = (d: string): string[] =>
+  existsSync(d) ? readdirSync(d).flatMap((n) => (SKIP.has(n) ? [] : statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : TEXT.test(n) ? [join(d, n)] : [])) : [];
+const EXEMPT = /@rackboard\/tv-voice-bridge|rackboard-tv-voice-bridge-\d/g;
+
+describe("Speaking Mirror branding", () => {
+  const files = DIRS.flatMap((d) => walk(join(ROOT, d)));
+  it("scans the TV apps and the phone page", () => {
+    expect(files.length).toBeGreaterThan(30);
+  });
+  it('has no "Rack Board" or "rackboard" string outside the vendored package name', () => {
+    const hits = files.filter((f) => /rack\s*board/i.test(readFileSync(f, "utf8").replace(EXEMPT, "")));
+    expect(hits.map((f) => f.slice(ROOT.length))).toEqual([]);
+  });
+  it("the Vega package is com.beecoach.mirror, titled Speaking Mirror", () => {
+    const manifest = readFileSync(join(ROOT, "tv/vega/manifest.toml"), "utf8");
+    expect(manifest).toMatch(/title = "Speaking Mirror"/);
+    expect(manifest).toMatch(/id = "com\.beecoach\.mirror"/);
+    expect(manifest).toMatch(/id = "com\.beecoach\.mirror\.main"/);
+    expect(JSON.parse(readFileSync(join(ROOT, "tv/vega/app.json"), "utf8")).name).toBe("com.beecoach.mirror.main");
+    expect(manifest).not.toMatch(/w3cmedia|media\.server/); // the mirror is silent: no media player
+  });
+  it("the wordmark is Speaking Mirror on the TV and the phone", () => {
+    for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts", "web/phone/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Speaking Mirror["']/);
+  });
+});

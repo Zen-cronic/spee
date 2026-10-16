@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speaking Mirror</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b1430; overflow: hidden; }
+      /* Fixed 1920x1080 stage, scaled to fit any browser window (a Fire TV renders 1920x1080 natively). */
+      #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+      #root { width: 1920px; height: 1080px; display: flex; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><div id="root"></div></div>
+    <script>
+      function fit() {
+        var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+        var el = document.getElementById('stage');
+        el.style.transform = 'scale(' + s + ')';
+        el.style.left = (window.innerWidth - 1920 * s) / 2 + 'px';
+        el.style.top = (window.innerHeight - 1080 * s) / 2 + 'px';
+      }
+      window.addEventListener('resize', fit); fit();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
