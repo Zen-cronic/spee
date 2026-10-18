@@ -12,16 +12,17 @@ import {C, F, R, SP, T} from './theme';
  */
 export type RemoteKey = 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'playpause';
 
-export function FocusRoot({children, onBack, onKey}: {children: ReactNode; onBack?: () => void; initial?: string; onKey?: (k: RemoteKey) => boolean | void}) {
+export function FocusRoot({children, onBack, onKey}: {children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void}) {
   const backRef = useRef(onBack);
   backRef.current = onBack;
   const keyRef = useRef(onKey);
   keyRef.current = onKey;
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!backRef.current) return false; // let the system handle Back (exits the app on the root screen)
-      backRef.current();
-      return true;
+      // false lets the system handle Back, which exits the app on the root screen. onBack returns
+      // false when there is nothing left to close or go back from.
+      if (!backRef.current) return false;
+      return backRef.current() !== false;
     });
     return () => sub.remove();
   }, []);

@@ -4,7 +4,7 @@ import { useDebug } from '../debug';
 import { FocusRoot } from '../focus';
 import type { MirrorConfig } from '../mirror/useMirror';
 import { useMirror } from '../mirror/useMirror';
-import type { ScreenView } from '../mirror/reducer';
+import { backAction, type ScreenView } from '../mirror/reducer';
 import { C, F, SAFE, T } from '../theme';
 import { LiveView } from './LiveView';
 import { PairingView } from './PairingView';
@@ -25,7 +25,13 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
   const order: ScreenView[] = TABS;
   const cur = s.view === 'drill' ? 'live' : s.view === 'recap' ? 'week' : s.view;
   const step = (d: number) => m.show(order[(order.indexOf(cur) + d + order.length) % order.length]!);
-  const onBack = () => (s.recapVisible ? m.dismissRecap() : m.show('week'));
+  // false = not handled: on the root screen the platform takes Back (and exits the app)
+  const onBack = (): boolean => {
+    const a = backAction(s);
+    if (a === 'dismissRecap') m.dismissRecap();
+    else if (a === 'home') m.show('week');
+    return a !== 'exit';
+  };
   const onKey = (k: string) => {
     if (s.recapVisible && (k === 'select' || k === 'back')) return m.dismissRecap();
     if (k === 'left') step(-1);

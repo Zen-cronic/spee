@@ -44,7 +44,7 @@ curl -X POST localhost:8791/api/demo/mirror -d '{}'                 # a practice
 - **Fixture mode** (`--fixture-v2`): the frozen fixture router answers `/api/demo/mirror` with the fixture's ten frames.
 - **Demo mode without the fixture** (`--demo`): the mirror plugin answers it with a synthetic voice metered by the phone's own prosody engine: 60 frames at 10 Hz, then `practice.summary`. `{"script":"focus","view":"transfer"}` switches every mirror to a screen.
 
-On the web TV, the arrow keys and Enter move along the tabs. Left or Right at either end of the row switches screens. Back or Escape closes the recap. `?debug=1` or `D` shows the seq counters.
+On the web TV, the arrow keys and Enter move along the tabs. Left or Right at either end of the row switches screens. Back or Escape closes the recap, then returns to the week; on the week screen, Back is left to the platform (on Vega it exits the app). `?debug=1` or `D` shows the seq counters.
 
 ## Vega (Fire TV)
 

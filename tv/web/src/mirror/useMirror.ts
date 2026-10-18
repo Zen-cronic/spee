@@ -56,6 +56,7 @@ export function useMirror(cfg: MirrorConfig) {
       client.on('welcome', (m) => {
         savedCode = m.code;
         setCode(m.code);
+        dispatch({ type: 'room', code: m.code });
         setJoinUrl(m.joinUrl ?? null);
         setMics(m.peers.filter((p) => p.role === 'mic').length);
         setRttMs(client.rttMs);
@@ -111,6 +112,7 @@ export function useMirror(cfg: MirrorConfig) {
     void getJson<Recap | RecapList>(url).then((r) => {
       const recap = r && 'recaps' in r ? r.recaps[0] : (r as Recap | null);
       if (recap && recap.id) dispatch({ type: 'recap', recap, show: true, now: Date.now() });
+      dispatch({ type: 'recapFetched', ok: !!(recap && recap.id) });
     });
   }, [state.recapWanted, cfg.httpBase]);
 

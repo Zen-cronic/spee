@@ -4,7 +4,10 @@
 // Sequenced hub events are applied in `seq` order and duplicates are dropped. An event that
 // arrives ahead of a gap waits in `pending` until the gap fills or GAP_WAIT_MS passes (a `tick`
 // then applies it and counts the gap). A new `hub.state` (a join or a reconnect) rebases the
-// sequence: anything at or below the last applied seq is still a duplicate.
+// sequence: anything at or below its `lastSeq` is already in the snapshot. A different `bootId`
+// means the hub restarted and its seq began again at 1, so the old high-water mark is dropped (an
+// older hub without these fields keeps the previous rule: at or below the last applied seq is a
+// duplicate).
 //
 // Room frames (`practice.meters`) carry no seq: they are applied as they arrive and only the last
 // PRACTICE_HISTORY frames are kept, in memory.
@@ -87,6 +90,9 @@ export interface SeqEvent {
 }
 
 export interface MirrorState {
+  bootId: string | null; // the hub process the sequence belongs to (hub.state)
+  room: string | null; // this screen's bridge room (welcome.code): practice summaries of other rooms are ignored
+  restarts: number; // hub restarts seen (a new bootId)
   lastSeq: number | null;
   floorSeq: number; // highest seq applied before the last rebase
   pending: SeqEvent[]; // ahead of a gap, ascending seq
@@ -118,6 +124,8 @@ export type MirrorAction =
   | { type: 'meters'; frames: PracticeMeters[]; now: number }
   | { type: 'tick'; now: number }
   | { type: 'show'; view: ScreenView }
+  | { type: 'room'; code: string | null }
+  | { type: 'recapFetched'; ok: boolean }
   | { type: 'dismissRecap' }
   | { type: 'liveState'; live: LiveState }
   | { type: 'recap'; recap: Recap; show: boolean; now: number };
@@ -127,6 +135,9 @@ const emptyPractice = (): PracticeSlice => ({ takeId: null, from: null, latest: 
 
 export function initialMirror(view: ScreenView = 'week'): MirrorState {
   return {
+    bootId: null,
+    room: null,
+    restarts: 0,
     lastSeq: null,
     floorSeq: 0,
     pending: [],
@@ -155,6 +166,13 @@ export function initialMirror(view: ScreenView = 'week'): MirrorState {
 
 const isSynthetic = (label: string | null | undefined) => !!label && /synthetic/i.test(label);
 
+// What Back does: close the recap, else go home to the week, else (already home) leave the app. The
+// platform handles 'exit' (Fire TV and Vega guideline: Back on the root screen exits).
+export function backAction(s: Pick<MirrorState, 'recapVisible' | 'view'>): 'dismissRecap' | 'home' | 'exit' {
+  if (s.recapVisible) return 'dismissRecap';
+  return s.view === 'week' ? 'exit' : 'home';
+}
+
 export const drillInProgress = (d: DrillState) => d.stage === 'card' || d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified';
 export const practiceActive = (p: PracticeSlice, now: number) => p.lastFrameAt !== null && now - p.lastFrameAt < PRACTICE_ACTIVE_MS;
 
@@ -172,11 +190,16 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       return a.view === s.view && !s.recapVisible ? s : { ...s, view: a.view, viewBy: 'remote', viewReason: null, recapVisible: false };
     case 'dismissRecap':
       return s.recapVisible ? { ...s, recapVisible: false } : s;
+    case 'room':
+      return a.code === s.room ? s : { ...s, room: a.code };
+    case 'recapFetched':
+      // a finished fetch (found or not) clears the request, so the next "show my recap" fetches again
+      return s.recapWanted === null ? s : { ...s, recapWanted: null };
     case 'liveState':
       return { ...s, live: { ...s.live, mode: a.live.mode, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;
-      return { ...s, recap: a.recap, recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id ? null : s.recapWanted };
+      return { ...s, recap: a.recap, recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };
   }
 }
 
@@ -184,12 +207,18 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
   const d: DrillState = { ...emptyDrill(), sessionId: h.session?.id ?? null, card: h.openCard, deck: h.deck, stage: h.openCard ? 'card' : 'idle' };
   const la = h.lastAttempt;
   if (la && h.openCard && la.cardId === h.openCard.id) Object.assign(d, drillFromAttempt(la));
+  const restarted = !!h.bootId && !!s.bootId && h.bootId !== s.bootId;
+  const floorSeq = typeof h.lastSeq === 'number' && Number.isFinite(h.lastSeq) ? h.lastSeq : restarted ? 0 : Math.max(s.floorSeq, s.lastSeq ?? 0);
   return {
     ...s,
+    bootId: h.bootId ?? s.bootId,
+    restarts: s.restarts + (restarted ? 1 : 0),
     lastSeq: null,
-    floorSeq: Math.max(s.floorSeq, s.lastSeq ?? 0),
+    floorSeq,
     pending: [],
     pendingSince: null,
+    // the old hub's conversation is gone with it
+    live: restarted ? { ...s.live, conversationId: null, startedAt: null, window: null, ended: null } : s.live,
     hubMode: h.mode,
     dataLabel: h.dataLabel,
     synthetic: isSynthetic(h.dataLabel) || h.mode === 'demo',
@@ -282,8 +311,12 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
     }
     case 'stats.updated':
       return { ...s, statsVersion: s.statsVersion + 1, dataLabel: p.dataLabel ?? s.dataLabel, synthetic: s.synthetic || isSynthetic(p.dataLabel), drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
-    case 'session.ended':
-      return { ...s, drill: { ...s.drill, summary: p.summary ?? null, stage: s.drill.stage === 'graded' || s.drill.stage === 'unverified' ? s.drill.stage : 'idle' } };
+    case 'session.ended': {
+      // The hub closed the card. A final verdict stays on screen with the summary under it; a card
+      // nobody attempted is closed, so the summary shows instead.
+      const keep = s.drill.stage === 'graded' || s.drill.stage === 'unverified';
+      return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle' } };
+    }
     case 'conversation.started':
       return { ...s, live: { ...s.live, conversationId: p.conversationId, startedAt: p.startedAt ?? null, window: null, ended: null, nudges: [], skips: [] }, ...switched(s, liveView(s, now), 'conversation started', 'Bee') };
     case 'live.window': {
@@ -295,8 +328,11 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       return p.nudge ? { ...s, live: { ...s.live, nudges: [p.nudge as Nudge, ...s.live.nudges].slice(0, KEEP_NUDGES) }, ...switched(s, liveView(s, now), 'nudge sent to the wrist', 'Bee') } : s;
     case 'nudge.skipped':
       return p.skip ? { ...s, live: { ...s.live, skips: [p.skip as NudgeSkipped, ...s.live.skips].slice(0, KEEP_NUDGES) } } : s;
-    case 'conversation.ended':
-      return { ...s, live: { ...s.live, ended: stripSeq(p) as unknown as ConversationEnded } };
+    case 'conversation.ended': {
+      // the window is over: drop it so the ended state ("Recap on its way") shows, not stale numbers
+      const same = !s.live.window || !p.conversationId || s.live.window.conversationId === p.conversationId;
+      return { ...s, live: { ...s.live, ended: stripSeq(p) as unknown as ConversationEnded, window: same ? null : s.live.window } };
+    }
     case 'recap.ready':
       return p.recap ? { ...s, recap: p.recap as Recap, recapVisible: true, recapShownAt: now, recapWanted: null } : s;
     case 'live.mode':
@@ -304,6 +340,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
     case 'practice.summary': {
       const sum = p.summary as PracticeSummary | undefined;
       if (!sum) return s;
+      if (s.room && sum.room && sum.room !== '*' && sum.room.toUpperCase() !== s.room.toUpperCase()) return s; // another room's take
       const pr = s.practice.takeId === sum.takeId ? s.practice : { ...emptyPractice(), takeId: sum.takeId, from: sum.from };
       return { ...s, practice: { ...pr, summary: sum }, view: 'practice', viewReason: 'take finished', viewBy: 'phone' };
     }

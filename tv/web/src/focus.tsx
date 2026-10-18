@@ -21,7 +21,7 @@ interface Ctx {
 }
 const FocusCtx = createContext<Ctx | null>(null);
 
-export function FocusRoot({ children, onBack, initial, onKey }: { children: ReactNode; onBack?: () => void; initial?: string; onKey?: (k: RemoteKey) => boolean | void }) {
+export function FocusRoot({ children, onBack, initial, onKey }: { children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void }) {
   const items = useRef(new Map<string, Item>());
   const [focused, setFocused] = useState<string | null>(initial ?? null);
   const focusedRef = useRef(focused);

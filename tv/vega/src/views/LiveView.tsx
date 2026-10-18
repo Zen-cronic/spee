@@ -82,6 +82,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
           <Text style={styles.overruleText} numberOfLines={3}>{`The phone heard a pass. Bee heard "${g.beeText ?? ''}" and that is what counts.`}</Text>
         </View>
       ) : null}
+      {d.summary ? <Text style={styles.hint}>{`Session over: ${d.summary.passed} passed, ${d.summary.failed} failed, ${d.summary.unverified} unverified${d.summary.beeOverrules ? `, Bee overruled ${d.summary.beeOverrules}` : ''}.`}</Text> : null}
     </View>
   );
 }

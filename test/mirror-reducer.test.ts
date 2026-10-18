@@ -2,7 +2,7 @@
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";
-import { GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
+import { backAction, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 
 const fx = loadFixtureV2();
@@ -58,15 +58,85 @@ describe("seq order", () => {
     expect(s.lastSeq).toBe(27);
     expect(views(s)).toBe("transfer");
   });
+  it("a hub restart (new bootId) resets the sequence, so seq 1.. applies again (review H8)", () => {
+    const base = { mode: "demo", dataLabel: "SYNTHETIC DEMO DATA", state: "idle", narration: "", verdictReady: false, retryAfterMs: null, session: null, openCard: null, lastAttempt: null, deck: null, bee: { replay: true, pendingVerifications: 0, lastEventAt: null, counters: {} } } as any;
+    let s = run(initialMirror(), { type: "hubState", state: { ...base, bootId: "boot_a", lastSeq: 0 }, now: 0 });
+    for (let i = 1; i <= 340; i++) s = run(s, { type: "event", event: focus(i, i % 2 ? "week" : "transfer"), now: i });
+    expect(s.lastSeq).toBe(340);
+    // reconnect to the same hub: events up to its lastSeq are in the snapshot
+    s = run(s, { type: "hubState", state: { ...base, bootId: "boot_a", lastSeq: 345 }, now: 400 });
+    s = run(s, { type: "event", event: focus(345, "live"), now: 401 }, { type: "event", event: focus(346, "practice"), now: 402 });
+    expect(s.lastSeq).toBe(346);
+    expect(views(s)).toBe("practice");
+    expect(s.restarts).toBe(0);
+    // the hub restarted: seq is back at 1
+    s = run(s, { type: "hubState", state: { ...base, bootId: "boot_b", lastSeq: 0 }, now: 500 });
+    expect(s.restarts).toBe(1);
+    s = run(s, { type: "event", event: focus(1, "transfer"), now: 501 }, { type: "event", event: focus(2, "live"), now: 502 });
+    expect(s.lastSeq).toBe(2);
+    expect(views(s)).toBe("live");
+    expect(s.duplicates).toBe(1); // only seq 345, which the reconnect snapshot already covered
+  });
+});
+
+describe("Back (review M18)", () => {
+  it("closes the recap, then goes home, then lets the platform exit from the root screen", () => {
+    expect(backAction({ recapVisible: true, view: "week" })).toBe("dismissRecap");
+    expect(backAction({ recapVisible: false, view: "live" })).toBe("home");
+    expect(backAction({ recapVisible: false, view: "week" })).toBe("exit");
+  });
+});
+
+describe("stale screens (review M19, M20, M22, M23)", () => {
+  it("conversation.ended drops the live window so the ended state shows", () => {
+    const w = { conversationId: "c1", wearer: { wpm: 120 } } as any;
+    const s = run(initialMirror(), { type: "event", event: ev(1, "live.window", { window: w }), now: 0 }, { type: "event", event: ev(2, "conversation.ended", { conversationId: "c1", recap: "pending", wearerWords: 10, startedAt: 0, endedAt: 1000 }), now: 1 });
+    expect(s.live.window).toBeNull();
+    expect(s.live.ended?.conversationId).toBe("c1");
+  });
+  it("session.ended closes an unattempted card, and keeps a final verdict with the summary", () => {
+    const card = { id: "k1", resay: "x" } as any;
+    const summary = { passed: 1, failed: 0, unverified: 0 } as any;
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "session.ended", { summary }), now: 1 });
+    expect(s.drill.card).toBeNull();
+    expect(s.drill.summary).toEqual(summary);
+    s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "attempt.graded", { attempt: { id: "a1", status: "graded", final: { pass: true, grade: { reasons: [] } } }, card }), now: 1 }, { type: "event", event: ev(3, "session.ended", { summary }), now: 2 });
+    expect(s.drill.card?.id).toBe("k1");
+    expect(s.drill.stage).toBe("graded");
+    expect(s.drill.summary).toEqual(summary);
+  });
+  it("a practice summary from another room is ignored", () => {
+    const sum = (room: string) => ({ summary: { takeId: `t-${room}`, room, from: "phone", startedAt: 0, endedAt: 1, words: 3, provisional: true } });
+    let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: ev(1, "practice.summary", sum("AB2C")), now: 0 });
+    expect(s.practice.summary).toBeNull();
+    s = run(s, { type: "event", event: ev(2, "practice.summary", sum("HJ3H")), now: 1 });
+    expect(s.practice.summary?.takeId).toBe("t-HJ3H");
+  });
+  it("a recap request is cleared when the fetch finishes, found or not", () => {
+    let s = run(initialMirror(), { type: "event", event: ev(1, "mirror.focus", { view: "recap", by: "alexa", reason: "asked", recapId: null, takeId: null }), now: 0 });
+    expect(s.recapWanted).toBe("latest");
+    s = run(s, { type: "recapFetched", ok: false });
+    expect(s.recapWanted).toBeNull();
+    s = run(s, { type: "event", event: ev(2, "mirror.focus", { view: "recap", by: "alexa", reason: "asked", recapId: null, takeId: null }), now: 1 });
+    expect(s.recapWanted).toBe("latest");
+    s = run(s, { type: "recap", recap: { id: "rcp_1" } as any, show: true, now: 2 });
+    expect(s.recapWanted).toBeNull();
+    expect(s.recapVisible).toBe(true);
+  });
 });
 
 describe("screens switch on events", () => {
   const story = fx["events-live.json"].events as { topic: string; payload: Record<string, unknown> }[];
   it("the live story shows the live window, keeps the nudge with its hops, then raises the recap", () => {
     let s = initialMirror();
-    story.forEach((e, i) => (s = mirrorReducer(s, { type: "event", event: ev(100 + i, e.topic, e.payload), now: i * 10 })));
+    let wpm = 0;
+    story.forEach((e, i) => {
+      s = mirrorReducer(s, { type: "event", event: ev(100 + i, e.topic, e.payload), now: i * 10 });
+      if (s.live.window) wpm = s.live.window.wearer.wpm ?? 0;
+    });
     expect(s.view).toBe("live");
-    expect(s.live.window?.wearer.wpm).toBeGreaterThan(0);
+    expect(wpm).toBeGreaterThan(0);
+    expect(s.live.window).toBeNull(); // conversation.ended: the ended state shows, not stale numbers
     expect(s.live.nudges).toHaveLength(1);
     expect(s.live.nudges[0]!.hops.alarmAt).toBeGreaterThan(s.live.nudges[0]!.hops.spokenAt);
     expect(s.live.skips[0]!.reason).toBe("cooldown");
