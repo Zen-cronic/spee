@@ -63,6 +63,9 @@ export interface Wrist {
   reconcileDeleted?(todoId: string): void; // Bee's todo-deleted event (by us or by the wearer)
 }
 
+// The wrist texts the coach generates (src/hub/live/rules.ts nudgeText, recap.ts, scripts/wrist-probe.ts).
+export const GENERATED_WRIST_RE = /^\[coach\] (?:\d+ hedges in [\d.]+ min\. Say it plainly\.|\d+ "like"s in [\d.]+ min\. Pause instead\.|[\d.]+ min without a break\. Check in\.|\d+ words a minute\. Slow down\.|Recap: .+|probe \d+s)$/;
+
 export function assertWristText(text: string) {
   if (!text.startsWith("[coach] ") || text.length > WRIST_TEXT_MAX) throw new Error(`wrist text must start "[coach] " and be at most ${WRIST_TEXT_MAX} characters`);
 }
@@ -161,7 +164,8 @@ export function parseTodoList(stdout: string): ListedTodo[] {
     const arr = (Array.isArray(o) ? o : ((o as Record<string, unknown>).todos ?? (o as Record<string, unknown>).items ?? (o as Record<string, unknown>).data ?? [])) as Record<string, unknown>[];
     return (Array.isArray(arr) ? arr : [])
       .filter((t) => t && (typeof t.id === "number" || typeof t.id === "string"))
-      .map((t) => ({ id: String(t.id), text: typeof t.text === "string" ? t.text : "", completed: t.completed === true, alarmAt: toMs(t.alarm_at ?? t.alarmAt) }));
+      // any truthy completed (true, 1, "true") or a completion time counts as done
+      .map((t) => ({ id: String(t.id), text: typeof t.text === "string" ? t.text : "", completed: !!t.completed && t.completed !== "false" ? true : t.completed_at != null || t.completedAt != null, alarmAt: toMs(t.alarm_at ?? t.alarmAt) }));
   } catch {
     return [];
   }
@@ -205,6 +209,7 @@ export class BeeTodoWrist implements Wrist {
   private failures = 0;
   private openUntil: number | null = null;
   private ledger: TodoEntry[] = [];
+  private createdIds = new Set<string>(); // every to-do id this coach ever created (kept past the ledger's trim)
   private queuedCleanup = new Set<string>();
   private timers: NodeJS.Timeout[] = [];
   private stopped = false;
@@ -213,7 +218,9 @@ export class BeeTodoWrist implements Wrist {
   constructor(private o: BeeTodoWristOptions) {
     if (o.ledgerPath && existsSync(o.ledgerPath)) {
       try {
-        this.ledger = (JSON.parse(readFileSync(o.ledgerPath, "utf8")) as { todos?: TodoEntry[] }).todos ?? [];
+        const saved = JSON.parse(readFileSync(o.ledgerPath, "utf8")) as { todos?: TodoEntry[]; createdIds?: string[] };
+        this.ledger = saved.todos ?? [];
+        this.createdIds = new Set([...(saved.createdIds ?? []), ...this.ledger.map((t) => t.todoId)]);
       } catch {
         this.ledger = [];
       }
@@ -309,7 +316,8 @@ export class BeeTodoWrist implements Wrist {
     const keepFrom = this.clock() - 7 * 24 * 3600_000;
     this.ledger = this.ledger.filter((t) => t.state === "pending" || t.createdAt >= keepFrom).slice(-500);
     mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(`${p}.tmp`, JSON.stringify({ note: "Bee to-dos created by the live coach (generated text only; no transcript text)", todos: this.ledger }, null, 1) + "\n");
+    const createdIds = [...this.createdIds].slice(-5000);
+    writeFileSync(`${p}.tmp`, JSON.stringify({ note: "Bee to-dos created by the live coach (generated text only; no transcript text)", todos: this.ledger, createdIds }, null, 1) + "\n");
     renameSync(`${p}.tmp`, p);
   }
 
@@ -365,6 +373,7 @@ export class BeeTodoWrist implements Wrist {
     this.failures = 0;
     const now = this.clock();
     const cleanup = req.kind === "nudge" ? "delete" : "complete";
+    this.createdIds.add(id);
     this.ledger.push({ todoId: id, kind: req.kind, refId: req.refId, text: req.text, createdAt: now, alarmAt, cleanup, cleanupAt: alarmAt + (req.kind === "nudge" ? NUDGE_CLEANUP_MS : RECAP_CLEANUP_MS), state: "pending", attempts: 0 });
     this.saveLedger();
     this.log("wrist.todo.created", { kind: req.kind, refId: req.refId, todoId: id, alarmAt });
@@ -414,7 +423,10 @@ export class BeeTodoWrist implements Wrist {
       const list = await this.enqueue(() => this.call(["todos", "list", "--limit", "100", "--json"]).then(parseTodoList), false);
       const now = this.clock();
       const tracked = new Set(this.ledger.filter((t) => t.state === "pending").map((t) => t.todoId));
-      const stale = list.filter((t) => t.text.startsWith("[coach]") && !t.completed && !tracked.has(t.id) && t.alarmAt != null && now - t.alarmAt > STALE_MS);
+      // Ours: an id this coach created, or text in exactly the shape the coach generates (nudges,
+      // recaps, wrist probes). A personal "[coach] prep 1:1 notes" or "[coach]: ..." is never touched.
+      const ours = (t: ListedTodo) => this.createdIds.has(t.id) || GENERATED_WRIST_RE.test(t.text);
+      const stale = list.filter((t) => t.text.startsWith("[coach] ") && ours(t) && !t.completed && !tracked.has(t.id) && t.alarmAt != null && now - t.alarmAt > STALE_MS);
       for (const t of stale) {
         await this.enqueue(() => this.call(["todos", "delete", t.id, "--json"]), false).then(
           () => deleted++,

@@ -51,7 +51,7 @@ The thresholds come from the JSON block at the end of `coach/principles.local.md
 
 | Rule | Fires when | Default |
 |---|---|---|
-| `hedge-streak` | hedges in the last 120 s reach max(`streakMin`, `expectedMultiplier` x expected) | max(3, 2 x expected) |
+| `hedge-streak` | hedges in the rule's `windowMs` (default 120 s, the window the nudge text names) reach max(`streakMin`, `expectedMultiplier` x expected) | max(3, 2 x expected) |
 | `like-streak` | "like" as a filler, the same way | max(4, 2 x expected) |
 | `monologue` | one wearer turn lasts `nudgeMs` or more | 90 s |
 | `fast-rate` | the 2-minute rate reaches `wpmFast` | 175 wpm, **off** (`fastRateNudge: false`) |
@@ -101,7 +101,7 @@ Notes on how the rules are computed:
   - A nudge to-do is **deleted** 10 min after its alarm.
   - A recap to-do is **completed** (it shows ticked in the Bee app) 30 min after its alarm.
   - Cleanups are checked every minute.
-  - At startup and every hour, a sweep lists the to-dos and deletes any open `[coach]` to-do whose alarm passed more than 30 min ago and that the ledger does not track (a crash, a lost ledger, old probes).
+  - At startup and every hour, a sweep lists the to-dos and deletes any open `[coach] ` to-do whose alarm passed more than 30 min ago, that the ledger does not track (a crash, old probes), and that is the coach's own: an id it created (kept past the ledger's trim) or text in exactly the shape it generates (a nudge, a recap, a wrist probe). A personal to-do such as "[coach] prep 1:1 notes" is never touched, and any truthy `completed` counts as done.
   - A `todo-deleted` stream event for a pending ledger entry (deleted by the wearer in the Bee app, or by us) marks it `gone`, so it is never cleaned up twice.
 - **Channel selection.**
   - Demo mode uses `ReplayWrist`: no CLI, the same hops with a 1.45 s create and the alarm lead, scaled by the pace.
@@ -123,7 +123,7 @@ Notes on how the rules are computed:
 
 **End detection**, in this order:
 
-1. **Bee leaves CAPTURING.** `update-conversation` for the current conversation, with a state other than `CAPTURING` or a non-null `end_time`. The end is held for a 3 s delete grace (scaled by the pace). Then `conversation.ended` has reason `bee-state` and `endedAt` is Bee's `end_time`.
+1. **Bee leaves CAPTURING.** `update-conversation` for the current conversation, with a state other than `CAPTURING` or a non-null `end_time`. The end is held for a 20 s delete grace (scaled by the pace): long enough for a `delete-conversation` to cancel the recap, and for Bee's last lines (they lag the stop by 4 to 15 s) to land in this window and its recap. Then `conversation.ended` has reason `bee-state` and `endedAt` is Bee's `end_time`.
 2. **90 s idle.** No line for `recap.idleEndMs` (90 s, scaled by the pace), which is the usual case. `endedAt` is the end of the last line.
 3. **A new conversation uuid.** The current conversation ends with reason `new-conversation`.
 
@@ -219,7 +219,7 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
    - The alarm fires 10 s later, so the **Watch buzzes about 17 to 20 s** after the line that completed the streak (up to about 30 s on a slow Bee line).
    - The TV live view shows the hops. `GET /api/live` shows `lastNudge.hops` and `latencyMs`.
    - A second streak within 3 min is `nudge.skipped` (cooldown).
-6. **End the conversation:** stop talking for 90 s, or stop the Bee recording. Stopping the recording ends it 3 s after Bee's `update-conversation`.
+6. **End the conversation:** stop talking for 90 s, or stop the Bee recording. Stopping the recording ends it 20 s after Bee's `update-conversation`.
    - `conversation.ended`, then `recap.ready`, then the recap to-do (10 s lead).
    - The recording has stopped, so the recap alarm may land on the iPhone rather than the Watch.
    - Ask "Alexa, how am I doing?" to hear the recap.

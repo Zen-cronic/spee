@@ -30,8 +30,10 @@ import type { Wrist } from "./wrist.js";
 export const DRILL_RECENT_MS = 5 * 60_000; // a card opened this recently counts as drilling
 // Observed 2026-10-16: Bee sends update-conversation (state PROCESSING, end_time set) when the
 // recording stops and, for a conversation it discards, delete-conversation about 0.4 s later. The
-// end is held this long (story ms, scaled by the pace) so a deleted conversation never gets a recap.
-export const BEE_DELETE_GRACE_MS = 3000;
+// end is held this long (story ms, scaled by the pace) so a deleted conversation never gets a recap,
+// and so Bee's last lines, which lag the stop by 4.3 to 14.7 s (observed), still land in this window
+// and its recap instead of opening a phantom second window for the same conversation.
+export const BEE_DELETE_GRACE_MS = 20_000;
 const KEEP_EVENTS = 200;
 const KEEP_RECAPS = 200;
 
@@ -280,6 +282,7 @@ export class LiveEngine {
     const text = nudgeText(e);
     const hops = { spokenAt: Math.round(line.endAt), beeAt: line.beeAt, detectedAt: now };
     void this.o.wrist.send({ kind: "nudge", refId: id, text }).then((r) => {
+      if (this.stopped) return;
       const nudge: Nudge = {
         id,
         conversationId: w.conversationId,
@@ -296,7 +299,7 @@ export class LiveEngine {
       this.saveEvents();
       this.publish("nudge.sent", { nudge });
       this.log("live.nudge.sent", { id, rule: e.rule, wrist: r.status, todoId: r.todoId });
-    });
+    }).catch((err) => this.log("live.nudge.failed", { id, rule: e.rule, error: String((err as Error)?.message ?? err) })); // a full disk must not crash the hub
   }
 
   // End of conversation -> recap

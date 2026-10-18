@@ -110,6 +110,9 @@ describe("BeeTodoWrist", () => {
             { id: 2, text: "Buy milk", completed: false, alarm_at: T0 - 3600_000 },
             { id: 3, text: "[coach] Recap: old", completed: true, alarm_at: T0 - 3600_000 },
             { id: 4, text: "[coach] fresh", completed: false, alarm_at: T0 - 60_000 },
+            { id: 5, text: "[coach] prep 1:1 notes", completed: false, alarm_at: T0 - 3600_000 }, // a personal to-do (review M3)
+            { id: 6, text: "[coach]: call the dentist", completed: false, alarm_at: T0 - 3600_000 },
+            { id: 7, text: "[coach] Recap: hedges high", completed: 1, alarm_at: T0 - 3600_000 }, // completed reported as 1
           ] })
         : "{}",
     );

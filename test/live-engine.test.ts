@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NUDGE_HOP_ORDER, WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
 import { DEMO_SCRIPTS, PLANTED_OTHER_MARKER, scheduleScript, type DemoScript } from "../src/hub/live/demoScripts.js";
-import type { LiveEngine } from "../src/hub/live/engine.js";
+import { BEE_DELETE_GRACE_MS, type LiveEngine } from "../src/hub/live/engine.js";
 import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type Wrist } from "../src/hub/live/wrist.js";
 import type { PluginCtx } from "../src/hub/plugin.js";
@@ -150,7 +150,7 @@ describe("other scripts and suppressions", () => {
     expect(of("nudge.skipped").map((p) => p.skip.reason)).toContain("drill-active");
     expect(of("nudge.sent")).toHaveLength(0);
   });
-  it("Bee leaving CAPTURING ends the conversation after the 3 s delete grace (reason bee-state), before the idle timer", async () => {
+  it("Bee leaving CAPTURING ends the conversation after the delete grace (reason bee-state), before the idle timer", async () => {
     boot();
     const s = scheduleScript(DEMO_SCRIPTS.story);
     const { conversationId } = setup.demo!.replayConversation(s);
@@ -163,7 +163,9 @@ describe("other scripts and suppressions", () => {
     const end = setup.hub.clock() - 1000;
     setup.hub.ingestBee({ type: "update-conversation", conversation: { id: 99_000_101, conversation_uuid: conversationId, state: "PROCESSING", start_time: null, end_time: new Date(end).toISOString() } });
     expect(of("conversation.ended")).toHaveLength(0);
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(BEE_DELETE_GRACE_MS - 1000);
+    expect(of("conversation.ended")).toHaveLength(0); // Bee's last lines lag up to ~15 s: still this window (review M5)
+    await vi.advanceTimersByTimeAsync(1000);
     expect(of("conversation.ended")[0]).toMatchObject({ conversationId, reason: "bee-state", endedAt: end, recap: "pending" });
     await vi.advanceTimersByTimeAsync(1000);
     await engine.settle();

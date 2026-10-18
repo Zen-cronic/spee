@@ -119,3 +119,26 @@ describe("rules", () => {
     expect(nudgeText(e[0]!)).toBe("[coach] 5 hedges in 2 min. Say it plainly.");
   });
 });
+
+describe("review fixes (M4, M24)", () => {
+  it("an appended recording (Bee offsets back at 0) still moves conversation time forward", () => {
+    const w = new ConversationWindow("conv-w", T0, false);
+    w.upsert(line("wearer", "The first recording opens the conversation with a few words here.", 0, 5));
+    w.upsert(line("wearer", "And it runs for ten minutes before the wearer stops the recording.", 590, 595));
+    // 10 minutes later a new recording is appended: offsets restart at 0, spoken_at is 10 min on
+    const late = (text: string, s: number, e: number) => line("wearer", text, s, e, { spokenAt: T0 + 600_000 + s * 1000, receivedAt: T0 + 600_000 + e * 1000 + 5400, resolvedAt: T0 + 600_000 + e * 1000 + 5900 });
+    for (let i = 0; i < 4; i++) w.upsert(late("I guess maybe we could probably kind of ship it.", i * 6, i * 6 + 5));
+    const a = w.analyze(T0 + 640_000, TH, BASE);
+    const hedge = a.evidence.find((e) => e.rule === "hedge-streak")!;
+    expect(hedge.value).toBeGreaterThanOrEqual(12); // all four new lines are recent, not "10 minutes ago"
+  });
+  it("streak evidence counts over the rule's own window", () => {
+    const th = { ...TH, hedges: { ...TH.hedges, windowMs: 60_000 } };
+    const w = new ConversationWindow("conv-w", T0, false);
+    w.upsert(line("wearer", "I guess maybe we could ship it.", 0, 5)); // 2 hedges, 100 s before the end
+    w.upsert(line("wearer", "Probably the totals match, I think.", 95, 100)); // 2 hedges, recent
+    const hedge = w.analyze(T0 + 110_000, th, BASE).evidence.find((e) => e.rule === "hedge-streak")!;
+    expect(hedge.windowMs).toBe(60_000);
+    expect(hedge.value).toBe(2);
+  });
+});

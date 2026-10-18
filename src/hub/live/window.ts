@@ -18,6 +18,8 @@ export const TURN_GAP_MS = 10_000; // a silence longer than this ends a monologu
 export const PAUSE_MIN_MS = 1000; // a gap inside a wearer turn that counts as a pause
 export const WPM_MIN_TALK_MS = 10_000; // rate needs at least this much timed wearer speech
 const EST_WORDS_PER_S = 2.5; // duration estimate for a line without Bee timing
+// An offset more than this behind the spoken_at position means Bee appended a new recording.
+export const OFFSET_RESET_MS = 60_000;
 
 export interface WinLine {
   id: number;
@@ -95,6 +97,7 @@ export class ConversationWindow {
   nudges = { sent: 0, skipped: 0 };
   skipped = { frenchLines: 0, drillLines: 0 };
   private ctOrigin: number | null = null;
+  private offsetBase = 0; // added to Bee's offsets after an appended recording reset them
 
   constructor(
     readonly conversationId: string,
@@ -115,14 +118,19 @@ export class ConversationWindow {
     const timed = l.startS != null && l.endS != null;
     const durMs = l.durMs ?? (l.words / EST_WORDS_PER_S) * 1000;
     if (this.ctOrigin == null) this.ctOrigin = l.spokenAt - (timed ? l.startS! * 1000 * this.pace : 0);
-    const ctStart = timed ? l.startS! * 1000 : (l.spokenAt - this.ctOrigin) / this.pace;
+    // Bee's start/end offsets restart at 0 when a later recording is appended to the conversation.
+    // When a line's offset falls far behind where spoken_at puts it, a new recording began: shift
+    // its offsets by a per-recording base so conversation time keeps moving forward.
+    const byClock = (l.spokenAt - this.ctOrigin) / this.pace;
+    if (timed && l.startS! * 1000 + this.offsetBase < byClock - OFFSET_RESET_MS) this.offsetBase = byClock - l.startS! * 1000;
+    const ctStart = timed ? l.startS! * 1000 + this.offsetBase : byClock;
     const base: WinLine = {
       id: l.utteranceId,
       speaker: l.speaker === "wearer" ? "wearer" : "other",
       words: l.words,
       durMs,
       ctStart,
-      ctEnd: timed ? l.endS! * 1000 : ctStart + durMs,
+      ctEnd: timed ? l.endS! * 1000 + this.offsetBase : ctStart + durMs,
       spokenAt: l.spokenAt,
       endAt: l.spokenAt + durMs * this.pace,
       receivedAt: l.receivedAt,
@@ -201,9 +209,10 @@ export class ConversationWindow {
     const last = all.reduce<WinLine | null>((m, l) => (!m || l.ctEnd >= m.ctEnd ? l : m), null);
     if (last?.speaker === "wearer" && runStart != null) (current = runEnd - runStart), (currentRun = runStart);
 
-    const fresh = (rule: NudgeRule) => en.filter((l) => l.ctEnd > recentFrom && l.ctEnd > (this.fired[rule] ?? -Infinity));
+    const fresh = (rule: NudgeRule, from = recentFrom) => en.filter((l) => l.ctEnd > from && l.ctEnd > (this.fired[rule] ?? -Infinity));
     const streak = (rule: "hedge-streak" | "like-streak", key: "hedges" | "likes", t: Thresholds["hedges"], per100: number | null): RuleEvidence => {
-      const ls = fresh(rule);
+      // counted over the rule's own window, the one the nudge text names ("3 hedges in 1 min")
+      const ls = fresh(rule, latestCt - t.windowMs);
       const value = ls.reduce((n, l) => n + l.counts![key], 0);
       const words = ls.reduce((n, l) => n + l.words, 0);
       const expected = per100 == null ? null : r2((per100 / 100) * words);
