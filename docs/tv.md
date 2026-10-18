@@ -70,6 +70,28 @@ vega run-app tv/vega/build/x86_64-release/speakingmirror_x86_64.vpkg com.beecoac
 - **Bundle check.** The release sourcemap has 15 `@amazon-devices/react-native-kepler` modules and 0 core `react-native` modules, so the default Metro config keeps the Vega platform mapping (no custom resolver).
 - **Rendering.** Views avoid nested `Text` with letter spacing and attach animated styles from the first render, because both render differently on Vega. Big numerals carry side padding so their first glyph is not clipped.
 
+### Real Fire TV stick
+
+Not yet run on hardware (see the status below). The steps:
+
+1. **Developer mode (once; a browser sign-in, so the operator does it).**
+   - On the stick: Settings → My Fire TV → About, highlight the device name and press the centre button 7 times.
+   - Settings → My Fire TV → Developer Options → Developer Mode → Continue. A 6-digit code appears; it expires in 5 minutes.
+   - On the dev machine: `vega devmode login` (signs in with the Amazon developer account), then `vega devmode enable-device --code <code>`. The stick reboots.
+2. **Connect over USB.** A USB-C *data* cable (a charge-only cable shows nothing). Then `vega device list` for the serial, `vega device info` for the architecture (`aarch64` or `armv7`), and `vega exec vda shell cat /etc/os-release` for the OS version (the manifest needs 1.2 or later; current sticks ship Vega 2.0).
+3. **Run over USB with the reverse forward.** The app keeps dialling `127.0.0.1:8791`, the hub sees it as local, and no `--lan` is needed:
+
+   ```bash
+   npm run tv:vega:build
+   npm run hub -- --demo                # or `npm run hub` for live Bee
+   vega device start-port-forwarding -d <serial> --port 8791 --forward false
+   vega device terminate-app -d <serial> --appName com.beecoach.mirror.main
+   vega run-app tv/vega/build/<arch>-release/speakingmirror_<arch>.vpkg com.beecoach.mirror.main -d <serial>
+   ```
+
+4. **Pair the phone and check.** Scan the TV's QR with the phone on the same Wi-Fi (the QR carries `#k=`, so a LAN phone gets in without `--lan`). Run one drill (provisional → checking with Bee → graded) and one practice take (meters move), then Right/OK across the tabs and Back to exit. If the phone cannot connect, restart the hub with `--lan` (home Wi-Fi only).
+5. **Cable-free (later).** `vega exec vda tcpip 5555` and `vega exec vda connect <stick IP>:5555`; set the hub address with `npm --prefix tv/vega run hub -- <LAN IP>:8791`, rebuild and reinstall, and start the hub with `npm run hub -- --lan`.
+
 **Status on 2026-10-16 (EDT).** The build succeeded: three vpkgs of about 276 kB each, and `manifest validation found 0 errors`. On the VVD the app installed and launched, joined the hub over the reverse forward, fetched stats and transfer over HTTP, and rendered every screen in the table above. Remote navigation worked (Right and OK moved between the tabs). The live story, the recap overlay and a practice take all switched screens by themselves. A real stick has not been tried yet. That needs `vega devmode`, which is the operator's browser login.
 
 ## How it is built
