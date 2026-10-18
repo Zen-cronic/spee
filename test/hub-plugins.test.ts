@@ -77,7 +77,7 @@ describe("registry", () => {
   });
 });
 
-describe("hub server with the stub plugins", () => {
+describe("hub server with the landed plugins (and a probe plugin)", () => {
   let s: HubServer;
   let ctx: PluginCtx | null = null;
   const probe: HubPlugin = {
@@ -120,20 +120,26 @@ describe("hub server with the stub plugins", () => {
       ["GET", "/api/recaps/rcp_x", [404]],
       ["GET", "/api/coach/now", [200]],
       ["POST", "/api/demo/live", [202]],
-      ["POST", "/api/demo/mirror", [202]],
+      ["POST", "/api/demo/mirror", [404]], // NOROOM: an unknown room is refused (404 unknown_room)
       ["POST", "/alexa", [400]],
       ["POST", "/mcp", [400, 406]],
       ["GET", "/mcp", [405]],
       ["DELETE", "/mcp", [405]],
     ];
     for (const [m, p, ok] of want) {
-      // aim the demo take at a room that doesn't exist so it can't consume a real room's meter budget
+      // aim the demo take at a room that doesn't exist: the route refuses it, so no take plays to a
+      // real room (the route itself is covered with a real room in test/mirror-plugin.test.ts)
       const body = p === "/api/demo/mirror" ? JSON.stringify({ room: "NOROOM" }) : "{}";
       const r = await raw(s.port, p, { method: m, headers: { "content-type": "application/json" }, body: m === "POST" ? body : undefined });
       expect(ok, `${m} ${p} -> ${r.status}`).toContain(r.status);
       if (r.text) expect(r.text).not.toContain("not_implemented");
     }
     expect(JSON.parse((await raw(s.port, "/api/recaps/rcp_x")).text).error).toBe("unknown_recap");
+    expect(JSON.parse((await raw(s.port, "/api/demo/mirror", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ room: "NOROOM" }) })).text).error).toBe("unknown_room");
+    // a path under a plugin's prefix that the plugin does not own falls through to the core's 404
+    const nope = await raw(s.port, "/api/live/nope");
+    expect(nope.status).toBe(404);
+    expect(JSON.parse(nope.text).error).toBe("not_found");
   });
   it("plugins route before the core and get OPTIONS for their prefixes; errors are 500 plugin_error", async () => {
     expect(JSON.parse((await raw(s.port, "/api/probe")).text)).toEqual({ probe: true });
