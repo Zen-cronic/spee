@@ -292,8 +292,18 @@ function setupCheck() {
 
 async function connect(code: string) {
   client = new BridgeClient({ url: wsUrl(location.protocol, location.host, join.k), role: "mic", code, name: "phone" });
-  client.on("open", () => setConn(`paired · ${client?.code ?? code}`, "ok"));
+  // The bridge client keeps retrying after a failed first connect, so a later `open` leaves the join view.
+  client.on("open", () => {
+    room = client?.code ?? code;
+    setConn(`paired · ${room}`, "ok");
+    if (!$("join").hidden) show("drill");
+  });
   client.on("close", () => setConn("reconnecting…", "bad"));
+  client.on("repair", () => {
+    setConn("TV gone · scan the new QR", "bad");
+    client?.close();
+    show("join");
+  });
   client.on("app", (m) => onEvent(m.topic, (m.payload ?? {}) as Record<string, any>));
   client.on("intent", onIntent);
   try {
