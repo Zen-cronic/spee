@@ -31,7 +31,7 @@ POC_REPORT.md
 
 # Packed tarballs, except the vendored bridge a fresh clone installs from
 *.tgz
-!vendor/rackboard-tv-voice-bridge-0.1.0.tgz
+!vendor/rackboard-tv-voice-bridge-0.2.0.tgz
 
 # Browser automation and recording artifacts
 .playwright-mcp/

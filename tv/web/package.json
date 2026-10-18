@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@rackboard/tv-voice-bridge": "file:../../vendor/rackboard-tv-voice-bridge-0.1.0.tgz",
+    "@rackboard/tv-voice-bridge": "file:../../vendor/rackboard-tv-voice-bridge-0.2.0.tgz",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
