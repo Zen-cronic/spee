@@ -113,6 +113,26 @@ describe("code-switch vocabulary", () => {
     expect(isProperNounSwitch("the French Meetup for", "le groupe s'appelle French Meetup")).toBe(true);
     expect(isProperNounSwitch("homework", "les devoirs")).toBe(false);
   });
+  it("drops a moment that copies another speaker's reply, before it is cached or persisted (review H10, H11)", async () => {
+    const mk = (key: string, text: string, start: number) => ({ key, session: "9", kind: "conversation" as const, start, end: start + 2, spokenAt: 0, text, lang: lineLang(text), dom: "fr" as const, uncertain: false, mislabelScore: 0, reasons: [] });
+    const lines = [mk("u:1", "Comment on dit book club?", 0), mk("u:2", "Comment on dit homework?", 30), mk("u:3", "Je vais au cours ce soir.", 60), mk("u:4", "On mange ensemble demain midi.", 90)];
+    const ctx = new Map([["9", [{ start: 2.5, end: 4, text: "Tu peux dire zebra orchide club zebrine du quartier." }, { start: 32.5, end: 34, text: "Les devoirs." }]]]);
+    let sanitized: unknown = null;
+    const llm: CallToolFn = async (o) => {
+      const raw = {
+        moments: [
+          { utterance_id: "u:1", english: "book club", french: "club zebrine", resay_prompt: "Tu peux dire zebra orchide club zebrine", note: "copied" },
+          { utterance_id: "u:2", english: "homework", french: "les devoirs", resay_prompt: "Je fais mes devoirs ce soir.", note: "ok" },
+        ],
+      };
+      sanitized = o.sanitize ? o.sanitize(raw) : raw; // what callTool would cache
+      return { input: sanitized, modelId: "stub", cached: false };
+    };
+    const { extractCodeSwitches } = await import("../src/real/analyze.js");
+    const r = await extractCodeSwitches(lines, ctx, { label: "t", llm });
+    expect(r.moments.map((m) => m.key)).toEqual(["u:2"]); // "les devoirs" is the word asked for, inside a 2-word reply: kept
+    expect(JSON.stringify(sanitized)).not.toContain("zebra orchide");
+  });
 });
 
 describe("privacy contract and class pipeline (fake source, stub LLM)", () => {

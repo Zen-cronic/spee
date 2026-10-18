@@ -15,7 +15,7 @@ import { fold } from "./principles.js";
 export const RECAP_LLM_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 export const RECAP_LLM_TIMEOUT_MS = 6000;
 
-export type PhraseFn = (opts: { system: string; user: string; tool: Tool; label: string; chain?: string[] }) => Promise<{ input: unknown; modelId: string }>;
+export type PhraseFn = (opts: { system: string; user: string; tool: Tool; label: string; chain?: string[]; sanitize?: (input: unknown) => unknown | null }) => Promise<{ input: unknown; modelId: string }>;
 
 export const RECAP_TOOL: Tool = {
   toolSpec: {
@@ -80,7 +80,9 @@ export async function phraseRecap(recap: Recap, principles: Principles, call: Ph
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<null>((r) => (timer = setTimeout(() => r(null), timeoutMs)));
   try {
-    const res = await Promise.race([call({ system, user, tool: RECAP_TOOL, label: `recap:${recap.id}`, chain: [RECAP_LLM_MODEL] }).catch(() => null), timeout]);
+    // sanitize: a phrasing that fails acceptPhrasing (e.g. echoes the private principles) is never cached
+    const sanitize = (x: unknown) => (acceptPhrasing(x, recap, principles) ? x : null);
+    const res = await Promise.race([call({ system, user, tool: RECAP_TOOL, label: `recap:${recap.id}`, chain: [RECAP_LLM_MODEL], sanitize }).catch(() => null), timeout]);
     return res ? acceptPhrasing(res.input, recap, principles) : null;
   } finally {
     clearTimeout(timer);

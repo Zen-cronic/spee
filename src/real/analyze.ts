@@ -299,6 +299,23 @@ export function isProperNounSwitch(english: string, french: string): boolean {
   return (french.match(/\b\p{Lu}[\p{L}'-]+/gu) ?? []).some((w) => caps.has(w.toLowerCase()));
 }
 
+// True when a model field reproduces another speaker's line: a shared run of 5 words, or the whole
+// line (3+ words) as a field.
+export function copiesOther(m: Record<string, unknown>, replies: string[]): boolean {
+  const toks = (s: string) => norm(s).split(/\s+/).filter(Boolean);
+  const grams = (t: string[], k: number) => new Set(t.flatMap((_, i) => (i + k <= t.length ? [t.slice(i, i + k).join(" ")] : [])));
+  const theirs5 = new Set(replies.flatMap((r) => [...grams(toks(r), 5)]));
+  const theirsWhole = new Set(replies.map((r) => toks(r)).filter((t) => t.length >= 3).map((t) => t.join(" ")));
+  for (const f of ["french", "resay_prompt", "note"]) {
+    const v = m[f];
+    if (typeof v !== "string") continue;
+    const t = toks(v);
+    if (theirsWhole.has(t.join(" "))) return true;
+    for (const g of grams(t, 5)) if (theirs5.has(g)) return true;
+  }
+  return false;
+}
+
 export function codeSwitchCandidates(lines: WearerLine[]): { line: WearerLine; trigger: "asked" | "inserted" }[] {
   const out: { line: WearerLine; trigger: "asked" | "inserted" }[] = [];
   const sessFr = new Map<string, number>();
@@ -321,12 +338,23 @@ export async function extractCodeSwitches(lines: WearerLine[], ctx: TransientCon
     "Some candidates include what another person said right after, as context only. Use it to understand what was meant, but NEVER quote it: write the French target in your own words.",
     "Skip candidates where the English is a proper noun, a brand, an app name, a quoted title, or too garbled by transcription to know what was meant.",
   ].join("\n");
+  const injected = new Map<string, string[]>(); // candidate key -> the other speakers' lines shown to the model
   const user = cands
     .map(({ line, trigger }) => {
       const replies = trigger === "asked" ? repliesAfter(ctx, line) : [];
+      injected.set(line.key, replies);
       return [`[${line.key}] (${trigger}) ${line.text}`, ...replies.map((r) => `   context, another speaker, do not quote: ${r}`)].join("\n");
     })
     .join("\n");
+  // The prompt says never to quote the context; code enforces it. A moment whose fields copy another
+  // speaker (a shared 5-word run, or a whole reply of 3+ words) is dropped before anything is cached
+  // or persisted. A dictionary word inside a longer reply is fine: that is the vocabulary asked for.
+  const allReplies = [...injected.values()].flat();
+  const sanitize = (input: unknown) => {
+    const o = input as { moments?: unknown[] } | null;
+    if (!o || !Array.isArray(o.moments)) return input;
+    return { ...o, moments: o.moments.filter((m) => !copiesOther(m as Record<string, unknown>, allReplies)) };
+  };
   const tool = {
     toolSpec: {
       name: "vocab_moments",
@@ -355,7 +383,7 @@ export async function extractCodeSwitches(lines: WearerLine[], ctx: TransientCon
       },
     },
   } as Parameters<CallToolFn>[0]["tool"];
-  const res = await llm({ system, user, tool, label: `${opts.label}:codeswitch` });
+  const res = await llm({ system, user, tool, label: `${opts.label}:codeswitch`, sanitize });
   const parsed = z
     .object({ moments: z.array(z.object({ utterance_id: z.string(), english: z.string(), french: z.string(), resay_prompt: z.string(), note: z.string() })) })
     .safeParse(res.input);
@@ -365,6 +393,7 @@ export async function extractCodeSwitches(lines: WearerLine[], ctx: TransientCon
     const key = m.utterance_id.replace(/^\[|\]$/g, "");
     const c = byKey.get(key);
     if (!c || isProperNounSwitch(m.english, m.french)) continue;
+    if (copiesOther(m, allReplies)) continue; // also when the caller's llm ignores sanitize
     moments.push({
       key,
       session: c.line.session,

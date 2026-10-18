@@ -46,9 +46,14 @@ export const llmLog: { event: string; modelId?: string; error?: string; key?: st
 const gated = new Set<string>();
 export const usage = { calls: 0, cacheHits: 0, inputTokens: 0, outputTokens: 0, byModel: {} as Record<string, number> };
 
-export type CallToolFn = (opts: { system: string; user: string; tool: Tool; label: string; chain?: string[] }) => Promise<ToolCallResult>;
+// `sanitize` runs on the model's output BEFORE anything is cached: it returns what may be kept (for
+// example with offending items removed), or null to reject it all. A rejected output is cached as a
+// marker with no text, so private principles or other speakers' words the model echoed never reach
+// cache/ (and the call is not repeated). A rejection returns { input: null }.
+export type CallToolOpts = { system: string; user: string; tool: Tool; label: string; chain?: string[]; sanitize?: (input: unknown) => unknown | null };
+export type CallToolFn = (opts: CallToolOpts) => Promise<ToolCallResult>;
 
-export async function callTool(opts: { system: string; user: string; tool: Tool; label: string; chain?: string[] }): Promise<ToolCallResult> {
+export async function callTool(opts: CallToolOpts): Promise<ToolCallResult> {
   const chain = opts.chain ?? MODEL_CHAIN;
   const key = createHash("sha256")
     .update(JSON.stringify({ v: 1, chain, system: opts.system, user: opts.user, tool: opts.tool }))
@@ -58,7 +63,10 @@ export async function callTool(opts: { system: string; user: string; tool: Tool;
     const hit = JSON.parse(readFileSync(file, "utf8"));
     usage.cacheHits++;
     usage.byModel[hit.modelId] = (usage.byModel[hit.modelId] ?? 0) + 1;
-    return { input: hit.input, modelId: hit.modelId, cached: true, usage: hit.usage };
+    if (hit.rejected) return { input: null, modelId: hit.modelId, cached: true, usage: hit.usage };
+    // an entry written before sanitize existed is checked again on the way out
+    const input = opts.sanitize ? opts.sanitize(hit.input) : hit.input;
+    return { input, modelId: hit.modelId, cached: true, usage: hit.usage };
   }
   const toolName = opts.tool.toolSpec!.name!;
   let lastErr = "";
@@ -100,9 +108,10 @@ export async function callTool(opts: { system: string; user: string; tool: Tool;
         usage.inputTokens += u.inputTokens ?? 0;
         usage.outputTokens += u.outputTokens ?? 0;
         usage.byModel[modelId] = (usage.byModel[modelId] ?? 0) + 1;
+        const kept = opts.sanitize ? opts.sanitize(input) : input;
         mkdirSync(CACHE_DIR, { recursive: true });
-        writeFileSync(file, JSON.stringify({ label: opts.label, modelId, input, usage: u, at: new Date().toISOString() }, null, 1));
-        return { input, modelId, cached: false, usage: u };
+        writeFileSync(file, JSON.stringify(kept === null ? { label: opts.label, modelId, rejected: true, usage: u, at: new Date().toISOString() } : { label: opts.label, modelId, input: kept, usage: u, at: new Date().toISOString() }, null, 1));
+        return { input: kept, modelId, cached: false, usage: u };
       } catch (e) {
         const err = e as Error;
         lastErr = `${err.name}: ${err.message}`;

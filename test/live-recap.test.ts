@@ -124,4 +124,13 @@ describe("optional model phrasing", () => {
     expect(acceptPhrasing({ ...good, narration: "One. Two. Three. Four." }, r, principles)).toBeNull();
     expect(acceptPhrasing(good, r, principles)).toEqual(good);
   });
+  it("hands callTool a sanitize hook, so a phrasing that echoes the principles is never cached (review H10)", async () => {
+    const r = recapOf(conversation());
+    let sanitize: ((x: unknown) => unknown) | undefined;
+    const fake: PhraseFn = async (o) => ((sanitize = o.sanitize), { input: good, modelId: RECAP_LLM_MODEL });
+    await phraseRecap(r, principles, fake);
+    expect(sanitize).toBeTypeOf("function");
+    expect(sanitize!(good)).toEqual(good);
+    expect(sanitize!({ ...good, narration: "Remember to lead with the decision before the details." })).toBeNull();
+  });
 });
