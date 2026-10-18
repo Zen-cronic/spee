@@ -87,7 +87,8 @@ async function connect(): Promise<Client> {
   }
   const tools = await c.listTools();
   conn.className = "dot on";
-  connText.textContent = `MCP connected: ${tools.tools.length} tools${t ? "" : " (LAN, no token)"}`;
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  connText.textContent = `MCP connected: ${tools.tools.length} tools${t ? "" : local ? " (this machine, no token)" : " (LAN, no token)"}`;
   client = c;
   return c;
 }
