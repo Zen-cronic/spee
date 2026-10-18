@@ -95,7 +95,7 @@ describe("gate: the hub server", () => {
     expect((await wsOutcome(s.port, `?k=${PAIR}`, NGROK)).result).toBe("welcome");
     const lan = await wsOutcome(s.port, "");
     expect(lan.result).toBe("welcome");
-    expect(lan.welcome.joinUrl).toMatch(new RegExp(`/p/${lan.welcome.code}\\?k=${PAIR}$`));
+    expect(lan.welcome.joinUrl).toMatch(new RegExp(`/p/${lan.welcome.code}#k=${PAIR}$`));
     expect((await raw(s.port, "/api/health")).status).toBe(200); // the server survives refused upgrades
   });
   it("never puts a token in a response", async () => {
@@ -110,11 +110,11 @@ describe("gate: the hub server", () => {
 });
 
 describe("joinUrl", () => {
-  it("uses PUBLIC_BASE_URL when set and appends ?k=<PAIR_TOKEN>", async () => {
+  it("uses PUBLIC_BASE_URL when set and appends #k=<PAIR_TOKEN>", async () => {
     const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
     try {
       const w = await wsOutcome(t.port, "");
-      expect(w.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${w.welcome.code}?k=${PAIR}`);
+      expect(w.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${w.welcome.code}#k=${PAIR}`);
     } finally {
       await t.close();
     }

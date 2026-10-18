@@ -243,7 +243,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   });
   const upgrades = new WeakMap<IncomingMessage, UpgradeDecision>();
   const removeUpgradeGate = installUpgradeGate(server, tokens, log, gateOpts, upgrades);
-  const guard = guardBridge(bridge, { log, decisions: upgrades, withToken: (u) => `${u}${u.includes("?") ? "&" : "?"}k=${encodeURIComponent(tokens.pairToken)}` });
+  const guard = guardBridge(bridge, { log, decisions: upgrades, withToken: (u) => `${u}#k=${encodeURIComponent(tokens.pairToken)}` }); // a fragment: never sent to a server or logged by a tunnel
 
   // Room-scoped relay: one room's screens only, at most ROOM_RELAY_MAX_HZ per room and topic. A frame
   // inside the window is not lost: the latest one is sent when the window ends (trailing edge).

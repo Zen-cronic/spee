@@ -1,7 +1,7 @@
 // Static mounts (lead-owned): the built web surfaces, served by the hub so one port (and one
 // tunnel) carries everything.
 //   /tv/   -> tv/web/dist      the web TV mirror (packet B; LAN only)
-//   /p/    -> dist/web/phone   the phone page, /p/<code>?k=<PAIR_TOKEN> (packet B; public)
+//   /p/    -> dist/web/phone   the phone page, /p/<code>#k=<PAIR_TOKEN> (packet B; public)
 //   /sim/  -> dist/web/sim     the Alexa+ simulator (packet C; public)
 // A mount whose directory does not exist answers 404 not_built with the build command. Paths with
 // no file extension fall back to the mount's index.html (single-page apps). Dot segments, encoded

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { defaultClientConditions, defineConfig } from "vite";
 
-// The phone page, served by the hub at /p/<code>?k=... (npm run web:phone:build). Built with the
+// The phone page, served by the hub at /p/<code>#k=... (npm run web:phone:build). Built with the
 // root vite; the vendored bridge resolves to its TypeScript source.
 const root = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig({

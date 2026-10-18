@@ -7,7 +7,7 @@
 //   type, one hello per socket, a screen's malformed room code is dropped (so it gets a fresh room
 //   instead of a random code that may be someone else's), and a clientId already used in that room by
 //   the other role is refused. A refused frame gets {type:"error",code:"bad-message"} and is dropped.
-// - welcome.joinUrl carries ?k=<PAIR_TOKEN> only for a peer the gate marked `authenticated`
+// - welcome.joinUrl carries #k=<PAIR_TOKEN> only for a peer the gate marked `authenticated`
 //   (src/hub/gate.ts). The joinUrl the bridge builds never has it; it is added here, so if the bridge
 //   internals change and the wrapper cannot install, peers get the token-less URL (fail closed).
 // - Backpressure: practice.meters frames are dropped for a peer with more than WS_DROP_METERS_AT

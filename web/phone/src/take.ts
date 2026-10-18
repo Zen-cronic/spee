@@ -6,15 +6,17 @@ import type { MeterCore, SummaryCore } from "./prosody.js";
 
 export interface Join {
   code: string | null; // 4-character room code from /p/<code>
-  k: string | null; // the pair token from ?k=, needed through a tunnel (kept in memory only)
+  k: string | null; // the pair token from #k= (or the older ?k=), needed through a tunnel (kept in memory only)
   debug: boolean;
 }
 
-// /p/HJ3H?k=abc -> { code: "HJ3H", k: "abc" }
-export function parseJoin(pathname: string, search: string): Join {
+// /p/HJ3H#k=abc -> { code: "HJ3H", k: "abc" }. The token rides in the fragment, which the browser
+// never sends to a server (so it stays out of tunnel logs); ?k= from an older QR code still works.
+export function parseJoin(pathname: string, search: string, hash = ""): Join {
   const m = /\/p\/([A-Za-z0-9]{4})(?:\/|$)/.exec(pathname);
   const q = new URLSearchParams(search);
-  const k = q.get("k");
+  const h = new URLSearchParams(hash.replace(/^#/, ""));
+  const k = h.get("k") ?? q.get("k");
   return { code: m ? m[1]!.toUpperCase() : null, k: k && k.trim() ? k.trim() : null, debug: q.has("debug") };
 }
 

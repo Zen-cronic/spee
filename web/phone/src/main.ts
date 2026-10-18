@@ -18,7 +18,13 @@ import { captionOf, countWords, meterFrame, newTakeId, parseJoin, takeSummary, w
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const now = () => performance.timeOrigin + performance.now();
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-const join = parseJoin(location.pathname, location.search);
+const join = parseJoin(location.pathname, location.search, location.hash);
+// Keep the pair token out of the address bar, history and screenshots once it is in memory.
+if (join.k) {
+  const q = new URLSearchParams(location.search);
+  q.delete("k");
+  history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}`);
+}
 const TAKE_MAX_MS = 120_000;
 
 let client: BridgeClient | null = null;
@@ -194,16 +200,26 @@ async function startTake() {
       }
     });
     t.eng = new ProsodyEngine({ sampleRate: t.cap.sampleRate });
+    if (take !== t) {
+      // Stop was tapped while the mic permission prompt was open: release the mic now.
+      t.cap.stop();
+      t.lis?.stop();
+      return;
+    }
   } catch (err) {
     $("take-state").textContent = `The mic did not start: ${(err as Error).name || (err as Error).message}.`;
     t.lis?.stop();
-    take = null;
-    $("take").textContent = "Start take";
+    if (take === t) {
+      take = null;
+      $("take").textContent = "Start take";
+    }
     return;
   }
   if (!speechFirst) startSpeech();
   $("take-state").textContent = `Recording nothing, metering everything. Mic at ${t.cap.sampleRate} Hz.${t.speechError ? ` Captions off (${t.speechError}).` : ""}`;
-  t.timer = setTimeout(() => void stopTake(), TAKE_MAX_MS);
+  t.timer = setTimeout(() => {
+    if (take === t) void stopTake(); // never a newer take
+  }, TAKE_MAX_MS);
 }
 
 async function stopTake() {
@@ -310,7 +326,7 @@ function setup() {
   };
   $("join-btn").onclick = () => {
     const code = normalizeCode($<HTMLInputElement>("code-input").value);
-    if (code.length === 4) location.href = `/p/${code}${join.k ? `?k=${encodeURIComponent(join.k)}` : ""}`;
+    if (code.length === 4) location.href = `/p/${code}${join.k ? `#k=${encodeURIComponent(join.k)}` : ""}`;
   };
   $("check-only").onclick = () => {
     show("check");

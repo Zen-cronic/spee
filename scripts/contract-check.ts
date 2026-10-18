@@ -380,7 +380,7 @@ check((await wsOutcome("", { ...NGROK })) === "rejected", "public /ws without k:
 check((await wsOutcome("?k=wrong", { ...NGROK })) === "rejected", "public /ws with a wrong k: upgrade refused");
 check((await wsOutcome(`?k=${encodeURIComponent(TOKENS.pair)}`, { ...NGROK })) === "welcome", "public /ws with k=$PAIR_TOKEN: welcome");
 check((await wsOutcome("", {})) === "welcome", "LAN /ws without k: welcome");
-check(typeof tvWelcome.joinUrl === "string" && tvWelcome.joinUrl.endsWith(`/p/${tvWelcome.code}?k=${encodeURIComponent(TOKENS.pair)}`), "welcome.joinUrl is /p/<code>?k=<PAIR_TOKEN>");
+check(typeof tvWelcome.joinUrl === "string" && tvWelcome.joinUrl.endsWith(`/p/${tvWelcome.code}#k=${encodeURIComponent(TOKENS.pair)}`), "welcome.joinUrl is /p/<code>#k=<PAIR_TOKEN> (a fragment: never sent to a server)");
 
 console.log("\nv2: Origin check (a web page the wearer visits cannot read or drive the hub)");
 const EVIL = { origin: "https://evil.example" };

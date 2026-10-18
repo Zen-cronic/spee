@@ -29,12 +29,20 @@ export interface Listener {
 
 // Continuous recognition with interim results; restarts itself if the browser ends it early,
 // until stop() is called.
+// Errors after which restarting recognition can only fail again (permission or device problems).
+export const FATAL_SPEECH_ERRORS = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "bad-grammar"]);
+// At most this many restarts within RESTART_WINDOW_MS: a start, end, start loop stops itself.
+const MAX_RESTARTS = 8;
+const RESTART_WINDOW_MS = 10_000;
+
 export function listen(o: { lang?: string; onText: (text: string, final: boolean) => void; onError?: (err: string) => void; onStart?: () => void }): Listener | null {
   const SR = speechCtor();
   if (!SR) return null;
   let finals = "";
   let interim = "";
   let stopped = false;
+  let fatal: string | null = null;
+  const restarts: number[] = [];
   let rec: SpeechRec | null = null;
   const begin = () => {
     rec = new SR();
@@ -54,14 +62,24 @@ export function listen(o: { lang?: string; onText: (text: string, final: boolean
       }
       if (interim) o.onText(`${finals} ${interim}`.trim(), false);
     };
-    rec.onerror = (e) => o.onError?.(e.error);
+    rec.onerror = (e) => {
+      if (FATAL_SPEECH_ERRORS.has(e.error)) fatal = e.error;
+      o.onError?.(e.error);
+    };
     rec.onend = () => {
-      if (!stopped) {
-        try {
-          begin();
-        } catch {
-          /* the browser refused a restart */
-        }
+      if (stopped || fatal) return; // a fatal error was surfaced through onError: no restart loop
+      const now = Date.now();
+      while (restarts.length && now - restarts[0]! > RESTART_WINDOW_MS) restarts.shift();
+      if (restarts.length >= MAX_RESTARTS) {
+        fatal = "restart-loop";
+        o.onError?.("restart-loop");
+        return;
+      }
+      restarts.push(now);
+      try {
+        begin();
+      } catch {
+        /* the browser refused a restart */
       }
     };
     rec.start();

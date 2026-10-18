@@ -34,7 +34,7 @@ The `web-practice*-from-phone` shots are a real end-to-end run in Chrome with a 
 ```bash
 npm run hub -- --demo --fixture-v2 --pace 0.05   # the hub on 8791 (fixture mode: the v2 live routes answer from fixtures/contract-v2/)
 npm run tv:web:build                             # the web TV, served by the hub at http://127.0.0.1:8791/tv/
-npm run web:phone:build                          # the phone page at /p/<code>?k=<PAIR_TOKEN> (scan the TV's QR code)
+npm run web:phone:build                          # the phone page at /p/<code>#k=<PAIR_TOKEN> (scan the TV's QR code)
 npm run tv:web:dev                               # or a dev server on 5183 (proxies /ws and /api to 8791)
 
 curl -X POST localhost:8791/api/demo/live -d '{"script":"story"}'   # the live story: window, nudge with hops, skip, recap

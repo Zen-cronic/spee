@@ -8,6 +8,8 @@ import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, ta
 describe("join URL", () => {
   it("reads the room code and the pair token from /p/<code>?k=...", () => {
     expect(parseJoin("/p/hj3h", "?k=abc123")).toEqual({ code: "HJ3H", k: "abc123", debug: false });
+    expect(parseJoin("/p/hj3h", "", "#k=frag456")).toEqual({ code: "HJ3H", k: "frag456", debug: false }); // the fragment form (review M13)
+    expect(parseJoin("/p/hj3h", "?k=old", "#k=new")).toMatchObject({ k: "new" });
     expect(parseJoin("/p/HJ3H/", "?debug=1")).toEqual({ code: "HJ3H", k: null, debug: true });
     expect(parseJoin("/p/", "")).toEqual({ code: null, k: null, debug: false });
     expect(parseJoin("/p/TOOLONG", "").code).toBeNull();

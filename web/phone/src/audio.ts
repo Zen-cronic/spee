@@ -42,6 +42,15 @@ export function captureSupported(): { ok: boolean; why: string | null } {
 // Start the mic. Call from a user gesture (iOS needs it to resume the AudioContext).
 export async function startCapture(onBlock: (samples: Float32Array) => void): Promise<Capture> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }, video: false });
+  try {
+    return await wire(stream, onBlock);
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop()); // never leave the mic open when the audio graph fails
+    throw err;
+  }
+}
+
+async function wire(stream: MediaStream, onBlock: (samples: Float32Array) => void): Promise<Capture> {
   const AC = (window as unknown as { AudioContext?: AudioCtor }).AudioContext ?? (window as unknown as { webkitAudioContext: AudioCtor }).webkitAudioContext;
   const ctx = new AC();
   if (ctx.state === "suspended") await ctx.resume().catch(() => undefined);

@@ -28,7 +28,7 @@
 // When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated at startup and printed once on the
 // console. Tokens never appear in a response or a log, with one exception by design: a WebSocket peer
 // that presented the pair token, or a trusted one with an allowed (or no) Origin, gets
-// `welcome.joinUrl` with ?k= so the TV can show it as a QR code (src/hub/bridgeGuard.ts).
+// `welcome.joinUrl` with #k= (a URL fragment) so the TV can show it as a QR code (src/hub/bridgeGuard.ts).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";

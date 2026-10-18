@@ -117,7 +117,7 @@ describe("C2: /ws checks Origin; the pair token goes only to authenticated peers
     for (const headers of [{}, { origin: `http://127.0.0.1:${s.port}` }, { origin: "http://localhost:5183" }] as Record<string, string>[]) {
       const r = await wsOutcome(s.port, "", headers);
       expect(r.result, JSON.stringify(headers)).toBe("welcome");
-      expect(r.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${r.welcome.code}?k=${PAIR}`);
+      expect(r.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${r.welcome.code}#k=${PAIR}`);
     }
   });
   it("public /ws still needs ?k=, also with an allowed Origin", async () => {
