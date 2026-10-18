@@ -62,13 +62,13 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 
 **Request checks.** `400 alexa_rejected` when the application id is not the skill's, or when the timestamp is more than 150 s off the hub's wall clock (the real clock, not the demo clock).
 
-**Signature verification (stretch).** Set `ALEXA_VERIFY_SIGNATURE=1` to check public requests:
+**Signature verification (on by default).** Every public request (through the tunnel) must carry Amazon's signature:
 
 1. the `SignatureCertChainUrl` rules;
 2. the chain to a trusted root, with the leaf for `echo-api.amazon.com`, valid now;
 3. RSA-SHA256 of the raw body.
 
-It is tested with a throwaway CA, not yet against Amazon's live chain, so it is **off by default**. Turn it on for the real-device run once one request has passed with it on.
+Loopback and LAN requests (tests, the contract check, the simulator on this machine) are never signature-checked. `ALEXA_VERIFY_SIGNATURE=0` turns the check off for public requests too; use that only for a local fixture run, never with a tunnel up. The hub logs `alexa.signature-off` at startup when it is off. The check is tested with a throwaway CA. It has not yet run against Amazon's live chain: if the first real request fails, the `alexa.rejected` log line gives the reason. A failed chain download is cached for 60 s, and at most 8 chains are kept.
 
 ## MCP tools
 
@@ -95,10 +95,10 @@ The server's `instructions` tell the model the two-turn rule: never wait for Bee
 
 - **Build and serve.** Build it with `npm run web:sim:build` (or `npm run web:build`); the hub serves it at `/sim/`.
 - **MCP client.** It uses the MCP SDK `Client` over `StreamableHTTPClientTransport` to `/mcp`, with the header `ngrok-skip-browser-warning: 1`.
-- **Token.** It reads `#t=<MCP_TOKEN>` from the fragment, which is never sent to a server. It keeps the token in `sessionStorage` and removes it from the address bar. On the LAN it needs no token; through a tunnel it prompts when the fragment is missing.
+- **Token.** It reads `#t=<MCP_TOKEN>` from the fragment, which is never sent to a server. It keeps the token in `sessionStorage` and removes it from the address bar. On this machine (or on the LAN with `npm run hub -- --lan`) it needs no token; elsewhere it prompts when the fragment is missing.
 - **Voice.** The mic uses Web Speech (Chrome, Edge, Safari) and the replies use `speechSynthesis`. A text box and quick buttons work everywhere.
 - **Router.** `router.ts` is the keyword router, labelled on screen as the stand-in for Alexa+'s model. `dialog.ts` runs the same two-turn drill as the skill: an attempt, "checking with Bee", "how did I do?", the verdict, then the next card on a pass.
-- **Panels.** The JSON-RPC log shows every request and response. The hub SSE feed (`/api/events`) is shown only when the page is opened on the LAN; through the tunnel the gate allows `/mcp` alone. The feed shows statuses and scores, never Bee's text.
+- **Panels.** The JSON-RPC log shows every request and response. The hub SSE feed (`/api/events`) works only when the page is opened on this machine (or on the LAN with `--lan`); through the tunnel the gate allows `/mcp` alone. The feed shows statuses and scores, never Bee's text.
 
 ## Real-device run (operator)
 
@@ -141,12 +141,12 @@ These steps were prepared and not run here: they need the operator's tunnel. The
    5. "Stop." It reads the drill summary.
    6. "Alexa, ask speech coach how am I doing."
    7. "Alexa, ask speech coach to turn on live coaching for 30 minutes", then later "...to turn off live coaching".
-7. **Simulator.** Open `https://<id>.ngrok-free.app/sim/#t=<MCP_TOKEN>` on a phone or laptop. ngrok's free tier may show its browser warning page once; choose "Visit Site". Run the same drill with "quiz me", the sentence, then "how did I do?". On the LAN, `http://<lan-ip>:8791/sim/` needs no token and also shows the hub event feed.
-8. **Optional:** restart the hub with `ALEXA_VERIFY_SIGNATURE=1` and repeat step 6.1. If Alexa then answers "There was a problem with the requested skill's response", unset it; the hub log line `alexa.rejected` gives the reason.
+7. **Simulator.** Open `https://<id>.ngrok-free.app/sim/#t=<MCP_TOKEN>` on a phone or laptop. ngrok's free tier may show its browser warning page once; choose "Visit Site". Run the same drill with "quiz me", the sentence, then "how did I do?". On this machine, `http://127.0.0.1:8791/sim/` needs no token and also shows the hub event feed.
+8. **Signature check.** It is on for step 6. If Alexa answers "There was a problem with the requested skill's response", read the hub log line `alexa.rejected` for the reason. Do not turn the check off while the tunnel is up.
 
 ## Known limits
 
-- **Signature verification** is off by default (see above). Until it is on, anyone who knows both the tunnel URL and the skill id can drive the skill and hear card sentences. Each card sentence is the corrected form of one of the wearer's own lines. The ngrok URL is random per session.
+- **Signature verification** is on by default for public requests (see above), but it has not yet been run against Amazon's live certificate chain. With `ALEXA_VERIFY_SIGNATURE=0`, anyone who knows both the tunnel URL and the skill id could drive the skill and hear card sentences.
 - **Progressive responses** depend on Alexa's `apiAccessToken` and were not exercised on a device in this packet. The spike proved the two-turn flow without them.
 - **`end_drill` and Stop** report the last session's summary when no session is running. The MCP tool maps 1:1 to `POST /api/session/end`, which returns it; Alexa checks `GET /api/session` first and just says "Bye."
 - **Speech recognition in the simulator** is the browser's own and is provisional, exactly like Alexa's transcript.

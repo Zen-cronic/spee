@@ -99,3 +99,27 @@ describe.skipIf(!hasOpenssl)("POST /alexa with the signature check on", () => {
     expect((await raw(s.port, "/alexa", { method: "POST", headers: { "content-type": "application/json" }, body: b.toString() })).status).toBe(200);
   });
 });
+
+describe("signature check default", () => {
+  const SKILL = "amzn1.ask.skill.00000000-0000-0000-0000-000000000000";
+  it("is on unless ALEXA_VERIFY_SIGNATURE=0 (the opt-out for local fixture runs)", () => {
+    const prev = process.env.ALEXA_VERIFY_SIGNATURE;
+    try {
+      delete process.env.ALEXA_VERIFY_SIGNATURE;
+      expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("signature check on (public requests)");
+      process.env.ALEXA_VERIFY_SIGNATURE = "1";
+      expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("signature check on (public requests)");
+      process.env.ALEXA_VERIFY_SIGNATURE = "0";
+      expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("signature check OFF");
+    } finally {
+      if (prev === undefined) delete process.env.ALEXA_VERIFY_SIGNATURE;
+      else process.env.ALEXA_VERIFY_SIGNATURE = prev;
+    }
+  });
+  it("a failed chain fetch is cached briefly (no fetch per bad request)", async () => {
+    let fetches = 0;
+    const v = signatureVerifier({ urlOk: () => true, fetchChain: async () => (fetches++, Promise.reject(new Error("down"))) });
+    for (let i = 0; i < 5; i++) expect((await v({ signaturecertchainurl: "https://s3.amazonaws.com/echo.api/x.pem", "signature-256": "AA==" }, Buffer.from("{}"))).ok).toBe(false);
+    expect(fetches).toBe(1);
+  });
+});

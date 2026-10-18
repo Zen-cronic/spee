@@ -40,7 +40,7 @@ const check = (ok: unknown, what: string) => {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const TOKENS = { pair: randomBytes(18).toString("base64url"), mcp: randomBytes(18).toString("base64url") };
-const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "" };
+const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "", ALEXA_VERIFY_SIGNATURE: "", HUB_TRUST_LAN: "", HUB_ALLOWED_ORIGINS: "" };
 const startHub = (args: string[]): { child: ChildProcess; port: Promise<number> } => {
   const c = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", ...args], { stdio: ["ignore", "pipe", "inherit"], env: hubEnv });
   return { child: c, port: listeningPort(c) };

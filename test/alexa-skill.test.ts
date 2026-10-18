@@ -230,10 +230,11 @@ describe("POST /alexa over HTTP", () => {
     expect(JSON.parse(b.text)).toEqual({ error: "alexa_rejected", message: "timestamp outside the 150 s window" });
     expect((await send({})).status).toBe(400);
   });
-  it("is reachable through a tunnel (the gate passes POST /alexa only); GET is 405 on the LAN", async () => {
+  it("is reachable through a tunnel (the gate passes POST /alexa only), where an unsigned request is refused; GET is 405 on the LAN", async () => {
     const ngrok = { "x-forwarded-for": "203.0.113.9", host: "bee-coach.example.app" };
     const r = await send(env("help"), ngrok);
-    expect(r.status).toBe(200);
+    expect(r.status).toBe(400); // signature verification is on by default for public requests
+    expect(JSON.parse(r.text)).toEqual({ error: "alexa_rejected", message: "bad SignatureCertChainUrl" });
     expect((await raw(s.port, "/alexa", { headers: ngrok })).status).toBe(403);
     expect((await raw(s.port, "/alexa")).status).toBe(405);
   });

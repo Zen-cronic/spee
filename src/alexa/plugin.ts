@@ -1,5 +1,8 @@
-// Alexa plugin (packet C): POST /alexa, the custom skill endpoint. The request's skill id and
-// timestamp are checked (./verify.ts; 400 alexa_rejected otherwise), then ./skill.ts maps the
+// Alexa plugin (packet C): POST /alexa, the custom skill endpoint. A PUBLIC request (through the
+// tunnel) must carry Amazon's request signature (./signature.ts), on by default; set
+// ALEXA_VERIFY_SIGNATURE=0 to turn that off for local fixture runs only. Loopback and LAN requests are
+// never signature-checked. The skill id and timestamp are then checked (./verify.ts; 400
+// alexa_rejected otherwise), then ./skill.ts maps the
 // intent onto the hub routes through the loopback hub client. No model call in a request; logs
 // carry intent names and timings only, never what was said.
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -23,7 +26,7 @@ export interface AlexaPluginOptions {
   pollEveryMs?: number;
   apiEndpointAllowed?: (url: string) => boolean; // default: the Alexa API hosts only
   fetch?: typeof fetch; // for the progressive response
-  // Verify Amazon's request signature on PUBLIC requests (stretch). Default: ALEXA_VERIFY_SIGNATURE=1.
+  // Verify Amazon's request signature on PUBLIC requests. Default: on, unless ALEXA_VERIFY_SIGNATURE=0.
   verifySignature?: boolean | ((headers: IncomingMessage["headers"], raw: Buffer) => Promise<SigResult>);
 }
 
@@ -70,7 +73,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
   let configError: string | null = null;
   const now = opts.now ?? (() => Date.now());
   const progressive = progressiveSender({ allowed: opts.apiEndpointAllowed, fetch: opts.fetch });
-  const sigOpt = opts.verifySignature ?? process.env.ALEXA_VERIFY_SIGNATURE === "1";
+  const sigOpt = opts.verifySignature ?? process.env.ALEXA_VERIFY_SIGNATURE?.trim() !== "0";
   const checkSignature = typeof sigOpt === "function" ? sigOpt : sigOpt ? signatureVerifier() : null;
   const loadSkillId = () => {
     if (skillId) return skillId;
@@ -88,6 +91,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
     attach(ctx) {
       hub ??= new HubClient(() => ctx.selfUrl());
       loadSkillId();
+      if (!checkSignature) ctx.log("alexa.signature-off", { note: "ALEXA_VERIFY_SIGNATURE=0: public /alexa requests are not signature-checked; never run a tunnel like this" });
     },
     async route(req: IncomingMessage, res: ServerResponse, url: URL, ctx: PluginCtx) {
       if (url.pathname !== "/alexa") return false;
@@ -141,7 +145,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
       routes: ALEXA_ROUTES,
       note: configError
         ? `no skill id: ${configError}`
-        : `skill id from ${opts.skillId ? "options" : process.env.ALEXA_SKILL_ID ? "ALEXA_SKILL_ID" : "alexa/skill-id.json"}; signature check ${checkSignature ? "on (public requests)" : "off"}; ${served} requests served, ${rejected} rejected`,
+        : `skill id from ${opts.skillId ? "options" : process.env.ALEXA_SKILL_ID ? "ALEXA_SKILL_ID" : "alexa/skill-id.json"}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
     }),
   };
 }

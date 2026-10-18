@@ -56,7 +56,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const stale = await alexa(envelope("help", { ts: Date.now() - 200_000 }));
   ctx.check(stale.status === 400 && stale.body?.error === "alexa_rejected" && /150 s/.test(stale.body?.message), "a timestamp 200 s old -> 400 alexa_rejected");
   const tunnel = await alexa(envelope("help"), { "x-forwarded-for": "203.0.113.9", host: "bee-coach.example.app" });
-  ctx.check(tunnel.status === 200 && tunnel.body?.version === "1.0" && tunnel.speech.length > 0, "a valid request through the tunnel passes the gate and gets an Alexa envelope");
+  ctx.check(tunnel.status === 400 && tunnel.body?.error === "alexa_rejected" && /SignatureCertChainUrl|Signature-256/.test(tunnel.body?.message ?? ""), "an unsigned request through the tunnel passes the gate and is refused by the signature check (on by default)");
 
   // The two-turn drill
   await ctx.post("/api/session/end", {});

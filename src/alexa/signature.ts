@@ -33,7 +33,19 @@ export interface SignatureVerifierOptions {
 }
 
 export function signatureVerifier(opts: SignatureVerifierOptions = {}) {
+  // Chains by normalized URL, at most CHAIN_CACHE entries (least recently used out). A failed
+  // fetch is remembered for FAIL_TTL_MS, so a flood of bad requests does not become a flood of fetches.
+  const CHAIN_CACHE = 8;
+  const FAIL_TTL_MS = 60_000;
   const cache = new Map<string, X509Certificate[]>();
+  const failed = new Map<string, { until: number; reason: string }>();
+  const keyOf = (u: string) => {
+    try {
+      return new URL(u).href;
+    } catch {
+      return u;
+    }
+  };
   const roots = opts.roots ?? rootCertificates.map((p) => new X509Certificate(p));
   const now = opts.now ?? (() => Date.now());
   const urlOk = opts.urlOk ?? certUrlOk;
@@ -64,16 +76,29 @@ export function signatureVerifier(opts: SignatureVerifierOptions = {}) {
     const sig = h("signature-256");
     if (!urlOk(url)) return { ok: false, reason: "bad SignatureCertChainUrl" };
     if (!sig) return { ok: false, reason: "no Signature-256 header" };
-    let chain = cache.get(url!);
+    const key = keyOf(url!);
+    let chain = cache.get(key);
+    if (chain) (cache.delete(key), cache.set(key, chain));
     if (!chain) {
+      const f = failed.get(key);
+      if (f && f.until > now()) return { ok: false, reason: f.reason };
       try {
         chain = splitPem(await fetchChain(url!));
       } catch (err) {
-        return { ok: false, reason: `could not load the certificate chain: ${(err as Error).message}` };
+        const reason = `could not load the certificate chain: ${(err as Error).message}`;
+        failed.set(key, { until: now() + FAIL_TTL_MS, reason });
+        if (failed.size > 64) failed.delete(failed.keys().next().value!);
+        return { ok: false, reason };
       }
       const bad = chainOk(chain);
-      if (bad) return { ok: false, reason: bad };
-      cache.set(url!, chain);
+      if (bad) {
+        failed.set(key, { until: now() + FAIL_TTL_MS, reason: bad });
+        if (failed.size > 64) failed.delete(failed.keys().next().value!);
+        return { ok: false, reason: bad };
+      }
+      failed.delete(key);
+      cache.set(key, chain);
+      if (cache.size > CHAIN_CACHE) cache.delete(cache.keys().next().value!);
     } else {
       const bad = chainOk(chain); // re-check validity dates on every request
       if (bad) return { ok: false, reason: bad };
