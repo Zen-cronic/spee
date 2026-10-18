@@ -98,11 +98,11 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
 
 - **Wearer-only persistence.** `loadRealCorpus` returns the wearer's lines (the only thing ever written to disk) and, separately, an in-memory `TransientContext` of other speakers' lines. That context is never serialized; it exists only so an LLM prompt can see the reply to a "how do you say X?" moment, and the prompt tells the model not to quote it. Error extraction prompts contain wearer lines only. `test/real.test.ts` enforces this: a planted other-speaker string must not appear in the corpus, the analysis or the class report.
 - **Gitignored outputs only.** Real data goes to `real/`, `out/`, `cache/`, `fixtures/private/` and `day1/*.json`, all gitignored. Tracked reports carry aggregates plus at most 10 short (≤ 12 words) excerpts of the wearer's own lines.
-- **Leak check.** `scripts/leak-check.ts` searches every committable file for 5-word shingles of other speakers' live utterances (held in memory), location address tokens and JWT-shaped tokens. It also screens:
+- **Leak check.** `scripts/leak-check.ts` searches every committable file, of any size, for 5-word shingles of other speakers' live utterances (held in memory), their whole 3-4 word lines, location address tokens and JWT-shaped tokens. JSON escapes are undone first. It also screens:
   - optional `bee stream` captures (`--stream`): untagged lines count as other speakers;
-  - the hub's attempt texts.
+  - optional meeting transcripts (`--wearer "<name>" --tactiq <file>`).
 
-  It fails if any private output path (`real/`, `out/`, `cache/`, the hub's state files) is not git-ignored.
+  Only lines a source labels as the wearer count as the wearer's; the hub's own state (`real/hub-attempts.json`, `real/live/`) is screened for other-speaker text, never used as an allow-list. A committable audio file fails the check. It also fails if any private output path (`real/`, `out/`, `cache/`, the hub's state files) is not git-ignored.
 - The bee token is never read, printed or stored by this code; the CLI handles auth.
 
 ## Mock PoC (historical)
