@@ -206,6 +206,12 @@ export const scaleTimings = (t: VerifierTimings, pace: number): VerifierTimings 
 // provisional (phone/Alexa) text or the card's target sentence. Bee's text is then what is graded.
 export const VERIFY_SIMILARITY = 0.6; // coverage: weighted share of the provisional text's words found in Bee's text
 export const TARGET_MATCH = 0.5; // Bee text vs the card target (weighted recall)
+// A Bee-only line (no phone or Alexa preview) counts as an attempt on a card only within this long
+// after the card opened: an hour later in a meeting, a sentence that happens to match is not a drill.
+export const BEE_ONLY_MAX_AGE_MS = 10 * 60_000;
+// The fallback poll looks at conversations seen this recently, at most POLL_MAX_CONVERSATIONS.
+export const POLL_CONVERSATION_MAX_AGE_MS = 30 * 60_000;
+export const POLL_MAX_CONVERSATIONS = 3;
 
 export interface PendingAttempt {
   attemptId: string;
@@ -296,7 +302,7 @@ export interface OpenCard {
 export class BeeVerifier {
   private utts = new Map<number, Utt>();
   private earlyTags = new Map<number, TaggedUtterance>();
-  private convIds = new Map<string, number>();
+  private convIds = new Map<string, { id: number; seenAt: number }>(); // uuid -> id, pruned after POLL_CONVERSATION_MAX_AGE_MS
   private pending = new Map<string, PendingAttempt>();
   private cards: OpenCard[] = [];
   private consumedIds = new Set<number>(); // Bee lines already used to confirm an attempt (stream or poll)
@@ -355,7 +361,10 @@ export class BeeVerifier {
     }
     if (e.type === "new-conversation" || e.type === "update-conversation" || e.type === "delete-conversation") {
       const c = e.conversation;
-      if (c.conversation_uuid) this.convIds.set(c.conversation_uuid, c.id);
+      if (c.conversation_uuid) {
+        this.convIds.delete(c.conversation_uuid); // re-insert: the map stays in last-seen order
+        this.convIds.set(c.conversation_uuid, { id: c.id, seenAt: now });
+      }
       const end = "end_time" in c ? toMs(c.end_time as string | number | null | undefined) : null;
       this.opts.onConversation?.({ type: e.type, id: c.id, uuid: c.conversation_uuid ?? null, state: c.state ?? null, startMs: toMs(c.start_time), endMs: end, receivedAt: now });
       return;
@@ -434,6 +443,12 @@ export class BeeVerifier {
 
   // A line counts for a card only if Bee delivered it after the card opened and it was spoken no
   // earlier than the opening (minus the clock slack).
+  // The latest opening of a card (a card can be opened again in a later session).
+  private cardOf(cardId: string): OpenCard | undefined {
+    for (let i = this.cards.length - 1; i >= 0; i--) if (this.cards[i]!.cardId === cardId) return this.cards[i];
+    return undefined;
+  }
+
   private afterOpen(u: Utt, c: OpenCard) {
     return u.receivedAt >= c.openedAt && u.startMs >= c.openedAt - this.t.slackMs;
   }
@@ -451,7 +466,7 @@ export class BeeVerifier {
     let best: { a: PendingAttempt; group: Utt[]; sim: number; score: number } | null = null;
     for (const a of this.pending.values()) {
       if (!this.overlaps(u, a)) continue;
-      const card = this.cards.find((c) => c.cardId === a.cardId);
+      const card = this.cardOf(a.cardId);
       if (card && !this.afterOpen(u, card)) continue; // only lines spoken and received after the card opened
       const lang = card?.lang ?? "en";
       const group = [...this.utts.values()].filter((x) => x.tag === "wearer" && !x.consumed && this.overlaps(x, a)).sort((x, y) => x.startMs - y.startMs);
@@ -470,6 +485,7 @@ export class BeeVerifier {
     let match = 0;
     for (const c of this.cards) {
       if (!this.afterOpen(u, c) || (c.closedAt != null && u.startMs > c.closedAt + this.t.slackMs)) continue;
+      if (u.startMs - c.openedAt > BEE_ONLY_MAX_AGE_MS) continue; // too long after the card opened to be a drill attempt
       if ([...this.pending.values()].some((a) => a.cardId === c.cardId && this.overlaps(u, a))) continue; // its preview is still pending
       const m = align(normTokens(c.resay, c.lang), normTokens(u.text, c.lang)).score;
       if (m > match || (m === match && card && c.openedAt > card.openedAt)) (card = c), (match = m);
@@ -509,8 +525,10 @@ export class BeeVerifier {
     return "Bee heard it but never tagged the wearer (tag timeout)";
   }
 
-  // Timeouts and fallback polls. The server calls this every few hundred ms; tests call it directly.
-  async tick(): Promise<void> {
+  // Tag timeouts and the buffer TTL: other speakers' text is forgotten after bufferTtlMs. Synchronous
+  // and separate from the polls, so the server runs it on every interval even while a slow Bee CLI
+  // poll is still in flight (a hung poll must not keep text in memory).
+  purge(): void {
     const now = this.opts.clock();
     for (const u of this.utts.values()) {
       if (u.tag === "pending" && now - u.receivedAt >= this.t.tagWaitMs) {
@@ -521,6 +539,13 @@ export class BeeVerifier {
     }
     for (const [id] of this.earlyTags) if (!this.utts.has(id) && this.earlyTags.size > 200) this.earlyTags.delete(id);
     if (this.consumedIds.size > 5000) for (const id of [...this.consumedIds].slice(0, 2500)) this.consumedIds.delete(id);
+    for (const [uuid, c] of this.convIds) if (now - c.seenAt > POLL_CONVERSATION_MAX_AGE_MS && this.convIds.size > POLL_MAX_CONVERSATIONS) this.convIds.delete(uuid);
+  }
+
+  // Timeouts and fallback polls. The server calls this every few hundred ms; tests call it directly.
+  async tick(): Promise<void> {
+    const now = this.opts.clock();
+    this.purge();
     for (const a of [...this.pending.values()]) {
       const since = now - a.speechEndMs;
       if (since >= this.t.giveUpAfterMs && !a.polling) {
@@ -535,26 +560,31 @@ export class BeeVerifier {
         if (a.pollsDone === 0) this.opts.onPolling?.(a.attemptId);
         a.pollsDone++;
         this.counters.polls++;
+        let found: { group: Utt[]; sim: number } | null = null;
         try {
-          await this.pollFor(a);
+          found = await this.pollFor(a);
         } catch {
           // a failed poll is retried at the next poll time; the give-up timer still applies
         } finally {
           a.polling = false;
         }
+        // Outside the poll's catch: a failure while recording the verdict must surface, not leave
+        // the attempt "polling" forever.
+        if (found && this.pending.has(a.attemptId)) this.finish(a, found.group, "poll", found.sim, found.group.map((g) => g.score));
       }
     }
   }
 
-  private async pollFor(a: PendingAttempt) {
-    const ids = [...new Set([...this.utts.values()].filter((u) => this.overlaps(u, a) && u.uuid).map((u) => this.convIds.get(u.uuid!)).filter((x): x is number => x != null))];
-    if (!ids.length) ids.push(...this.convIds.values());
+  private async pollFor(a: PendingAttempt): Promise<{ group: Utt[]; sim: number } | null> {
+    const ids = [...new Set([...this.utts.values()].filter((u) => this.overlaps(u, a) && u.uuid).map((u) => this.convIds.get(u.uuid!)?.id).filter((x): x is number => x != null))];
+    // No line of ours in the window: the most recently seen conversations only, not every one ever.
+    if (!ids.length) ids.push(...[...this.convIds.values()].slice(-POLL_MAX_CONVERSATIONS).map((c) => c.id));
     const lines = await this.opts.poll!({ conversationIds: ids, fromMs: a.speechStartMs - this.t.slackMs, toMs: a.speechEndMs + this.t.slackMs });
-    if (!this.pending.has(a.attemptId)) return;
-    const lang = this.cards.find((c) => c.cardId === a.cardId)?.lang ?? "en";
-    const opened = this.cards.find((c) => c.cardId === a.cardId)?.openedAt ?? -Infinity;
+    if (!this.pending.has(a.attemptId)) return null;
+    const card = this.cardOf(a.cardId);
+    const lang = card?.lang ?? "en";
+    const opened = card?.openedAt ?? -Infinity;
     const win = lines.filter((l) => this.overlaps(l, a) && !this.consumedIds.has(l.id) && l.startMs >= opened - this.t.slackMs).sort((x, y) => x.startMs - y.startMs);
-    const card = this.cards.find((c) => c.cardId === a.cardId);
     let best: { g: PolledUtterance[]; sim: number; score: number } | null = null;
     for (const g of [...win.map((l) => [l]), win]) {
       if (!g.length) continue;
@@ -564,8 +594,8 @@ export class BeeVerifier {
       const score = Math.max(sim / VERIFY_SIMILARITY, tm / TARGET_MATCH);
       if (score >= 1 && (!best || score > best.score)) best = { g, sim, score };
     }
-    if (!best) return;
+    if (!best) return null;
     const group: Utt[] = best.g.map((l) => this.utts.get(l.id) ?? { id: l.id, text: l.text, startMs: l.startMs, endMs: l.endMs, receivedAt: this.opts.clock(), tag: "wearer", score: null, consumed: false });
-    this.finish(a, group, "poll", best.sim, group.map((g) => g.score));
+    return { group, sim: best.sim };
   }
 }

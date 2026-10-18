@@ -60,7 +60,10 @@ export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: 
       const utts = pickUtterances(c);
       const counts: Record<string, number> = {};
       for (const u of utts) counts[u.speaker] = (counts[u.speaker] ?? 0) + 1;
-      const w = discoverWearerLabels(counts, me);
+      // Only a label the profile (or BEE_WEARER_LABELS) names is the wearer: when `bee me` failed,
+      // the "only named label" guess could be an enrolled colleague, so nothing is matched.
+      const found = discoverWearerLabels(counts, me);
+      const w = found.method === "env" || found.method === "profile-name" ? found : { ...found, labels: [] };
       for (const u of utts) {
         if (!isWearer(u.speaker, w) || u.spoken_at == null) continue;
         const s = toMs(u.spoken_at)!;

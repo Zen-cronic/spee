@@ -11,6 +11,7 @@ import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { localDate } from "../real/deck.js";
+import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
@@ -568,13 +569,25 @@ export class CoachHub extends EventEmitter {
 
   // Persistence
 
+  // A failed write (full or read-only disk) is reported once per kind and the hub carries on in
+  // memory: a drill must still settle and reach the screens.
+  private persistFailed = new Set<string>();
+  private persistSafe(kind: string, f: () => void) {
+    try {
+      f();
+      this.persistFailed.delete(kind);
+    } catch (err) {
+      if (!this.persistFailed.has(kind)) console.error(JSON.stringify({ t: new Date().toISOString(), event: "hub.persist-error", kind, error: String((err as Error)?.message ?? err) }));
+      this.persistFailed.add(kind);
+    }
+  }
   persistDeck() {
-    if (this.opts.deckPath) saveHubDeck(this.opts.deckPath, this.deck);
+    const p = this.opts.deckPath;
+    if (p) this.persistSafe("deck", () => saveHubDeck(p, this.deck));
   }
   persistAttempts() {
-    if (!this.opts.attemptsPath) return;
-    mkdirSync(dirname(this.opts.attemptsPath), { recursive: true });
-    writeFileSync(this.opts.attemptsPath, JSON.stringify({ attempts: this.attempts }, null, 1) + "\n");
+    const p = this.opts.attemptsPath;
+    if (p) this.persistSafe("attempts", () => writeJsonAtomic(p, { attempts: this.attempts }));
   }
 }
 
@@ -585,7 +598,7 @@ const selectFrom = (today: string) => {
 };
 
 export function loadAttempts(path: string): Attempt[] {
-  return existsSync(path) ? ((JSON.parse(readFileSync(path, "utf8")) as { attempts: Attempt[] }).attempts ?? []) : [];
+  return readJsonSafe<{ attempts?: Attempt[] }>(path, () => ({ attempts: [] })).attempts ?? [];
 }
 
 export { parseSource };

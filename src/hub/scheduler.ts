@@ -6,8 +6,7 @@
 //   fail:      the card drops to box 1 and stays due today, behind the other due cards.
 // Only a final grade (of Bee's wearer-tagged text) is applied; a provisional phone/Alexa grade never is.
 // Persistence: the deck JSON (real/deck.json in live mode; out/demo/deck.json in demo mode).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import { addDays, INTERVALS_DAYS, localDate, markReviewed } from "../real/deck.js";
 import type { HubCard } from "./cards.js";
 
@@ -24,12 +23,12 @@ export interface BoxChange {
 }
 
 export function loadHubDeck(path: string): HubDeck {
-  return existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as HubDeck) : { cards: [] };
+  return readJsonSafe<HubDeck>(path, () => ({ cards: [] }));
 }
 
+// tmp + rename: a kill mid-write keeps the previous deck (src/hub/atomic.ts).
 export function saveHubDeck(path: string, deck: HubDeck) {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(deck, null, 1) + "\n");
+  writeJsonAtomic(path, deck);
 }
 
 export function dueCards(deck: HubDeck, today: string): HubCard[] {
