@@ -172,11 +172,15 @@ describe("hub server with the stub plugins", () => {
     const sent = ctx!.broadcastToScreens(codeA, "practice.meters", { takeId: "take_room_test", frame: 1 });
     expect(sent).toBe(1);
     expect(ctx!.broadcastToScreens(codeA, "practice.meters", { takeId: "take_room_test", frame: 2 })).toBe(0); // <= 20 Hz per room
+    expect(ctx!.broadcastToScreens(codeA, "practice.meters", { takeId: "take_room_test", frame: 3 })).toBe(0);
     await sleep(150);
     // only this test's frames: the earlier route test starts a demo take that plays to every room
     const got = (c: { frames: any[] }) => c.frames.filter((f) => f.type === "app" && f.topic === "practice.meters" && f.payload?.takeId === "take_room_test");
-    expect(got(tvA)).toHaveLength(1);
-    expect(got(tvA)[0].payload).toEqual({ takeId: "take_room_test", frame: 1 });
+    // throttled frames are not lost: the latest one is sent when the 50 ms window ends (trailing edge)
+    expect(got(tvA).map((f) => f.payload)).toEqual([
+      { takeId: "take_room_test", frame: 1 },
+      { takeId: "take_room_test", frame: 3 },
+    ]);
     expect(got(phoneA)).toHaveLength(0);
     expect(got(tvB)).toHaveLength(0);
     expect(feed.events.some((e) => e.topic === "practice.meters")).toBe(false);

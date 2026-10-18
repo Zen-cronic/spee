@@ -64,7 +64,7 @@ vega run-app tv/vega/build/x86_64-release/speakingmirror_x86_64.vpkg com.beecoac
 - **Package.** `com.beecoach.mirror` ("Speaking Mirror"), component `com.beecoach.mirror.main`. The mirror is silent, so it has no media player and no media services in `manifest.toml`.
 - **Hub address.** `tv/vega/src/hub.json` (`npm --prefix tv/vega run hub -- <host:port>`, then rebuild).
   - On the VVD, use `127.0.0.1:8791` with the reverse port forward. Never use the NAT address `10.0.2.2`: frames over about 1.4 kB get dropped there.
-  - On a stick on Wi-Fi, use the dev machine's LAN IP. The hub's gate treats LAN addresses as private.
+  - On a stick on Wi-Fi, use the dev machine's LAN IP, and start the hub with `npm run hub -- --lan` (or `HUB_TRUST_LAN=1`). Without it, the gate treats other LAN devices as public, and the stick gets 403s. Use `--lan` on your own Wi-Fi only.
 - **Meters on Vega.** They render at 5 Hz. The phone sends 10 Hz; the app batches frames, so the pitch trace keeps every frame.
 - **Screenshots.** The VVD screenshots come from the emulator console, `screenrecord screenshot <dir>` on `localhost:5554`. The remote keys were sent with `vega exec vda -s emulator-5554 shell "inputd-cli button_press KEY_RIGHT|KEY_ENTER|KEY_BACK"`.
 - **Bundle check.** The release sourcemap has 15 `@amazon-devices/react-native-kepler` modules and 0 core `react-native` modules, so the default Metro config keeps the Vega platform mapping (no custom resolver).

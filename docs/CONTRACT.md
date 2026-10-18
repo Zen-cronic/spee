@@ -623,9 +623,11 @@ The examples below are **hand-written synthetic payloads** for the invented demo
 
 ## Public-access gate (`src/hub/gate.ts`)
 
-A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's words, so every request passes the gate first.
+A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's words, and so would any web page the wearer opens while the hub runs (a page can call `http://127.0.0.1:8791` from the browser). Every request passes two checks first: trust and Origin.
 
-- **When a request is public.** It carries a proxy header (`x-forwarded-for`, `forwarded`, `x-forwarded-host`, `x-real-ip`, `cf-connecting-ip`; ngrok adds `x-forwarded-for`), or its `Host` is not loopback or LAN. Loopback means `localhost`, `127.0.0.0/8` or `::1`. LAN means `10/8`, `172.16/12`, `192.168/16`, `169.254/16`, IPv6 ULA or link-local, `*.local`, `*.home.arpa`, or this machine's hostname. A missing `Host` counts as public.
+- **When a request is public.** It carries a proxy header (`x-forwarded-for`, `forwarded`, `x-forwarded-host`, `x-real-ip`, `cf-connecting-ip`; ngrok adds `x-forwarded-for`), or its `Host` is not loopback or LAN, or its **socket** does not come from this machine. Loopback means `localhost`, `127.0.0.0/8` or `::1`. LAN means `10/8`, `172.16/12`, `192.168/16`, `169.254/16`, IPv6 ULA or link-local, `*.local`, `*.home.arpa`, or this machine's hostname. A missing `Host` counts as public.
+  - **LAN devices are public by default.** A connection from another device on the LAN (a LAN socket address) is trusted only when the hub runs with `--lan` (or `HUB_TRUST_LAN=1`). Use it for a real Fire TV stick on home Wi-Fi; never on shared Wi-Fi. The VVD's reverse port forward, the Vite dev proxies and the hub's own clients connect from loopback and need nothing.
+  - TCP tunnels (`ngrok tcp`, `ssh -R`) arrive from loopback with no proxy header and would look local: use `ngrok http` only.
 - **What a public request may reach:**
 
   | Public request | Allowed when |
@@ -636,10 +638,17 @@ A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's word
   | `/ws` WebSocket upgrade | `?k=$PAIR_TOKEN` |
   | anything else | never: `403 {"error":"forbidden","message":"..."}`; a refused upgrade gets a 403 line and its socket destroyed |
 
-- **LAN and loopback** requests are not gated. The TV joins `/ws` without `k`. MCP on the LAN needs no token, and a plugin must not weaken the gate for public requests.
-- **Tokens.** `PAIR_TOKEN` and `MCP_TOKEN` come from the environment. When one is unset, the hub generates a random one at startup and prints it once on the console (`hub: PAIR_TOKEN is unset; generated for this run: ...`). Tokens never appear in an HTTP response, an event or a log line. The one exception is by design: the pair token is in the bridge `welcome.joinUrl` that a joined peer receives (the TV needs it for the QR code). `/api/health` reports only whether each token came from `env` or was `generated`.
-- **`PUBLIC_BASE_URL`** (for example the ngrok `https://` origin) is the base of the phone join URL. `welcome.joinUrl` is `<PUBLIC_BASE_URL or http://<lan-ip>:<port>>/p/<code>?k=<PAIR_TOKEN>`; the TV turns it into a QR code. The phone page reads `k` from its own URL and connects to `wss://<host>/ws?k=<k>` (or `ws://` on the LAN).
-- **SSE and `/api/*` are LAN-only.** The simulator shows the SSE feed only when it is opened on the LAN. Opened through the tunnel, it uses `/mcp` alone. It takes the MCP token from its URL fragment (`/sim/#t=<MCP_TOKEN>`, which is never sent to a server) or from a prompt.
+- **Trusted** requests (loopback, or LAN with `--lan`) are not gated by the table above. The TV joins `/ws` without `k`. MCP from a trusted client needs no token, and a plugin must not weaken the gate for public requests.
+- **Origin check (every request, trusted or not).** A request without `Origin` is a non-browser client (Alexa, the MCP SDK, curl, the Vega app) and passes. A request whose `Origin` is not allowed gets `403 {"error":"forbidden_origin"}`, except `GET`/`HEAD` of the static pages (`/tv/`, `/p/`, `/sim/`) and `/mcp` with the bearer token. A `/ws` upgrade with a foreign `Origin` is refused unless it presents `?k=$PAIR_TOKEN`. Allowed origins:
+  - the hub's own: `http://{localhost, 127.0.0.1, [::1], <lan-ip>, <hostname>, <hostname>.local}:<port>`, and the same origin as a loopback or LAN `Host`;
+  - `PUBLIC_BASE_URL`;
+  - the Vite dev servers on the same hosts: `5183` (tv/web), `5184` (web/phone), `5175` (web/sim);
+  - `HUB_ALLOWED_ORIGINS` (comma-separated, for anything else).
+- **CORS.** There is no wildcard. An allowed `Origin` is echoed in `access-control-allow-origin`, and every answer carries `vary: origin`. A request without `Origin` gets no CORS header.
+- **Tokens.** `PAIR_TOKEN` and `MCP_TOKEN` come from the environment. When one is unset, the hub generates a random one at startup and prints it once on the console (`hub: PAIR_TOKEN is unset; generated for this run: ...`). Tokens never appear in an HTTP response, an event or a log line. The one exception is by design: the pair token is in the bridge `welcome.joinUrl` of an **authenticated** peer (the TV needs it for the QR code). A peer is authenticated when it presented `?k=$PAIR_TOKEN`, or when it is trusted and its `Origin` is allowed or absent. Any other peer gets `welcome.joinUrl` without `?k=`. `/api/health` reports only whether each token came from `env` or was `generated`.
+- **`PUBLIC_BASE_URL`** (for example the ngrok `https://` origin) is the base of the phone join URL. `welcome.joinUrl` is `<PUBLIC_BASE_URL or http://<lan-ip>:<port>>/p/<code>?k=<PAIR_TOKEN>` (the `?k=` part for authenticated peers only); the TV turns it into a QR code. The phone page reads `k` from its own URL and connects to `wss://<host>/ws?k=<k>` (or `ws://` on the LAN).
+- **Bridge frames are validated before the bridge sees them** (`src/hub/bridgeGuard.ts`): field types and lengths per message type, at most 256 kB per frame, one `hello` per socket, and no binary frames. A refused frame gets `{"type":"error","code":"bad-message"}`, and a socket-level error closes that socket only. A screen's malformed room code is dropped, so it gets a fresh room. A `clientId` that the other role already holds in that room is refused. A peer with more than 256 kB queued misses `practice.meters` frames, and one above 4 MB is disconnected. A room with no peers is removed after 60 s.
+- **SSE and `/api/*` are trusted-only** (loopback, or the LAN with `--lan`). The simulator shows the SSE feed only when it is opened on the LAN. Opened through the tunnel, it uses `/mcp` alone. It takes the MCP token from its URL fragment (`/sim/#t=<MCP_TOKEN>`, which is never sent to a server) or from a prompt.
 
 ## Plugins (`src/hub/plugin.ts`, `src/hub/plugins.ts`)
 
@@ -659,7 +668,7 @@ interface PluginCtx {
   pace: number; demo: boolean; fixtureV2: boolean;
   log(event, data?): void; // JSON lines: event names and ids only
   publish(topic: SequencedTopic, data): HubEvent; // seq + SSE + recent + every peer; throws for room topics
-  broadcastToScreens(room: Room | string | null, topic: RoomTopic, payload): number; // one room's screens (null: every room); <= 20 Hz per room and topic; returns screens reached (0 when throttled)
+  broadcastToScreens(room: Room | string | null, topic: RoomTopic, payload): number; // one room's screens (null: every room); <= 20 Hz per room and topic; returns screens reached (0 when throttled; the latest throttled frame is still sent when the window ends)
   selfUrl(): string; // http://127.0.0.1:<port>, for a loopback hub client (a LAN request for the gate)
   auth: { mcpBearerOk(authorization): boolean; pairTokenOk(k): boolean }; // the tokens themselves are never handed out
   isPublic(req): boolean;
@@ -682,7 +691,7 @@ interface PluginCtx {
 1. The gate.
 2. Fixture mode, if it is on.
 3. The plugins, in registry order, for a path under their prefixes. `OPTIONS` requests reach the plugins too, so the MCP plugin can answer its own preflight.
-4. The generic `OPTIONS` answer: `204` with CORS `*`, methods `GET, POST, DELETE, OPTIONS`, and headers `content-type, authorization, mcp-session-id, mcp-protocol-version, last-event-id`.
+4. The generic `OPTIONS` answer: `204` with the allowed `Origin` echoed (never `*`), methods `GET, POST, DELETE, OPTIONS`, and headers `content-type, authorization, mcp-session-id, mcp-protocol-version, last-event-id`.
 5. The v1 routes.
 6. `404 not_found`.
 

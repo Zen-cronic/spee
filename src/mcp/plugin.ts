@@ -2,7 +2,8 @@
 // routes (MCP_TOOLS in src/hub/contract.ts, implemented in ./tools.ts over the loopback HubClient).
 //   POST /mcp      JSON-RPC (initialize, tools/list, tools/call, ...); JSON responses, no session id
 //   GET|DELETE     405 (stateless: no standalone SSE stream, no session to delete)
-//   OPTIONS        204 preflight, CORS * exposing mcp-session-id
+//   OPTIONS        204 preflight exposing mcp-session-id. No wildcard CORS: the hub echoes an allowed
+//                  Origin (src/hub/gate.ts) and refuses a foreign one before this plugin runs.
 // Public requests reach it only with Authorization: Bearer $MCP_TOKEN: the gate (src/hub/gate.ts)
 // enforces that, and this plugin checks again. No model call in a request.
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -17,7 +18,6 @@ export const MCP_PREFIXES = ["/mcp"];
 export const MCP_ROUTES = ["POST /mcp", "GET /mcp", "DELETE /mcp"];
 
 export const MCP_CORS: Record<string, string> = {
-  "access-control-allow-origin": "*",
   "access-control-allow-methods": "POST, GET, DELETE, OPTIONS",
   "access-control-allow-headers": "content-type, authorization, accept, mcp-session-id, mcp-protocol-version, last-event-id, ngrok-skip-browser-warning",
   "access-control-expose-headers": "mcp-session-id, mcp-protocol-version",

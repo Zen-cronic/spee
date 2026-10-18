@@ -156,16 +156,23 @@ describe("/mcp HTTP behaviour", () => {
   it("GET and DELETE are 405; OPTIONS is 204 with CORS exposing mcp-session-id", async () => {
     expect((await raw(s.port, "/mcp")).status).toBe(405);
     expect((await raw(s.port, "/mcp", { method: "DELETE" })).status).toBe(405);
-    const o = await raw(s.port, "/mcp", { method: "OPTIONS" });
+    const o = await raw(s.port, "/mcp", { method: "OPTIONS", headers: { origin: "http://localhost:5175" } });
     expect(o.status).toBe(204);
-    expect(o.headers["access-control-allow-origin"]).toBe("*");
+    expect(o.headers["access-control-allow-origin"]).toBe("http://localhost:5175");
     expect(String(o.headers["access-control-expose-headers"])).toContain("mcp-session-id");
     expect(String(o.headers["access-control-allow-headers"])).toContain("authorization");
   });
   it("POST answers JSON with CORS and no session id (stateless)", async () => {
     const r = await raw(s.port, "/mcp", { method: "POST", headers: h, body });
     expect(r.status).toBe(200);
-    expect(r.headers["access-control-allow-origin"]).toBe("*");
+    expect(r.headers["access-control-allow-origin"]).toBeUndefined(); // no Origin: a non-browser client
+    const same = await raw(s.port, "/mcp", { method: "POST", headers: { ...h, origin: `http://127.0.0.1:${s.port}` }, body });
+    expect(same.status).toBe(200);
+    expect(same.headers["access-control-allow-origin"]).toBe(`http://127.0.0.1:${s.port}`);
+    const foreign = await raw(s.port, "/mcp", { method: "POST", headers: { ...h, origin: "https://evil.example" }, body });
+    expect(foreign.status).toBe(403);
+    expect(JSON.parse(foreign.text).error).toBe("forbidden_origin");
+    expect((await raw(s.port, "/mcp", { method: "OPTIONS", headers: { origin: "https://evil.example" } })).status).toBe(403);
     expect(r.headers["mcp-session-id"]).toBeUndefined();
     expect(JSON.parse(r.text).result.tools).toHaveLength(MCP_TOOLS.length);
   });
