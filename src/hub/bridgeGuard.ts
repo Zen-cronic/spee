@@ -135,11 +135,11 @@ export function guardBridge(bridge: BridgeHub, o: { log: Log; decisions: WeakMap
     if (buffered > WS_TERMINATE_AT) {
       o.log("ws.backpressure", { action: "terminate", buffered });
       socket.terminate();
-      return;
+      return false;
     }
-    if (buffered > WS_DROP_METERS_AT && msg.type === "app" && msg.topic === "practice.meters") return;
+    if (buffered > WS_DROP_METERS_AT && msg.type === "app" && msg.topic === "practice.meters") return false;
     if (msg.type === "welcome" && typeof msg.joinUrl === "string" && auth.get(socket)) msg = { ...msg, joinUrl: o.withToken(msg.joinUrl) };
-    send(socket, msg);
+    return send(socket, msg);
   };
   installed.send = true;
   return { authenticated: (ws) => !!auth.get(ws), installed };

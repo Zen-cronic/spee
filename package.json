@@ -38,7 +38,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1151.0",
     "@aws-sdk/credential-providers": "^3.1151.0",
     "@modelcontextprotocol/sdk": "1.32.1",
-    "@rackboard/tv-voice-bridge": "file:vendor/rackboard-tv-voice-bridge-0.1.0.tgz",
+    "@rackboard/tv-voice-bridge": "file:vendor/rackboard-tv-voice-bridge-0.2.0.tgz",
     "ws": "^8.22.0",
     "zod": "^4.6.7"
   },
