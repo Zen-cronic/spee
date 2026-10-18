@@ -20,6 +20,7 @@
 // ReplayWrist is the demo and test channel: no CLI; it reports the hops a real to-do would have
 // (create ~1.45 s, alarm lead), scaled by the demo pace.
 import { execFile } from "node:child_process";
+import { trackChild } from "../processGuards.js";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
@@ -108,7 +109,9 @@ export class ReplayWrist implements Wrist {
 export type ExecFn = (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string; stderr?: string }>;
 const execFileP = promisify(execFile);
 export const defaultExec: ExecFn = async (file, args, opts) => {
-  const r = await execFileP(file, args, { timeout: opts.timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true });
+  const p = execFileP(file, args, { timeout: opts.timeout, killSignal: "SIGKILL", maxBuffer: 4 * 1024 * 1024, windowsHide: true });
+  trackChild(p.child);
+  const r = await p;
   return { stdout: String(r.stdout), stderr: String(r.stderr) };
 };
 

@@ -1,5 +1,6 @@
 // BeeSource seam: MockBeeSource (fixtures) or CliBeeSource (shells out to the `bee` CLI).
 import { execFile } from "node:child_process";
+import { trackChild } from "../hub/processGuards.js";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -107,10 +108,17 @@ const execFileP = promisify(execFile);
 // labels for the wearer appear only on the final (non-realtime) transcription.
 export class CliBeeSource implements BeeSource {
   readonly kind = "cli";
-  constructor(private bin = process.env.BEE_BIN ?? "bee") {}
+  // Every call has a timeout (BEE_CLI_TIMEOUT_MS, default 30 s): a hung CLI must not stall the
+  // hub's verifier tick, which also runs the other-speaker purge.
+  constructor(
+    private bin = process.env.BEE_BIN ?? "bee",
+    private timeoutMs = Number(process.env.BEE_CLI_TIMEOUT_MS) || 30_000,
+  ) {}
 
   private async run(args: string[]): Promise<unknown> {
-    const { stdout } = await execFileP(this.bin, [...args, "--json"], { maxBuffer: 64 * 1024 * 1024 });
+    const p = execFileP(this.bin, [...args, "--json"], { maxBuffer: 64 * 1024 * 1024, timeout: this.timeoutMs, killSignal: "SIGKILL" });
+    trackChild(p.child);
+    const { stdout } = await p;
     return JSON.parse(stdout);
   }
 

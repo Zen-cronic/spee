@@ -2,6 +2,7 @@
 // wearer's top habit this week, and one warm-up card for it. Calendar titles are served live and
 // never persisted.
 import { execFile } from "node:child_process";
+import { trackChild } from "./processGuards.js";
 import { promisify } from "node:util";
 import { localDate } from "../real/deck.js";
 import { dueCards } from "./scheduler.js";
@@ -38,7 +39,9 @@ export function beeCalendar(bin = process.env.BEE_BIN ?? "bee", timeoutMs = 10_0
   return async () => {
     if (cache && Date.now() - cache.at < 5 * 60_000) return cache.value;
     try {
-      const { stdout } = await execFileP(bin, ["today", "--json"], { timeout: timeoutMs, maxBuffer: 8 * 1024 * 1024 });
+      const p = execFileP(bin, ["today", "--json"], { timeout: timeoutMs, killSignal: "SIGKILL", maxBuffer: 8 * 1024 * 1024 });
+      trackChild(p.child);
+      const { stdout } = await p;
       const o = JSON.parse(stdout) as { calendar_events?: unknown[] };
       const events = (o.calendar_events ?? [])
         .map((e) => e as Record<string, unknown>)

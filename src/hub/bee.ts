@@ -10,6 +10,7 @@
 // the hub (and so can reach disk) only after Bee tags it as the wearer with a sufficient score.
 // Untagged or other-speaker text is dropped from memory after BUFFER_TTL_MS and never logged.
 import { spawn, type ChildProcess } from "node:child_process";
+import { trackChild } from "./processGuards.js";
 import { createInterface } from "node:readline";
 import { z } from "zod";
 import { wordCount } from "../real/text.js";
@@ -120,7 +121,7 @@ export function spawnBeeStream(opts: { bin?: string; onEvent: (e: BeeEvent) => v
     if (stopped) return;
     const startedAt = Date.now();
     lines = 0;
-    child = (opts.spawnFn ?? spawn)(bin, ["stream", "--types", types, "--json"], { stdio: ["ignore", "pipe", "pipe"] });
+    child = trackChild((opts.spawnFn ?? spawn)(bin, ["stream", "--types", types, "--json"], { stdio: ["ignore", "pipe", "pipe"] }));
     log("bee.stream.start", { pid: child.pid, types });
     const rl = createInterface({ input: child.stdout! });
     rl.on("line", (l) => {
@@ -149,7 +150,12 @@ export function spawnBeeStream(opts: { bin?: string; onEvent: (e: BeeEvent) => v
     stop() {
       stopped = true;
       if (timer) clearTimeout(timer);
-      child?.kill();
+      const c = child;
+      if (c && c.exitCode === null && c.signalCode === null) {
+        c.kill();
+        const k = setTimeout(() => c.exitCode === null && c.signalCode === null && c.kill("SIGKILL"), 2000);
+        k.unref?.();
+      }
     },
   };
 }
