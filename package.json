@@ -5,6 +5,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "setup": "npm install && npm --prefix tv/web install",
+    "demo": "npm run web:build && npm run tv:web:build && tsx src/hub/server.ts --demo",
     "fixtures": "tsx scripts/build-fixtures.ts",
     "poc": "tsx src/poc.ts",
     "test": "vitest run",

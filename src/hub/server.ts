@@ -548,6 +548,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const port = (server.address() as { port: number }).port;
   listeningPort = port;
   log("hub.listening", { port, ...setup.describe, fixtureV2: !!fixture, plugins: plugins.map((pl) => pl.name), trustLan, bridgeGuard: guard.installed });
+  print(`hub: open the TV at http://localhost:${port}/tv/ and the Alexa+ simulator at http://localhost:${port}/sim/ ; pair a phone by scanning the TV's QR.`);
   return {
     url: `http://127.0.0.1:${port}`,
     port,
