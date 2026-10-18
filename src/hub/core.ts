@@ -6,6 +6,7 @@
 // graded (the final grade) and only that grade moves the card in the Leitner schedule. If the
 // preview and Bee disagree, Bee wins. No Bee confirmation within the timeout and the poll
 // fallback leaves the attempt "unverified" (not counted).
+import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -73,6 +74,7 @@ export interface HubOptions {
 }
 
 const ids = { n: 0 };
+export const DRILL_IDLE_MS = 10 * 60_000;
 const newId = (p: string, now: number) => `${p}_${now.toString(36)}${(ids.n++).toString(36).padStart(3, "0")}`;
 
 export class CoachHub extends EventEmitter {
@@ -89,6 +91,10 @@ export class CoachHub extends EventEmitter {
   lastSession: DrillSession | null = null;
   private seq = 0;
   readonly recent: HubEvent[] = []; // last 50 events (GET /api/events/recent, contract examples)
+  // This hub process: a new id on every start, so a screen can tell a restart (seq back at 1)
+  // from a reconnect (hub.state carries it, with lastSeq).
+  readonly bootId = `boot_${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
+  private lastActivity = 0; // the drill's last sign of life: a card, an attempt, a verdict
 
   constructor(private opts: HubOptions) {
     super();
@@ -130,9 +136,34 @@ export class CoachHub extends EventEmitter {
     };
   }
 
+  get lastSeq() {
+    return this.seq;
+  }
+
+  private touch() {
+    this.lastActivity = this.clock();
+  }
+
+  // A drill nobody is driving is closed after DRILL_IDLE_MS: the session ends (session.ended) or a
+  // lone open card closes, so an Alexa session that timed out does not keep live nudges muted
+  // (drill-active) or keep matching everyday speech as attempts. Never while Bee is still checking an
+  // attempt. Called from drillActive() and from the hub server's tick. Returns true when it closed one.
+  expireIdle(idleMs = DRILL_IDLE_MS): boolean {
+    if (!this.session && !this.open) return false;
+    if (this.verifier.pendingCount() > 0) return (this.touch(), false);
+    if (this.clock() - this.lastActivity < idleMs) return false;
+    if (this.session) this.endSession();
+    else {
+      this.open = null;
+      this.verifier.closeCards();
+    }
+    return true;
+  }
+
   // A drill is in progress: a session is running, a card was opened recently, or an attempt is
   // waiting for Bee. Live nudges are suppressed meanwhile (reason "drill-active").
   drillActive(recentMs = 5 * 60_000): boolean {
+    this.expireIdle();
     if (this.session) return true;
     if (this.verifier.pendingCount() > 0) return true;
     return !!this.open && this.clock() - this.open.openedAt < recentMs;
@@ -233,6 +264,7 @@ export class CoachHub extends EventEmitter {
     const c = opts.cardId ? this.card(opts.cardId) : this.nextCard();
     if (!c) return null;
     this.open = { cardId: c.id, openedAt: this.clock(), by: opts.by ?? "http" };
+    this.touch();
     if (this.session && !this.session.cardIds.includes(c.id)) this.session.cardIds.push(c.id);
     this.verifier.openCard({ cardId: c.id, resay: c.resay, lang: c.lang, openedAt: this.open.openedAt });
     const v = this.view(c);
@@ -273,9 +305,12 @@ export class CoachHub extends EventEmitter {
     };
     this.attempts.push(a);
     if (this.session) this.session.attemptIds.push(a.id);
-    this.verifier.expect({ attemptId: a.id, cardId, text: opts.text, speechStartMs: end - dur, speechEndMs: end });
+    this.touch();
     this.persistAttempts();
+    // Published before Bee is asked: expect() can match a buffered line and grade at once, and the
+    // screens must see provisional before verified and graded.
     this.publish("attempt.provisional", { attempt: a, card: this.view(c) });
+    this.verifier.expect({ attemptId: a.id, cardId, text: opts.text, speechStartMs: end - dur, speechEndMs: end });
     return a;
   }
 
@@ -288,6 +323,7 @@ export class CoachHub extends EventEmitter {
   }
 
   private settle(a: Attempt, c: HubCard, beeText: string) {
+    this.touch();
     // Grade only the attempt's own sentence(s); merged extra sentences are kept for display.
     const span = attemptSpan(c.resay, beeText, c.lang);
     if (a.bee) (a.bee.gradedText = span.graded), (a.bee.extraText = span.extra);
@@ -355,6 +391,7 @@ export class CoachHub extends EventEmitter {
     if (this.session) this.endSession();
     const now = this.clock();
     this.session = { id: newId("ses", now), by: opts.by ?? "http", startedAt: now, endedAt: null, size: Math.max(1, Math.min(10, opts.size ?? 3)), cardIds: [], attemptIds: [] };
+    this.touch();
     this.publish("session.started", { session: this.session });
     const card = this.openCard({ by: this.session.by });
     if (!card) this.endSession();

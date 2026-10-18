@@ -398,7 +398,11 @@ Connect with the bridge client (`@rackboard/tv-voice-bridge`, vendored as `vendo
 **Hub to every peer** (every room, every role): each event is `{"type":"app","topic":"<event>","payload":{seq, at, ...}}`.
 
 - `seq` increases strictly across all events. Render in `seq` order and drop duplicates by `seq`.
-- On joining, a peer gets `hub.state` (`seq: 0`), the same object as `GET /api/state`.
+- On joining, a peer gets `hub.state` (`seq: 0`), the same object as `GET /api/state`. It carries `bootId` (new on every hub start) and `lastSeq` (the last `seq` published when the snapshot was taken); both are optional for older hubs.
+  - **Reconnect** (same `bootId`): events at or below `lastSeq` are already in the snapshot; apply the ones above it.
+  - **Restart** (a different `bootId`): `seq` started again at 1, so drop the old high-water mark. Without this, a TV that had seen seq 340 ignored the next 340 events.
+- **Drill sessions expire.** A session (or a lone open card) with no card, attempt or verdict for 10 minutes is ended (`session.ended`), unless Bee is still checking an attempt. Alexa's `SessionEndedRequest` also ends a session the skill started. Either way, an abandoned drill does not keep live nudges muted as `drill-active` or keep matching everyday speech as attempts.
+- **Event order.** `attempt.provisional` is always published before that attempt's `attempt.verified` and `attempt.graded`.
 - SSE (`GET /api/events`) carries the same events as `event: <topic>`, `id: <seq>`, `data: <payload>`.
 
 **Client to hub:**

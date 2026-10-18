@@ -41,8 +41,12 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const TOKENS = { pair: randomBytes(18).toString("base64url"), mcp: randomBytes(18).toString("base64url") };
 const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "", ALEXA_VERIFY_SIGNATURE: "", HUB_TRUST_LAN: "", HUB_ALLOWED_ORIGINS: "" };
+// Every spawned hub is killed when this script exits, whether the checks passed, failed or threw.
+const spawned: ChildProcess[] = [];
+process.on("exit", () => spawned.forEach((c) => c.exitCode === null && c.kill("SIGKILL")));
 const startHub = (args: string[]): { child: ChildProcess; port: Promise<number> } => {
   const c = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", ...args], { stdio: ["ignore", "pipe", "inherit"], env: hubEnv });
+  spawned.push(c);
   return { child: c, port: listeningPort(c) };
 };
 const listeningPort = (c: ChildProcess): Promise<number> => new Promise((resolve, reject) => {
@@ -377,6 +381,20 @@ check((await wsOutcome("?k=wrong", { ...NGROK })) === "rejected", "public /ws wi
 check((await wsOutcome(`?k=${encodeURIComponent(TOKENS.pair)}`, { ...NGROK })) === "welcome", "public /ws with k=$PAIR_TOKEN: welcome");
 check((await wsOutcome("", {})) === "welcome", "LAN /ws without k: welcome");
 check(typeof tvWelcome.joinUrl === "string" && tvWelcome.joinUrl.endsWith(`/p/${tvWelcome.code}?k=${encodeURIComponent(TOKENS.pair)}`), "welcome.joinUrl is /p/<code>?k=<PAIR_TOKEN>");
+
+console.log("\nv2: Origin check (a web page the wearer visits cannot read or drive the hub)");
+const EVIL = { origin: "https://evil.example" };
+for (const [method, p] of [["GET", "/api/attempts?limit=200"], ["GET", "/api/events"], ["POST", "/api/session/start"], ["POST", "/mcp"], ["OPTIONS", "/api/attempt"]] as const) {
+  const r = await raw(p, { method, headers: { ...EVIL, "content-type": "text/plain" }, body: method === "POST" ? "{}" : undefined });
+  check(r.status === 403 && json(r.text)?.error === "forbidden_origin" && r.headers["access-control-allow-origin"] === undefined, `a foreign Origin from loopback: ${method} ${p} -> 403 forbidden_origin, no CORS header`);
+}
+const own = await raw("/api/health", { headers: { origin: base } });
+check(own.status === 200 && own.headers["access-control-allow-origin"] === base, "the hub's own Origin is echoed (never *)");
+check((await raw("/api/health")).headers["access-control-allow-origin"] === undefined, "no Origin (Alexa, MCP SDK, curl, Vega): served, no CORS header");
+check((await wsOutcome("", { ...EVIL })) === "rejected", "/ws from a foreign Origin without k: upgrade refused (no events, no pair token)");
+check((await wsOutcome(`?k=${encodeURIComponent(TOKENS.pair)}`, { ...EVIL })) === "welcome", "/ws from a foreign Origin with k=$PAIR_TOKEN: welcome");
+const st = tv.events.find((e) => e.topic === "hub.state")?.payload;
+check(typeof st?.bootId === "string" && st.bootId.startsWith("boot_") && typeof st?.lastSeq === "number", "hub.state on join carries bootId and lastSeq (restart detection)");
 
 console.log("\nv2: static mounts refuse traversal");
 const traversal = ["/p/..%2f..%2fpackage.json", "/p/%2e%2e/%2e%2e/package.json", "/p/..%252f..%252fpackage.json", "/tv/..%5c..%5cpackage.json", "/sim/%2e%2e%2fpackage.json", "/p/.env", "/p/../../package.json", "/sim/x/..%2f..%2f..%2fpackage.json"];

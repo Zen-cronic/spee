@@ -177,6 +177,11 @@ export interface BeeFeedStatus {
 export interface HubState {
   mode: "live" | "demo";
   dataLabel: string;
+  // This hub process (new on every start) and the last seq it published when this snapshot was
+  // taken. A screen that sees a different bootId knows the hub restarted (seq starts again at 1);
+  // events at or below lastSeq are already reflected in the snapshot. Optional: older hubs omit them.
+  bootId?: string;
+  lastSeq?: number;
   state: VoiceState;
   narration: string;
   verdictReady: boolean;

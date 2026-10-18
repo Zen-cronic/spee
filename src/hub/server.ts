@@ -326,10 +326,15 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     res.write(frame);
   };
 
-  const stateSnapshot = () => ({ mode: hub.mode, dataLabel: hub.dataLabel, ...hub.sessionState() });
+  const stateSnapshot = () => ({ mode: hub.mode, dataLabel: hub.dataLabel, bootId: hub.bootId, lastSeq: hub.lastSeq, ...hub.sessionState() });
 
   let ticking = false;
   const tick = setInterval(() => {
+    try {
+      hub.expireIdle();
+    } catch (err) {
+      log("hub.expire-error", { error: String((err as Error)?.message ?? err) });
+    }
     if (ticking) return;
     ticking = true;
     hub.verifier

@@ -202,7 +202,22 @@ describe("other intents", () => {
     expect((await get("/api/session")).session).toBeNull();
     const end = await handleAlexa(env("session-ended"), fake().deps);
     expect(end.envelope).toEqual({ version: "1.0", response: {} });
-    expect(end.hubCalls).toEqual([]);
+    expect(end.hubCalls).toEqual(["GET /api/session 200"]); // nothing running: nothing to end
+  });
+  it("an abandoned Alexa drill (SessionEndedRequest) ends the hub session, so live nudges are not muted (review H13)", async () => {
+    await handleAlexa(env("launch"), fake().deps);
+    expect((await get("/api/session")).session?.by).toBe("alexa");
+    expect(s.setup.hub.drillActive()).toBe(true);
+    const end = await handleAlexa(env("session-ended"), fake().deps);
+    expect(end.envelope).toEqual({ version: "1.0", response: {} });
+    expect(end.hubCalls).toEqual(["GET /api/session 200", "POST /api/session/end 200"]);
+    expect((await get("/api/session")).session).toBeNull();
+    expect(s.setup.hub.drillActive(0)).toBe(false);
+    // a session started elsewhere (the TV, the phone) is left alone
+    await post("/api/session/start", { by: "tv" });
+    expect((await handleAlexa(env("session-ended"), fake().deps)).hubCalls).toEqual(["GET /api/session 200"]);
+    expect((await get("/api/session")).session?.by).toBe("tv");
+    await post("/api/session/end", {});
   });
   it("an unreachable hub is a short apology, not a crash", async () => {
     const down = { ...fake().deps, hub: new HubClient("http://127.0.0.1:9", { timeoutMs: 500 }) };

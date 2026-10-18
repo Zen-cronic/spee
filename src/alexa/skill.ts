@@ -154,7 +154,14 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     "AMAZON.HelpIntent": async () => ({ text: SPEECH.help, reprompt: SPEECH.helpReprompt, attrs }),
     "AMAZON.FallbackIntent": async () => (attrs.cardId ? { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs } : { text: SPEECH.fallbackIdle, reprompt: SPEECH.helpReprompt, attrs }),
     Unknown: async () => (attrs.cardId ? { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs } : { text: SPEECH.fallbackIdle, reprompt: SPEECH.helpReprompt, attrs }),
-    SessionEndedRequest: async () => null,
+    // Alexa closed the session (the user went quiet, said nothing valid, or an error). A drill the
+    // skill started is ended on the hub too, so it does not keep live nudges muted (drill-active).
+    // No speech is allowed in this response.
+    SessionEndedRequest: async () => {
+      const state = await track("GET /api/session", hub.session());
+      if (state.ok && state.body.session?.by === "alexa") await track("POST /api/session/end", hub.endSession());
+      return null;
+    },
   };
 
   async function start(kind: "launch" | "start"): Promise<Out> {
