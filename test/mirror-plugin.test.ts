@@ -175,6 +175,8 @@ describe("mirror plugin on a demo hub", () => {
     expect(await until(() => feed.events.some((e) => e.topic === "mirror.focus" && e.data.view === "week" && e.data.by === "demo"))).toBe(true);
     expect((await post("/api/demo/mirror", { script: "nope" })).body.error).toBe("bad_request");
     expect((await post("/api/demo/mirror", { script: "focus", view: "nope" })).status).toBe(400);
+    // review L1: an unknown room is 404, not a 202 that publishes a summary to every peer
+    expect(await post("/api/demo/mirror", { room: "QQQQ" })).toMatchObject({ status: 404, body: { error: "unknown_room" } });
   });
   it("health reports the mirror plugin ready", async () => {
     const h = await (await fetch(`${s.url}/api/health`)).json();

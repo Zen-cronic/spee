@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { CliBeeSource, pickUtterances } from "../bee/source.js";
 import type { Me } from "../bee/schemas.js";
 import { discoverWearerLabels, isWearer, matchesProfile } from "../real/wearer.js";
+import { TZ as LIVE_TZ } from "../real/deck.js";
 import { DEFAULT_TIMINGS, replay, scaleTimings, spawnBeeStream, toMs, type BeeEvent, type PolledUtterance, type PollFn, type ReplayStep, type StreamHandle, type TaggedUtterance, type WearerTagRule } from "./bee.js";
 import { beeCalendar, type CalendarFn } from "./brief.js";
 import { deriveHabit, deriveMustSay, type HubCard } from "./cards.js";
@@ -74,6 +75,9 @@ export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: 
   };
   const hub = new CoachHub({
     mode: "live",
+    // one time zone for dates, quiet hours and spoken clock times: BEE_TZ, else America/Toronto
+    // (never the process time zone, which is UTC on many servers)
+    tz: LIVE_TZ,
     deck,
     deckPath,
     attempts: loadAttempts(attemptsPath),

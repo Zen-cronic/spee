@@ -141,8 +141,9 @@ export function createMirrorPlugin(opts: MirrorOptions = {}): HubPlugin {
     const script = b.script ?? "practice-take";
     if (script !== "practice-take" && script !== "focus") return ctx.json(res, 400, { error: "bad_request", message: 'script must be "practice-take" or "focus"' });
     if (b.room !== undefined && b.room !== null && typeof b.room !== "string") return ctx.json(res, 400, { error: "bad_request", message: "room must be a room code" });
-    const room = typeof b.room === "string" ? b.room.toUpperCase() : null;
-    const rooms = room ? (ctx.bridge.rooms.has(room) ? 1 : 0) : ctx.bridge.rooms.size;
+    const room = typeof b.room === "string" && b.room.trim() ? b.room.trim().toUpperCase() : null; // "" = every room
+    if (room && !ctx.bridge.rooms.has(room)) return ctx.json(res, 404, { error: "unknown_room", message: `no TV is showing room ${room}` });
+    const rooms = room ? 1 : ctx.bridge.rooms.size;
     if (script === "focus") {
       if (!MIRROR_VIEWS.includes(b.view as MirrorView)) return ctx.json(res, 400, { error: "bad_request", message: `view must be one of ${MIRROR_VIEWS.join(", ")}` });
       ctx.publish("mirror.focus", { view: b.view as MirrorView, by: "demo", reason: "demo", recapId: null, takeId: null });
