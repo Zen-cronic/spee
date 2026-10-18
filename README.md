@@ -1,4 +1,38 @@
-# Bee drill coach (proof of concept)
+# Speaking Mirror: a realtime speaking coach on Bee
+
+Bee hears you say "I guess" four times in two minutes, and about 20 seconds later your wrist buzzes. When the conversation ends you get a recap. When you practise, you re-say the line to Alexa or your phone, and the attempt is graded from **Bee's own wearer-tagged transcript**, not from the mic you said it into. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
+
+- **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins.
+- **AI finds the habits; deterministic code grades and decides.** Hedges ("I guess", "kind of") and "like" are the hero habits; fillers, vague answers and restarts are tracked too.
+- **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator), Fire TV (a Vega app) and a phone page (drills and practice meters).
+
+## Start here (no accounts, no keys, about 2 minutes)
+
+```bash
+npm run setup          # installs the hub and the web TV
+npm run demo           # builds the pages and starts the hub with SYNTHETIC data and a Bee event replay
+```
+
+Then open:
+
+- **TV:** http://localhost:8791/tv/ (arrow keys and Enter move along the tabs);
+- **Alexa+ simulator:** http://localhost:8791/sim/ (a real MCP client: type or say "quiz me", repeat the sentence, then "how did I do?");
+- **Phone:** scan the TV's QR from a phone on the same Wi-Fi.
+
+`npm run demo:replay` prints the whole live story with its latency hops, with no Bee, Watch or AWS. The Fire TV app builds with `npm run tv:vega:build` and runs on the Vega Virtual Device (`docs/tv.md`).
+
+Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a Bee account, `npm run hub` runs the same surfaces on your real data.
+
+## What we'll tell you before you find it
+
+- **Demo mode replays Bee.** `npm run demo` replays recorded-shape Bee events; the "verified by Bee" step there is the replay, and the screens say so.
+- **Latency is set by Bee.** A tagged line reaches the hub about 5.4 s (median; range 4.3 to 14.7 s) after you stop speaking, measured on our Watch. A wrist nudge therefore lands about 17 to 20 s after the line that triggered it, and a voice drill takes two turns, because an Alexa reply must come within 8 s.
+- **The Watch buzzes only while Bee is recording and the iPhone is locked.** Otherwise the alarm shows on the iPhone (iOS notification mirroring).
+- **The before/after check is pre-registered but young.** `prereg/transfer.json` fixed the drilled habits (hedges and "like") and an undrilled control (restarts) before the first drill. `GET /api/transfer` says "not drilled yet", "too little data" or "no change" until real speech after the drills shows a drop, and it says so when the control dropped too.
+- **Alexa+ third-party add-ons are partner-gated**, so the Alexa surface is a classic custom skill (tested in the Alexa iPhone app) plus an MCP server any MCP client can use; `/sim/` is that client in a browser, with a keyword router standing in for Alexa+'s model.
+- **No audio is stored by Bee**, so tone and pitch exist only in phone practice mode; Bee-based coaching works from words and timing.
+
+## Origin: the drill-coach proof of concept
 
 A time-boxed go/no-go PoC for a deliberate-practice speech coach built on Bee data. It finds the wearer's real recurring speech errors and turns them into drill cards: the exact line, a correction, and a re-say prompt. It schedules the cards with a Leitner box and checks re-performance in later recordings against a pre-registered undrilled control. It covers English stand-up updates (hedges, vague status, missing ETAs, buried blockers) and French at high A2 / low B1 (auxiliary choice, gender, depuis + tense, prepositions, contractions, anglicisms).
 
