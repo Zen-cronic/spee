@@ -69,7 +69,7 @@ On a real device (iPhone Alexa app, Canada, 2026-10-16), Bee's wearer-tagged lin
    - Otherwise: narrate the waiting line and suggest asking again after `retryAfterMs`.
 3. **TV.** The TV needs no polling: it gets `attempt.verified` and then `attempt.graded` over the WebSocket the moment Bee's line lands.
 
-Bee may merge the attempt with what was said before or after it ("... from finance. How did I do?"). Matching therefore uses coverage, so extra words don't hurt. Before grading, whole sentences that contain no word of the target are cut. `attempt.bee.gradedText` is what was graded and `attempt.bee.extraText` is what was cut. A sentence that contains any target word is kept whole, so a habit inside it ("Um, the ...", "..., I guess.") is still graded. If Bee did not punctuate the merge, the whole line is graded.
+Bee may merge the attempt with what was said before or after it ("... from finance. How did I do?"). Matching therefore uses coverage, so extra words don't hurt. Before grading, whole sentences that contain no word of the target are cut. `attempt.bee.gradedText` is what was graded and `attempt.bee.extraText` is what was cut. A sentence that contains any target word is kept whole, so a habit inside it ("Um, the ...") is still graded. The cut applies to the content and required-word rules only: the habit and filler rules also read the sentence right before and right after the graded span, so a hedge or filler said as its own sentence ("... this morning. I guess.", "Maybe. The deploy ...", "Um. The ...") still fails the attempt. Curly apostrophes count like straight ones. If Bee did not punctuate the merge, the whole line is graded.
 
 Timings: measured live on 2026-10-16. A `new-utterance` arrives 4.3 to 14.7 s after the speaker stops (median 5.4 s), and `tagged-utterance` follows about 0.5 s later.
 
@@ -101,7 +101,7 @@ An attempt passes only if every rule holds. Each rule appears in `grade.checks` 
 | `habit` | the card's habit occurs **0** times beyond its occurrences in the target sentence itself. Hedge cards: the listed hedges (`i guess`, `kind of`...). Vague cards: any vague answer (`that thing`, `getting there`, `and stuff`...) plus the card's own excerpt. Filler cards: the listed fillers. Restart cards: an immediate repetition. French error and vocab cards: the original mistake or the English word |
 | `fillers` | fillers beyond the target's own count ≤ **0**. The fillers are EN `um`/`uh`, filler-position `like` and `you know`; FR `um`/`uh`/`euh`/`ben`/`bah` |
 | `content` | weighted recall of the target sentence's words ≥ **0.8**. Function words weigh 0.5 |
-| `required` | every `mustSay` word was said: the concrete words the fix introduces, such as "invoice retry job" replacing "that thing" |
+| `required` | every `mustSay` word was said: the concrete words the fix introduces, such as "invoice retry job" replacing "that thing". Exact, or a one-edit ASR slip ("car" for "card"); never a two-edit match ("relapse" for "release") or another day, month or number ("Tuesday" for "Thursday") |
 
 - **Fuzzy words.** Some ASR slips are accepted and listed in `grade.fuzzy`:
   - Edit distance on the word or on a light phonetic key ("car" ≈ "card", "rec" ≈ "rack"). The edit budget is 0 edits for 1 to 2 letters, 1 for 3 to 5 letters and 2 for 6 or more, and the first letter is fixed.

@@ -10,9 +10,15 @@
 //                beyond those in the target sentence: at most MAX_FILLERS (0).
 //   R4 content   weighted token recall of the target sentence >= CONTENT_THRESHOLD (0.8), with
 //                fuzzy word matching for ASR slips (src/hub/fuzzy.ts); function words weigh 0.5.
-//   R5 required  every "must say" word (the concrete words the fix introduces) is matched.
+//   R5 required  every "must say" word (the concrete words the fix introduces) is heard exactly
+//                or as a one-edit ASR slip ("car" for "card"); never as a two-edit match
+//                ("relapse" for "release") or across days, months and numbers ("Tuesday" for
+//                "Thursday", "match" for "March").
 // Hedges are always counted and reported; they fail the attempt only on a hedge card (R2).
-import { normTokens, align, type Lang } from "./fuzzy.js";
+// R2 and R3 read `habitText` (default: the attempt itself): for a Bee line, the attempt's span plus
+// its neighbouring sentences, so a hedge said as its own sentence still counts. Curly and other
+// apostrophes are normalized before every habit pattern ("I don’t know" = "I don't know").
+import { countPhrase, levenshtein, normTokens, align, type Lang } from "./fuzzy.js";
 import { habitMatches, type Habit } from "./habits.js";
 import { FILLER_RE, HEDGE_RE, listRe } from "../real/text.js";
 
@@ -63,21 +69,43 @@ function excess(attempt: string[], target: string[]): string[] {
   return out;
 }
 
-export function grade(card: GradeCard, attemptText: string): GradeResult {
+const apos = (s: string) => s.replace(/[’‘`ʼ´]/g, "'");
+
+// Words whose near neighbours are different facts, not ASR slips.
+const CLOSED_CLASS = new Set(
+  (
+    "monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december " +
+    "lundi mardi mercredi jeudi vendredi samedi dimanche janvier fevrier février mars avril mai juin juillet aout août septembre octobre novembre decembre décembre " +
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million " +
+    "first second third fourth fifth sixth seventh eighth ninth tenth un deux trois quatre cinq sept huit neuf dix onze douze vingt trente quarante cinquante cent mille"
+  ).split(" "),
+);
+const slipOk = (want: string, heard: string) => want === heard || (!CLOSED_CLASS.has(want) && !CLOSED_CLASS.has(heard) && !/\d/.test(want + heard) && levenshtein(want, heard) <= 1);
+
+export function grade(card: GradeCard, attemptText: string, habitText: string = attemptText): GradeResult {
   const lang = card.lang;
   const text = attemptText.trim();
+  const habitSrc = apos(habitText.trim() || text);
+  const resay = apos(card.resay);
   const target = normTokens(card.resay, lang);
   const heard = normTokens(text, lang);
 
-  const habitFound = excess(habitMatches(card.habit, text, lang), habitMatches(card.habit, card.resay, lang));
-  const fillers = excess(listRe(text, FILLER_RE[lang]), listRe(card.resay, FILLER_RE[lang]));
-  const hedges = listRe(text, HEDGE_RE[lang]);
+  const habitFound = excess(habitMatches(card.habit, habitSrc, lang), habitMatches(card.habit, resay, lang));
+  const fillers = excess(listRe(habitSrc, FILLER_RE[lang]), listRe(resay, FILLER_RE[lang]));
+  const hedges = listRe(habitSrc, HEDGE_RE[lang]);
 
   const a = align(target, heard);
   const missing = target.filter((_, i) => !a.matched[i]);
   const fuzzy = a.pairs.filter((p) => !p.exact).map(({ target, heard }) => ({ target, heard }));
-  const matchedWords = new Set(target.filter((_, i) => a.matched[i]));
-  const required = (card.mustSay ?? []).map((w) => ({ word: w, ok: matchedWords.has(w) }));
+  const heardSet = new Set(heard);
+  const said = (w: string) => {
+    const t = normTokens(w, lang);
+    if (!t.length) return false;
+    if (t.length > 1 ? countPhrase(heard, t) > 0 : heardSet.has(t[0]!)) return true;
+    // an ASR slip: every token of the word aligned one-to-one within one edit
+    return t.every((tok) => a.pairs.some((p) => p.target === tok && !p.heard.includes(" ") && slipOk(tok, p.heard)));
+  };
+  const required = (card.mustSay ?? []).map((w) => ({ word: w, ok: said(w) }));
 
   const checks: Check[] = [];
   checks.push({ rule: "nonempty", ok: heard.length > 0, detail: heard.length ? `${heard.length} words heard` : "nothing was heard" });

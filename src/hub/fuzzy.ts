@@ -182,14 +182,17 @@ export function countPhrase(tokens: string[], phrase: string[]): number {
 
 // The part of a Bee line that is the attempt. Bee can merge the drill sentence with what the
 // wearer said next ("... this morning. How did I do?") or before it, so whole sentences with no
-// word aligned to the target are cut before grading. A sentence holding any aligned word is kept
-// whole, so a habit inside it ("Um, the ...", "..., I guess.") is still graded.
-export function attemptSpan(target: string, beeText: string, lang: Lang = "en"): { graded: string; extra: string } {
+// word aligned to the target are cut before the content and required-word rules. A sentence
+// holding any aligned word is kept whole, so a habit inside it ("Um, the ...") is still graded.
+// `habitText` is the span plus the sentence right before and right after it: a hedge or filler said
+// as its own sentence ("... this morning. I guess.", "Maybe. The deploy ...", "Um. The ...") is
+// still the attempt, so the habit and filler rules read it.
+export function attemptSpan(target: string, beeText: string, lang: Lang = "en"): { graded: string; extra: string; habitText: string } {
   const sents = beeText.trim().split(/(?<=[.?!])\s+/).filter(Boolean);
-  if (sents.length <= 1) return { graded: beeText.trim(), extra: "" };
+  if (sents.length <= 1) return { graded: beeText.trim(), extra: "", habitText: beeText.trim() };
   const counts = sents.map((x) => normTokens(x, lang).length);
   const a = align(normTokens(target, lang), sents.flatMap((x) => normTokens(x, lang)));
-  if (!a.pairs.length) return { graded: beeText.trim(), extra: "" };
+  if (!a.pairs.length) return { graded: beeText.trim(), extra: "", habitText: beeText.trim() };
   const sentOf = (k: number) => {
     let acc = 0;
     for (let i = 0; i < counts.length; i++) if (k < (acc += counts[i]!)) return i;
@@ -197,5 +200,9 @@ export function attemptSpan(target: string, beeText: string, lang: Lang = "en"):
   };
   const first = sentOf(a.pairs[0]!.at);
   const last = sentOf(a.pairs.at(-1)!.at);
-  return { graded: sents.slice(first, last + 1).join(" "), extra: [...sents.slice(0, first), ...sents.slice(last + 1)].join(" ") };
+  return {
+    graded: sents.slice(first, last + 1).join(" "),
+    extra: [...sents.slice(0, first), ...sents.slice(last + 1)].join(" "),
+    habitText: sents.slice(Math.max(0, first - 1), last + 2).join(" "),
+  };
 }

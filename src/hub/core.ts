@@ -240,8 +240,8 @@ export class CoachHub extends EventEmitter {
     return v;
   }
 
-  private gradeFor(c: HubCard, text: string) {
-    return grade({ id: c.id, lang: c.lang, resay: c.resay, habit: habitOf(c), mustSay: mustSayOf(c) }, text);
+  private gradeFor(c: HubCard, text: string, habitText?: string) {
+    return grade({ id: c.id, lang: c.lang, resay: c.resay, habit: habitOf(c), mustSay: mustSayOf(c) }, text, habitText);
   }
 
   // A provisional attempt (phone mic, Alexa, typed): graded for instant feedback, then held
@@ -291,7 +291,7 @@ export class CoachHub extends EventEmitter {
     // Grade only the attempt's own sentence(s); merged extra sentences are kept for display.
     const span = attemptSpan(c.resay, beeText, c.lang);
     if (a.bee) (a.bee.gradedText = span.graded), (a.bee.extraText = span.extra);
-    const g = this.gradeFor(c, span.graded);
+    const g = this.gradeFor(c, span.graded, span.habitText);
     a.final = { source: "bee", pass: g.pass, grade: g };
     a.status = "graded";
     a.counted = true;

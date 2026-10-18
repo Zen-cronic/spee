@@ -109,6 +109,20 @@ describe("grader rules", () => {
     expect(g.fuzzy).toEqual([{ target: "card", heard: "car" }, { target: "rack", heard: "rec" }]);
     expect(g.required).toEqual([{ word: "drill", ok: true }, { word: "card", ok: true }]);
   });
+  it("curly apostrophes count like straight ones in every habit rule (review M1)", () => {
+    const hedgeCard = en("The billing export is ready for review today.", "hedge");
+    for (const t of ["I don’t know, the billing export is ready for review today.", "I don't know, the billing export is ready for review today.", "I donʼt know, the billing export is ready for review today."])
+      expect(grade(hedgeCard, t).pass, t).toBe(false);
+  });
+  it("a required word is not satisfied by a different day, month, number or a two-edit word (review H15)", () => {
+    const card = (resay: string, must: string[]) => en(resay, "hedge", [], must);
+    expect(grade(card("The fix ships on Thursday.", ["thursday"]), "The fix ships on Tuesday.").required).toEqual([{ word: "thursday", ok: false }]);
+    expect(grade(card("We ship the release in March.", ["march"]), "We ship the release in match.").required).toEqual([{ word: "march", ok: false }]);
+    expect(grade(card("The new release goes out tonight.", ["release"]), "The new relapse goes out tonight.").required).toEqual([{ word: "release", ok: false }]);
+    expect(grade(card("Send the invoice to finance today.", ["invoice"]), "Send the invite to finance today.").required).toEqual([{ word: "invoice", ok: false }]);
+    expect(grade(card("We need three reviewers.", ["three"]), "We need tree reviewers.").required).toEqual([{ word: "three", ok: false }]);
+    expect(grade(card("The fix ships on Thursday.", ["thursday"]), "The fix ships on Thursday.").required).toEqual([{ word: "thursday", ok: true }]);
+  });
   it("an empty attempt fails", () => {
     const g = grade(hedge, "   ");
     expect(g.pass).toBe(false);
@@ -145,8 +159,24 @@ describe("card habit derivation (real deck cards)", () => {
 describe("attempt span (Bee merged the attempt with other speech)", () => {
   const T = "The release is blocked on the API key from finance.";
   it("cuts whole sentences with no word of the target", () => {
-    expect(attemptSpan(T, "The release is blocked on the API key from finance. How did I do?")).toEqual({ graded: "The release is blocked on the API key from finance.", extra: "How did I do?" });
-    expect(attemptSpan(T, "Okay, ready. The release is blocked on the API key from finance.")).toEqual({ graded: "The release is blocked on the API key from finance.", extra: "Okay, ready." });
+    expect(attemptSpan(T, "The release is blocked on the API key from finance. How did I do?")).toMatchObject({ graded: "The release is blocked on the API key from finance.", extra: "How did I do?" });
+    expect(attemptSpan(T, "Okay, ready. The release is blocked on the API key from finance.")).toMatchObject({ graded: "The release is blocked on the API key from finance.", extra: "Okay, ready." });
+  });
+  it("a hedge or filler said as its own sentence still fails the habit rule (review H14)", () => {
+    const card = { lang: "en" as const, resay: "The deploy finished this morning.", habit: { kind: "hedge" as const, targets: [], label: "hedges" } };
+    for (const bee of ["The deploy finished this morning. I guess.", "Maybe. The deploy finished this morning.", "The deploy finished this morning. I guess. How did I do?"]) {
+      const span = attemptSpan(card.resay, bee);
+      const g = grade(card, span.graded, span.habitText);
+      expect(g.pass, bee).toBe(false);
+      expect(g.checks.find((c) => c.rule === "habit")!.ok, bee).toBe(false);
+      expect(g.contentMatch, bee).toBe(1); // the content rule still reads only the span
+    }
+    const filler = { lang: "en" as const, resay: "The deploy finished this morning.", habit: { kind: "filler" as const, targets: [], label: "fillers" } };
+    const um = attemptSpan(filler.resay, "Um. The deploy finished this morning.");
+    expect(grade(filler, um.graded, um.habitText).fillers).toEqual(["um"]);
+    // a merged question after the attempt is not a habit
+    const ok = attemptSpan(card.resay, "The deploy finished this morning. How did I do?");
+    expect(grade(card, ok.graded, ok.habitText).pass).toBe(true);
   });
   it("keeps a habit inside the attempt's own sentence, and keeps unpunctuated text whole", () => {
     expect(attemptSpan(T, "Um, the release is kind of blocked on the API key from finance. How did I do?").graded).toBe("Um, the release is kind of blocked on the API key from finance.");
