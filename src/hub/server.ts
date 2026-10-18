@@ -185,6 +185,19 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     clock: hub.clock,
     joinUrl: baseJoinUrl, // ?k= is added only for authenticated peers (bridgeGuard.ts)
     log: (event, data) => log(`bridge.${event}`, data),
+    roomGraceMs: ROOM_GRACE_MS,
+    // Behind ngrok every peer arrives from the tunnel's loopback socket, so key the hello and
+    // wrong-code limits on the client address ngrok appends (the last x-forwarded-for entry).
+    rateKey: (req) => {
+      const xff = req.headers["x-forwarded-for"];
+      const last = (Array.isArray(xff) ? xff.join(",") : xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).pop();
+      return last ? `fwd:${last}` : req.socket.remoteAddress ?? "unknown";
+    },
+    onRoomClose: guarded("onRoomClose", undefined, (room: Room) => {
+      const sweep = roomSweeps.get(room.code);
+      if (sweep) (clearTimeout(sweep), roomSweeps.delete(room.code));
+      dropRoomState(room.code);
+    }),
     onJoin: guarded("onJoin", undefined, (room: Room, peer: PeerInfo) => {
       const sweep = roomSweeps.get(room.code);
       if (sweep) (clearTimeout(sweep), roomSweeps.delete(room.code));
