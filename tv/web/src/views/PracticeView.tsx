@@ -30,6 +30,8 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
       </View>
     );
   }
+  // Once the take's summary is in, it wins over the last meter frame (no stale "N s into the take").
+  const done = !!s && (!p.takeId || s.takeId === p.takeId);
   const db = m?.rmsDbfs ?? -100;
   const band = m?.band ?? 'quiet';
   const bandColor = band === 'ok' ? C.mint : band === 'loud' ? C.coral : C.amber;
@@ -38,7 +40,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
   return (
     <View style={styles.wrap} testID="view-practice">
       <View style={styles.rowBetween}>
-        <Text style={styles.kicker}>{`PRACTICE · PHONE MIC · ${m ? `${fmtMs(m.t)} into the take` : 'take finished'}`}</Text>
+        <Text style={styles.kicker}>{`PRACTICE · PHONE MIC · ${done ? `take finished · ${fmtMs(s!.durationMs)}` : m ? `${fmtMs(m.t)} into the take` : 'take finished'}`}</Text>
         <Chip text="PROVISIONAL · PHONE-MEASURED" tone="wait" />
       </View>
       <View style={styles.top}>
@@ -63,13 +65,13 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
         <View style={styles.right}>
           <View style={styles.card}>
             <Text style={styles.section}>RATE</Text>
-            <Text style={styles.big}>{fmtInt(m?.wpm ?? s?.rate.wpm ?? null)}</Text>
+            <Text style={styles.big}>{fmtInt(done ? (s!.rate.wpm ?? null) : (m?.wpm ?? s?.rate.wpm ?? null))}</Text>
             <Text style={styles.small}>words / min (from syllables, last 5 s)</Text>
           </View>
           <View style={styles.card}>
             <Text style={styles.section}>PAUSES</Text>
-            <Text style={[styles.big, m?.pause.active && { color: C.mint }]}>{String(m?.pause.count ?? s?.pauses.count ?? 0)}</Text>
-            <Text style={styles.small}>{m?.pause.active ? `pausing ${fmtMs(m.pause.currentMs)}` : 'of 250 ms or more'}</Text>
+            <Text style={[styles.big, !done && m?.pause.active && { color: C.mint }]}>{String(done ? s!.pauses.count : (m?.pause.count ?? s?.pauses.count ?? 0))}</Text>
+            <Text style={styles.small}>{!done && m?.pause.active ? `pausing ${fmtMs(m.pause.currentMs)}` : 'of 250 ms or more'}</Text>
           </View>
         </View>
       </View>
