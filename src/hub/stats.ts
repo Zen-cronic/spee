@@ -231,11 +231,18 @@ function period(sessions: StatSession[], key: string, tz?: string): Period {
   return { sessions: sessions.length, words, count, per100: r.per100, ci95: r.ci95, from: dates[0] ?? null, to: dates.at(-1) ?? null };
 }
 
-export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel }): TransferReport {
+// `drillLineKeys`: corpus line keys ("u:<utteranceId>") that Bee heard as drill attempts. They are
+// left out of both periods: a card sentence said for a drill is not everyday speech, and counting
+// it would make the "after" rate look better just because drills were recorded.
+export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel; drillLineKeys?: Set<string> }): TransferReport {
   const { prereg } = opts;
   const source = opts.source ?? "bee";
   const minWords = prereg.min_words_per_period;
-  const ss = opts.sessions.filter((s) => inSource(s, source)).sort((a, b) => a.startMs - b.startMs);
+  const drillKeys = opts.drillLineKeys ?? new Set<string>();
+  const ss = opts.sessions
+    .filter((s) => inSource(s, source))
+    .map((s) => (drillKeys.size && s.lines.some((l) => drillKeys.has(l.key)) ? { ...s, lines: s.lines.filter((l) => !drillKeys.has(l.key)) } : s))
+    .sort((a, b) => a.startMs - b.startMs);
   const registeredAt = Date.parse(prereg.registered_at);
   const firstDrill = (key: string) => {
     const ts = opts.drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at);
@@ -270,7 +277,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
         detail = `needs at least ${minWords} words in each period (before ${before.words}, after ${after.words})${need ? `; telling a halving from no change at this rate takes about ${need} words per period` : ""}`;
       } else if (ciOverlap(before.ci95, after.ci95)) {
         verdict = "no change";
-        detail = `95% intervals overlap (before ${before.ci95[0]}-${before.ci95[1]}, after ${after.ci95[0]}-${after.ci95[1]} per 100 words)`;
+        detail = `no detectable change: the 95% intervals overlap (before ${before.ci95[0]}-${before.ci95[1]}, after ${after.ci95[0]}-${after.ci95[1]} per 100 words)`;
       } else if (after.per100 < before.per100) {
         verdict = "dropped";
         detail = `95% intervals do not overlap (before ${before.ci95[0]}-${before.ci95[1]}, after ${after.ci95[0]}-${after.ci95[1]} per 100 words)`;

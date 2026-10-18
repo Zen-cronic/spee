@@ -339,7 +339,8 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 **Verdicts:**
 
 - `dropped` or `rose`: the 95% intervals (Poisson, Byar) do not overlap, and both periods have at least `minWordsPerPeriod` words.
-- `no change`: the intervals overlap.
+- `no change`: the intervals overlap. This means no detectable change (the `detail` says so), not proof that nothing changed.
+- Bee lines that were drill attempts (`attempt.bee.utteranceIds`) are left out of both periods: a card sentence said for a drill is not everyday speech.
 - `too little data`: a period has fewer words than the minimum. `detail` gives the counts and `wordsNeededPerPeriod`, the words per period needed to tell a halving of the "before" rate from no change.
 - `not drilled yet`: there is no counted drill attempt, so no after period exists.
 - `invalid`: the control was drilled, or a drilled habit's first drill came before the pre-registration.

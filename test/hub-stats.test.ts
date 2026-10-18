@@ -49,6 +49,24 @@ describe("transfer", () => {
     expect(t.habits.find((x) => x.habit === "restart")).toMatchObject({ role: "control", verdict: "no change", cutoverSource: expect.stringContaining("earliest") });
     expect(t.headline).toMatch(/dropped.*control stayed flat/);
   });
+  it("drill sentences Bee heard are not counted as everyday speech (review M2)", () => {
+    // the after period is mostly drill lines (hedge-free card sentences): without the exclusion they
+    // would dilute the after rate
+    const withDrills = sess("a2", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(12).fill("I guess we we shipped it.")]);
+    const keys = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const key = `u:${9000 + i}`;
+      withDrills.lines.push({ key, text: "The billing export is ready for review today, and the totals match.", dom: "en", uncertain: false });
+      keys.add(key);
+    }
+    const counted = transfer({ sessions: [before, withDrills], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now() });
+    const fixed = transfer({ sessions: [before, withDrills], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now(), drillLineKeys: keys });
+    const h = (t: typeof fixed) => t.habits.find((x) => x.habit === "hedge:i guess")!;
+    expect(h(fixed).after.words).toBeLessThan(h(counted).after.words);
+    expect(h(fixed).after.per100).toBeGreaterThan(h(counted).after.per100);
+    expect(h(fixed).verdict).toBe("no change");
+    expect(h(fixed).detail).toMatch(/^no detectable change/);
+  });
   it("too little data, with the words needed", () => {
     const small = transfer({ sessions: [sess("b", "conversation", "2026-10-13T10:00:00-04:00", ["I guess so."]), sess("a", "conversation", "2026-10-17T10:00:00-04:00", ["Yes."])], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now() });
     expect(small.habits[0]).toMatchObject({ verdict: "too little data" });

@@ -551,7 +551,9 @@ export class CoachHub extends EventEmitter {
 
   transfer(source: SourceSel = "bee") {
     if (!this.prereg) return null;
-    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source }) };
+    // Bee lines that were drill attempts are not everyday speech (review M2)
+    const drillLineKeys = new Set(this.attempts.flatMap((a) => (a.bee?.utteranceIds ?? []).map((id) => `u:${id}`)));
+    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLineKeys }) };
   }
 
   publishStats() {
