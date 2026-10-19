@@ -52,6 +52,7 @@ export interface HubServerOptions {
   extraLanHosts?: string[]; // more Host names to treat as LAN (tests)
   trustLan?: boolean; // trust LAN devices like loopback (default: env HUB_TRUST_LAN=1, else false)
   allowedOrigins?: string[]; // extra browser origins (default: env HUB_ALLOWED_ORIGINS, comma-separated)
+  roomGraceMs?: number; // a room with no screen is closed after this (default 60 s; tests)
 }
 
 export interface HubServer {
@@ -171,10 +172,10 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       }
     };
 
-  // Rooms with no peers are removed after ROOM_GRACE_MS (a TV that reconnects in time keeps its
-  // code), together with their relay state.
-  const ROOM_GRACE_MS = 60_000;
-  const roomSweeps = new Map<string, ReturnType<typeof setTimeout>>();
+  // The bridge closes a room that has had no screen for ROOM_GRACE_MS (a TV that reconnects in time
+  // keeps its code) and calls onRoomClose, which drops the room's relay state here. One lifetime, the
+  // bridge's: it logs room-close and counts roomsExpired.
+  const ROOM_GRACE_MS = opts.roomGraceMs ?? 60_000;
   const dropRoomState = (code: string) => {
     for (const k of [...lastRelay.keys()]) if (k.startsWith(`${code}:`)) lastRelay.delete(k);
     for (const [k, t] of trailing) if (k.startsWith(`${code}:`)) (clearTimeout(t.timer), trailing.delete(k));
@@ -199,29 +200,10 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       const last = (Array.isArray(xff) ? xff.join(",") : xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).pop();
       return last ? `fwd:${last}` : addr;
     },
-    onRoomClose: guarded("onRoomClose", undefined, (room: Room) => {
-      const sweep = roomSweeps.get(room.code);
-      if (sweep) (clearTimeout(sweep), roomSweeps.delete(room.code));
-      dropRoomState(room.code);
-    }),
+    onRoomClose: guarded("onRoomClose", undefined, (room: Room) => dropRoomState(room.code)),
     onJoin: guarded("onJoin", undefined, (room: Room, peer: PeerInfo) => {
-      const sweep = roomSweeps.get(room.code);
-      if (sweep) (clearTimeout(sweep), roomSweeps.delete(room.code));
       const p = room.peers.get(peer.clientId);
       if (p) bridge.send(p.socket, { type: "app", topic: "hub.state", payload: { seq: 0, at: hub.clock(), ...stateSnapshot() } });
-    }),
-    onLeave: guarded("onLeave", undefined, (room: Room) => {
-      if (room.peers.size > 0 || roomSweeps.has(room.code)) return;
-      const t = setTimeout(() => {
-        roomSweeps.delete(room.code);
-        if (bridge.rooms.get(room.code) === room && room.peers.size === 0) {
-          bridge.rooms.delete(room.code);
-          dropRoomState(room.code);
-          log("bridge.room-closed", { code: room.code });
-        }
-      }, ROOM_GRACE_MS);
-      t.unref?.();
-      roomSweeps.set(room.code, t);
     }),
     onFinal: guarded("onFinal", null, (_room: Room, msg: { text: string; hops: { hop: string; at: number }[] }) => {
       const speechEnd = msg.hops.find((h) => h.hop === "speech.end")?.at;
@@ -529,8 +511,6 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const bindHost = opts.host ?? "0.0.0.0";
   const closeAll = () => {
     clearInterval(tick);
-    for (const t of roomSweeps.values()) clearTimeout(t);
-    roomSweeps.clear();
     for (const t of trailing.values()) clearTimeout(t.timer);
     trailing.clear();
     fixture?.stop();
