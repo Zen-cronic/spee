@@ -1,7 +1,7 @@
 // Pure helpers for the phone page: the join URL, practice-take frames and the take summary in the
 // contract's shapes (src/hub/contract.ts). No DOM, so test/phone-take.test.ts can run them against
 // the hub's own sanitizer.
-import type { PracticeMeters, PracticeSummary } from "../../../src/hub/contract.js";
+import type { PracticeMeters, PracticeSummary, SessionSummary } from "../../../src/hub/contract.js";
 import type { MeterCore, SummaryCore } from "./prosody.js";
 
 export interface Join {
@@ -67,4 +67,10 @@ export function judgePhase(p: MicPhase): MicVerdict {
   else if (p.levelSpanDb < 6 || p.peakDbfs < -55) reasons.push(`the mic stream went flat while speech recognition ran (peak ${p.peakDbfs.toFixed(0)} dBFS, span ${p.levelSpanDb.toFixed(0)} dB)`);
   if (!p.trackLive) reasons.push("the mic track was muted or ended by the time the check finished");
   return { pass: reasons.length === 0, reasons };
+}
+
+// The line the phone shows when a drill session ends (the TV's wording).
+export function sessionOverLine(s: Partial<SessionSummary> | null | undefined): string {
+  if (!s) return "Session over.";
+  return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
 }

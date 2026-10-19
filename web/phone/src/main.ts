@@ -13,7 +13,7 @@ import { WORDMARK } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
 import { listen, speechCtor, type Listener, type SpeechRec } from "./speech.js";
-import { captionOf, countWords, meterFrame, newTakeId, parseJoin, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
+import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const now = () => performance.timeOrigin + performance.now();
@@ -74,6 +74,15 @@ function onEvent(topic: string, p: Record<string, any>) {
   if (topic === "card.open" || topic === "attempt.graded") {
     card = p.card ?? card;
     renderCard();
+  }
+  // The session's card is closed (by the phone, the TV, Alexa or idle expiry): drop it, so the next
+  // attempt is not refused with "open a card first" under a card that is still on screen.
+  if (topic === "session.ended") {
+    card = null;
+    myAttempt = null;
+    renderCard();
+    stage("dim", sessionOverLine(p.summary), true);
+    return;
   }
   const id = p.attempt?.id ?? p.attemptId;
   if (!myAttempt || id !== myAttempt) return;

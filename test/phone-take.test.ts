@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeMeters, sanitizeSummary } from "../src/hub/mirror.js";
 import { ProsodyEngine, synthVoice } from "../web/phone/src/prosody.js";
-import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, takeSummary, wsUrl, type MicPhase } from "../web/phone/src/take.js";
+import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, takeSummary, wsUrl, type MicPhase } from "../web/phone/src/take.js";
 
 describe("join URL", () => {
   it("reads the room code and the pair token from /p/<code>?k=...", () => {
@@ -61,5 +61,12 @@ describe("mic check verdict", () => {
     expect(judgePhase({ ...ok, levelSpanDb: 1, peakDbfs: -90 }).reasons[0]).toMatch(/went flat/);
     expect(judgePhase({ ...ok, trackLive: false }).reasons[0]).toMatch(/muted or ended/);
     expect(judgePhase({ ...ok, speechStarted: false, speechResults: 0, speechError: "not-allowed" }).reasons[0]).toBe("speech recognition did not start (not-allowed)");
+  });
+});
+
+describe("sessionOverLine (review M20)", () => {
+  it("matches the TV's session summary wording", () => {
+    expect(sessionOverLine({ passed: 2, failed: 1, unverified: 0, beeOverrules: 1 })).toBe("Session over: 2 passed, 1 failed, 0 unverified, Bee overruled 1.");
+    expect(sessionOverLine(null)).toBe("Session over.");
   });
 });
