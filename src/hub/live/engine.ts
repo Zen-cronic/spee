@@ -12,8 +12,8 @@
 // PRIVACY. Wearer text stays in memory (the window); other speakers are word counts. Persisted
 // under <stateDir>/live/: recaps.json (the recap moment is <= 12 of the wearer's own words) and
 // nudges.json (generated text and numbers only).
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import type { BeeConversationEvent, BeeLine } from "../bee.js";
 import type { CoachNow, ConversationEnded, LiveModeRequest, LiveModeResponse, LiveState, Nudge, NudgeSkipped, Recap, SequencedTopic } from "../contract.js";
 import type { CoachHub } from "../core.js";
@@ -101,26 +101,29 @@ export class LiveEngine {
 
   // Persistence
 
+  // The hub's crash-safe state files (atomic.ts): a damaged file is moved aside and its last good
+  // copy used, and a failed write (full or read-only disk) is logged once per file while the engine
+  // carries on in memory. Nothing here may throw into the Bee ingest path.
   private load() {
     const d = this.dir!;
-    try {
-      if (existsSync(join(d, "recaps.json"))) this.recaps = (JSON.parse(readFileSync(join(d, "recaps.json"), "utf8")) as { recaps?: Recap[] }).recaps ?? [];
-      if (existsSync(join(d, "nudges.json"))) {
-        const n = JSON.parse(readFileSync(join(d, "nudges.json"), "utf8")) as { nudges?: Nudge[]; skips?: NudgeSkipped[] };
-        this.nudges = n.nudges ?? [];
-        this.skips = n.skips ?? [];
-      }
-    } catch (e) {
-      this.log("live.load.failed", { error: (e as Error).message });
-    }
+    const warn = (message: string) => this.log("live.load.recovered", { message });
+    const r = readJsonSafe<{ recaps?: Recap[] }>(join(d, "recaps.json"), () => ({}), warn);
+    this.recaps = Array.isArray(r?.recaps) ? r.recaps : [];
+    const n = readJsonSafe<{ nudges?: Nudge[]; skips?: NudgeSkipped[] }>(join(d, "nudges.json"), () => ({}), warn);
+    this.nudges = Array.isArray(n?.nudges) ? n.nudges : [];
+    this.skips = Array.isArray(n?.skips) ? n.skips : [];
   }
+  private writeFailed = new Set<string>();
   private write(file: string, data: unknown) {
     const d = this.dir;
     if (!d) return;
-    mkdirSync(d, { recursive: true });
-    const p = join(d, file);
-    writeFileSync(`${p}.tmp`, JSON.stringify(data, null, 1) + "\n");
-    renameSync(`${p}.tmp`, p);
+    try {
+      writeJsonAtomic(join(d, file), data);
+      this.writeFailed.delete(file);
+    } catch (err) {
+      if (!this.writeFailed.has(file)) this.log("live.persist-error", { file, error: String((err as Error)?.message ?? err) });
+      this.writeFailed.add(file);
+    }
   }
   private saveRecaps() {
     this.recaps = this.recaps.slice(-KEEP_RECAPS);

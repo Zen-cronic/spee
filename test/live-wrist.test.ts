@@ -1,7 +1,7 @@
 // The wrist (src/hub/live/wrist.ts) against a fake Bee CLI and a virtual clock: execFile-style
 // argument arrays, a serialized queue with gaps, timeouts, retries without duplicates, the circuit
 // breaker, the ledger and the cleanup sweeps. No real to-do is ever created here.
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,7 +10,7 @@ import { alarmIso, BeeTodoWrist, MIN_GAP_MS, parseTodo, parseTodoList, ReplayWri
 const T0 = Date.parse("2026-10-20T17:30:00Z");
 type Call = { file: string; args: string[]; timeout: number; start: number; end: number };
 
-function rig(script: (args: string[], n: number) => string | Error = () => "{}", opts: { ledger?: boolean } = {}) {
+function rig(script: (args: string[], n: number) => string | Error = () => "{}", opts: { ledger?: boolean; logs?: string[] } = {}) {
   let now = T0;
   const calls: Call[] = [];
   const exec: ExecFn = async (file, args, o) => {
@@ -23,7 +23,7 @@ function rig(script: (args: string[], n: number) => string | Error = () => "{}",
   };
   const dir = opts.ledger === false ? null : mkdtempSync(join(tmpdir(), "wrist-"));
   const opened: number[] = [];
-  const w = new BeeTodoWrist({ exec, bin: "bee", clock: () => now, sleep: async (ms) => void (now += ms), ledgerPath: dir ? join(dir, "live", "todos.json") : null });
+  const w = new BeeTodoWrist({ exec, bin: "bee", clock: () => now, sleep: async (ms) => void (now += ms), ledgerPath: dir ? join(dir, "live", "todos.json") : null, log: (e) => opts.logs?.push(e) });
   w.onCircuitOpen = () => opened.push(now);
   return { w, calls, dir, opened, now: () => now, advance: (ms: number) => void (now += ms) };
 }
@@ -88,6 +88,15 @@ describe("BeeTodoWrist", () => {
     const n = rig((a) => (a[1] === "create" ? `A new version of bee is available.\n${created(a)}` : "[]"));
     expect(await n.w.send({ kind: "nudge", refId: "n4", text: "[coach] notice first" })).toMatchObject({ status: "scheduled", todoId: String(nextId) });
     expect(n.calls.map((c) => c.args[1])).toEqual(["create"]);
+  });
+  it("a ledger that cannot be written never turns a created to-do into a failure and a retry", async () => {
+    const logs: string[] = [];
+    const r = rig((a) => (a[1] === "create" ? created(a) : "[]"), { logs });
+    writeFileSync(join(r.dir!, "live"), "not a directory"); // the ledger's folder cannot be made
+    const res = await r.w.send({ kind: "nudge", refId: "n5", text: "[coach] full disk" });
+    expect(res.status).toBe("scheduled");
+    expect(r.calls.filter((c) => c.args[1] === "create")).toHaveLength(1);
+    expect(logs).toContain("wrist.ledger.save-failed");
   });
   it("opens the circuit after 3 consecutive failures, then fails fast", async () => {
     const r = rig(() => new Error("bee: not logged in"));

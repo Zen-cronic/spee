@@ -3,7 +3,7 @@
 // and the recap at the end. Covers end detection (idle, Bee leaving CAPTURING, a new uuid), the
 // short and French skips, suppressions, the wrist circuit, coachNow and the planted
 // other-speaker line that must never reach an event or a file.
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -191,6 +191,15 @@ describe("mode expiry and state files", () => {
     const t = topics();
     expect(t.indexOf("live.mode", 1)).toBeLessThan(t.indexOf("nudge.skipped"));
     expect(of("nudge.skipped")[0].skip.reason).toBe("off");
+  });
+  it("a state folder that cannot be written never stops the events (logged once, kept in memory)", async () => {
+    boot();
+    rmSync(join(dir, "live"), { recursive: true, force: true });
+    writeFileSync(join(dir, "live"), "not a directory");
+    await play("story"); // live coaching is off: every streak is a skip, saved on the ingest path
+    expect(of("nudge.skipped").length).toBeGreaterThan(0);
+    expect(of("recap.ready")).toHaveLength(1);
+    expect(engine.skips.length).toBe(of("nudge.skipped").length);
   });
 });
 

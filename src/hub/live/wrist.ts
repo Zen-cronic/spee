@@ -21,8 +21,7 @@
 // (create ~1.45 s, alarm lead), scaled by the demo pace.
 import { execFile } from "node:child_process";
 import { trackChild } from "../processGuards.js";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { promisify } from "node:util";
 import { WRIST_TEXT_MAX, type WristChannel, type WristStatus } from "../contract.js";
 
@@ -235,14 +234,11 @@ export class BeeTodoWrist implements Wrist {
   readonly calls: { args: string[]; at: number; ok: boolean }[] = []; // for tests and describe()
 
   constructor(private o: BeeTodoWristOptions) {
-    if (o.ledgerPath && existsSync(o.ledgerPath)) {
-      try {
-        const saved = JSON.parse(readFileSync(o.ledgerPath, "utf8")) as { todos?: TodoEntry[]; createdIds?: string[] };
-        this.ledger = saved.todos ?? [];
-        this.createdIds = new Set([...(saved.createdIds ?? []), ...this.ledger.map((t) => t.todoId)]);
-      } catch {
-        this.ledger = [];
-      }
+    if (o.ledgerPath) {
+      // a damaged ledger is moved aside and its last good copy used (atomic.ts), so createdIds survive
+      const saved = readJsonSafe<{ todos?: TodoEntry[]; createdIds?: string[] }>(o.ledgerPath, () => ({}), (m) => this.log("wrist.ledger.recovered", { message: m }));
+      this.ledger = Array.isArray(saved?.todos) ? saved.todos : [];
+      this.createdIds = new Set([...(Array.isArray(saved?.createdIds) ? saved.createdIds : []), ...this.ledger.map((t) => t.todoId)]);
     }
   }
 
@@ -334,11 +330,18 @@ export class BeeTodoWrist implements Wrist {
     if (!p) return;
     const keepFrom = this.clock() - 7 * 24 * 3600_000;
     this.ledger = this.ledger.filter((t) => t.state === "pending" || t.createdAt >= keepFrom).slice(-500);
-    mkdirSync(dirname(p), { recursive: true });
     const createdIds = [...this.createdIds].slice(-5000);
-    writeFileSync(`${p}.tmp`, JSON.stringify({ note: "Bee to-dos created by the live coach (generated text only; no transcript text)", todos: this.ledger, createdIds }, null, 1) + "\n");
-    renameSync(`${p}.tmp`, p);
+    // A failed write (full or read-only disk) is logged once and the wrist carries on in memory: a
+    // nudge must still reach the wrist and the screens.
+    try {
+      writeJsonAtomic(p, { note: "Bee to-dos created by the live coach (generated text only; no transcript text)", todos: this.ledger, createdIds });
+      this.saveFailed = false;
+    } catch (err) {
+      if (!this.saveFailed) this.log("wrist.ledger.save-failed", { error: errText(err) });
+      this.saveFailed = true;
+    }
   }
+  private saveFailed = false;
 
   private fail(error: string): WristResult {
     return { channel: "bee-todo", status: "failed", todoId: null, todoAt: null, alarmAt: null, leadMs: this.leadMs, error };
