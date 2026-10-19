@@ -80,7 +80,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   const overrules = g?.agreement === 'bee-overrules';
   if (g) {
     status = g.pass ? 'Passed.' : 'Not yet.';
-    support = g.pass ? `Checked by Bee.${g.dueAfter ? ` Next review ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.reasons) ?? 'Close'}. Say it again.`;
+    support = g.pass ? `Checked by Bee.${g.dueAfter ? ` Next review ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.failure) ?? 'Close'}. Say it again.`;
     band = g.pass ? styles.bandPass : styles.bandFail;
     ink = g.pass ? C.limeInk : C.coralInk;
     if (overrules) support = curly(overruleText(pv?.source, g.pass, g.beeText));

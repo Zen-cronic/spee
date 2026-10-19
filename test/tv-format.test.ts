@@ -1,6 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
-import { changeLabel, fmtDay, fmtMs, overruleText, sessionTally, transferTitle, transferWorking, verdictWords } from "../tv/web/src/mirror/format.js";
+import { grade, type GradeCard } from "../src/hub/grade.js";
+import { changeLabel, fmtDay, fmtMs, gradeFailure, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -35,6 +36,42 @@ describe("overruleText (review M42)", () => {
 describe("sessionTally", () => {
   it("names attempts still with Bee", () => {
     expect(sessionTally("Session over", { passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
+  });
+});
+
+describe("plainReason: the drill verdict says what Bee heard, never the card's label", () => {
+  const card = (habit: GradeCard["habit"], resay = "We ship the export on Friday.", mustSay?: string[]): GradeCard => ({ lang: "en", resay, habit, mustSay });
+  const reason = (c: GradeCard, said: string) => plainReason(gradeFailure(grade(c, said)));
+  it("a hedge card whose label quotes two hedges, failed on one of them", () => {
+    const c = card({ kind: "hedge", targets: ["i guess", "i think"], label: 'hedges: "i guess", "i think"' });
+    expect(reason(c, "I think we ship the export on Friday.")).toBe("You still said “i think”");
+    expect(reason(c, "I guess I think we ship the export on Friday.")).toBe("You still said “i guess” and “i think”");
+  });
+  it('a "like" card names the word once, not "like" and "like"', () => {
+    const c = card({ kind: "filler", targets: ["like"], label: '"like" as a filler' });
+    expect(reason(c, "We like ship the export on, like, Friday.")).toBe("You still said “like”");
+  });
+  it("fillers, missing content, a required word, nothing heard; null on a pass", () => {
+    const hedge = card({ kind: "hedge", targets: ["i guess"], label: 'the hedge "i guess"' });
+    expect(reason(hedge, "Um, um, we ship the export on Friday.")).toBe("Bee heard “um”");
+    expect(reason(hedge, "We ship it.")).toMatch(/^A few words were missing: /);
+    const long = "We ship the billing export to the finance team on Friday morning.";
+    expect(reason(card({ kind: "hedge", targets: ["i guess"], label: "hedges" }, long, ["Friday"]), long.replace("Friday", "Monday"))).toBe("You didn’t say “Friday”");
+    expect(reason(hedge, "")).toBe("Bee heard nothing");
+    expect(reason(hedge, "We ship the export on Friday.")).toBeNull();
+    expect(plainReason(null)).toBeNull();
+  });
+});
+
+describe("pctChange, shortHabit, topWord", () => {
+  it("whole-number change, short names, the top word", () => {
+    expect(pctChange(2.47, 0.64)).toBe(-74);
+    expect(pctChange(0, 1)).toBeNull();
+    expect(pctChange(null, 1)).toBeNull();
+    expect(shortHabit("hedges (I guess, I think, maybe, kind of...)")).toBe("Hedges");
+    expect(shortHabit('"like" as a filler')).toBe("“Like”");
+    expect(topWord({ "i guess": 15, "i think": 5 })).toBe("“I guess”");
+    expect(topWord({})).toBeNull();
   });
 });
 

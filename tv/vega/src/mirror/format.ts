@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
+import type { GradeCheck, GradeResult, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -156,31 +156,25 @@ export function topWord(b: Record<string, number> | undefined): string | null {
 }
 
 /**
- * The grader's first failed rule in plain words ("FAIL fillers: 1 filler ("um"); allowed 0" ->
- * 'Bee heard "um"'). Null on a pass.
+ * The grader's first failed rule in plain words, from the grade's own fields: a habit card that
+ * failed on "i think" says 'You still said “i think”', whatever words its label quotes. Null on a pass.
  */
-export function plainReason(reasons: string[]): string | null {
-  const fail = reasons.find((r) => r.startsWith('FAIL'));
-  if (!fail) return null;
-  const m = /^FAIL (\w+): (.*)$/.exec(fail);
-  const rule = m?.[1] ?? '';
-  const detail = m?.[2] ?? fail;
-  const quoted = [...detail.matchAll(/"([^"]+)"/g)].map((q) => `“${q[1]}”`);
-  switch (rule) {
+export function plainReason(f: GradeFailure | null): string | null {
+  if (!f) return null;
+  const q = f.words.map((w) => `“${w}”`);
+  switch (f.rule) {
     case 'nonempty':
       return 'Bee heard nothing';
     case 'habit':
-      return quoted.length ? `You still said ${quoted.slice(0, 2).join(' and ')}` : 'The old habit was still there';
+      return q.length ? `You still said ${q.slice(0, 2).join(' and ')}` : 'The old habit was still there';
     case 'fillers':
-      return quoted.length ? `Bee heard ${quoted.slice(0, 2).join(' and ')}` : 'Bee heard a filler';
-    case 'content': {
-      const missing = /missing: ([^;]+)/.exec(detail)?.[1];
-      return missing ? `A few words were missing: ${missing.split(', ').slice(0, 3).join(', ')}` : 'It didn’t match the sentence';
-    }
+      return q.length ? `Bee heard ${q.slice(0, 2).join(' and ')}` : 'Bee heard a filler';
+    case 'content':
+      return f.words.length ? `A few words were missing: ${f.words.slice(0, 3).join(', ')}` : 'It didn’t match the sentence';
     case 'required':
-      return quoted.length ? `You didn’t say ${quoted.join(' or ')}` : 'A key word was missing';
+      return q.length ? `You didn’t say ${q.join(' or ')}` : 'A key word was missing';
     default:
-      return detail;
+      return null;
   }
 }
 
@@ -212,4 +206,26 @@ export const transferWorking = (claim: TransferClaim | null | undefined): boolea
 /** Progress's title: the plain line only when every drilled habit dropped and the control stayed flat; else the hub's headline. */
 export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'>): string {
   return t.claim === 'all-dropped-control-flat' ? 'The habits you drilled dropped. The one you didn’t, didn’t.' : curly(t.headline);
+}
+
+/** The first failed check of a grade, with the words behind it (from what was graded, never from a label). */
+export interface GradeFailure {
+  rule: GradeCheck['rule'];
+  words: string[];
+}
+const uniq = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
+export function gradeFailure(g: Partial<GradeResult> | null | undefined): GradeFailure | null {
+  const fail = g?.checks?.find((c) => !c.ok);
+  if (!fail) return null;
+  const words =
+    fail.rule === 'habit'
+      ? uniq(g?.habit?.found ?? [])
+      : fail.rule === 'fillers'
+        ? uniq(g?.fillers ?? [])
+        : fail.rule === 'content'
+          ? uniq(g?.missing ?? [])
+          : fail.rule === 'required'
+            ? uniq((g?.required ?? []).filter((r) => !r.ok).map((r) => r.word))
+            : [];
+  return { rule: fail.rule, words };
 }
