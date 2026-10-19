@@ -89,6 +89,26 @@ describe("BeeTodoWrist", () => {
     expect(await n.w.send({ kind: "nudge", refId: "n4", text: "[coach] notice first" })).toMatchObject({ status: "scheduled", todoId: String(nextId) });
     expect(n.calls.map((c) => c.args[1])).toEqual(["create"]);
   });
+  it("a create that exits 0 with no id and no list match is never made again, and never opens the circuit", async () => {
+    const r = rig((a) => (a[1] === "create" ? "Created." : "[]"));
+    for (let i = 1; i <= 3; i++) {
+      const res = await r.w.send({ kind: "nudge", refId: `q${i}`, text: `[coach] quiet ${i}` });
+      expect(res).toMatchObject({ status: "scheduled", todoId: null, error: expect.stringMatching(/no to-do id/) });
+    }
+    // One create per nudge (one alarm on the wrist), each checked once against the list.
+    expect(r.calls.map((c) => c.args[1])).toEqual(["create", "list", "create", "list", "create", "list"]);
+    expect(r.opened).toEqual([]);
+    expect(r.w.status()).toMatchObject({ failures: 0, healthy: true });
+  });
+  it("reads the JSON when a notice line follows it, as well as before it", async () => {
+    const r = rig((a) => (a[1] === "create" ? `${created(a)}\nA new version of bee is available: run bee update.` : "[]"));
+    expect(await r.w.send({ kind: "nudge", refId: "t1", text: "[coach] notice after" })).toMatchObject({ status: "scheduled", todoId: String(nextId) });
+    expect(r.calls.map((c) => c.args[1])).toEqual(["create"]);
+    expect(parseTodo('Update available\n{\n "id": 9,\n "alarm_at": 1792177029000\n}\nRun bee update [y/N]')).toEqual({ id: "9", alarmAt: 1792177029000 });
+    expect(parseTodo('{"id": 10}\nnotice one\nnotice two')).toEqual({ id: "10", alarmAt: null });
+    expect(parseTodoList('banner\n[\n {"id": 1, "text": "a"},\n {"id": 2, "text": "b"}\n]\n(2 to-dos)')).toMatchObject([{ id: "1" }, { id: "2" }]);
+    expect(parseTodo("Created.\nno json here")).toBeNull();
+  });
   it("a ledger that cannot be written never turns a created to-do into a failure and a retry", async () => {
     const logs: string[] = [];
     const r = rig((a) => (a[1] === "create" ? created(a) : "[]"), { logs });

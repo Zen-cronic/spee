@@ -138,19 +138,25 @@ const toMs = (v: unknown): number | null => {
   if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return Date.parse(v);
   return null;
 };
-// The JSON a CLI printed, or the last JSON value in its output when a notice line comes first
-// (an update banner, a warning). Throws when there is none.
-function cliJson(stdout: string): unknown {
+// The JSON a CLI printed, or the last JSON value in its output when notice lines (an update banner,
+// a warning) come before it, after it, or both. Throws when there is none.
+export function cliJson(stdout: string): unknown {
   try {
     return JSON.parse(stdout);
   } catch (err) {
     const lines = stdout.split(/\r?\n/);
-    for (let i = lines.length - 1; i > 0; i--) {
-      if (!/^\s*[[{]/.test(lines[i]!)) continue;
-      try {
-        return JSON.parse(lines.slice(i).join("\n"));
-      } catch {
-        /* not the start of the value: look further up */
+    // The value ends on a line that closes it; try the last few such lines, then look up for its start.
+    let ends = 0;
+    for (let end = lines.length; end > 0 && ends < 4; end--) {
+      if (!/[}\]]\s*$/.test(lines[end - 1]!)) continue;
+      ends++;
+      for (let i = end - 1; i >= 0; i--) {
+        if (!/^\s*[[{]/.test(lines[i]!)) continue;
+        try {
+          return JSON.parse(lines.slice(i, end).join("\n"));
+        } catch {
+          /* not the start of the value: look further up */
+        }
       }
     }
     throw err;
@@ -370,28 +376,41 @@ export class BeeTodoWrist implements Wrist {
       for (let i = 0; i < attempts; i++) {
         if (this.circuitOpenUntil() != null) return this.fail(`wrist circuit open after ${this.failures} failures`);
         const alarm = Math.ceil((this.clock() + this.leadMs) / 1000) * 1000;
-        let ran = false; // the CLI exited 0: the to-do exists even if its output did not parse
+        // The create may have landed without us knowing its id: adopt it from the list rather than
+        // create a duplicate alarm.
+        const adopt = async () => {
+          const found = await this.call(["todos", "list", "--limit", "50", "--json"]).then(parseTodoList, () => [] as ListedTodo[]);
+          const hit = found.find((x) => x.text === req.text && x.alarmAt != null && Math.abs(x.alarmAt - alarm) <= 2000);
+          return hit ? this.created(req, hit.id, hit.alarmAt!) : null;
+        };
+        let out: string;
         try {
-          const out = await this.call(["todos", "create", "--text", req.text, "--alarm-at", alarmIso(alarm), "--json"]);
-          ran = true;
-          const t = parseTodo(out);
-          if (!t) throw new Error("bee todos create: no id in the output");
-          return this.created(req, t.id, t.alarmAt ?? alarm);
+          out = await this.call(["todos", "create", "--text", req.text, "--alarm-at", alarmIso(alarm), "--json"]);
         } catch (e) {
           last = errText(e);
           this.noteFailure();
           this.log("wrist.create.failed", { kind: req.kind, refId: req.refId, attempt: i + 1, error: last });
-          if (last === "timeout" || ran) {
-            // The create may have landed after all (a timeout, or output with no id): adopt it rather
-            // than create a duplicate alarm.
-            const found = await this.call(["todos", "list", "--limit", "50", "--json"]).then(parseTodoList, () => [] as ListedTodo[]);
-            const hit = found.find((x) => x.text === req.text && x.alarmAt != null && Math.abs(x.alarmAt - alarm) <= 2000);
-            if (hit) return this.created(req, hit.id, hit.alarmAt!);
-          }
+          const adopted = last === "timeout" ? await adopt() : null;
+          if (adopted) return adopted;
+          continue;
         }
+        // The CLI exited 0, so the to-do exists even when its output has no id: never create it
+        // again (a second alarm), and do not count it against the circuit (Bee is fine).
+        const t = parseTodo(out);
+        if (t) return this.created(req, t.id, t.alarmAt ?? alarm);
+        const adopted = await adopt();
+        if (adopted) return adopted;
+        this.log("wrist.create.no-id", { kind: req.kind, refId: req.refId });
+        return this.createdWithoutId(alarm);
       }
       return this.fail(last || "bee todos create failed");
     }, true);
+  }
+
+  // Created, but neither the CLI's output nor the list gave its id: scheduled, with no id to clean up.
+  private createdWithoutId(alarmAt: number): WristResult {
+    this.failures = 0;
+    return { channel: "bee-todo", status: "scheduled", todoId: null, todoAt: this.clock(), alarmAt, leadMs: this.leadMs, error: "bee todos create printed no to-do id; it will not be cleaned up" };
   }
 
   private created(req: WristRequest, id: string, alarmAt: number): WristResult {

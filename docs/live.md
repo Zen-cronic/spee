@@ -94,7 +94,7 @@ Notes on how the rules are computed:
 - **Text.** At most 60 characters, starting `[coach] `. It is generated from the rule and its numbers, for example `[coach] 4 hedges in 2 min. Say it plainly.`, and never quotes a transcript. Any other text is refused before the CLI is called.
 - **Alarm lead.** `NUDGE_ALARM_LEAD_S` (default 10). The alarm time is rounded up to the whole second, in the format the probe verified (`2026-10-16T20:22:10Z`).
 - **Queue.** One CLI call at a time, at least 1.5 s apart, each with a 10 s timeout. Creates go ahead of cleanups, and a create that waited over 30 s in the queue is dropped as stale.
-- **Retries.** A failed create is retried twice. After a **timeout**, the to-do list is checked first: if the create landed (same text, alarm within 2 s), it is adopted instead of duplicated.
+- **Retries.** A failed create is retried twice. After a **timeout**, the to-do list is checked first: if the create landed (same text, alarm within 2 s), it is adopted instead of duplicated. A create that exits 0 is never retried: when its output has no id (a notice line before or after the JSON is read past), the list is checked once, and if the to-do is not there either the nudge is `scheduled` with a null `todoId` (no cleanup) and the circuit does not count it.
 - **Circuit breaker.** 3 consecutive failed create calls open the circuit for 10 min. The engine turns live mode off (`wrist-down`) and publishes `live.mode`. A nudge whose wrist call failed is still `nudge.sent`, with `wrist.status: "failed"` and null `todoAt`/`alarmAt`.
 - **Ledger.** `<stateDir>/live/todos.json` (`real/live/` in live mode, gitignored). It holds the id, kind, the generated text, the alarm, the cleanup action and the state.
 - **Cleanup.**
