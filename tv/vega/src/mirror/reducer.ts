@@ -134,6 +134,25 @@ export type MirrorAction =
   | { type: 'liveState'; live: LiveState }
   | { type: 'recap'; recap: Recap; show: boolean; now: number };
 
+/** One step of the Live tracker: you said it, checked by Bee, graded. */
+export type StepState = 'todo' | 'now' | 'done' | 'bad' | 'pass';
+
+/**
+ * The tracker's three steps for a drill. "You said it" is done once any attempt exists: a phone or
+ * Alexa preview, or a line Bee heard on its own (a Bee-only attempt has no preview).
+ */
+export function drillSteps(d: Pick<DrillState, 'stage' | 'provisional' | 'verified' | 'graded'>): { heard: StepState; checked: StepState; graded: StepState } {
+  const st = d.stage;
+  const v = d.verified;
+  const g = d.graded;
+  const attempted = !!(d.provisional || v || g) || (st !== 'card' && st !== 'idle');
+  return {
+    heard: attempted ? 'done' : st === 'card' ? 'now' : 'todo',
+    checked: st === 'unverified' ? 'bad' : v?.status === 'verified' || g ? 'done' : st === 'provisional' || st === 'checking' ? 'now' : 'todo',
+    graded: g ? (g.pass ? 'pass' : 'bad') : st === 'verified' ? 'now' : 'todo',
+  };
+}
+
 const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });
 const emptyPractice = (): PracticeSlice => ({ takeId: null, from: null, latest: null, history: [], caption: null, lastFrameAt: null, frames: 0, summary: null });
 

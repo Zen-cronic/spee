@@ -2,7 +2,7 @@
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";
-import { backAction, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
+import { backAction, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 
 const fx = loadFixtureV2();
@@ -131,6 +131,23 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     s = run(s, { type: "event", event: ev(4, "attempt.verified", { attemptId: "a1", cardId: "c1", status: "verified", beeText: "one" }), now: 3 }, { type: "event", event: ev(5, "attempt.graded", { attempt: { id: "a1", cardId: "c1", status: "graded", final: { pass: true, grade: { reasons: [] } } }, card: c1, deck }), now: 4 });
     expect(s.drill).toMatchObject({ stage: "card", card: { id: "c2" }, attemptId: null, graded: null, verified: null });
     expect(s.drill.deck).toEqual(deck); // the deck summary still moves
+  });
+  it("a Bee-only attempt (no phone or Alexa preview) marks \"You said it\" done on the tracker", () => {
+    const c1 = { id: "c1", resay: "We ship the export on Friday." } as any;
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card: c1 }), now: 0 });
+    expect(drillSteps(s.drill)).toEqual({ heard: "now", checked: "todo", graded: "todo" });
+    s = run(s, { type: "event", event: ev(2, "attempt.verified", { attemptId: "a1", cardId: "c1", status: "verified", via: "stream", beeText: "We ship the export on Friday.", reason: "Bee tagged the wearer saying the open card (no phone/Alexa preview)" }), now: 1 });
+    expect(s.drill.provisional).toBeNull();
+    expect(drillSteps(s.drill)).toEqual({ heard: "done", checked: "done", graded: "now" });
+    const failed = { reasons: ['FAIL habit: kept the habit (hedges: "i guess", "i think"): "i think"'], checks: [{ rule: "nonempty", ok: true, detail: "" }, { rule: "habit", ok: false, detail: "" }], habit: { kind: "hedge", label: 'hedges: "i guess", "i think"', hits: 1, found: ["i think"] }, fillers: [], missing: [], required: [] };
+    s = run(s, { type: "event", event: ev(3, "attempt.graded", { attempt: { id: "a1", cardId: "c1", status: "graded", provisional: null, bee: { text: "I think we ship the export on Friday.", via: "stream" }, final: { source: "bee", pass: false, grade: failed } }, card: c1 }), now: 2 });
+    expect(drillSteps(s.drill)).toEqual({ heard: "done", checked: "done", graded: "bad" });
+    // The verdict's words come from what Bee heard, not from the card's label.
+    expect(s.drill.graded?.failure).toEqual({ rule: "habit", words: ["i think"] });
+    // With a preview, and while Bee checks without one.
+    expect(drillSteps({ stage: "provisional", provisional: { source: "phone", text: "x", pass: true, reasons: [] }, verified: null, graded: null }).heard).toBe("done");
+    expect(drillSteps({ stage: "checking", provisional: null, verified: null, graded: null }).heard).toBe("done");
+    expect(drillSteps({ stage: "idle", provisional: null, verified: null, graded: null }).heard).toBe("todo");
   });
   it("Bee still checking the previous card's attempt never puts the open card into checking", () => {
     const c1 = { id: "c1", resay: "one" } as any;

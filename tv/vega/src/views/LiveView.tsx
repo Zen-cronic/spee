@@ -3,7 +3,7 @@ import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped } from '../contract';
 import { useDebug } from '../debug';
 import { curly, fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
-import type { DrillState, LiveSlice } from '../mirror/reducer';
+import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
@@ -25,8 +25,6 @@ export function LiveView({ drill, live, partial, focus }: { drill: DrillState; l
     </View>
   );
 }
-
-type StepState = 'todo' | 'now' | 'done' | 'bad' | 'pass';
 
 function Dot({ state, bee }: { state: StepState; bee?: boolean }) {
   const pulse = useLoop(state === 'now', 600);
@@ -70,9 +68,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   const pv = d.provisional;
   const v = d.verified;
   const g = d.graded;
-  const heard: StepState = pv ? 'done' : st === 'card' ? 'now' : 'todo';
-  const checked: StepState = st === 'unverified' ? 'bad' : v?.status === 'verified' || g ? 'done' : st === 'provisional' || st === 'checking' ? 'now' : 'todo';
-  const graded: StepState = g ? (g.pass ? 'pass' : 'bad') : st === 'verified' ? 'now' : 'todo';
+  const { heard, checked, graded } = drillSteps(d);
   let status: string;
   let support: string | null = null;
   let band = styles.bandIdle;
