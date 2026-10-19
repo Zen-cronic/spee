@@ -55,3 +55,45 @@ describe("one Bee line, two previews", () => {
     expect(out.find((x) => x.status === "unverified")?.beeUtteranceIds).toEqual([]);
   });
 });
+
+describe("a Bee line counts once, and only after the card opened", () => {
+  const verifier = (now: () => number) => {
+    const out: Verification[] = [];
+    const beeOnly: unknown[] = [];
+    const v = new BeeVerifier({ clock: now, rule: wearerRule({ first_name: "Ada", last_name: "Demo" }, ""), onVerification: (x) => out.push(x), onBeeAttempt: (x) => beeOnly.push(x) });
+    return { v, out, beeOnly };
+  };
+  it("a counted line resent after the buffer forgot it is a duplicate (review L42)", () => {
+    let now = T0;
+    const { v, beeOnly } = verifier(() => now);
+    v.openCard({ cardId: "c1", resay: TARGET, lang: "en", openedAt: T0 - 5000 });
+    now += 4000;
+    v.ingest(utt(1, TARGET, T0));
+    v.ingest(tag(1));
+    expect(beeOnly).toHaveLength(1);
+    now += 4 * 60_000; // past the 180 s buffer
+    v.purge();
+    v.ingest(utt(1, TARGET, T0)); // a restarted bee stream resends it
+    v.ingest(tag(1));
+    expect(beeOnly).toHaveLength(1);
+  });
+  it("a wearer line from before the card opened never joins a split attempt (review L41)", () => {
+    const opened = T0 - 2000;
+    let now = opened - 200;
+    const { v, out } = verifier(() => now);
+    v.ingest(utt(1, "Um, okay, quiz me.", opened - 500, 1)); // said, and delivered by Bee, before the card opened
+    v.ingest(tag(1));
+    now = T0;
+    v.openCard({ cardId: "c1", resay: TARGET, lang: "en", openedAt: opened });
+    v.expect({ attemptId: "a1", cardId: "c1", text: TARGET, speechStartMs: opened + 200, speechEndMs: T0 });
+    now += 5000;
+    // Bee split the attempt so neither half matches alone, and the group decides
+    v.ingest(utt(2, "The billing export", T0 - 1500, 1));
+    v.ingest(tag(2));
+    expect(out).toHaveLength(0);
+    v.ingest(utt(3, "is ready for review today.", T0, 2));
+    v.ingest(tag(3));
+    const ok = out.find((x) => x.status === "verified");
+    expect(ok?.beeUtteranceIds).toEqual([2, 3]);
+  });
+});

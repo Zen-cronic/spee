@@ -371,7 +371,9 @@ export class BeeVerifier {
     }
     if (e.type === "new-utterance") {
       const u = e.utterance;
-      if (this.utts.has(u.id)) {
+      // A line already used for an attempt stays a duplicate after the buffer forgets it: a restarted
+      // `bee stream` resends recent lines, and a counted one must not count again (review L42).
+      if (this.utts.has(u.id) || this.consumedIds.has(u.id)) {
         this.counters.duplicates++;
         return;
       }
@@ -469,7 +471,8 @@ export class BeeVerifier {
       const card = this.cardOf(a.cardId);
       if (card && !this.afterOpen(u, card)) continue; // only lines spoken and received after the card opened
       const lang = card?.lang ?? "en";
-      const group = [...this.utts.values()].filter((x) => x.tag === "wearer" && !x.consumed && this.overlaps(x, a)).sort((x, y) => x.startMs - y.startMs);
+      // the joined group obeys the same rule as the line itself: nothing said before the card opened (review L41)
+      const group = [...this.utts.values()].filter((x) => x.tag === "wearer" && !x.consumed && this.overlaps(x, a) && (!card || this.afterOpen(x, card))).sort((x, y) => x.startMs - y.startMs);
       for (const g of [[u], group]) {
         const text = g.map((x) => x.text).join(" ");
         const sim = align(normTokens(a.text, lang), normTokens(text, lang)).score; // coverage of the preview's words
