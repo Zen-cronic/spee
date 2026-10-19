@@ -11,7 +11,7 @@ import { RECAP_MOMENT_MAX_WORDS, WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import type { Baseline } from "../src/hub/live/baseline.js";
 import { DEFAULT_THRESHOLDS, loadPrinciples, parseThresholds, principlesFromText } from "../src/hub/live/principles.js";
 import { buildRecap, verdictOf } from "../src/hub/live/recap.js";
-import { acceptPhrasing, phraseRecap, recapPrompt, RECAP_LLM_MODEL, type PhraseFn } from "../src/hub/live/recapPrompt.js";
+import { acceptPhrasing, numbersIn, phraseRecap, recapPrompt, RECAP_LLM_MODEL, type PhraseFn } from "../src/hub/live/recapPrompt.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
 
@@ -98,7 +98,10 @@ describe("principles", () => {
 
 describe("optional model phrasing", () => {
   const principles = principlesFromText("Lead with the decision before the details, every single time.", "local");
-  const good = { headline: "Hedges ran high today: 3.1 per 100 words.", narration: 'About 2 minutes. You hedged 6 times. Try: "We could ship the export on Friday."', wristText: "[coach] Recap: hedges high" };
+  // the template: "Hedges ran high: 7.5 per 100 words against your usual 1.4. ..." and "That
+  // conversation ran about 2 minutes. You hedged 6 times, 7.5 per 100 words against your usual 1.4,
+  // and your pace held at 140 words a minute. ..."
+  const good = { headline: "Hedges ran high today: 7.5 per 100 words, usually 1.4.", narration: 'About two minutes at 140 words a minute. You hedged 6 times. Try: "We could ship the export on Friday."', wristText: "[coach] Recap: hedges high" };
   it("injects the rubric into the system prompt only, with Haiku as the only model", async () => {
     const r = recapOf(conversation());
     const p = recapPrompt(r, principles);
@@ -123,6 +126,19 @@ describe("optional model phrasing", () => {
     expect(acceptPhrasing({ ...good, narration: "Remember to lead with the decision before the details." }, r, principles)).toBeNull();
     expect(acceptPhrasing({ ...good, narration: "One. Two. Three. Four." }, r, principles)).toBeNull();
     expect(acceptPhrasing(good, r, principles)).toEqual(good);
+  });
+  it("keeps the template's numbers: a changed, added or dropped number falls back to the template", () => {
+    const r = recapOf(conversation());
+    expect(r.narration).toContain("You hedged 6 times");
+    const n = (narration: string) => acceptPhrasing({ ...good, narration }, r, principles);
+    expect(n("About two minutes at 140 words a minute. You hedged 31 times.")).toBeNull(); // a different count
+    expect(n("About two minutes at 140 words a minute. You hedged thirty-one times.")).toBeNull(); // in words
+    expect(n("About two minutes at 140 words a minute. You hedged 6 times, 9.8 per 100 words.")).toBeNull(); // an added rate
+    expect(n("About two minutes at 140 words a minute. You hedged a lot.")).toBeNull(); // the count dropped
+    expect(acceptPhrasing({ ...good, wristText: "[coach] Recap: 20 hedges" }, r, principles)).toBeNull();
+    expect(acceptPhrasing({ ...good, headline: "Hedges ran high: 7.5 per 100 words." }, r, principles)).toBeNull(); // the usual 1.4 dropped
+    expect(n("About 2 minutes at 140 words a minute. You hedged six times.")).not.toBeNull(); // digits or words
+    expect(numbersIn('1,400 words, 7.5 per hundred, twice "on Friday"')).toEqual(["1400", "7.5", "100", "2"]);
   });
   it("hands callTool a sanitize hook, so a phrasing that echoes the principles is never cached (review H10)", async () => {
     const r = recapOf(conversation());

@@ -1,7 +1,8 @@
 // Optional model phrasing for a recap (off by default; COACH_RECAP_LLM=1 turns it on in live mode).
 //
 // The model only rewords the template recap: the numbers, the verdicts and the moment are decided
-// by code (live/recap.ts) and passed in. It runs off the request path, one call at a time, with a
+// by code (live/recap.ts) and passed in, and acceptPhrasing holds it to them (every number of the
+// template kept, none added, in digits or in words). It runs off the request path, one call at a time, with a
 // 6 s timeout; on any failure or failed check the template phrasing stays. Model: Claude Haiku 4.5
 // on Bedrock (profile hackathon-1, via src/llm/bedrock.ts callTool). Tests inject a fake.
 //
@@ -55,6 +56,26 @@ export function recapPrompt(recap: Recap, principles: Principles): { system: str
 
 const sentences = (s: string) => s.replace(/"[^"]*"/g, '""').split(/(?<=[.!?])\s+/).filter((x) => x.trim()).length;
 
+// Numbers as a reader hears them: digits ("7.5", "1,400") and number words ("six", "twice").
+const WORD_NUMBERS: Record<string, number> = {
+  zero: 0, none: 0, once: 1, twice: 2, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+  thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, hundred: 100, dozen: 12,
+};
+const numKey = (n: number) => (Math.round(n * 100) / 100).toString();
+export function numbersIn(text: string): string[] {
+  const out: string[] = [];
+  for (const m of text.matchAll(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\p{L}+/gu)) {
+    const t = m[0].toLowerCase();
+    if (/^\d/.test(t)) out.push(numKey(Number(t.replace(/,/g, ""))));
+    else if (t in WORD_NUMBERS) out.push(numKey(WORD_NUMBERS[t]!));
+  }
+  return out;
+}
+// Text with its quotes removed: the quote rule below checks them, and a quoted moment may hold
+// numbers of its own (only quotes in `allowed` are removed; anything else is still counted).
+const unquoted = (s: string, allowed: string[] | null) => s.replace(/"([^"]*)"/g, (q, inner: string) => (allowed === null || allowed.includes(fold(inner)) ? " " : q));
+
 // The model output is accepted only when every check passes; else null (keep the template).
 export function acceptPhrasing(out: unknown, recap: Recap, principles: Principles): Pick<Recap, "headline" | "narration" | "wristText"> | null {
   const o = out as Record<string, unknown>;
@@ -71,6 +92,13 @@ export function acceptPhrasing(out: unknown, recap: Recap, principles: Principle
     const q = fold(m[1]!);
     if (q.split(" ").length >= 3 && !allowed.includes(q)) return null;
   }
+  // Numbers: every one the template states is kept, and none is added (a count of zero is a fact
+  // too, so "no hedges" may become "zero hedges").
+  const want = new Set(numbersIn(unquoted(`${recap.headline} ${recap.narration}`, null)));
+  const may = new Set([...want, ...numbersIn(unquoted(recap.wristText, null)), ...recap.metrics.habits.map((h) => numKey(h.count))]);
+  const said = numbersIn(unquoted(`${headline} ${narration}`, allowed));
+  if ([...want].some((n) => !said.includes(n))) return null;
+  if ([...said, ...numbersIn(wristText)].some((n) => !may.has(n))) return null;
   return { headline, narration, wristText };
 }
 
