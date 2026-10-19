@@ -1,208 +1,240 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Chip } from '../components/Chip';
 import { HopTimeline } from '../components/HopTimeline';
-import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, RuleState } from '../contract';
-import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
+import type { LiveMode, LiveWindow, Nudge, NudgeSkipped } from '../contract';
+import { useDebug } from '../debug';
+import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import type { DrillState, LiveSlice } from '../mirror/reducer';
 import { useEnter, useLoop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
 /**
- * Live: the drill pipeline on the left (preview, checking with Bee, verified by Bee, graded, and
- * "Bee overrules"), the current conversation on the right (rate, monologue, the 2-minute counters
- * against their thresholds, the last nudge's latency hops and the suppressed nudges).
+ * Live: the drill on the left (the sentence to say, one status sentence, and a three-step tracker:
+ * you said it, checked by Bee, graded), the current conversation on the right (pace, talk share,
+ * the two drilled habits over the last 2 minutes, and the last wrist nudge). Developer detail
+ * (speaker score, hops in ms, held-back nudges) shows only in debug.
  */
 export function LiveView({ drill, live, partial, focus }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live' }) {
   return (
     <View style={styles.wrap} testID="view-live">
-      <View style={[styles.col, focus === 'drill' && styles.colFocus]}>
+      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet]}>
         <DrillPanel d={drill} partial={partial} />
       </View>
-      <View style={[styles.col, styles.colRight, focus === 'live' && styles.colFocus]}>
+      <View style={styles.convo}>
         <ConversationPanel live={live} />
       </View>
     </View>
   );
 }
 
-type StepState = 'todo' | 'now' | 'done' | 'bad';
+type StepState = 'todo' | 'now' | 'done' | 'bad' | 'pass';
 
-function Step({ n, title, state, detail, bee }: { n: number; title: string; state: StepState; detail?: string | null; bee?: boolean }) {
+function Dot({ state, bee }: { state: StepState; bee?: boolean }) {
   const pulse = useLoop(state === 'now', 600);
-  const enter = useEnter(`${title}:${state}`, 12, 260);
-  const color = state === 'done' ? (bee ? C.lavender : C.mint) : state === 'bad' ? C.coral : state === 'now' ? C.amber : C.faint;
+  const fill = state === 'todo' ? 'transparent' : state === 'now' ? C.lavender : state === 'bad' ? C.coral : state === 'pass' ? C.lime : bee ? C.lavender : C.ink;
+  const border = state === 'todo' ? C.inkFaint : state === 'pass' ? C.ink : fill;
+  return <Animated.View style={[styles.dot, { backgroundColor: fill, borderColor: border, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) }]} />;
+}
+
+function Tracker({ steps }: { steps: { label: string; state: StepState; bee?: boolean }[] }) {
   return (
-    <Animated.View style={[styles.step, enter]}>
-      <Animated.View style={[styles.stepDot, { borderColor: color, backgroundColor: state === 'todo' ? 'transparent' : color, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) }]}>
-        <Text style={[styles.stepNum, { color: state === 'todo' ? C.faint : C.bg }]}>{String(n)}</Text>
-      </Animated.View>
-      <View style={styles.stepBody}>
-        <Text style={[styles.stepTitle, { color: state === 'todo' ? C.faint : C.text }]}>{title}</Text>
-        {detail ? <Text style={styles.stepDetail} numberOfLines={2}>{detail}</Text> : null}
-      </View>
-    </Animated.View>
+    <View style={styles.tracker} testID="drill-tracker">
+      <View style={styles.trackLine} />
+      {steps.map((s) => (
+        <View key={s.label} style={styles.step}>
+          <Dot state={s.state} bee={s.bee} />
+          <Text style={[styles.stepLabel, s.state === 'todo' && { color: C.inkFaint }]}>{s.label}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
 function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
+  const debug = useDebug();
   const card = d.card;
+  const st = d.stage;
+  const enter = useEnter(`${card?.id ?? 'none'}:${st}`, 14, 280);
   if (!card) {
     return (
-      <View>
-        <Text style={styles.kicker}>DRILL</Text>
-        <Text style={styles.idle}>No drill running.</Text>
-        <Text style={styles.hint}>{'Say "Alexa, quiz me", or start a drill from the phone. Every attempt is graded from what Bee heard, not from the phone.'}</Text>
-        {d.summary ? <Text style={styles.hint}>{sessionTally('Last session', d.summary)}</Text> : null}
+      <View style={styles.fill}>
+        <Text style={styles.kicker}>Drill</Text>
+        <Text style={styles.sentence}>No drill running.</Text>
+        <View style={{ flex: 1 }} />
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
+        </View>
+        {d.summary ? <Text style={styles.support}>{sessionTally('Last session', d.summary)}</Text> : null}
       </View>
     );
   }
   const pv = d.provisional;
   const v = d.verified;
   const g = d.graded;
-  const st = d.stage;
-  const previewState: StepState = pv ? 'done' : st === 'card' ? 'now' : 'todo';
-  const checkState: StepState = st === 'provisional' || st === 'checking' ? 'now' : v || g || st === 'unverified' ? (st === 'unverified' ? 'bad' : 'done') : 'todo';
-  const verifyState: StepState = st === 'unverified' ? 'bad' : v?.status === 'verified' ? 'done' : 'todo';
-  const gradeState: StepState = g ? (g.pass ? 'done' : 'bad') : st === 'verified' ? 'now' : 'todo';
+  const heard: StepState = pv ? 'done' : st === 'card' ? 'now' : 'todo';
+  const checked: StepState = st === 'unverified' ? 'bad' : v?.status === 'verified' || g ? 'done' : st === 'provisional' || st === 'checking' ? 'now' : 'todo';
+  const graded: StepState = g ? (g.pass ? 'pass' : 'bad') : st === 'verified' ? 'now' : 'todo';
+  let status: string;
+  let support: string | null = null;
+  let band = styles.bandIdle;
+  let ink: string = C.ink;
+  const overrules = g?.agreement === 'bee-overrules';
+  if (g) {
+    status = g.pass ? 'Passed.' : 'Not yet.';
+    support = g.pass ? `Checked by Bee.${g.dueAfter ? ` Next review ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.reasons) ?? 'Close'}. Say it again.`;
+    band = g.pass ? styles.bandPass : styles.bandFail;
+    ink = g.pass ? C.limeInk : C.coralInk;
+    if (overrules) {
+      status = g.pass ? 'Passed. Bee overrules.' : 'Not yet. Bee overrules.';
+      support = overruleText(pv?.source, g.pass, g.beeText);
+      band = styles.bandBee;
+      ink = C.lavenderInk;
+    }
+  } else if (st === 'unverified') {
+    status = 'Bee didn’t catch that one.';
+    support = 'It doesn’t count. Say it again.';
+  } else if (st === 'verified') {
+    status = 'Bee heard you. Grading…';
+    band = styles.bandWait;
+  } else if (st === 'provisional' || st === 'checking') {
+    status = 'Bee is checking your line…';
+    support = 'Only what Bee heard counts.';
+    band = styles.bandWait;
+  } else {
+    status = partial ? `“${partial}”` : 'Your turn. Say it out loud.';
+    support = partial ? 'Hearing you…' : 'To Alexa or your phone.';
+  }
   return (
-    <View>
-      <Text style={styles.kicker}>{`DRILL · ${card.habit?.label ?? card.type}`}</Text>
-      <Text style={styles.said} numberOfLines={2}>{card.said}</Text>
-      <Text style={styles.fix} numberOfLines={2}>{`Say instead: ${card.resay || card.fix}`}</Text>
-      {partial && (st === 'card' || st === 'provisional') ? <Text style={styles.partial} numberOfLines={1}>{`hearing: ${partial}`}</Text> : null}
-      <View style={styles.steps}>
-        <Step n={1} title={pv ? `Preview (${pv.source}): ${pv.pass ? 'pass' : 'fail'}` : 'Waiting for your attempt'} state={pv ? (pv.pass ? 'done' : 'bad') : previewState} detail={pv ? `"${pv.text}"` : null} />
-        <Step n={2} title="Checking with Bee" state={checkState} detail={st === 'checking' ? 'stream timed out, asking the Bee CLI' : st === 'provisional' ? 'waiting for Bee to tag your line' : null} />
-        <Step n={3} title={st === 'unverified' ? 'Not verified by Bee' : 'Verified by Bee'} state={verifyState} bee detail={v ? (v.status === 'verified' ? `speaker ${v.speakerScore ?? '–'} · ${fmtMs(v.latencyMs)} after you spoke · via ${v.via ?? '–'}${v.replay ? ' · replay' : ''}` : v.reason) : st === 'unverified' ? 'no counted attempt' : null} />
-        <Step n={4} title={g ? `Graded from Bee: ${g.pass ? 'PASS' : 'FAIL'}` : 'Graded'} state={gradeState} detail={g ? `${gradeWhy(g.reasons)}${g.boxFrom !== null ? `  ·  box ${g.boxFrom} → ${g.boxTo}${g.dueAfter ? `, next ${fmtDay(g.dueAfter)}` : ''}` : ''}` : null} />
-      </View>
-      {g?.agreement === 'bee-overrules' ? (
-        <View style={styles.overrule} testID="bee-overrules">
-          <Chip text="BEE OVERRULES" tone="bee" big />
-          <Text style={styles.overruleText} numberOfLines={3}>{overruleText(pv?.source, g.pass, g.beeText)}</Text>
-        </View>
+    <View style={styles.fill}>
+      <Text style={styles.kicker} numberOfLines={1}>{card.said ? `Instead of “${card.said}”, say` : 'Say'}</Text>
+      <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
+      <View style={{ flex: 1 }} />
+      <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
+        <Text style={[styles.status, { color: ink }]} numberOfLines={1}>{status}</Text>
+        {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 3 : 2}>{support}</Text> : null}
+      </Animated.View>
+      <Tracker
+        steps={[
+          { label: 'You said it', state: heard },
+          { label: 'Checked by Bee', state: checked, bee: true },
+          { label: 'Graded', state: graded },
+        ]}
+      />
+      {debug ? (
+        <Text style={styles.debug} numberOfLines={2}>
+          {[pv ? `preview ${pv.source}: ${pv.pass ? 'pass' : 'fail'} "${pv.text}"` : null, v ? (v.status === 'verified' ? `speaker ${v.speakerScore ?? '–'} · ${fmtMs(v.latencyMs)} · via ${v.via ?? '–'}${v.replay ? ' · replay' : ''}` : v.reason) : null, g && g.boxFrom !== null ? `box ${g.boxFrom} → ${g.boxTo}` : null, d.summary ? sessionTally('session', d.summary) : null, `stage ${st}`].filter(Boolean).join('  ·  ')}
+        </Text>
       ) : null}
-      {d.summary ? <Text style={styles.hint}>{sessionTally('Session over', d.summary)}</Text> : null}
     </View>
   );
 }
 
-// The reason worth a glance: the first failed rule, or on a pass the content match (not "8 words heard").
-function gradeWhy(reasons: string[]): string {
-  const fail = reasons.find((r) => r.startsWith('FAIL'));
-  if (fail) return fail;
-  const ok = reasons.find((r) => r.startsWith('ok content')) ?? reasons[0] ?? '';
-  return ok.replace(/^ok [^:]+: /, '');
-}
-
-function ModeChip({ mode }: { mode: LiveMode | null }) {
-  if (!mode) return <Chip text="LIVE COACHING: UNKNOWN" tone="neutral" />;
-  return <Chip text={mode.enabled ? 'WRIST NUDGES ON' : 'WRIST NUDGES OFF'} tone={mode.enabled ? 'good' : 'neutral'} />;
-}
-
-function Counter({ label, value, rule }: { label: string; value: number; rule?: RuleState }) {
-  const over = !!rule?.over;
+function Mode({ mode }: { mode: LiveMode | null }) {
+  const on = !!mode?.enabled;
   return (
-    <View style={[styles.counter, over && styles.counterOver]}>
-      <Text style={[styles.counterValue, over && { color: C.coral }]}>{String(value)}</Text>
-      <Text style={styles.counterLabel}>{label}</Text>
-      {rule ? <Text style={styles.counterRule}>{`nudge at ${Math.round(rule.threshold * 10) / 10}`}</Text> : null}
+    <View style={styles.mode}>
+      <View style={[styles.modeDot, { backgroundColor: on ? C.lime : C.faint }]} />
+      <Text style={styles.modeText}>{!mode ? 'Wrist nudges' : on ? 'Wrist nudges on' : 'Wrist nudges off'}</Text>
+    </View>
+  );
+}
+
+function Counter({ label, value, over }: { label: string; value: string; over: boolean }) {
+  return (
+    <View style={styles.counter}>
+      <Text style={[styles.counterValue, over && { color: C.coral }]}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 function ConversationPanel({ live }: { live: LiveSlice }) {
+  const debug = useDebug();
   const w: LiveWindow | null = live.window;
-  const rule = (r: string) => w?.rules.find((x) => x.rule === r);
+  const over = (r: string) => !!w?.rules.find((x) => x.rule === r)?.over;
   const nudge: Nudge | undefined = live.nudges[0];
   const skip: NudgeSkipped | undefined = live.skips[0];
   return (
-    <View>
+    <View style={styles.fill}>
       <View style={styles.rowBetween}>
-        <Text style={styles.kicker}>LIVE CONVERSATION · FROM BEE</Text>
-        <ModeChip mode={live.mode} />
+        <Text style={styles.convoTitle}>Conversation</Text>
+        <Mode mode={live.mode} />
       </View>
-      {!w ? (
-        <View>
-          <Text style={styles.idle}>{live.ended ? 'Conversation ended.' : 'No conversation in progress.'}</Text>
-          <Text style={styles.hint}>{live.ended ? `${live.ended.wearerWords} of your words, ${fmtMs(live.ended.endedAt - live.ended.startedAt)}. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'When Bee hears you talking, your rate and habit counters show here. Other people are counted, never shown.'}</Text>
-        </View>
-      ) : (
-        <View>
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Text style={styles.statBig}>{fmtInt(w.wearer.wpm)}</Text>
-              <Text style={styles.statLabel}>words / min</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statBig}>{fmtPct(w.talkShare)}</Text>
-              <Text style={styles.statLabel}>your talk share</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={[styles.statBig, rule('monologue')?.over && { color: C.coral }]}>{fmtMs(w.monologue.currentMs)}</Text>
-              <Text style={styles.statLabel}>{`this turn (max ${fmtMs(w.monologue.longestMs)})`}</Text>
-            </View>
+      <View style={!w && styles.ghost}>
+        <View style={styles.stats}>
+          <View style={styles.stat}>
+            <Text style={styles.statBig}>{w ? fmtInt(w.wearer.wpm) : '–'}</Text>
+            <Text style={styles.statLabel}>words a minute</Text>
           </View>
-          <Text style={styles.subKicker}>LAST 2 MINUTES</Text>
-          <View style={styles.counters}>
-            <Counter label="hedges" value={w.recent.hedges} rule={rule('hedge-streak')} />
-            <Counter label={'"like"'} value={w.recent.likes} rule={rule('like-streak')} />
-            <Counter label="fillers" value={w.recent.fillers} />
-            <Counter label="vague" value={w.recent.vague} />
-            <Counter label="restarts" value={w.recent.restarts} />
+          <View style={styles.stat}>
+            <Text style={styles.statBig}>{w ? fmtPct(w.talkShare) : '–'}</Text>
+            <Text style={styles.statLabel}>you talked</Text>
           </View>
-          <Text style={styles.hint} numberOfLines={1}>{`${w.wearer.words} of your words · ${w.pauses.count} pauses · others counted only (${w.others.lines} lines)`}</Text>
         </View>
-      )}
+        <Text style={styles.sub}>Last 2 minutes</Text>
+        <View style={styles.counters}>
+          <Counter label="hedges" value={w ? String(w.recent.hedges) : '–'} over={over('hedge-streak')} />
+          <Counter label="“like”" value={w ? String(w.recent.likes) : '–'} over={over('like-streak')} />
+        </View>
+      </View>
+      {!w ? <Text style={styles.hint}>{live.ended ? `Conversation ended: ${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'Waiting for Bee to hear you talk. Other voices are never shown.'}</Text> : null}
+      {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
+      <View style={{ flex: 1 }} />
       {nudge ? (
         <View style={styles.nudge} testID="nudge-card">
-          <View style={styles.rowBetween}>
-            <Text style={styles.nudgeTitle}>{`Nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
-            <Chip text={nudge.wrist.status === 'failed' ? 'WRIST FAILED' : nudge.replay ? 'WRIST (REPLAY)' : 'ON THE WRIST'} tone={nudge.wrist.status === 'failed' ? 'bad' : 'good'} />
-          </View>
-          <Text style={styles.nudgeText} numberOfLines={1}>{nudge.text}</Text>
-          <HopTimeline nudge={nudge} width={740} />
+          <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge not delivered: ${RULE_LABEL[nudge.rule]}` : `Wrist nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
+          <Text style={styles.nudgeText} numberOfLines={1}>{nudge.text.replace(/^\[[^\]]*\]\s*/, '')}</Text>
+          {nudge.wrist.status !== 'failed' ? <Text style={styles.nudgeWhen}>{`Buzzed ${fmtMs(nudge.latencyMs.total)} after you said it${nudge.replay ? ' (replay)' : ''}`}</Text> : null}
+          {debug ? <HopTimeline nudge={nudge} width={700} /> : null}
         </View>
       ) : null}
-      {skip ? <Text style={styles.skip} numberOfLines={1}>{`Held back: ${RULE_LABEL[skip.rule]} (${SKIP_LABEL[skip.reason]})${skip.retryAfterMs ? `, can nudge again in ${fmtMs(skip.retryAfterMs)}` : ''}`}</Text> : null}
+      {debug && skip ? <Text style={styles.debugDark} numberOfLines={1}>{`Held back: ${RULE_LABEL[skip.rule]} (${SKIP_LABEL[skip.reason]})${skip.retryAfterMs ? `, again in ${fmtMs(skip.retryAfterMs)}` : ''}`}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, flexDirection: 'row' },
-  col: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.l, paddingVertical: SP.m, borderWidth: 3, borderColor: 'transparent', overflow: 'hidden' },
-  colRight: { marginLeft: SP.l },
-  colFocus: { borderColor: C.line },
+  fill: { flex: 1 },
+  drill: { flex: 1.15, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
+  drillQuiet: { flex: 0.8 },
+  convo: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  kicker: { color: C.dim, fontSize: T.label, fontWeight: '800', letterSpacing: 3, fontFamily: F.family },
-  subKicker: { color: C.faint, fontSize: 22, fontWeight: '800', letterSpacing: 3, marginTop: SP.s, fontFamily: F.family },
-  idle: { color: C.text, fontSize: T.h2, fontWeight: '800', marginTop: SP.l, fontFamily: F.family },
-  hint: { color: C.dim, fontSize: T.small, lineHeight: 38, marginTop: SP.s, fontFamily: F.family },
-  said: { color: C.dim, fontSize: T.body, marginTop: SP.m, textDecorationLine: 'line-through', fontFamily: F.family },
-  fix: { color: C.text, fontSize: T.title, fontWeight: '800', marginTop: SP.xs, lineHeight: 48, fontFamily: F.family },
-  partial: { color: C.amber, fontSize: T.small, marginTop: SP.s, fontStyle: 'italic', fontFamily: F.family },
-  steps: { marginTop: SP.l },
-  step: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: SP.m },
-  stepDot: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginRight: SP.m },
-  stepNum: { fontSize: 22, fontWeight: '900', fontFamily: F.family },
-  stepBody: { flex: 1 },
-  stepTitle: { fontSize: T.body, fontWeight: '800', fontFamily: F.family },
-  stepDetail: { color: C.dim, fontSize: T.label, marginTop: 2, lineHeight: 32, fontFamily: F.family },
-  overrule: { backgroundColor: C.lavenderBg, borderRadius: R.m, padding: SP.m, marginTop: SP.s },
-  overruleText: { color: C.text, fontSize: T.label, marginTop: SP.s, lineHeight: 32, fontFamily: F.family },
-  stats: { flexDirection: 'row', marginTop: SP.s },
+  kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
+  sentence: { color: C.ink, fontSize: 60, lineHeight: 72, fontWeight: '700', letterSpacing: -1, marginTop: SP.m, fontFamily: F.family },
+  band: { height: 224, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.l, justifyContent: 'center' },
+  bandIdle: { backgroundColor: 'rgba(0,0,0,0.05)' },
+  bandWait: { backgroundColor: 'rgba(187,174,247,0.35)' },
+  bandPass: { backgroundColor: C.lime },
+  bandFail: { backgroundColor: C.coral },
+  bandBee: { backgroundColor: C.lavender },
+  status: { fontSize: 52, lineHeight: 62, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  support: { color: C.inkDim, fontSize: T.body, lineHeight: 38, marginTop: 4, fontFamily: F.family },
+  supportSmall: { fontSize: T.label, lineHeight: 32 },
+  ghost: { opacity: 0.35 },
+  cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },
+  ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
+  tracker: { flexDirection: 'row', marginTop: SP.xl },
+  trackLine: { position: 'absolute', left: 18, right: 120, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
+  step: { flex: 1 },
+  dot: { width: 36, height: 36, borderRadius: 18, borderWidth: 3 },
+  stepLabel: { color: C.ink, fontSize: T.label, fontWeight: '600', marginTop: SP.s, fontFamily: F.family },
+  debug: { color: C.inkDim, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
+  debugDark: { color: C.faint, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
+  convoTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },
+  mode: { flexDirection: 'row', alignItems: 'center' },
+  modeDot: { width: 14, height: 14, borderRadius: 7, marginRight: SP.s },
+  modeText: { color: C.dim, fontSize: T.label, fontFamily: F.family },
+  hint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.xl, fontFamily: F.family },
+  stats: { flexDirection: 'row', marginTop: SP.xl },
   stat: { flex: 1 },
-  statBig: { color: C.text, fontSize: 64, fontWeight: '800', paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
-  statLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  counters: { flexDirection: 'row', marginTop: SP.s },
-  counter: { flex: 1, backgroundColor: C.surface2, borderRadius: R.m, paddingVertical: SP.xs, alignItems: 'center', marginRight: SP.s, borderWidth: 2, borderColor: 'transparent' },
-  counterOver: { borderColor: C.coral },
-  counterValue: { color: C.text, fontSize: T.h1, fontWeight: '800', fontFamily: F.family },
-  counterLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  counterRule: { color: C.faint, fontSize: 20, fontFamily: F.family },
-  nudge: { backgroundColor: C.coralBg, borderRadius: R.m, paddingHorizontal: SP.m, paddingVertical: SP.s, marginTop: SP.s },
-  nudgeTitle: { color: C.coral, fontSize: T.body, fontWeight: '800', fontFamily: F.family },
-  nudgeText: { color: C.text, fontSize: T.small, marginTop: 4, marginBottom: SP.s, fontFamily: F.family },
-  skip: { color: C.amber, fontSize: T.label, marginTop: SP.s, fontFamily: F.family },
+  statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -3, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },
+  statLabel: { color: C.dim, fontSize: T.body, fontFamily: F.family },
+  sub: { color: C.faint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
+  counters: { flexDirection: 'row', marginTop: SP.xs },
+  counter: { flex: 1 },
+  counterValue: { color: C.text, fontSize: 80, lineHeight: 92, fontWeight: '700', paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
+  nudge: { backgroundColor: C.coralBg, borderRadius: R.m, paddingHorizontal: SP.l, paddingVertical: SP.m },
+  nudgeTitle: { color: C.coral, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
+  nudgeText: { color: C.text, fontSize: T.small, marginTop: 6, fontFamily: F.family },
+  nudgeWhen: { color: C.dim, fontSize: T.label, marginTop: 6, fontFamily: F.family },
 });
