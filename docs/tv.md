@@ -8,7 +8,7 @@ Packet B of the coach hub (contract v2, [`docs/CONTRACT.md`](CONTRACT.md)). The 
 - the live conversation, with its wrist nudges and their latency hops;
 - the phone's practice meters, live.
 
-The phone page at `/p/<code>?k=…` is its microphone, with three modes: drill, practice and a mic check.
+The phone page at `/p/<code>#k=…` is its microphone, with three modes: drill, practice and a mic check.
 
 Everything below runs on synthetic demo data unless the hub runs live. Every screen shows the hub's `dataLabel` whenever the data is synthetic.
 

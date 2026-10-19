@@ -13,7 +13,7 @@ import { WORDMARK } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
 import { dictation, listen, speechCtor, type Listener } from "./speech.js";
-import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
+import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const now = () => performance.timeOrigin + performance.now();
@@ -331,7 +331,17 @@ function setupCheck() {
 // Connection
 
 async function connect(code: string) {
-  client = new BridgeClient({ url: wsUrl(location.protocol, location.host, join.k), role: "mic", code, name: "phone" });
+  const protocols = wsProtocols(join.k);
+  // the pair token travels in the subprotocols, never in the URL (take.ts wsProtocols)
+  // the browser WebSocket, typed as the bridge client's minimal socket shape
+  const WebSocketImpl = (protocols
+    ? class extends WebSocket {
+        constructor(url: string) {
+          super(url, protocols);
+        }
+      }
+    : undefined) as unknown as ConstructorParameters<typeof BridgeClient>[0]["WebSocketImpl"];
+  client = new BridgeClient({ url: wsUrl(location.protocol, location.host), role: "mic", code, name: "phone", WebSocketImpl });
   // The bridge client keeps retrying after a failed first connect, so a later `open` leaves the join view.
   client.on("open", () => {
     room = client?.code ?? code;

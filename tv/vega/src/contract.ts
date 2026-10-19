@@ -10,6 +10,12 @@
 
 export const CONTRACT_VERSION = 2 as const;
 
+// The phone's pair token on the /ws upgrade: offered as the WebSocket subprotocols
+// [WS_PROTOCOL, WS_TOKEN_PREFIX + base64url(token)], so it never sits in a URL (proxy and tunnel
+// access logs). The hub selects WS_PROTOCOL and never echoes the token. ?k=<token> still works.
+export const WS_PROTOCOL = "speaking-mirror" as const;
+export const WS_TOKEN_PREFIX = "k." as const;
+
 // Topics
 
 // v1 sequenced topics (every peer in every room, and SSE).

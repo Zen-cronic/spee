@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeMeters, sanitizeSummary } from "../src/hub/mirror.js";
 import { ProsodyEngine, synthVoice } from "../web/phone/src/prosody.js";
-import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsUrl, type MicPhase } from "../web/phone/src/take.js";
+import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase } from "../web/phone/src/take.js";
 
 describe("join URL", () => {
   it("reads the room code and the pair token from /p/<code>?k=...", () => {
@@ -14,9 +14,12 @@ describe("join URL", () => {
     expect(parseJoin("/p/", "")).toEqual({ code: null, k: null, debug: false });
     expect(parseJoin("/p/TOOLONG", "").code).toBeNull();
   });
-  it("connects wss on https with ?k=, ws on the LAN without it", () => {
-    expect(wsUrl("https:", "abc.ngrok.app", "t o k")).toBe("wss://abc.ngrok.app/ws?k=t%20o%20k");
-    expect(wsUrl("http:", "192.168.1.20:8791", null)).toBe("ws://192.168.1.20:8791/ws");
+  it("connects wss on https and ws on the LAN, with the token in the subprotocols, never in the URL", () => {
+    expect(wsUrl("https:", "abc.ngrok.app")).toBe("wss://abc.ngrok.app/ws");
+    expect(wsUrl("http:", "192.168.1.20:8791")).toBe("ws://192.168.1.20:8791/ws");
+    expect(wsProtocols("t o k")).toEqual(["speaking-mirror", `k.${Buffer.from("t o k").toString("base64url")}`]);
+    expect(wsProtocols(null)).toBeUndefined();
+    for (const p of wsProtocols("tök/en+=")!) expect(p).toMatch(/^[A-Za-z0-9._-]+$/); // valid subprotocol characters
   });
 });
 

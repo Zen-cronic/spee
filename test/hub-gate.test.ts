@@ -4,7 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, resolveTokens, tokenEquals } from "../src/hub/gate.js";
+import WebSocket from "ws";
+import { WS_PROTOCOL } from "../src/hub/contract.js";
+import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, protocolToken, resolveTokens, tokenEquals } from "../src/hub/gate.js";
+import { wsProtocols } from "../web/phone/src/take.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { raw, wsOutcome } from "./helpers-http.js";
@@ -134,6 +137,19 @@ describe("gate: the hub server", () => {
     expect((await wsOutcome(s.port, "?k=wrong", NGROK)).result).toBe("rejected");
     expect((await wsOutcome(s.port, "", { host: PUBLIC })).result).toBe("rejected");
     expect((await wsOutcome(s.port, `?k=${PAIR}`, NGROK)).result).toBe("welcome");
+    // the phone page's form: the token as a subprotocol, out of the URL; the hub never echoes it
+    const sub = (k: string) =>
+      new Promise<{ result: string; protocol: string }>((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${s.port}/ws`, wsProtocols(k), { headers: NGROK });
+        const done = (result: string) => (ws.terminate(), resolve({ result, protocol: ws.protocol }));
+        ws.on("open", () => ws.send(JSON.stringify({ type: "hello", v: 1, role: "screen", clientId: `t-${Math.random()}` })));
+        ws.on("message", (d) => JSON.parse(String(d)).type === "welcome" && done("welcome"));
+        ws.on("unexpected-response", () => done("rejected"));
+        ws.on("error", () => done("rejected"));
+      });
+    expect(await sub(PAIR)).toEqual({ result: "welcome", protocol: WS_PROTOCOL });
+    expect((await sub("wrong-token-wrong")).result).toBe("rejected");
+    expect(protocolToken(wsProtocols("tök en/+=")!.join(", "))).toBe("tök en/+=");
     const lan = await wsOutcome(s.port, "");
     expect(lan.result).toBe("welcome");
     expect(lan.welcome.joinUrl).toMatch(new RegExp(`/p/${lan.welcome.code}#k=${PAIR}$`));

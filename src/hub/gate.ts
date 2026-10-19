@@ -12,7 +12,9 @@
 //      POST /alexa                                  (the skill checks its signature, skill id and timestamp)
 //      GET|HEAD /p/* and /sim/*                     (static phone page and simulator)
 //      /mcp                                         with Authorization: Bearer $MCP_TOKEN (OPTIONS without)
-//      /ws (WebSocket upgrade)                      with ?k=$PAIR_TOKEN
+//      /ws (WebSocket upgrade)                      with the pair token: the subprotocol
+//                                                   "k.<base64url(PAIR_TOKEN)>" (the phone page), or
+//                                                   ?k=$PAIR_TOKEN (older clients)
 //    Anything else gets 403 {error:"forbidden"}; a refused upgrade gets its socket destroyed.
 //    A TCP tunnel (ngrok tcp, ssh -R) carries no proxy header and arrives from loopback, so it would
 //    be trusted: use `ngrok http` only. With PUBLIC_BASE_URL set, /alexa and /mcp authenticate
@@ -42,9 +44,10 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
 import { readJsonSafe, removeCopies, writeJsonAtomic } from "./atomic.js";
+import { WS_TOKEN_PREFIX } from "./contract.js";
 import type { Duplex } from "node:stream";
 
-export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (?k=$PAIR_TOKEN)"];
+export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (pair token as subprotocol k.<base64url> or ?k=)"];
 export const PROXY_HEADERS = ["x-forwarded-for", "forwarded", "x-forwarded-host", "x-real-ip", "cf-connecting-ip"];
 // Vite dev servers that proxy /api, /ws and /mcp to the hub (tv/web, web/phone, web/sim).
 export const DEV_ORIGIN_PORTS = [5183, 5184, 5175];
@@ -280,6 +283,15 @@ export function gateHttp(req: IncomingMessage, path: string, tokens: GateTokens,
   return { allow: false, public: true, reason: "not reachable through a public tunnel" };
 }
 
+// The pair token offered as a WebSocket subprotocol ("k.<base64url>", next to WS_PROTOCOL), or null.
+export function protocolToken(header: string | string[] | undefined): string | null {
+  const all = (Array.isArray(header) ? header.join(",") : (header ?? "")).split(",").map((s) => s.trim());
+  const t = all.find((p) => p.startsWith(WS_TOKEN_PREFIX));
+  if (!t) return null;
+  const v = Buffer.from(t.slice(WS_TOKEN_PREFIX.length), "base64url").toString("utf8");
+  return v || null;
+}
+
 export type UpgradeDecision = { allow: true; public: boolean; authenticated: boolean } | { allow: false; public: boolean; reason: string; path: string };
 
 // `authenticated`: the peer presented the pair token, or it is trusted and its Origin is allowed or
@@ -294,11 +306,11 @@ export function gateUpgrade(req: IncomingMessage, tokens: GateTokens, opts: Gate
   }
   const pub = isPublicRequest(req, o);
   if (url.pathname !== "/ws") return { allow: false, public: pub, reason: "no upgrade here", path: url.pathname };
-  const tokenOk = tokenEquals(url.searchParams.get("k"), tokens.pairToken);
+  const tokenOk = tokenEquals(url.searchParams.get("k"), tokens.pairToken) || tokenEquals(protocolToken(req.headers["sec-websocket-protocol"]), tokens.pairToken);
   const origin = req.headers.origin;
   const originOk = origin === undefined || (o.origins?.allowed(origin, req.headers.host) ?? false);
-  if (!originOk && !tokenOk) return { allow: false, public: pub, reason: "ws from a foreign Origin needs ?k=<PAIR_TOKEN>", path: url.pathname };
-  if (pub && !tokenOk) return { allow: false, public: true, reason: "ws needs ?k=<PAIR_TOKEN>", path: url.pathname };
+  if (!originOk && !tokenOk) return { allow: false, public: pub, reason: "ws from a foreign Origin needs the pair token", path: url.pathname };
+  if (pub && !tokenOk) return { allow: false, public: true, reason: "ws needs the pair token", path: url.pathname };
   return { allow: true, public: pub, authenticated: tokenOk || (!pub && originOk) };
 }
 

@@ -1,7 +1,7 @@
 // Pure helpers for the phone page: the join URL, practice-take frames and the take summary in the
 // contract's shapes (src/hub/contract.ts). No DOM, so test/phone-take.test.ts can run them against
 // the hub's own sanitizer.
-import type { CardView, PracticeMeters, PracticeSummary, SessionSummary } from "../../../src/hub/contract.js";
+import { WS_PROTOCOL, WS_TOKEN_PREFIX, type CardView, type PracticeMeters, type PracticeSummary, type SessionSummary } from "../../../src/hub/contract.js";
 import type { MeterCore, SummaryCore } from "./prosody.js";
 
 export interface Join {
@@ -20,9 +20,19 @@ export function parseJoin(pathname: string, search: string, hash = ""): Join {
   return { code: m ? m[1]!.toUpperCase() : null, k: k && k.trim() ? k.trim() : null, debug: q.has("debug") };
 }
 
-// The bridge URL for this page: same host, wss on https, ?k= when the page has it.
-export function wsUrl(protocol: string, host: string, k: string | null): string {
-  return `${protocol === "https:" ? "wss" : "ws"}://${host}/ws${k ? `?k=${encodeURIComponent(k)}` : ""}`;
+// The bridge URL for this page: same host, wss on https. The pair token is not in it: it rides in
+// the WebSocket subprotocols (wsProtocols), which proxy and tunnel access logs do not record.
+export function wsUrl(protocol: string, host: string): string {
+  return `${protocol === "https:" ? "wss" : "ws"}://${host}/ws`;
+}
+
+// The subprotocols that carry the pair token: [WS_PROTOCOL, "k.<base64url(token)>"] (base64url keeps
+// any token inside the characters a subprotocol allows). None without a token.
+export function wsProtocols(k: string | null): string[] | undefined {
+  if (!k) return undefined;
+  let bin = "";
+  for (const b of new TextEncoder().encode(k)) bin += String.fromCharCode(b);
+  return [WS_PROTOCOL, `${WS_TOKEN_PREFIX}${btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`];
 }
 
 export const newTakeId = (now: number, rand = Math.random): string => `take_${now.toString(36)}${Math.floor(rand() * 1296).toString(36).padStart(2, "0")}`;
