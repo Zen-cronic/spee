@@ -10,7 +10,7 @@
     "fixtures": "tsx scripts/build-fixtures.ts",
     "poc": "tsx src/poc.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web/phone && tsc --noEmit -p web/sim && tsc --noEmit -p tv/web",
     "real": "tsx scripts/real.ts",
     "class": "tsx scripts/class.ts",
     "day1": "tsx scripts/score-day1.ts",
