@@ -14,6 +14,9 @@
 //      /mcp                                         with Authorization: Bearer $MCP_TOKEN (OPTIONS without)
 //      /ws (WebSocket upgrade)                      with ?k=$PAIR_TOKEN
 //    Anything else gets 403 {error:"forbidden"}; a refused upgrade gets its socket destroyed.
+//    A TCP tunnel (ngrok tcp, ssh -R) carries no proxy header and arrives from loopback, so it would
+//    be trusted: use `ngrok http` only. With PUBLIC_BASE_URL set, /alexa and /mcp authenticate
+//    loopback requests too (mustAuthenticate).
 //
 // 2. Origin (which web page is asking). Browsers attach `Origin` to cross-site requests and to every
 //    WebSocket handshake. A request without Origin is a non-browser client (Alexa, the MCP SDK, curl,
@@ -52,6 +55,7 @@ export interface GateOptions {
   extraLanHosts?: string[]; // more Host names to treat as LAN (tests)
   trustLan?: boolean; // LAN socket addresses are trusted like loopback (default false)
   origins?: OriginPolicy; // the Origin allow-list (default: no Origin header is accepted)
+  tunnel?: boolean; // PUBLIC_BASE_URL is set: /alexa and /mcp authenticate every request (mustAuthenticate)
 }
 const gopts = (o: GateOptions | string[] | undefined): GateOptions => (Array.isArray(o) ? { extraLanHosts: o } : (o ?? {}));
 
@@ -178,6 +182,16 @@ export function isPublicRequest(req: ReqLike, opts: GateOptions | string[] = {})
   const addr = req.socket?.remoteAddress;
   const kind = isOwnAddress(addr) ? "loopback" : addressKind(addr);
   return !(kind === "loopback" || (kind === "lan" && !!o.trustLan));
+}
+
+// Whether /alexa (signature) and /mcp (bearer) must authenticate this request. A TCP tunnel (ngrok
+// tcp, ssh -R) ends on this machine with no proxy header, so its traffic looks like loopback and no
+// header can tell it apart (review H2). While a tunnel is declared (PUBLIC_BASE_URL), the two routes
+// built for the internet therefore authenticate everyone, loopback included. /api, SSE, the TV and
+// /ws cannot do the same (the TV on this machine holds no token), so only `ngrok http` (or another
+// tunnel that adds x-forwarded-for) is supported: see docs/CONTRACT.md "Public access".
+export function mustAuthenticate(req: ReqLike, opts: GateOptions | string[] = {}): boolean {
+  return !!gopts(opts).tunnel || isPublicRequest(req, opts);
 }
 
 // The Origin allow-list. `allowed(origin, host)` is false for "null", malformed and foreign origins.

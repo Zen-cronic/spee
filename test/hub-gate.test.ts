@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bearerOk, hostIsLocal, isPublicRequest, resolveTokens, tokenEquals } from "../src/hub/gate.js";
+import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, resolveTokens, tokenEquals } from "../src/hub/gate.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { raw, wsOutcome } from "./helpers-http.js";
@@ -140,6 +140,26 @@ describe("joinUrl", () => {
     try {
       const w = await wsOutcome(t.port, "");
       expect(w.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${w.welcome.code}#k=${PAIR}`);
+    } finally {
+      await t.close();
+    }
+  });
+});
+
+describe("a declared tunnel (review H2)", () => {
+  it("makes /mcp and /alexa authenticate loopback requests too, since a TCP tunnel looks like loopback", async () => {
+    const local = { headers: { host: "localhost:8791" }, socket: { remoteAddress: "127.0.0.1" } };
+    expect(isPublicRequest(local)).toBe(false);
+    expect(mustAuthenticate(local)).toBe(false);
+    expect(mustAuthenticate(local, { tunnel: true })).toBe(true);
+    const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
+    try {
+      const init = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "t", version: "0" } } });
+      const hdr = { host: `localhost:${t.port}`, "content-type": "application/json", accept: "application/json, text/event-stream" };
+      expect((await raw(t.port, "/mcp", { method: "POST", headers: hdr, body: init })).status).toBe(403);
+      expect((await raw(t.port, "/mcp", { method: "POST", headers: { ...hdr, authorization: `Bearer ${MCP}` }, body: init })).status).toBe(200);
+      // the rest of the loopback surface is unchanged (the TV on this machine holds no token)
+      expect((await raw(t.port, "/api/health", { headers: { host: `localhost:${t.port}` } })).status).toBe(200);
     } finally {
       await t.close();
     }

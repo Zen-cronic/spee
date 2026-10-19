@@ -141,7 +141,7 @@ These steps were prepared and not run here: they need the operator's tunnel. The
    5. "Stop." It reads the drill summary.
    6. "Alexa, ask speech coach how am I doing."
    7. "Alexa, ask speech coach to turn on live coaching for 30 minutes", then later "...to turn off live coaching".
-7. **Simulator.** Open `https://<id>.ngrok-free.app/sim/#t=<MCP_TOKEN>` on a phone or laptop. ngrok's free tier may show its browser warning page once; choose "Visit Site". Run the same drill with "quiz me", the sentence, then "how did I do?". On this machine, `http://127.0.0.1:8791/sim/` needs no token and also shows the hub event feed.
+7. **Simulator.** Open `https://<id>.ngrok-free.app/sim/#t=<MCP_TOKEN>` on a phone or laptop. ngrok's free tier may show its browser warning page once; choose "Visit Site". Run the same drill with "quiz me", the sentence, then "how did I do?". On this machine, `http://127.0.0.1:8791/sim/` also shows the hub event feed; while `PUBLIC_BASE_URL` is set it needs `#t=<MCP_TOKEN>` too (a TCP tunnel would look local, so `/mcp` and `/alexa` authenticate every request while a tunnel is declared).
 8. **Signature check.** It is on for step 6. If Alexa answers "There was a problem with the requested skill's response", read the hub log line `alexa.rejected` for the reason. Do not turn the check off while the tunnel is up.
 
 ## Known limits

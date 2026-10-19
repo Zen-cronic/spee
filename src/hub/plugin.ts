@@ -38,6 +38,8 @@ export interface PluginCtx {
   selfUrl(): string;
   // Token checks (the tokens themselves are never handed to plugins or put in responses).
   auth: { mcpBearerOk(authorization: string | undefined): boolean; pairTokenOk(k: string | null | undefined): boolean };
+  // The request must authenticate (signature, bearer): it is public, or a tunnel is declared
+  // (PUBLIC_BASE_URL), since a TCP tunnel looks like loopback (gate.ts mustAuthenticate).
   isPublic(req: IncomingMessage): boolean;
   json(res: ServerResponse, status: number, data: unknown): void; // the hub's JSON writer (no-store; an allowed Origin is already echoed)
   readJson(req: IncomingMessage): Promise<Record<string, unknown>>; // <= 64 kB JSON object body ({} if empty)

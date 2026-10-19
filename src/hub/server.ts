@@ -24,7 +24,7 @@ import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
 import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, type PluginInfo, type RoomTopic } from "./contract.js";
-import { bearerOk, gateHttp, installUpgradeGate, isPublicRequest, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
+import { bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
 import { guardBridge } from "./bridgeGuard.js";
 import { installProcessGuards, killChildren } from "./processGuards.js";
 import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
@@ -131,7 +131,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     extra: opts.allowedOrigins ?? (process.env.HUB_ALLOWED_ORIGINS ?? "").split(",").map((x) => x.trim()).filter(Boolean),
     extraLanHosts,
   });
-  const gateOpts: GateOptions = { extraLanHosts, trustLan, origins };
+  const gateOpts: GateOptions = { extraLanHosts, trustLan, origins, tunnel: !!publicBaseUrl };
   // The address the in-process hub client (Alexa, MCP) dials: loopback unless bound to one address.
   const selfHost = !opts.host || opts.host === "0.0.0.0" || opts.host === "::" ? "127.0.0.1" : opts.host.includes(":") ? `[${opts.host}]` : opts.host;
 
@@ -310,7 +310,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     broadcastToScreens,
     selfUrl: () => `http://${selfHost}:${listeningPort}`,
     auth: { mcpBearerOk: (h) => bearerOk(h, tokens.mcpToken), pairTokenOk: (k) => tokenEquals(k, tokens.pairToken) },
-    isPublic: (req) => isPublicRequest(req, gateOpts),
+    isPublic: (req) => mustAuthenticate(req, gateOpts),
     json: (res, status, data) => send(res, status, data),
     readJson: (req) => body(req),
   };
@@ -558,7 +558,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const port = (server.address() as { port: number }).port;
   listeningPort = port;
   log("hub.listening", { port, ...setup.describe, fixtureV2: !!fixture, plugins: plugins.map((pl) => pl.name), trustLan, bridgeGuard: guard.installed });
-  print(`hub: open the TV at http://localhost:${port}/tv/ and the Alexa+ simulator at http://localhost:${port}/sim/ ; pair a phone by scanning the TV's QR.`);
+  print(`hub: open the TV at http://localhost:${port}/tv/ and the Alexa+ simulator at http://localhost:${port}/sim/${publicBaseUrl ? "#t=<MCP_TOKEN> (a tunnel is set, so MCP needs the token here too)" : ""} ; pair a phone by scanning the TV's QR.`);
   return {
     url: `http://127.0.0.1:${port}`,
     port,

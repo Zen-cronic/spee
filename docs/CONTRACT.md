@@ -632,7 +632,7 @@ A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's word
 
 - **When a request is public.** It carries a proxy header (`x-forwarded-for`, `forwarded`, `x-forwarded-host`, `x-real-ip`, `cf-connecting-ip`; ngrok adds `x-forwarded-for`), or its `Host` is not loopback or LAN, or its **socket** does not come from this machine. Loopback means `localhost`, `127.0.0.0/8` or `::1`. LAN means `10/8`, `172.16/12`, `192.168/16`, `169.254/16`, IPv6 ULA or link-local, `*.local`, `*.home.arpa`, or this machine's hostname. A missing `Host` counts as public.
   - **LAN devices are public by default.** A connection from another device on the LAN (a LAN socket address) is trusted only when the hub runs with `--lan` (or `HUB_TRUST_LAN=1`). Use it for a real Fire TV stick on home Wi-Fi; never on shared Wi-Fi. The VVD's reverse port forward, the Vite dev proxies and the hub's own clients connect from loopback and need nothing.
-  - TCP tunnels (`ngrok tcp`, `ssh -R`) arrive from loopback with no proxy header and would look local: use `ngrok http` only.
+  - TCP tunnels (`ngrok tcp`, `ssh -R`) arrive from loopback with no proxy header and would look local: use `ngrok http` only. As a backstop, while `PUBLIC_BASE_URL` is set, `/mcp` needs the bearer and `/alexa` the Alexa signature from every caller, loopback included. `/api`, SSE and `/ws` stay open to loopback (the TV on this machine holds no token).
 - **What a public request may reach:**
 
   | Public request | Allowed when |
