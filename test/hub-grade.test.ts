@@ -178,6 +178,20 @@ describe("attempt span (Bee merged the attempt with other speech)", () => {
     const ok = attemptSpan(card.resay, "The deploy finished this morning. How did I do?");
     expect(grade(card, ok.graded, ok.habitText).pass).toBe(true);
   });
+  it("a filler or hedge inside the follow-up remark is not the attempt's (review M39)", () => {
+    const filler = { lang: "en" as const, resay: "The billing export is ready for review today.", habit: { kind: "filler" as const, targets: [], label: "fillers" } };
+    for (const bee of ["The billing export is ready for review today. Um, how did I do?", "Okay, I think I'm ready. The billing export is ready for review today."]) {
+      const span = attemptSpan(filler.resay, bee);
+      const g = grade(filler, span.graded, span.habitText);
+      expect(g.pass, bee).toBe(true);
+      expect(g.fillers, bee).toEqual([]);
+    }
+    const hedge = { lang: "en" as const, resay: "The deploy finished this morning.", habit: { kind: "hedge" as const, targets: [], label: "hedges" } };
+    const after = attemptSpan(hedge.resay, "The deploy finished this morning. I think that went better.");
+    expect(grade(hedge, after.graded, after.habitText).pass).toBe(true);
+    // two bare habit sentences in a row both stay with the attempt
+    expect(attemptSpan(hedge.resay, "The deploy finished this morning. I guess. Maybe. How did I do?").habitText).toBe("The deploy finished this morning. I guess. Maybe.");
+  });
   it("keeps a habit inside the attempt's own sentence, and keeps unpunctuated text whole", () => {
     expect(attemptSpan(T, "Um, the release is kind of blocked on the API key from finance. How did I do?").graded).toBe("Um, the release is kind of blocked on the API key from finance.");
     expect(attemptSpan(T, "The release is blocked on the API key from finance how did I do").extra).toBe("");

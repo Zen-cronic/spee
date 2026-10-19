@@ -6,6 +6,7 @@
 //   1. edit distance on the word, or on a light phonetic key ("rec" -> "rek", "rack" -> "rak"),
 //      with a length-scaled budget and the first letter fixed;
 //   2. compound joins ("standup" ~ "stand up", "rackboard" ~ "rack board").
+import { FILLER_RE, HEDGE_RE, wordCount } from "../real/text.js";
 
 export type Lang = "en" | "fr";
 
@@ -184,9 +185,10 @@ export function countPhrase(tokens: string[], phrase: string[]): number {
 // wearer said next ("... this morning. How did I do?") or before it, so whole sentences with no
 // word aligned to the target are cut before the content and required-word rules. A sentence
 // holding any aligned word is kept whole, so a habit inside it ("Um, the ...") is still graded.
-// `habitText` is the span plus the sentence right before and right after it: a hedge or filler said
-// as its own sentence ("... this morning. I guess.", "Maybe. The deploy ...", "Um. The ...") is
-// still the attempt, so the habit and filler rules read it.
+// `habitText` is the span plus the bare habit sentences right next to it: a hedge or filler said as
+// its own sentence ("... this morning. I guess.", "Maybe. The deploy ...", "Um. The ...") is still
+// the attempt, so the habit and filler rules read it. A neighbour with any other word in it ("Um,
+// how did I do?") is the wearer's next remark, not the attempt, and stays out.
 export function attemptSpan(target: string, beeText: string, lang: Lang = "en"): { graded: string; extra: string; habitText: string } {
   const sents = beeText.trim().split(/(?<=[.?!])\s+/).filter(Boolean);
   if (sents.length <= 1) return { graded: beeText.trim(), extra: "", habitText: beeText.trim() };
@@ -200,9 +202,19 @@ export function attemptSpan(target: string, beeText: string, lang: Lang = "en"):
   };
   const first = sentOf(a.pairs[0]!.at);
   const last = sentOf(a.pairs.at(-1)!.at);
+  let from = first;
+  let to = last;
+  while (from > 0 && bareHabit(sents[from - 1]!, lang)) from--;
+  while (to < sents.length - 1 && bareHabit(sents[to + 1]!, lang)) to++;
   return {
     graded: sents.slice(first, last + 1).join(" "),
     extra: [...sents.slice(0, first), ...sents.slice(last + 1)].join(" "),
-    habitText: sents.slice(Math.max(0, first - 1), last + 2).join(" "),
+    habitText: sents.slice(from, to + 1).join(" "),
   };
+}
+
+// A sentence made only of hedges and fillers ("I guess.", "Um.", "Maybe, I think.").
+function bareHabit(sentence: string, lang: Lang): boolean {
+  const rest = sentence.replace(new RegExp(HEDGE_RE[lang].source, "gi"), " ").replace(new RegExp(FILLER_RE[lang].source, "gi"), " ");
+  return rest !== sentence && wordCount(rest) === 0;
 }
