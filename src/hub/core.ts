@@ -8,8 +8,6 @@
 // fallback leaves the attempt "unverified" (not counted).
 import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import { localDate } from "../real/deck.js";
 import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
