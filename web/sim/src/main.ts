@@ -139,7 +139,7 @@ function addTurn(who: "you" | "coach", text: string, meta?: string, verdict?: "p
     li.append(m);
   }
   turns.append(li);
-  li.scrollIntoView({ block: "end", behavior: "smooth" });
+  turns.scrollTo({ top: turns.scrollHeight, behavior: "smooth" }); // the list's bottom padding keeps the last reply clear of the composer
 }
 function showCard(text: string | null) {
   $("card").hidden = !text;

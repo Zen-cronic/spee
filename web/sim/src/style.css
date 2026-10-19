@@ -258,10 +258,10 @@ main {
 }
 .turns {
   list-style: none;
-  padding: 18px 0 30px;
+  padding: 28px 0 48px;
   margin: 8px 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 14px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 18px, #000 calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 40px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 40px), transparent 100%);
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -301,8 +301,8 @@ main {
   color: var(--lime-ink);
 }
 .turns .tag.fail {
-  background: var(--you);
-  color: var(--ink);
+  background: #f2876e;
+  color: #2e0f08;
 }
 .turns .m {
   display: none;
@@ -473,8 +473,10 @@ code {
     overflow-x: auto;
     position: static;
     margin: 12px -16px 0;
-    padding: 0 16px 4px;
+    padding: 0 40px 4px 16px;
     scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
   }
   .quick > * {
     flex: none;
