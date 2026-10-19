@@ -328,6 +328,15 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     const frame = `event: ${ev.topic}\nid: ${ev.payload.seq}\ndata: ${JSON.stringify(ev.payload)}\n\n`;
     for (const res of sse) sseWrite(res, frame);
   });
+  // A change with no contract topic (a lone card closed for idling): every peer rebases on a fresh
+  // hub.state, the same frame a join gets.
+  hub.on("state.changed", (why: { reason: string; cardId?: string }) => {
+    log("hub.state-changed", why);
+    const payload = { seq: 0, at: hub.clock(), ...stateSnapshot() };
+    for (const room of bridge.rooms.values()) bridge.broadcast(room, { type: "app", topic: "hub.state", payload });
+    const frame = `event: hub.state\ndata: ${JSON.stringify(payload)}\n\n`;
+    for (const res of sse) sseWrite(res, frame);
+  });
   // An SSE client that stops reading is dropped once 1 MB is queued for it.
   const sseWrite = (res: ServerResponse, frame: string) => {
     if (res.writableLength > 1_000_000) {

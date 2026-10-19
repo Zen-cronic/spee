@@ -157,23 +157,28 @@ export class CoachHub extends EventEmitter {
   // A drill nobody is driving is closed after DRILL_IDLE_MS: the session ends (session.ended) or a
   // lone open card closes, so an Alexa session that timed out does not keep live nudges muted
   // (drill-active) or keep matching everyday speech as attempts. Never while Bee is still checking an
-  // attempt. Called from drillActive() and from the hub server's tick. Returns true when it closed one.
+  // attempt. Called from the hub server's tick. Returns true when it closed one. A lone card has no
+  // contract topic for closing, so it emits the internal "state.changed" and the server re-sends
+  // hub.state to every peer: the TV and phone drop the card instead of showing one that answers
+  // "open a card first".
   expireIdle(idleMs = DRILL_IDLE_MS): boolean {
     if (!this.session && !this.open) return false;
     if (this.verifier.pendingCount() > 0) return (this.touch(), false);
     if (this.clock() - this.lastActivity < idleMs) return false;
     if (this.session) this.endSession();
     else {
+      const cardId = this.open!.cardId;
       this.open = null;
       this.verifier.closeCards();
+      this.emit("state.changed", { reason: "card-expired", cardId });
     }
     return true;
   }
 
   // A drill is in progress: a session is running, a card was opened recently, or an attempt is
-  // waiting for Bee. Live nudges are suppressed meanwhile (reason "drill-active").
+  // waiting for Bee. Live nudges are suppressed meanwhile (reason "drill-active"). A pure read: the
+  // server tick does the idle expiry, so asking never ends a session.
   drillActive(recentMs = 5 * 60_000): boolean {
-    this.expireIdle();
     if (this.session) return true;
     if (this.verifier.pendingCount() > 0) return true;
     return !!this.open && this.clock() - this.open.openedAt < recentMs;

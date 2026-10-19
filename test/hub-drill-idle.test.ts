@@ -16,11 +16,29 @@ describe("idle drill expiry", () => {
     expect(hub.session).toBeNull();
     expect(topics.at(-1)).toBe("session.ended");
     expect(hub.drillActive(0)).toBe(false);
-    hub.openCard({ by: "tv" });
+    const changed: unknown[] = [];
+    hub.on("state.changed", (w: unknown) => changed.push(w));
+    const c = hub.openCard({ by: "tv" })!;
     expect(hub.open).not.toBeNull();
     expect(hub.expireIdle(0)).toBe(true);
     expect(hub.open).toBeNull();
+    // review M41: the screens are told (the server re-sends hub.state on this), not left on the card
+    expect(changed).toEqual([{ reason: "card-expired", cardId: c.id }]);
+    expect(hub.sessionState().openCard).toBeNull();
     expect(hub.expireIdle(0)).toBe(false); // nothing left to close
+    hub.dispose();
+  });
+  it("drillActive() only reads: asking never ends a session (review M41)", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const topics: string[] = [];
+    hub.on("event", (e: HubEvent) => topics.push(e.topic));
+    hub.startSession({ by: "alexa" });
+    (hub as unknown as { lastActivity: number }).lastActivity = 0; // idle for ages
+    expect(hub.drillActive()).toBe(true);
+    expect(hub.session).not.toBeNull();
+    expect(topics).not.toContain("session.ended");
+    expect(hub.expireIdle()).toBe(true); // the server tick is what closes it
+    expect(topics.at(-1)).toBe("session.ended");
     hub.dispose();
   });
   it("hub.state identifies the hub process", () => {
