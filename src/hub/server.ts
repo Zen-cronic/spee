@@ -365,7 +365,9 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       return fail(res, g.status ?? 403, g.error ?? "forbidden", g.reason);
     }
     const origin = req.headers.origin;
-    if (origin && (origins.allowed(origin, req.headers.host) || (path.startsWith("/mcp") && bearerOk(req.headers.authorization, tokens.mcpToken)))) res.setHeader("access-control-allow-origin", origin);
+    // an allowed Origin, or /mcp from any Origin with the bearer (or its preflight, which carries none)
+    const mcpOk = underPrefix(path, "/mcp") && (method === "OPTIONS" || bearerOk(req.headers.authorization, tokens.mcpToken));
+    if (origin && (origins.allowed(origin, req.headers.host) || mcpOk)) res.setHeader("access-control-allow-origin", origin);
     if (fixture && (await fixture.route(req, res, url))) return;
     for (const pl of plugins) {
       if (!pl.route || !pl.prefixes.some((px) => underPrefix(path, px))) continue;

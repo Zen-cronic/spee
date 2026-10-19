@@ -644,7 +644,7 @@ A tunnel (`ngrok http 8791`, run by the operator) would expose the wearer's word
   | anything else | never: `403 {"error":"forbidden","message":"..."}`; a refused upgrade gets a 403 line and its socket destroyed |
 
 - **Trusted** requests (loopback, or LAN with `--lan`) are not gated by the table above. The TV joins `/ws` without `k`. MCP from a trusted client needs no token, and a plugin must not weaken the gate for public requests.
-- **Origin check (every request, trusted or not).** A request without `Origin` is a non-browser client (Alexa, the MCP SDK, curl, the Vega app) and passes. A request whose `Origin` is not allowed gets `403 {"error":"forbidden_origin"}`, except `GET`/`HEAD` of the static pages (`/tv/`, `/p/`, `/sim/`) and `/mcp` with the bearer token. A `/ws` upgrade with a foreign `Origin` is refused unless it presents `?k=$PAIR_TOKEN`. Allowed origins:
+- **Origin check (every request, trusted or not).** A request without `Origin` is a non-browser client (Alexa, the MCP SDK, curl, the Vega app) and passes. A request whose `Origin` is not allowed gets `403 {"error":"forbidden_origin"}`, except `GET`/`HEAD` of the static pages (`/tv/`, `/p/`, `/sim/`), `/mcp` with the bearer token, and the `OPTIONS /mcp` preflight (a browser sends it without `Authorization`; it returns no data), which echo the `Origin`. A `/ws` upgrade with a foreign `Origin` is refused unless it presents `?k=$PAIR_TOKEN`. Allowed origins:
   - the hub's own: `http://{localhost, 127.0.0.1, [::1], <lan-ip>, <hostname>, <hostname>.local}:<port>`, and the same origin as a loopback or LAN `Host`;
   - `PUBLIC_BASE_URL`;
   - the Vite dev servers on the same hosts: `5183` (tv/web), `5184` (web/phone), `5175` (web/sim);

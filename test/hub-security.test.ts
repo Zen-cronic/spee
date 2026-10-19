@@ -5,7 +5,7 @@
 import { connect } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
-import { addressKind, isPublicRequest, originPolicy } from "../src/hub/gate.js";
+import { addressKind, isPublicRequest, ORIGIN_CACHE_MS, originPolicy } from "../src/hub/gate.js";
 import { checkFrame } from "../src/hub/bridgeGuard.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -158,6 +158,20 @@ describe("trust: decided from the socket address too (H2, H3)", () => {
     const p = originPolicy({ port: () => 8791, publicBaseUrl: "https://x.ngrok-free.app/", lanHosts: () => ["192.168.1.20"], extra: ["http://studio.local:3000"] });
     for (const o of ["http://127.0.0.1:8791", "http://localhost:5183", "http://192.168.1.20:5184", "https://x.ngrok-free.app", "http://studio.local:3000", "HTTP://LOCALHOST:8791"]) expect(p.allowed(o), o).toBe(true);
     for (const o of ["null", "", "https://x.ngrok-free.app.evil.example", "http://localhost:9999", "ftp://localhost:8791", "https://127.0.0.1:8791"]) expect(p.allowed(o), o).toBe(false);
+  });
+  it("originPolicy reads the interfaces at most once per 30 s (or when the port changes), not per request", () => {
+    let t = 0;
+    let port = 8791;
+    let reads = 0;
+    const p = originPolicy({ port: () => port, now: () => t, lanHosts: () => (reads++, ["192.168.1.20"]) });
+    for (let i = 0; i < 20; i++) expect(p.allowed("http://192.168.1.20:8791")).toBe(true);
+    expect(reads).toBe(1);
+    t += ORIGIN_CACHE_MS;
+    expect(p.allowed("http://192.168.1.20:8791")).toBe(true);
+    expect(reads).toBe(2);
+    port = 9001;
+    expect(p.allowed("http://192.168.1.20:9001")).toBe(true);
+    expect(reads).toBe(3);
   });
 });
 

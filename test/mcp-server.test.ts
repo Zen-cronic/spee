@@ -172,7 +172,14 @@ describe("/mcp HTTP behaviour", () => {
     const foreign = await raw(s.port, "/mcp", { method: "POST", headers: { ...h, origin: "https://evil.example" }, body });
     expect(foreign.status).toBe(403);
     expect(JSON.parse(foreign.text).error).toBe("forbidden_origin");
-    expect((await raw(s.port, "/mcp", { method: "OPTIONS", headers: { origin: "https://evil.example" } })).status).toBe(403);
+    // a browser client on another origin that holds MCP_TOKEN: the preflight (no Authorization) passes
+    // and echoes its Origin; the request itself needs the bearer
+    const pre = await raw(s.port, "/mcp", { method: "OPTIONS", headers: { origin: "https://assistant.example", "access-control-request-headers": "authorization, content-type" } });
+    expect(pre.status).toBe(204);
+    expect(pre.headers["access-control-allow-origin"]).toBe("https://assistant.example");
+    const withBearer = await raw(s.port, "/mcp", { method: "POST", headers: { ...h, origin: "https://assistant.example", authorization: `Bearer ${MCP}` }, body });
+    expect(withBearer.status).toBe(200);
+    expect(withBearer.headers["access-control-allow-origin"]).toBe("https://assistant.example");
     expect(r.headers["mcp-session-id"]).toBeUndefined();
     expect(JSON.parse(r.text).result.tools).toHaveLength(MCP_TOOLS.length);
   });

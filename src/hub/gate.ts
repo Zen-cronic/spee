@@ -21,8 +21,9 @@
 // 2. Origin (which web page is asking). Browsers attach `Origin` to cross-site requests and to every
 //    WebSocket handshake. A request without Origin is a non-browser client (Alexa, the MCP SDK, curl,
 //    the Vega app) and passes this check. A request whose Origin is not on the allow-list is refused
-//    whatever its trust level: 403 {error:"forbidden_origin"} for HTTP (static page loads excepted),
-//    and a destroyed socket for /ws unless it presents ?k=$PAIR_TOKEN. The allow-list:
+//    whatever its trust level: 403 {error:"forbidden_origin"} for HTTP (static page loads, and /mcp
+//    with the bearer or its preflight, excepted), and a destroyed socket for /ws unless it presents
+//    the pair token. The allow-list:
 //      the hub's own origins (localhost, 127.0.0.1, [::1], the LAN IP and this host name, on the hub
 //      port), the same origin as a loopback/LAN Host, PUBLIC_BASE_URL, the Vite dev servers
 //      (ports 5183 tv/web, 5184 web/phone, 5175 web/sim) and HUB_ALLOWED_ORIGINS (comma-separated).
@@ -212,11 +213,22 @@ const originOf = (s: string): string | null => {
     return null;
   }
 };
-export function originPolicy(o: { port: () => number; publicBaseUrl?: string | null; lanHosts?: () => string[]; extra?: string[]; devPorts?: number[]; extraLanHosts?: string[] }): OriginPolicy {
+// The fixed part of the list reads the network interfaces and the host name, so it is built at most
+// once per ORIGIN_CACHE_MS (and again when the hub's port changes), not on every request.
+export const ORIGIN_CACHE_MS = 30_000;
+export function originPolicy(o: { port: () => number; publicBaseUrl?: string | null; lanHosts?: () => string[]; extra?: string[]; devPorts?: number[]; extraLanHosts?: string[]; now?: () => number }): OriginPolicy {
+  const now = o.now ?? Date.now;
+  let cache: { at: number; port: number; set: Set<string> } | null = null;
   const fixed = (): Set<string> => {
+    const port = o.port();
+    if (cache && cache.port === port && now() - cache.at < ORIGIN_CACHE_MS) return cache.set;
+    cache = { at: now(), port, set: build(port) };
+    return cache.set;
+  };
+  const build = (port: number): Set<string> => {
     const set = new Set<string>();
     const hosts = ["localhost", "127.0.0.1", "[::1]", ...(o.lanHosts?.() ?? [])];
-    const ports = [o.port(), ...(o.devPorts ?? DEV_ORIGIN_PORTS)].filter((p) => p > 0);
+    const ports = [port, ...(o.devPorts ?? DEV_ORIGIN_PORTS)].filter((p) => p > 0);
     for (const h of hosts) for (const p of ports) set.add(`http://${h}:${p}`.toLowerCase());
     for (const x of [o.publicBaseUrl ?? "", ...(o.extra ?? [])]) {
       const n = x.trim() ? originOf(x.trim()) : null;
@@ -252,7 +264,10 @@ export function gateHttp(req: IncomingMessage, path: string, tokens: GateTokens,
   if (origin !== undefined && !(o.origins?.allowed(origin, req.headers.host) ?? false)) {
     const staticLoad = (method === "GET" || method === "HEAD") && STATIC_PREFIXES.some((p) => under(path, p));
     const bearer = under(path, "/mcp") && bearerOk(req.headers.authorization, tokens.mcpToken);
-    if (!staticLoad && !bearer) return { allow: false, public: pub, reason: "this Origin may not call the hub", status: 403, error: "forbidden_origin" };
+    // A browser's CORS preflight never carries Authorization, so the /mcp preflight is answered for
+    // any Origin (it returns no data); the request that follows still needs the bearer.
+    const mcpPreflight = method === "OPTIONS" && under(path, "/mcp");
+    if (!staticLoad && !bearer && !mcpPreflight) return { allow: false, public: pub, reason: "this Origin may not call the hub", status: 403, error: "forbidden_origin" };
   }
   if (!pub) return { allow: true, public: false };
   if (path === "/alexa" && method === "POST") return { allow: true, public: true };
