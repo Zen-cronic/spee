@@ -68,5 +68,6 @@ describe("sessionOverLine (review M20)", () => {
   it("matches the TV's session summary wording", () => {
     expect(sessionOverLine({ passed: 2, failed: 1, unverified: 0, beeOverrules: 1 })).toBe("Session over: 2 passed, 1 failed, 0 unverified, Bee overruled 1.");
     expect(sessionOverLine(null)).toBe("Session over.");
+    expect(sessionOverLine({ passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
   });
 });

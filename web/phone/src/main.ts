@@ -71,17 +71,23 @@ function onEvent(topic: string, p: Record<string, any>) {
     $("foot").textContent = h.dataLabel && /synthetic/i.test(h.dataLabel) ? `${h.dataLabel}. Bee is the input of record.` : "Bee is the input of record: phone text is a provisional preview until Bee confirms it.";
     return;
   }
-  if (topic === "card.open" || topic === "attempt.graded") {
+  if (topic === "card.open") {
     card = p.card ?? card;
     renderCard();
   }
+  // A verdict refreshes the open card (its box); a late one after the session ended must not
+  // bring the closed card back (review L49).
+  if (topic === "attempt.graded" && card && p.card?.id === card.id) {
+    card = p.card;
+    renderCard();
+  }
   // The session's card is closed (by the phone, the TV, Alexa or idle expiry): drop it, so the next
-  // attempt is not refused with "open a card first" under a card that is still on screen.
+  // attempt is not refused with "open a card first" under a card that is still on screen. An attempt
+  // still with Bee keeps its pipeline, and its verdict still shows when it lands.
   if (topic === "session.ended") {
     card = null;
-    myAttempt = null;
     renderCard();
-    stage("dim", sessionOverLine(p.summary), true);
+    stage("dim", sessionOverLine(p.summary));
     return;
   }
   const id = p.attempt?.id ?? p.attemptId;

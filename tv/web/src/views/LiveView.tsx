@@ -2,7 +2,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Chip } from '../components/Chip';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, RuleState } from '../contract';
-import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, RULE_LABEL, SKIP_LABEL } from '../mirror/format';
+import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import type { DrillState, LiveSlice } from '../mirror/reducer';
 import { useEnter, useLoop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
@@ -52,7 +52,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
         <Text style={styles.kicker}>DRILL</Text>
         <Text style={styles.idle}>No drill running.</Text>
         <Text style={styles.hint}>{'Say "Alexa, quiz me", or start a drill from the phone. Every attempt is graded from what Bee heard, not from the phone.'}</Text>
-        {d.summary ? <Text style={styles.hint}>{`Last session: ${d.summary.passed} passed, ${d.summary.failed} failed, ${d.summary.unverified} unverified${d.summary.beeOverrules ? `, Bee overruled ${d.summary.beeOverrules}` : ''}.`}</Text> : null}
+        {d.summary ? <Text style={styles.hint}>{sessionTally('Last session', d.summary)}</Text> : null}
       </View>
     );
   }
@@ -82,7 +82,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
           <Text style={styles.overruleText} numberOfLines={3}>{overruleText(pv?.source, g.pass, g.beeText)}</Text>
         </View>
       ) : null}
-      {d.summary ? <Text style={styles.hint}>{`Session over: ${d.summary.passed} passed, ${d.summary.failed} failed, ${d.summary.unverified} unverified${d.summary.beeOverrules ? `, Bee overruled ${d.summary.beeOverrules}` : ''}.`}</Text> : null}
+      {d.summary ? <Text style={styles.hint}>{sessionTally('Session over', d.summary)}</Text> : null}
     </View>
   );
 }

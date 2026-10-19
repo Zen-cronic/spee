@@ -72,5 +72,5 @@ export function judgePhase(p: MicPhase): MicVerdict {
 // The line the phone shows when a drill session ends (the TV's wording).
 export function sessionOverLine(s: Partial<SessionSummary> | null | undefined): string {
   if (!s) return "Session over.";
-  return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
+  return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.pending ? `, ${s.pending} still with Bee` : ""}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
 }

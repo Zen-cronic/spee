@@ -1,6 +1,6 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
-import { fmtDay, fmtMs, overruleText } from "../tv/web/src/mirror/format.js";
+import { fmtDay, fmtMs, overruleText, sessionTally } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -29,5 +29,11 @@ describe("overruleText (review M42)", () => {
     expect(overruleText("alexa", true, "the deploy finished")).toBe('Alexa heard a fail. Bee heard "the deploy finished" and passed it: Bee is what counts.');
     expect(overruleText("phone", false, "um the deploy")).toBe('The phone heard a pass. Bee heard "um the deploy" and that is what counts.');
     expect(overruleText(undefined, false, null)).toMatch(/^The preview heard a pass/);
+  });
+});
+
+describe("sessionTally", () => {
+  it("names attempts still with Bee", () => {
+    expect(sessionTally("Session over", { passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
   });
 });

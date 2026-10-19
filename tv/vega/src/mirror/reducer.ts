@@ -227,6 +227,12 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
   };
 }
 
+// A verdict that arrived after the session summary: move it from pending to its outcome.
+function settleLate(sum: SessionSummary, outcome: 'passed' | 'failed' | 'unverified'): SessionSummary {
+  if (!sum.pending) return sum;
+  return { ...sum, pending: sum.pending - 1, [outcome]: sum[outcome] + 1 };
+}
+
 function drillFromAttempt(at: any): Partial<DrillState> {
   const out: Partial<DrillState> = { attemptId: at.id };
   if (at.provisional) out.provisional = { source: at.provisional.source, text: at.provisional.text, pass: !!at.provisional.grade?.pass, reasons: at.provisional.grade?.reasons ?? [] };
@@ -301,20 +307,24 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
     case 'attempt.verified': {
       const same = !s.drill.attemptId || p.attemptId === s.drill.attemptId;
       const base = same ? s.drill : { ...s.drill, attemptId: p.attemptId, provisional: null, checking: null, graded: null };
-      return { ...s, drill: { ...base, attemptId: p.attemptId, stage: p.status === 'verified' ? 'verified' : 'unverified', verified: { status: p.status, via: p.via ?? null, speakerScore: p.speakerScore ?? null, latencyMs: p.latencyMs ?? null, beeText: p.beeText ?? null, replay: !!p.replay, reason: p.reason ?? '' } }, ...switched(s, 'drill', p.status === 'verified' ? 'verified by Bee' : 'Bee could not verify', 'Bee') };
+      const summary = s.drill.summary && p.status !== 'verified' ? settleLate(s.drill.summary, 'unverified') : s.drill.summary;
+      return { ...s, drill: { ...base, summary, attemptId: p.attemptId, stage: p.status === 'verified' ? 'verified' : 'unverified', verified: { status: p.status, via: p.via ?? null, speakerScore: p.speakerScore ?? null, latencyMs: p.latencyMs ?? null, beeText: p.beeText ?? null, replay: !!p.replay, reason: p.reason ?? '' } }, ...switched(s, 'drill', p.status === 'verified' ? 'verified by Bee' : 'Bee could not verify', 'Bee') };
     }
     case 'attempt.graded': {
       const at = p.attempt ?? {};
       const same = at.id === s.drill.attemptId;
       const base = same ? s.drill : { ...s.drill, provisional: null, checking: null };
-      return { ...s, drill: { ...base, ...drillFromAttempt(at), card: p.card ?? s.drill.card, deck: p.deck ?? s.drill.deck, stage: 'graded' }, ...switched(s, 'drill', 'graded from Bee', 'Bee') };
+      // After session.ended the summary counted this attempt as pending: settle it there (review L49).
+      const summary = s.drill.summary ? settleLate(s.drill.summary, at.final?.pass ? 'passed' : 'failed') : null;
+      return { ...s, drill: { ...base, ...drillFromAttempt(at), card: p.card ?? s.drill.card, deck: p.deck ?? s.drill.deck, stage: 'graded', summary }, ...switched(s, 'drill', 'graded from Bee', 'Bee') };
     }
     case 'stats.updated':
       return { ...s, statsVersion: s.statsVersion + 1, dataLabel: p.dataLabel ?? s.dataLabel, synthetic: s.synthetic || isSynthetic(p.dataLabel), drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
     case 'session.ended': {
-      // The hub closed the card. A final verdict stays on screen with the summary under it; a card
-      // nobody attempted is closed, so the summary shows instead.
-      const keep = s.drill.stage === 'graded' || s.drill.stage === 'unverified';
+      // The hub closed the card. A verdict, or an attempt Bee is still checking (its verdict can land
+      // after the session ends), stays on screen with the summary under it; a card nobody attempted
+      // is closed, so the summary shows instead.
+      const keep = s.drill.stage !== 'card' && s.drill.stage !== 'idle';
       return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle' } };
     }
     case 'conversation.started':

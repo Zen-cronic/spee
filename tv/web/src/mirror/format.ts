@@ -19,6 +19,11 @@ export function fmtDay(ymd: string | null | undefined): string {
   return `${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 
+// The drill session's tally line on the TV ("Session over: …" / "Last session: …").
+export function sessionTally(prefix: string, s: { passed: number; failed: number; unverified: number; pending?: number; beeOverrules?: number }): string {
+  return `${prefix}: ${s.passed} passed, ${s.failed} failed, ${s.unverified} unverified${s.pending ? `, ${s.pending} still with Bee` : ''}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ''}.`;
+}
+
 // The BEE OVERRULES caption. Bee and the preview disagree in either direction, so the caption
 // follows Bee's verdict: the preview said the opposite.
 const PREVIEW_BY: Record<string, string> = { phone: 'The phone', alexa: 'Alexa', typed: 'The typed preview' };

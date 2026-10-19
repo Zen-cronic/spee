@@ -105,6 +105,17 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     expect(s.drill.stage).toBe("graded");
     expect(s.drill.summary).toEqual(summary);
   });
+  it("a verdict that lands after session.ended stays, and moves from pending in the summary (review L49)", () => {
+    const card = { id: "k1", resay: "x" } as any;
+    const summary = { passed: 0, failed: 0, unverified: 0, pending: 1 } as any;
+    const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 }, { type: "event", event: ev(3, "session.ended", { summary }), now: 2 });
+    expect(s.drill.stage).toBe("provisional"); // still with Bee, not closed
+    expect(s.drill.summary?.pending).toBe(1);
+    s = run(s, { type: "event", event: ev(4, "attempt.graded", { attempt: { id: "a1", status: "graded", final: { pass: true, grade: { reasons: [] } } }, card }), now: 3 });
+    expect(s.drill.stage).toBe("graded");
+    expect(s.drill.summary).toMatchObject({ passed: 1, pending: 0 });
+  });
   it("a practice summary from another room is ignored", () => {
     const sum = (room: string) => ({ summary: { takeId: `t-${room}`, room, from: "phone", startedAt: 0, endedAt: 1, words: 3, provisional: true } });
     let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: ev(1, "practice.summary", sum("AB2C")), now: 0 });
