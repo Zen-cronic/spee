@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
-import { fmt1, fmtWords, pctChange, shortHabit, topWord, WEEK_HABITS } from '../mirror/format';
+import { fmt1, fmtWords, pctChange, shortHabit, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 
 /**
@@ -66,12 +66,15 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
   );
 }
 
-/** "It's working": each drilled habit's change since its first drill, and the never-drilled control. */
+/**
+ * "It's working": each drilled habit's change since its first drill, and the never-drilled control.
+ * The title says it is working only when the hub's headline does (a drop, and the control flat).
+ */
 function Working({ transfer }: { transfer: TransferResponse | null }) {
   if (!transfer) return null;
   const drilled = transfer.habits.filter((x) => x.role === 'drilled');
   const control = transfer.habits.find((x) => x.role === 'control');
-  const shown = drilled.some((x) => x.verdict === 'dropped');
+  const shown = transferWorking(transfer.claim);
   return (
     <View style={[styles.card, styles.working]} testID="week-transfer">
       <View style={styles.workHead}>

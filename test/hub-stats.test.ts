@@ -94,6 +94,30 @@ describe("transfer", () => {
     expect(t.habits.find((h) => h.habit === "hedges")!.firstDrillAt).toBe(drill.at);
     expect(t.unregistered.map((u) => u.habit).sort()).toEqual(["filler:um", "vague"]);
   });
+  it("states what its headline claims as a fixed value, by the headline's own rule", () => {
+    const run = (o: Partial<Parameters<typeof transfer>[0]>) => transfer({ sessions: [before, after], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now(), ...o });
+    const flat = run({});
+    expect(flat.claim).toBe("all-dropped-control-flat");
+    // One of two drilled habits dropped ("like" was never said: no change), the control flat.
+    const two = run({ prereg: { ...PREREG, drilled: [{ habit: "hedges", why: "" }, { habit: "filler:like", why: "" }] }, drills: [{ at: drill.at, habitKeys: ["hedge:i guess", "hedges"] }, { at: drill.at, habitKeys: ["filler:like", "fillers"] }] });
+    expect(two.habits.filter((h) => h.role === "drilled").map((h) => h.verdict)).toEqual(["dropped", "no change"]);
+    expect(two.claim).toBe("dropped-control-flat");
+    // The control dropped too.
+    const calm = sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(32), ...new Array(12).fill("We shipped it.")]);
+    const both = run({ sessions: [before, calm] });
+    expect(both.habits.find((h) => h.role === "control")!.verdict).toBe("dropped");
+    expect(both.claim).toBe("dropped-control-dropped");
+    expect(both.headline).toMatch(/control dropped too/);
+    // A drop with no control to compare (none registered, or the control was drilled).
+    expect(run({ prereg: { ...PREREG, control: [] } }).claim).toBe("dropped-control-unclear");
+    const drilledControl = run({ drills: [drill, { at: drill.at, habitKeys: ["restart"] }] });
+    expect(drilledControl.habits.find((h) => h.role === "control")!.verdict).toBe("invalid");
+    expect(drilledControl.claim).toBe("dropped-control-unclear");
+    expect(drilledControl.headline).not.toMatch(/stayed flat/);
+    expect(run({ drills: [] }).claim).toBe("not-drilled-yet");
+    const nothing = run({ sessions: [before, sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(12).fill("I guess we we shipped it.")])] });
+    expect(nothing.claim).toBe("no-drop-yet");
+  });
   it("uses Bee conversations by default; meetings only with source=all; never voice notes", () => {
     const meet = sess("m", "meeting", "2026-10-18T10:00:00-04:00", new Array(40).fill("I guess the totals match the ledger today."));
     const note = sess("v", "voice_note", "2026-10-18T11:00:00-04:00", new Array(40).fill("I guess I guess I guess."));

@@ -273,6 +273,7 @@ check(one.body.sessions.length === 1, "stats range=session:<id>");
 const tr = await get("/api/transfer", "GET /api/transfer");
 const v = (k: string) => tr.body.habits.find((h: any) => h.habit === k)?.verdict;
 check(tr.body.synthetic === true && v("hedges") === "dropped" && v("filler:like") === "dropped" && v("restart") === "no change", "transfer: drilled hedges and like dropped, control restarts no change (synthetic)");
+check(tr.body.claim === "all-dropped-control-flat" && /control stayed flat/.test(tr.body.headline), "transfer: claim all-dropped-control-flat, as the headline says (synthetic)");
 check(tr.body.unregistered.some((u: any) => u.habit === "vague"), "transfer refuses unregistered drilled habits (vague listed, not reported as drilled)");
 check(!tr.body.unregistered.some((u: any) => ["hedge:i guess", "hedges", "filler:like", "fillers"].includes(u.habit)), "transfer: an 'I guess' drill counts under the registered umbrella 'hedges' (not listed as unregistered)");
 const refuse = await get("/api/transfer?habit=vague", "GET /api/transfer?habit=vague");

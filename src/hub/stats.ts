@@ -207,7 +207,15 @@ export interface TransferReport {
   habits: TransferHabit[];
   unregistered: { habit: string; drills: number; note: string }[];
   headline: string;
+  claim: TransferClaim;
 }
+
+// What the headline claims, for a screen to word without re-deriving it from the verdicts:
+// "dropped-control-flat" only when a drilled habit dropped and every control showed no change
+// ("all-dropped-control-flat" when every drilled habit dropped); "dropped-control-dropped" when a
+// control dropped too; "dropped-control-unclear" when a drilled habit dropped but the controls
+// cannot be compared (too little data, rose, invalid, or none registered).
+export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" | "dropped-control-dropped" | "dropped-control-unclear" | "not-drilled-yet" | "no-drop-yet";
 
 const ciOverlap = (a: [number, number], b: [number, number]) => a[0] <= b[1] && b[0] <= a[1];
 
@@ -317,9 +325,22 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
   const dropped = habits.filter((h) => h.role === "drilled" && h.verdict === "dropped");
   const control = habits.filter((h) => h.role === "control");
   const flat = control.length > 0 && control.every((h) => h.verdict === "no change");
+  const controlDropped = control.some((h) => h.verdict === "dropped");
+  const drilled = habits.filter((h) => h.role === "drilled");
+  const claim: TransferClaim = dropped.length
+    ? flat
+      ? dropped.length === drilled.length
+        ? "all-dropped-control-flat"
+        : "dropped-control-flat"
+      : controlDropped
+        ? "dropped-control-dropped"
+        : "dropped-control-unclear"
+    : drilled.some((h) => h.verdict === "not drilled yet")
+      ? "not-drilled-yet"
+      : "no-drop-yet";
   const headline = dropped.length
-    ? `${dropped.map((h) => h.label).join(" and ")} dropped in real speech after drilling${flat ? "; the undrilled control stayed flat" : control.some((h) => h.verdict === "dropped") ? "; but the undrilled control dropped too, so the drop may not be the drill" : "; the control has too little data to compare"}`
-    : habits.some((h) => h.role === "drilled" && h.verdict === "not drilled yet")
+    ? `${dropped.map((h) => h.label).join(" and ")} dropped in real speech after drilling${flat ? "; the undrilled control stayed flat" : controlDropped ? "; but the undrilled control dropped too, so the drop may not be the drill" : "; the control has too little data to compare"}`
+    : claim === "not-drilled-yet"
       ? "Not drilled yet: the after period starts at the first drill"
       : "No drilled habit has dropped measurably yet";
   return {
@@ -334,6 +355,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     habits,
     unregistered,
     headline,
+    claim,
   };
 }
 

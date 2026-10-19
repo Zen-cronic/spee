@@ -328,7 +328,12 @@ export interface TransferResponse {
   habits: TransferHabit[];
   unregistered: { habit: string; drills: number; note: string }[];
   headline: string;
+  // What `headline` claims, as a fixed value, so a screen words it without re-deriving it from the
+  // verdicts. "...-control-flat" only when every control showed no change; "all-..." when every
+  // drilled habit dropped; "dropped-control-unclear" when the controls cannot be compared.
+  claim: TransferClaim;
 }
+export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" | "dropped-control-dropped" | "dropped-control-unclear" | "not-drilled-yet" | "no-drop-yet";
 
 // GET /api/brief
 export interface Brief {

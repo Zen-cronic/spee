@@ -8,7 +8,7 @@ import type { CardView } from "../src/hub/cards.js";
 import type { GradeResult, Check } from "../src/hub/grade.js";
 import type { Habit } from "../src/hub/habits.js";
 import type { BoxChange, DeckSummary } from "../src/hub/scheduler.js";
-import type { HabitRates, Period, Rate, TransferHabit, TransferReport } from "../src/hub/stats.js";
+import type { HabitRates, Period, Rate, TransferClaim, TransferHabit, TransferReport } from "../src/hub/stats.js";
 import type { buildBrief } from "../src/hub/brief.js";
 
 type Mutual<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
@@ -27,6 +27,7 @@ const mutual: Record<string, true> = {
   habitRates: true satisfies Mutual<HabitRates, C.HabitRates>,
   period: true satisfies Mutual<Period, C.Period>,
   transferHabit: true satisfies Mutual<TransferHabit, C.TransferHabit>,
+  transferClaim: true satisfies Mutual<TransferClaim, C.TransferClaim>,
 };
 // What the routes return conforms to the contract type a surface reads.
 const conforms: Record<string, true> = {

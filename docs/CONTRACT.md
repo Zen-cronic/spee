@@ -332,9 +332,19 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
     "verdict": "no change", "...": "..." }
  ],
  "unregistered": [ { "habit": "vague", "drills": 3, "note": "drilled but not pre-registered: not reported as a transfer result" } ],
- "headline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat"
+ "headline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat",
+ "claim": "all-dropped-control-flat"
 }
 ```
+
+**Claim:** `claim` is what `headline` says, as a fixed value, so a screen can word it without re-deriving it from the verdicts. It follows the headline's rule: the control "stayed flat" only when at least one control is registered and every control is `no change`.
+
+- `all-dropped-control-flat`: every drilled habit dropped, and the control stayed flat.
+- `dropped-control-flat`: some drilled habit dropped, and the control stayed flat.
+- `dropped-control-dropped`: a drilled habit dropped, but so did the control, so the drop may not be the drill.
+- `dropped-control-unclear`: a drilled habit dropped, but the control cannot be compared (too little data, rose, invalid, or none registered).
+- `not-drilled-yet`: no drilled habit dropped, and one has not been drilled yet.
+- `no-drop-yet`: no drilled habit has dropped measurably yet.
 
 **Verdicts:**
 
@@ -546,7 +556,7 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
 
 - **Main screen.**
   - Use `GET /api/stats?range=week` for the habit bars, with hedges and vague answers first and fillers second.
-  - Use `GET /api/transfer` for the chart: before/after per habit with the `ci95` whiskers, the verdict chip, and the control habit shown beside the drilled ones. Show `unregistered` as "not pre-registered".
+  - Use `GET /api/transfer` for the chart: before/after per habit with the `ci95` whiskers, the verdict chip, and the control habit shown beside the drilled ones. Show `unregistered` as "not pre-registered". Word the overall result from `claim` (or show `headline`); never decide from the verdicts that the drilling worked.
   - Show `dataLabel` whenever `synthetic` is true.
 - **Live layer.**
   - Join as `screen`. Render from `app` events by `seq`, and refresh stats/transfer on `stats.updated`.

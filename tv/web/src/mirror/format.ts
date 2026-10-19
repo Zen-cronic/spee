@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferVerdict } from '../contract';
+import type { NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferResponse, TransferVerdict } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -182,4 +182,13 @@ export function plainReason(reasons: string[]): string | null {
     default:
       return detail;
   }
+}
+
+const WORKING: TransferClaim[] = ['all-dropped-control-flat', 'dropped-control-flat'];
+/** True only when the hub's headline says a drilled habit dropped and the control stayed flat. */
+export const transferWorking = (claim: TransferClaim | null | undefined): boolean => !!claim && WORKING.includes(claim);
+
+/** Progress's title: the plain line only when every drilled habit dropped and the control stayed flat; else the hub's headline. */
+export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'>): string {
+  return t.claim === 'all-dropped-control-flat' ? 'The habits you drilled dropped. The one you didn’t, didn’t.' : curly(t.headline);
 }
