@@ -19,7 +19,8 @@
 //    BEE_WEARER_LABELS, a wearer-tagged stream line, the --wearer meeting speaker). When `bee me`
 //    fails and BEE_WEARER_LABELS is unset, nothing is the wearer's. A shingle some other speaker said
 //    stays on the other-speaker list unless the wearer said it EARLIER, in a SEPARATE recording.
-//    The hub's own state (real/hub-attempts.json, real/live/**/*.json, gitignored) is never treated
+//    The hub's own state (real/hub-attempts.json, real/live/**/*.json and their .bak and .corrupt-<time>
+//    copies, gitignored; scripts/leak-state.ts) is never treated
 //    as the wearer's: it is screened like a committable file, and other-speaker text found there is
 //    reported as a privacy-invariant warning (those files must only hold Bee-wearer-tagged lines).
 //    Phrases that are the product's own Alexa commands (sample utterances in the committed
@@ -49,7 +50,7 @@
 // (sha256 + path). Only an approved, unchanged file has its mtime believed.
 // Exit code 1 when 1-3, 5, 6 (other-speaker), 8, 9 (audio, unreviewed images) or 10 find anything.
 import { execFileSync } from "node:child_process";
-import { createReadStream, existsSync, openSync, readFileSync, readSync, closeSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, openSync, readFileSync, readSync, closeSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
 import { parseStreamLine, toMs } from "../src/hub/bee.js";
@@ -57,6 +58,7 @@ import { matchesProfile } from "../src/real/wearer.js";
 import { CliBeeSource, pickUtterances } from "../src/bee/source.js";
 import { parseTactiq, sameSpeaker, zonedToEpoch } from "../src/real/tactiq.js";
 import { discoverWearerLabels, isWearer, type WearerLabels } from "../src/real/wearer.js";
+import { hubStateFiles } from "./leak-state.js";
 
 const fold = (s: string) =>
   s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -329,10 +331,9 @@ async function scan(f: string): Promise<Hits> {
   return hits;
 }
 
-// The hub's own state: other-speaker text there breaks the privacy invariant (never an allow-list).
-const jsonFiles = (dir: string): string[] =>
-  existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? jsonFiles(join(dir, d.name)) : d.name.endsWith(".json") ? [join(dir, d.name)] : [])) : [];
-const state = ["real/hub-attempts.json", ...jsonFiles("real/live")].filter((f) => existsSync(f));
+// The hub's own state, with its .bak and .corrupt-<time> copies: other-speaker text there breaks the
+// privacy invariant (never an allow-list).
+const state = hubStateFiles();
 
 let bad = 0;
 if (streams.length) console.log(`Also screened: ${streamLines} Bee stream line(s) from ${streams.length} capture(s).`);
