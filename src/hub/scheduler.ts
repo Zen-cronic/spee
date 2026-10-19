@@ -59,7 +59,7 @@ export function applyResult(deck: HubDeck, id: string, pass: boolean, nowMs: num
   c.lastAttemptAt = nowMs;
   if (pass) {
     c.passes = (c.passes ?? 0) + 1;
-    if (wasDue) markReviewed(deck as { cards: HubCard[] }, id, nowMs);
+    if (wasDue) markReviewed(deck as { cards: HubCard[] }, id, nowMs, tz); // the same zone as `today`
   } else {
     c.fails = (c.fails ?? 0) + 1;
     c.box = 1;

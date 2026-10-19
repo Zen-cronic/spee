@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { HubCard } from "../src/hub/cards.js";
 import { applyResult, dueCards, nextDue, summarize, type HubDeck } from "../src/hub/scheduler.js";
+import { addDays } from "../src/real/deck.js";
 
 const NOW = Date.parse("2026-10-20T13:30:00-04:00");
 const TODAY = "2026-10-20";
@@ -20,6 +21,13 @@ describe("hub scheduler", () => {
     const deck: HubDeck = { cards: [card("c", 2, TODAY)] };
     expect(applyResult(deck, "c", true, NOW)).toEqual({ from: 2, to: 3, dueBefore: TODAY, dueAfter: "2026-10-24", scheduled: true });
     expect(deck.cards[0]!.passes).toBe(1);
+  });
+  it("a pass is scheduled from the hub's own zone, not BEE_TZ", () => {
+    const late = Date.parse("2026-10-21T01:30:00-04:00"); // 01:30 Oct 21 in Toronto, 22:30 Oct 20 in Vancouver
+    for (const [tz, today] of [["America/Toronto", "2026-10-21"], ["America/Vancouver", "2026-10-20"]] as const) {
+      const deck: HubDeck = { cards: [card("c", 2, "2026-10-20")] };
+      expect(applyResult(deck, "c", true, late, tz)).toMatchObject({ to: 3, dueAfter: addDays(today, 4) });
+    }
   });
   it("a pass on a card that is not due is practice only", () => {
     const deck: HubDeck = { cards: [card("c", 3, "2026-10-25")] };

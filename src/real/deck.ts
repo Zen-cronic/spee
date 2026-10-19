@@ -76,10 +76,11 @@ export function dueOn(deck: Deck, date: string, n = 3): Card[] {
   return out;
 }
 
-export function markReviewed(deck: Deck, id: string, nowMs: number): Card | null {
+// `tz`: the zone "today" is read in (the hub's; default BEE_TZ or America/Toronto).
+export function markReviewed(deck: Deck, id: string, nowMs: number, tz?: string): Card | null {
   const c = deck.cards.find((x) => x.id === id);
   if (!c) return null;
   c.box = Math.min(c.box + 1, INTERVALS_DAYS.length);
-  c.due = addDays(localDate(nowMs), INTERVALS_DAYS[c.box - 1]!);
+  c.due = addDays(localDate(nowMs, tz), INTERVALS_DAYS[c.box - 1]!);
   return c;
 }
