@@ -12,7 +12,7 @@ import { startCapture, captureSupported, type Capture } from "./audio.js";
 import { WORDMARK } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
-import { listen, speechCtor, type Listener, type SpeechRec } from "./speech.js";
+import { dictation, listen, speechCtor, type Listener } from "./speech.js";
 import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -153,20 +153,26 @@ function setupDrillVoice() {
     $("mic-state").textContent = "Voice needs Chrome or Safari over https. Type below instead.";
     return;
   }
-  let rec: SpeechRec | null = null;
   let speechEnd = 0;
   let utteranceId = "";
-  mic.onclick = () => {
-    if (rec) return rec.stop();
-    rec = new SR();
-    rec.lang = speechLang(card); // the card's language: a French card is dictated in French (review L47)
-    rec.interimResults = true;
-    rec.continuous = false;
-    utteranceId = `utt_${Date.now().toString(36)}`;
-    mic.classList.add("live");
-    $("mic-state").textContent = "Listening…";
-    rec.onspeechend = () => (speechEnd = now());
-    rec.onresult = (e) => {
+  const d = dictation(SR, {
+    lang: () => speechLang(card), // the card's language: a French card is dictated in French
+    onListening: () => {
+      utteranceId = `utt_${Date.now().toString(36)}`;
+      mic.classList.add("live");
+      $("mic-state").textContent = "Listening…";
+    },
+    onSpeechEnd: () => (speechEnd = now()),
+    onError: (error) => {
+      mic.classList.remove("live");
+      $("mic-state").textContent = `Mic error: ${error}. Type below instead.`;
+    },
+    onIdle: () => {
+      mic.classList.remove("live");
+      $("mic-state").textContent = "Tap to try again.";
+      speechEnd = 0;
+    },
+    onResult: (e) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i]!;
@@ -180,16 +186,9 @@ function setupDrillVoice() {
         $("interim").textContent = interim;
         client?.sendPartial(interim, utteranceId);
       }
-    };
-    rec.onerror = (e) => ($("mic-state").textContent = `Mic error: ${e.error}. Type below instead.`);
-    rec.onend = () => {
-      mic.classList.remove("live");
-      $("mic-state").textContent = "Tap to try again.";
-      rec = null;
-      speechEnd = 0;
-    };
-    rec.start();
-  };
+    },
+  });
+  mic.onclick = () => d.toggle();
 }
 
 // Practice

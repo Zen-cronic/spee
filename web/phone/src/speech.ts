@@ -15,7 +15,7 @@ export interface SpeechRec {
   onstart: (() => void) | null;
   onspeechend: (() => void) | null;
 }
-type Ctor = new () => SpeechRec;
+export type Ctor = new () => SpeechRec;
 
 export function speechCtor(): Ctor | null {
   const w = window as unknown as { SpeechRecognition?: Ctor; webkitSpeechRecognition?: Ctor };
@@ -95,5 +95,52 @@ export function listen(o: { lang?: string; onText: (text: string, final: boolean
       }
     },
     text: () => `${finals} ${interim}`.trim(),
+  };
+}
+
+// One-shot dictation for a drill attempt: a tap starts it, the next tap stops it. A recognizer that
+// refuses to start (start() throws, for example while the browser still holds the last one) is
+// dropped at once and reported, so the next tap starts a fresh one instead of stopping a recognizer
+// that never ran.
+export interface Dictation {
+  toggle(): void;
+  active(): boolean;
+}
+export function dictation(
+  SR: Ctor,
+  o: { lang: () => string; onListening: () => void; onIdle: () => void; onError: (error: string) => void; onSpeechEnd: () => void; onResult: NonNullable<SpeechRec["onresult"]> },
+): Dictation {
+  let rec: SpeechRec | null = null;
+  return {
+    active: () => rec !== null,
+    toggle() {
+      if (rec) {
+        try {
+          rec.stop();
+        } catch {
+          /* already ending */
+        }
+        return;
+      }
+      const r = new SR();
+      r.lang = o.lang();
+      r.interimResults = true;
+      r.continuous = false;
+      r.onspeechend = () => o.onSpeechEnd();
+      r.onresult = o.onResult;
+      r.onerror = (e) => o.onError(e.error);
+      r.onend = () => {
+        if (rec === r) rec = null;
+        o.onIdle();
+      };
+      rec = r;
+      o.onListening();
+      try {
+        r.start();
+      } catch (err) {
+        rec = null;
+        o.onError((err as Error)?.name || (err as Error)?.message || "start failed");
+      }
+    },
   };
 }
