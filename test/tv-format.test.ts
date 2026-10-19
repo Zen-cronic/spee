@@ -1,6 +1,6 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
-import { fmtDay, fmtMs, overruleText, sessionTally, transferTitle, transferWorking } from "../tv/web/src/mirror/format.js";
+import { changeLabel, fmtDay, fmtMs, overruleText, sessionTally, transferTitle, transferWorking, verdictWords } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -49,5 +49,19 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     }
     expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x" })).toBe("The habits you drilled dropped. The one you didn’t, didn’t.");
     expect(transferTitle({ claim: "dropped-control-flat", headline: "hedges dropped in real speech after drilling; the undrilled control stayed flat" })).toBe("hedges dropped in real speech after drilling; the undrilled control stayed flat");
+  });
+});
+
+describe("Since drilling on Home: a percent only for a decided change", () => {
+  const h = (verdict: string, before: number, after: number) => ({ verdict, before: { per100: before }, after: { per100: after } }) as never;
+  it("words, as on Progress, for anything the hub has not decided; never \u2212 0%", () => {
+    expect(changeLabel(h("dropped", 2.47, 0.64))).toEqual({ text: "−74%", pct: true });
+    expect(changeLabel(h("rose", 1, 1.12))).toEqual({ text: "+12%", pct: true });
+    expect(changeLabel(h("too little data", 2.47, 0.9))).toEqual({ text: "Needs more speech", pct: false });
+    expect(changeLabel(h("no change", 1, 1.001))).toEqual({ text: "No change", pct: false });
+    expect(changeLabel(h("not drilled yet", 1, 0))).toEqual({ text: "Not drilled yet", pct: false });
+    expect(changeLabel(h("invalid", 1, 0.2))).toEqual({ text: "Not counted", pct: false });
+    expect(changeLabel(h("dropped", 1, 0.998)).text).toBe("0%");
+    expect(verdictWords(h("dropped", 2.47, 0.64))).toBe("Down 74%");
   });
 });

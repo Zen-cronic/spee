@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { TransferHabit, TransferResponse } from '../contract';
 import { useDebug } from '../debug';
-import { fmt1, fmtDate, fmtWords, pctChange, shortHabit, transferTitle } from '../mirror/format';
+import { fmt1, fmtDate, fmtWords, shortHabit, transferTitle, verdictWords } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -35,15 +35,6 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
   );
 }
 
-function verdictText(h: TransferHabit): string {
-  const pct = pctChange(h.before.per100, h.after.per100);
-  if (h.verdict === 'dropped') return pct === null ? 'Dropped' : `Down ${Math.abs(pct)}%`;
-  if (h.verdict === 'rose') return pct === null ? 'Rose' : `Up ${Math.abs(pct)}%`;
-  if (h.verdict === 'too little data') return 'Needs more speech';
-  if (h.verdict === 'not drilled yet') return 'Not drilled yet';
-  return 'No change';
-}
-
 function HabitCard({ h }: { h: TransferHabit }) {
   const drilled = h.role === 'drilled';
   const good = h.verdict === 'dropped';
@@ -65,7 +56,7 @@ function HabitCard({ h }: { h: TransferHabit }) {
         </View>
       </View>
       <View testID={`verdict-${h.habit}`} style={[styles.pill, good ? styles.pillGood : bad ? styles.pillBad : drilled ? styles.pillInk : styles.pillDark]}>
-        <Text style={[styles.pillText, { color: good ? C.limeInk : bad ? C.coralInk : drilled ? C.paper : C.text }]}>{verdictText(h)}</Text>
+        <Text style={[styles.pillText, { color: good ? C.limeInk : bad ? C.coralInk : drilled ? C.paper : C.text }]}>{verdictWords(h)}</Text>
       </View>
     </View>
   );

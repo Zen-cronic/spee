@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferResponse, TransferVerdict } from '../contract';
+import type { NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -182,6 +182,27 @@ export function plainReason(reasons: string[]): string | null {
     default:
       return detail;
   }
+}
+
+/** A verdict in plain words, as Progress shows it: a percent only for a decided change. */
+export function verdictWords(h: Pick<TransferHabit, 'verdict' | 'before' | 'after'>): string {
+  const pct = pctChange(h.before.per100, h.after.per100);
+  if (h.verdict === 'dropped') return pct === null ? 'Dropped' : `Down ${Math.abs(pct)}%`;
+  if (h.verdict === 'rose') return pct === null ? 'Rose' : `Up ${Math.abs(pct)}%`;
+  if (h.verdict === 'too little data') return 'Needs more speech';
+  if (h.verdict === 'not drilled yet') return 'Not drilled yet';
+  if (h.verdict === 'invalid') return 'Not counted';
+  return 'No change';
+}
+
+/**
+ * Home's change for one drilled habit: a signed percent only when the hub decided it dropped or
+ * rose ("−74%", "+12%"); otherwise the same words as Progress. Never "−0%".
+ */
+export function changeLabel(h: Pick<TransferHabit, 'verdict' | 'before' | 'after'>): { text: string; pct: boolean } {
+  const pct = pctChange(h.before.per100, h.after.per100);
+  if ((h.verdict === 'dropped' || h.verdict === 'rose') && pct !== null) return { text: pct === 0 ? '0%' : `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%`, pct: true };
+  return { text: verdictWords(h), pct: false };
 }
 
 const WORKING: TransferClaim[] = ['all-dropped-control-flat', 'dropped-control-flat'];
