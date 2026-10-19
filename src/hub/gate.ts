@@ -202,6 +202,11 @@ export function mustAuthenticate(req: ReqLike, opts: GateOptions | string[] = {}
   return !!gopts(opts).tunnel || isPublicRequest(req, opts);
 }
 
+// Printed at startup while a tunnel is declared: the one tunnel shape the gate cannot see.
+export function tunnelWarning(publicBaseUrl: string, port: number): string {
+  return `hub: warning: PUBLIC_BASE_URL is ${publicBaseUrl}. Expose the hub with \`ngrok http ${port}\` (or another HTTP tunnel that adds X-Forwarded-For) only. A TCP tunnel (ngrok tcp, ssh -R, cloudflared TCP) arrives as loopback, so /api, SSE and /ws (pair token included) would answer the internet like this machine; /mcp and /alexa still authenticate.`;
+}
+
 // The Origin allow-list. `allowed(origin, host)` is false for "null", malformed and foreign origins.
 export interface OriginPolicy {
   allowed(origin: string, host?: string): boolean;

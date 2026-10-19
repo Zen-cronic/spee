@@ -1,12 +1,12 @@
 // The public-access gate (src/hub/gate.ts): a tunnel must expose only /alexa, the static phone and
 // simulator pages, /mcp with the bearer token and /ws with the pair token.
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import WebSocket from "ws";
 import { WS_PROTOCOL } from "../src/hub/contract.js";
-import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, protocolToken, resolveTokens, tokenEquals } from "../src/hub/gate.js";
+import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, protocolToken, resolveTokens, tokenEquals, tunnelWarning } from "../src/hub/gate.js";
 import { wsProtocols } from "../web/phone/src/take.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -195,5 +195,20 @@ describe("a declared tunnel (review H2)", () => {
     } finally {
       await t.close();
     }
+  });
+  it("warns at startup that only an HTTP tunnel is supported", async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((l: unknown) => void lines.push(String(l)));
+    try {
+      const t = await startHubServer({ port: 0, host: "127.0.0.1", setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app" });
+      await t.close();
+      const warn = lines.find((l) => l.startsWith("hub: warning: PUBLIC_BASE_URL"));
+      expect(warn).toContain(`ngrok http ${t.port}`);
+      expect(warn).toMatch(/TCP tunnel \(ngrok tcp, ssh -R/);
+      expect(lines.join("\n")).not.toContain(PAIR);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(tunnelWarning("https://x.example", 8791)).toContain("ngrok http 8791");
   });
 });

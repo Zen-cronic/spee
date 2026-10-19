@@ -24,7 +24,7 @@ import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
 import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, type PluginInfo, type RoomTopic } from "./contract.js";
-import { addressKind, bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
+import { addressKind, bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, tunnelWarning, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
 import { guardBridge } from "./bridgeGuard.js";
 import { installProcessGuards, killChildren } from "./processGuards.js";
 import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
@@ -545,6 +545,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const port = (server.address() as { port: number }).port;
   listeningPort = port;
   log("hub.listening", { port, ...setup.describe, fixtureV2: !!fixture, plugins: plugins.map((pl) => pl.name), trustLan, bridgeGuard: guard.installed });
+  if (publicBaseUrl) print(tunnelWarning(publicBaseUrl, port));
   print(`hub: open the TV at http://localhost:${port}/tv/ and the Alexa+ simulator at http://localhost:${port}/sim/${publicBaseUrl ? "#t=<MCP_TOKEN> (a tunnel is set, so MCP needs the token here too)" : ""} ; pair a phone by scanning the TV's QR.`);
   return {
     url: `http://127.0.0.1:${port}`,
