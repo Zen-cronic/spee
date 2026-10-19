@@ -136,7 +136,7 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
   - optional `bee stream` captures (`--stream`): untagged lines count as other speakers;
   - optional meeting transcripts (`--wearer "<name>" --tactiq <file>`).
 
-  Only lines a source labels as the wearer count as the wearer's; the hub's own state (`real/hub-attempts.json`, `real/live/`) is screened for other-speaker text, never used as an allow-list. A committable audio file fails the check. It also fails if any private output path (`real/`, `out/`, `cache/`, the hub's state files) is not git-ignored.
+  Only lines a source labels as the wearer count as the wearer's; the hub's own state (`real/hub-attempts.json`, `real/live/`) is screened for other-speaker text, never used as an allow-list. A committable audio file fails the check, and so does a committable image until a person has looked at it and recorded it with `--approve-images` (`leak-check-images.txt`, pinned by sha256; screenshots can show drill or live text). A hit in a file dated before the recording is "predates", not a leak; the date comes from git, not the mtime (a copy can keep an old mtime), and files written before the repo existed are vouched for once with `--approve-predates` (`leak-check-predates.txt`). It also fails if any private output path (`real/`, `out/`, `cache/`, the hub's state files) is not git-ignored.
 - The bee token is never read, printed or stored by this code; the CLI handles auth.
 
 ## Mock PoC (historical)

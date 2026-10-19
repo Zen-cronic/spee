@@ -28,20 +28,28 @@
 //    private coach principles and the build outputs must be git-ignored.
 // 9. Files: read as a stream (any size; 5 MB and up included), with JSON escapes undone first (so
 //    "x\nnext" is two words). Audio files (mp3, wav, m4a, ...) that could be committed FAIL: Bee
-//    stores no audio, and a recording would carry other speakers' voices. Other binary files (images,
-//    archives, fonts) cannot be text-screened and are listed by count.
+//    stores no audio, and a recording would carry other speakers' voices. Images (png, jpg, ...)
+//    cannot be text-screened but can show drill or live text, so each one FAILS unless a person has
+//    looked at it and its sha256 is in leak-check-images.txt (`--approve-images` records the current
+//    images after that look; a changed image needs a new look). Other binary files (archives, fonts)
+//    are listed by count.
 // 10. Coach principles (contract v2): when coach/principles.local.md exists, any of its 5-word
 //    shingles in a committable file FAILS the check, whatever the file's age. Shingles also in the
 //    committed generic template, or made only of function words, are not private. When
 //    coach/private-terms.local.txt exists, every non-empty line not starting with "#" is a banned
 //    term (case-insensitive, whole words); any hit FAILS. Counts only are printed, never the text.
-// Provenance: a file last modified before a conversation or meeting started cannot contain its
-// text, so such a shingle hit is reported as "predates" and does not fail the check (generic
-// phrases in synthetic fixtures written before a later recording). A fresh checkout resets
-// mtimes to now, which only makes the check stricter.
-// Exit code 1 when 1-3, 5, 6 (other-speaker), 8, 9 (audio) or 10 find anything.
+// Provenance: a file committed before a conversation or meeting started, and unchanged since, cannot
+// contain its text, so such a shingle hit is reported as "predates" and does not fail the check
+// (generic phrases in synthetic fixtures written before a later recording). The date is the file's
+// last commit, not its mtime (cp -p, tar and rsync -t keep an old mtime on new content); an
+// untracked file, or one with uncommitted changes, dates from now. Files written before the repo
+// existed can only be dated by mtime: a person vouches for those with `--approve-predates`, which
+// records each file whose hits all predate the recording by mtime in leak-check-predates.txt
+// (sha256 + path). Only an approved, unchanged file has its mtime believed.
+// Exit code 1 when 1-3, 5, 6 (other-speaker), 8, 9 (audio, unreviewed images) or 10 find anything.
 import { execFileSync } from "node:child_process";
-import { createReadStream, existsSync, openSync, readFileSync, readSync, closeSync, readdirSync, statSync } from "node:fs";
+import { createReadStream, existsSync, openSync, readFileSync, readSync, closeSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { extname, join } from "node:path";
 import { parseStreamLine, toMs } from "../src/hub/bee.js";
 import { matchesProfile } from "../src/real/wearer.js";
@@ -69,6 +77,18 @@ const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclud
   .split("\n")
   .filter(Boolean)
   .filter((f) => f !== "package-lock.json" && existsSync(f));
+
+// When each committable file last changed, from git (see Provenance above).
+const committedAt = new Map<string, number>();
+{
+  let t = 0;
+  for (const line of execFileSync("git", ["-c", "core.quotePath=false", "log", "--format=%x00%ct", "--name-only", "--no-renames"], { encoding: "utf8", maxBuffer: 1 << 28 }).split("\n")) {
+    if (line.startsWith("\0")) t = Number(line.slice(1)) * 1000;
+    else if (line && !committedAt.has(line)) committedAt.set(line, t);
+  }
+}
+const uncommitted = new Set(execFileSync("git", ["-c", "core.quotePath=false", "diff", "--name-only", "HEAD"], { encoding: "utf8" }).split("\n").filter(Boolean));
+const changedAt = (f: string) => (uncommitted.has(f) ? Date.now() : (committedAt.get(f) ?? Date.now()));
 
 // A shingle spoken by both the wearer and someone else is not evidence of a leak by itself, and
 // neither is one made only of function words ("il n'y a pas de", "i don't know if the").
@@ -247,6 +267,11 @@ const maxN = Math.max(1, ...lengths);
 
 const JWT = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}/g;
 const BEARER = /Bearer\s+[A-Za-z0-9._-]{20,}/g;
+const IMAGES = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".avif"]);
+const REVIEWED_IMAGES = "leak-check-images.txt";
+const APPROVED_PREDATES = "leak-check-predates.txt";
+const ledger = (path: string) => new Set(existsSync(path) ? readFileSync(path, "utf8").split("\n").filter((l) => l && !l.startsWith("#")) : []);
+const sha256 = (f: string) => createHash("sha256").update(readFileSync(f)).digest("hex");
 const AUDIO = new Set([".mp3", ".wav", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".aif", ".aiff", ".caf", ".amr", ".wma", ".weba", ".mka"]);
 const isBinary = (f: string) => {
   const fd = openSync(f, "r");
@@ -311,6 +336,15 @@ console.log(
   `Checked ${files.length} files against ${other.size} other-speaker shingles and ${otherShort.size} short other-speaker lines (${shared} shared phrase(s) explained by an earlier wearer recording, ${product} product command phrase(s) set aside), ${mine.size} wearer shingles, ${streets.size} address tokens (from ${convs.length} conversations${tactiq.length ? ` and ${tactiq.length} meeting transcripts` : ""}), ${names.size} colleague-name / title tokens.`,
 );
 const binaries: string[] = [];
+const images = files.filter((f) => IMAGES.has(extname(f).toLowerCase()));
+if (argv.includes("--approve-images")) {
+  writeFileSync(REVIEWED_IMAGES, `# Images a person has looked at for drill, live or other-speaker text (scripts/leak-check.ts --approve-images).\n${images.map((f) => `${sha256(f)}  ${f}`).join("\n")}\n`);
+  console.log(`Recorded ${images.length} image(s) as reviewed in ${REVIEWED_IMAGES}. Run this only after looking at every one.`);
+}
+const reviewed = ledger(REVIEWED_IMAGES);
+const approved = ledger(APPROVED_PREDATES);
+const approvable: string[] = [];
+let unreviewed = 0;
 let largest = 0;
 for (const f of files) {
   const st = statSync(f);
@@ -320,15 +354,25 @@ for (const f of files) {
     console.log(`  ${f}: committable AUDIO file (${st.size} bytes): recordings carry other speakers' voices; keep audio out of the repository`);
     continue;
   }
+  if (IMAGES.has(extname(f).toLowerCase())) {
+    if (!reviewed.has(`${sha256(f)}  ${f}`)) (bad++, unreviewed++, console.log(`  ${f}: image not reviewed (new or changed): look at it for drill, live or other-speaker text, then run with --approve-images`));
+    continue;
+  }
   if (isBinary(f)) {
     binaries.push(f);
     continue;
   }
   const h = await scan(f);
-  const mtime = st.mtimeMs;
-  const fresh = (set: Set<string>, occ: Map<string, Occ>) => [...set].filter((g) => earliest(occ.get(g)!) < mtime).length;
-  const otherHits = fresh(h.other, other);
-  const shortHits = fresh(h.short, otherShort);
+  const fresh = (set: Set<string>, occ: Map<string, Occ>, since: number) => [...set].filter((g) => earliest(occ.get(g)!) < since).length;
+  let since = changedAt(f);
+  if (h.other.size + h.short.size && st.mtimeMs < since) {
+    const byMtime = fresh(h.other, other, st.mtimeMs) + fresh(h.short, otherShort, st.mtimeMs);
+    const key = `${sha256(f)}  ${f}`;
+    if (approved.has(key)) since = st.mtimeMs;
+    else if (byMtime === 0) approvable.push(key);
+  }
+  const otherHits = fresh(h.other, other, since);
+  const shortHits = fresh(h.short, otherShort, since);
   const predates = h.other.size + h.short.size - otherHits - shortHits;
   const [mineHits, addrHits, nameHits, principleHits, termHits] = [h.mine.size, h.street.size, h.name.size, h.principle.size, h.term.size];
   if (otherHits || shortHits || addrHits || h.jwt || nameHits || principleHits || termHits) bad++;
@@ -336,9 +380,14 @@ for (const f of files) {
     console.log(
       `  ${f}: other-speaker ${otherHits}, short other-speaker line ${shortHits}, wearer ${mineHits}, address ${addrHits}, token-like ${h.jwt}, colleague-name/title ${nameHits}, private-principles ${principleHits}, banned-term ${termHits}${predates ? ` (+${predates} other-speaker hit(s) in a file older than the recording: predates)` : ""}`,
     );
-  else if (predates) console.log(`  ${f}: predates ${predates} (other-speaker hit(s) in a file last modified before the recording; not a leak)`);
+  else if (predates) console.log(`  ${f}: predates ${predates} (other-speaker hit(s) in a file dated before the recording by git or an approved mtime; not a leak)`);
 }
-if (binaries.length) console.log(`Binary files not text-screened (images, archives, fonts): ${binaries.length}.`);
+console.log(`Images: ${images.length - unreviewed} of ${images.length} reviewed (${REVIEWED_IMAGES}).`);
+if (approvable.length && argv.includes("--approve-predates")) {
+  writeFileSync(APPROVED_PREDATES, `# Files whose other-speaker hits all predate the recording by mtime, vouched for by a person (scripts/leak-check.ts --approve-predates).\n${[...approved, ...approvable].sort((a, b) => a.slice(66).localeCompare(b.slice(66))).join("\n")}\n`);
+  console.log(`Recorded ${approvable.length} file(s) in ${APPROVED_PREDATES}; re-run the check to apply. Approve only files you know were not copied in with an old mtime.`);
+} else if (approvable.length) console.log(`${approvable.length} failing file(s) above predate the recording by mtime only (written before their first commit): if none was copied in with an old mtime, run with --approve-predates.`);
+if (binaries.length) console.log(`Binary files not text-screened (archives, fonts): ${binaries.length}.`);
 console.log(`Largest committable file: ${largest} bytes (every size is screened).`);
 let stateWarn = 0;
 for (const f of state) {
@@ -347,5 +396,5 @@ for (const f of state) {
   if (n) (stateWarn++, console.log(`  WARNING ${f} (hub state, git-ignored): other-speaker ${h.other.size}, short other-speaker line ${h.short.size}. Only Bee-wearer-tagged lines may persist: check the attempt sources.`));
 }
 if (state.length) console.log(`Hub state screened: ${state.length} file(s), ${stateWarn} with other-speaker text.`);
-console.log(bad ? `LEAK CHECK: FAIL (${bad} file(s))` : "LEAK CHECK: PASS (no other-speaker text, colleague name, meeting title, address, token, private principle, banned term or audio in committable files)");
+console.log(bad ? `LEAK CHECK: FAIL (${bad} file(s))` : "LEAK CHECK: PASS (no other-speaker text, colleague name, meeting title, address, token, private principle, banned term, audio or unreviewed image in committable files)");
 process.exit(bad ? 1 : 0);
