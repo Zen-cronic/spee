@@ -5,7 +5,9 @@
 import { connect } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
-import { addressKind, isPublicRequest, ORIGIN_CACHE_MS, originPolicy } from "../src/hub/gate.js";
+import type { IncomingMessage } from "node:http";
+import { forwardedClient } from "tv-voice-bridge/hub";
+import { addressKind, bridgeRateKey, isPublicRequest, ORIGIN_CACHE_MS, originPolicy } from "../src/hub/gate.js";
 import { checkFrame } from "../src/hub/bridgeGuard.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -241,5 +243,37 @@ describe("bridge guard: malformed input never kills the hub (C3, C4, H4b, L21, M
     const rooms = new Map([["HJ3H", { code: "HJ3H", createdAt: 0, peers: new Map([["tv-1", { clientId: "tv-1", role: "screen" }]]) }]]) as never;
     expect(checkFrame(JSON.stringify({ type: "hello", v: 1, role: "mic", clientId: "tv-1", code: "hj3h" }), { helloed: false }, rooms)).toMatchObject({ ok: false });
     expect(checkFrame(JSON.stringify({ type: "hello", v: 1, role: "mic", clientId: "phone-1", code: "hj3h" }), { helloed: false }, rooms)).toMatchObject({ ok: true });
+  });
+});
+
+describe("the bridge's rate key behind the tunnel", () => {
+  const req = (remoteAddress: string, xff?: string) => ({ socket: { remoteAddress }, headers: xff === undefined ? {} : { "x-forwarded-for": xff } }) as unknown as IncomingMessage;
+
+  it("is the bridge's own forwardedClient rule, not a copy of it", () => {
+    const cases = [req("127.0.0.1", "6.6.6.6, 203.0.113.7"), req("::ffff:127.0.0.1", "203.0.113.7"), req("::1", "203.0.113.7"), req("198.51.100.4", "203.0.113.7"), req("192.168.1.5", "203.0.113.7"), req("127.0.0.1")];
+    for (const r of cases) expect(bridgeRateKey(r)).toBe(forwardedClient(r));
+    expect(bridgeRateKey(cases[0]!)).toBe("203.0.113.7"); // what ngrok appended, not what the client wrote
+    expect(bridgeRateKey(cases[3]!)).toBe("198.51.100.4"); // not from the tunnel agent: the socket itself
+  });
+
+  it("a tunnel client that writes a fresh x-forwarded-for each time still runs out of wrong-code guesses", async () => {
+    const outcome = (i: number) =>
+      new Promise<string>((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${s.port}/ws?k=${PAIR}`, { headers: { "x-forwarded-for": `10.9.${i}.1, 203.0.113.77`, "x-forwarded-proto": "https" } });
+        const done = (r: string) => (ws.terminate(), resolve(r));
+        ws.on("open", () => ws.send(JSON.stringify({ type: "hello", v: 1, role: "mic", clientId: `m-${i}`, code: "ZZZZ" })));
+        ws.on("message", (d) => {
+          const m = JSON.parse(String(d));
+          if (m.type === "error") done(m.code);
+          else if (m.type === "welcome") done("welcome");
+        });
+        ws.on("unexpected-response", () => done("refused"));
+        ws.on("error", () => done("refused"));
+        setTimeout(() => done("timeout"), 3000);
+      });
+    const seen: string[] = [];
+    for (let i = 0; i < 34; i++) seen.push(await outcome(i));
+    expect(seen.slice(0, 30).every((r) => r === "unknown-code")).toBe(true);
+    expect(seen.slice(30)).toEqual(["rate-limited", "rate-limited", "rate-limited", "rate-limited"]);
   });
 });

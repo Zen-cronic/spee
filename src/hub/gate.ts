@@ -44,6 +44,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
 import { readJsonSafe, removeCopies, writeJsonAtomic } from "./atomic.js";
+import { forwardedClient } from "tv-voice-bridge/hub";
 import { WS_TOKEN_PREFIX } from "./contract.js";
 import type { Duplex } from "node:stream";
 
@@ -145,6 +146,15 @@ export function addressKind(addr: string | undefined | null): "loopback" | "lan"
   if (a === "::1") return "loopback";
   if (/^f[cd][0-9a-f]{0,2}:/.test(a) || /^fe[89ab][0-9a-f]?:/.test(a)) return "lan";
   return "public";
+}
+
+// The key for the bridge's hello and wrong-code limits. Behind ngrok every peer arrives from the
+// tunnel's loopback socket, so the key is the client address ngrok appends (the last
+// x-forwarded-for entry), read only from a loopback socket (the tunnel agent): a direct peer that
+// sends its own header is keyed on its socket, so a fresh header per upgrade buys no fresh budget.
+// The rule is the bridge's own (forwardedClient), so a fix there reaches the hub too.
+export function bridgeRateKey(req: IncomingMessage): string {
+  return forwardedClient(req);
 }
 
 // True for a loopback or LAN host name/address (port and IPv6 brackets stripped).
