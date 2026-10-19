@@ -3,7 +3,7 @@ const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 /**
  * Speaking Mirror on Vega.
  *
- * The hub protocol client (@rackboard/tv-voice-bridge, the vendored tarball in ../../vendor) is an
+ * The hub protocol client (tv-voice-bridge, the vendored tarball in ../../vendor) is an
  * ordinary dependency, so Metro resolves its built dist/ inside this project and needs no custom
  * resolver. Keeping the default config keeps Vega's platform resolver, which maps `react-native`
  * to `@amazon-devices/react-native-kepler` (a custom resolveRequest silently drops that mapping).

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { PairingQr } from 'tv-voice-bridge/react';
 import { TAGLINE } from '../brand';
-import { Qr } from '../components/Qr';
 import { useDebug } from '../debug';
 import type { LinkStatus } from '../mirror/useMirror';
 import { C, F, R, SP, T } from '../theme';
@@ -29,7 +29,7 @@ export function PairingView({ code, joinUrl, status, mics }: { code: string | nu
       </View>
       <View style={styles.right}>
         <View style={styles.qrCard}>
-          {joinUrl ? <Qr value={joinUrl} size={400} /> : <View style={styles.qrEmpty} />}
+          {joinUrl ? <PairingQr value={joinUrl} size={400} testID="qr" style={{ borderRadius: 16, alignSelf: 'flex-start' }} /> : <View style={styles.qrEmpty} />}
           <Text style={styles.codeLabel}>OR ENTER THE CODE</Text>
           <Text testID="pair-code" style={styles.code}>{code ?? '····'}</Text>
         </View>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { BridgeClient } from '@rackboard/tv-voice-bridge';
+import { BridgeClient } from 'tv-voice-bridge';
 import type { HubState, LiveState, PracticeMeters, Recap, RecapList, StatsResponse, TransferResponse } from '../contract';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
 

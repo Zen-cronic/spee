@@ -390,7 +390,7 @@ Scheduling (Leitner, `src/hub/scheduler.ts`; intervals 1, 2, 4, 8 and 16 days):
 
 ## WebSocket (`ws://<host>:8791/ws`, tv-voice-bridge protocol v1)
 
-Connect with the bridge client (`@rackboard/tv-voice-bridge`, vendored as `vendor/rackboard-tv-voice-bridge-0.2.0.tgz`) or with raw frames.
+Connect with the bridge client (`tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.0.tgz`) or with raw frames.
 
 - **TV / Alexa simulator / any viewer:** `{"type":"hello","v":1,"role":"screen","clientId":"tv-mirror","name":"tv"}`. The hub replies with `welcome {code, joinUrl, serverTime}`. A screen without a code creates a room, and its code pairs a phone.
 - **Phone mic:** `{"type":"hello","v":1,"role":"mic","clientId":"phone-1","code":"HJ3H"}`.

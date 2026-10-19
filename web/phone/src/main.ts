@@ -6,7 +6,7 @@
 //             ride along as the caption. Nothing is recorded or stored.
 //   Mic check can Web Speech and getUserMedia run at once on this phone? (src/miccheck.ts)
 // Privacy: no localStorage or sessionStorage; the pair token stays in memory.
-import { BridgeClient, normalizeCode, type IntentMsg } from "@rackboard/tv-voice-bridge";
+import { BridgeClient, normalizeCode, type IntentMsg } from "tv-voice-bridge";
 import type { CardView, HubState, PracticeSummary } from "../../../src/hub/contract.js";
 import { startCapture, captureSupported, type Capture } from "./audio.js";
 import { WORDMARK } from "./brand.js";

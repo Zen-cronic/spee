@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PACKAGES = ["package.json", "tv/web/package.json", "tv/vega/package.json"];
-const BRIDGE = "@rackboard/tv-voice-bridge";
+const BRIDGE = "tv-voice-bridge";
 
 const bridgeSpec = (pkg: string) => {
   const j = JSON.parse(readFileSync(join(ROOT, pkg), "utf8"));

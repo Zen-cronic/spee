@@ -1,5 +1,5 @@
-// The mirror is restyled from the Rack Board shells: no UI string may still say Rack Board.
-// The vendored bridge package name (@rackboard/tv-voice-bridge and its tarball) is exempt.
+// The mirror is restyled from the Rack Board shells: no string may still say Rack Board (the bridge package is
+// tv-voice-bridge since 0.3.0, so nothing is exempt).
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,15 +10,14 @@ const SKIP = new Set(["node_modules", "dist", "build", ".tmp"]);
 const TEXT = /\.(ts|tsx|js|json|toml|html|css|md)$/;
 const walk = (d: string): string[] =>
   existsSync(d) ? readdirSync(d).flatMap((n) => (SKIP.has(n) ? [] : statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : TEXT.test(n) ? [join(d, n)] : [])) : [];
-const EXEMPT = /@rackboard\/tv-voice-bridge|rackboard-tv-voice-bridge-\d/g;
 
 describe("Speaking Mirror branding", () => {
   const files = DIRS.flatMap((d) => walk(join(ROOT, d)));
   it("scans the TV apps and the phone page", () => {
     expect(files.length).toBeGreaterThan(30);
   });
-  it('has no "Rack Board" or "rackboard" string outside the vendored package name', () => {
-    const hits = files.filter((f) => /rack\s*board/i.test(readFileSync(f, "utf8").replace(EXEMPT, "")));
+  it('has no "Rack Board" or "rackboard" string', () => {
+    const hits = files.filter((f) => /rack\s*board/i.test(readFileSync(f, "utf8")));
     expect(hits.map((f) => f.slice(ROOT.length))).toEqual([]);
   });
   it("the Vega package is com.beecoach.mirror, titled Speaking Mirror", () => {

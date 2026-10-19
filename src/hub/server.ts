@@ -15,8 +15,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
 import { join } from "node:path";
-import { BridgeHub, type Room } from "@rackboard/tv-voice-bridge/hub";
-import type { AppMsg, PeerInfo } from "@rackboard/tv-voice-bridge";
+import { BridgeHub, type Room } from "tv-voice-bridge/hub";
+import type { AppMsg, PeerInfo } from "tv-voice-bridge";
 import { buildBrief } from "./brief.js";
 import { parseHabitKey } from "./habits.js";
 import { parseRange, parseSource } from "./stats.js";

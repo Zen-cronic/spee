@@ -9,14 +9,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@rackboard/tv-voice-bridge": "file:../../vendor/rackboard-tv-voice-bridge-0.2.0.tgz",
-    "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-native-web": "^0.21.4"
+    "react-native-web": "^0.21.4",
+    "tv-voice-bridge": "file:../../vendor/tv-voice-bridge-0.3.0.tgz"
   },
   "devDependencies": {
-    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.2",
