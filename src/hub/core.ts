@@ -104,6 +104,15 @@ export class CoachHub extends EventEmitter {
     this.tz = opts.tz;
     this.deck = opts.deck;
     this.attempts = opts.attempts ?? [];
+    // An attempt still waiting for Bee when the last hub stopped has no verifier waiting for it now:
+    // close it as unverified (not counted) so "how did I do?" answers instead of saying "ask again" forever.
+    for (const a of this.attempts) {
+      if (a.status !== "pending_bee" && a.status !== "polling") continue;
+      a.status = "unverified";
+      a.counted = false;
+      a.settledAt = this.clock();
+      a.reason = "the hub restarted before Bee confirmed this attempt, so it doesn't count";
+    }
     this.sessions = opts.sessions;
     this.prereg = opts.prereg;
     this.verifier = new BeeVerifier({
