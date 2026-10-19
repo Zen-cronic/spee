@@ -1,55 +1,60 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Chip } from '../components/Chip';
 import type { Recap } from '../contract';
-import { fmt2, fmtInt, fmtMs, fmtPct, verdictTone } from '../mirror/format';
+import { useDebug } from '../debug';
+import { fmt1, fmtInt, fmtMs, fmtPct, shortHabit } from '../mirror/format';
 import { useEnter } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
+const VERDICT: Record<string, { word: string; bg: string; ink: string }> = {
+  better: { word: 'Better', bg: C.lime, ink: C.limeInk },
+  worse: { word: 'Worse', bg: C.coral, ink: C.coralInk },
+};
+
 /**
- * The recap after a conversation, over whatever screen is showing. The moment is the wearer's own
- * words as the hub served them (at most 12), with a plain rephrase. OK or Back closes it; it also
- * closes by itself after 30 s.
+ * The recap after a conversation, over whatever screen is showing: one headline, three numbers,
+ * each habit against your usual rate, and the wearer's own moment (as the hub served it, at most 12
+ * words) with a plain rephrase. OK or Back closes it; it also closes by itself after 30 s.
  */
 export function RecapOverlay({ recap }: { recap: Recap }) {
+  const debug = useDebug();
   const enter = useEnter(recap.id, 40, 360);
   const m = recap.metrics;
+  const wrist = recap.delivery.wrist === 'scheduled' ? 'Also sent to your wrist.' : recap.delivery.wrist === 'replay' ? 'Sent to your wrist (replay).' : null;
   return (
     <View style={styles.scrim} testID="recap-overlay">
       <Animated.View style={[styles.card, enter]}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.kicker}>{`AFTER YOUR CONVERSATION · ${fmtMs(recap.durationMs)}`}</Text>
-          <View style={styles.chips}>
-            {recap.replay ? <Chip text="BEE REPLAY (DEMO)" tone="bee" /> : <Chip text="FROM BEE" tone="bee" />}
-            <Chip text={recap.delivery.wrist === 'scheduled' ? 'SENT TO YOUR WRIST' : recap.delivery.wrist === 'replay' ? 'WRIST (REPLAY)' : recap.delivery.wrist === 'failed' ? 'WRIST FAILED' : 'WRIST OFF'} tone={recap.delivery.wrist === 'failed' ? 'bad' : 'neutral'} />
-          </View>
-        </View>
+        <Text style={styles.kicker}>{`After your conversation · ${fmtMs(recap.durationMs)} · from Bee`}</Text>
         <Text style={styles.headline} numberOfLines={2}>{recap.headline}</Text>
-        <View style={styles.metrics}>
-          <Metric big={fmtInt(m.wearerWords)} label="your words" />
-          <Metric big={fmtInt(m.wpm)} label={`wpm (usual ${fmtInt(m.baselineWpm)})`} />
-          <Metric big={fmtPct(m.talkShare)} label="talk share" />
-          <Metric big={fmtMs(m.longestMonologueMs)} label="longest turn" />
-          <Metric big={String(recap.nudges.sent)} label={`nudge${recap.nudges.sent === 1 ? '' : 's'} sent · ${recap.nudges.skipped} held`} />
-        </View>
-        <View style={styles.habits}>
-          {m.habits.map((h) => (
-            <View key={h.key} style={styles.habit}>
-              <Text style={styles.habitLabel} numberOfLines={1}>{h.label}</Text>
-              <Text style={styles.habitNum}>{`${fmt2(h.per100)} / 100`}</Text>
-              <Text style={styles.habitBase}>{h.baselinePer100 === null ? 'no baseline' : `usual ${fmt2(h.baselinePer100)}`}</Text>
-              <Chip text={h.verdict.toUpperCase()} tone={verdictTone(h.verdict)} />
+        <View style={styles.body}>
+          <View style={styles.left}>
+            <View style={styles.metrics}>
+              <Metric big={fmtInt(m.wpm)} label="words a minute" />
+              <Metric big={fmtPct(m.talkShare)} label="you talked" />
             </View>
-          ))}
-        </View>
-        {recap.moment ? (
-          <View style={styles.moment}>
-            <Text style={styles.momentKicker}>YOU SAID</Text>
-            <Text style={styles.said} numberOfLines={2}>{`"${recap.moment.text}"`}</Text>
-            <Text style={styles.momentKicker}>TRY</Text>
-            <Text style={styles.rephrase} numberOfLines={2}>{`"${recap.moment.rephrase}"`}</Text>
+            {m.habits.map((h) => {
+              const v = VERDICT[h.verdict];
+              return (
+                <View key={h.key} style={styles.habit}>
+                  <Text style={styles.habitLabel} numberOfLines={1}>{shortHabit(h.label)}</Text>
+                  <Text style={styles.habitNum}>{h.baselinePer100 === null ? `${fmt1(h.per100)} per 100 words` : `${fmt1(h.per100)}, usually ${fmt1(h.baselinePer100)}`}</Text>
+                  <View style={[styles.pill, { backgroundColor: v?.bg ?? 'rgba(0,0,0,0.08)' }]}>
+                    <Text style={[styles.pillText, { color: v?.ink ?? C.inkDim }]}>{v?.word ?? (h.verdict === 'no-baseline' ? 'New' : 'As usual')}</Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
-        ) : null}
-        <Text style={styles.foot}>{`${recap.phrasing === 'llm' ? 'Phrased by a model, checked by rules' : 'Template phrasing'} · OK or Back to close`}</Text>
+          {recap.moment ? (
+            <View style={styles.moment}>
+              <Text style={styles.momentKicker}>You said</Text>
+              <Text style={styles.said} numberOfLines={3}>{`“${recap.moment.text}”`}</Text>
+              <Text style={[styles.momentKicker, { marginTop: SP.l }]}>Try</Text>
+              <Text style={styles.rephrase} numberOfLines={3}>{`“${recap.moment.rephrase}”`}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={styles.foot}>{[wrist, 'OK or Back to close'].filter(Boolean).join('   ·   ')}</Text>
+        {debug ? <Text style={styles.debug}>{`${m.wearerWords} words · longest turn ${fmtMs(m.longestMonologueMs)} · nudges ${recap.nudges.sent} sent, ${recap.nudges.skipped} held · phrasing ${recap.phrasing} · wrist ${recap.delivery.wrist}${recap.replay ? ' · replay' : ''}`}</Text> : null}
       </Animated.View>
     </View>
   );
@@ -65,24 +70,25 @@ function Metric({ big, label }: { big: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,9,24,0.82)', alignItems: 'center', justifyContent: 'center' },
-  card: { width: 1500, backgroundColor: C.surface, borderRadius: R.l, borderWidth: 3, borderColor: C.lavender, padding: SP.xl },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chips: { flexDirection: 'row', gap: SP.s },
-  kicker: { color: C.dim, fontSize: T.label, fontWeight: '800', letterSpacing: 3, fontFamily: F.family },
-  headline: { color: C.text, fontSize: T.h2, fontWeight: '800', lineHeight: 56, marginTop: SP.m, fontFamily: F.family },
-  metrics: { flexDirection: 'row', marginTop: SP.l },
-  metric: { flex: 1, paddingRight: SP.m },
-  metricBig: { color: C.text, fontSize: T.h2, fontWeight: '800', fontFamily: F.family },
-  metricLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  habits: { marginTop: SP.l },
-  habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderColor: C.rule },
-  habitLabel: { width: 640, color: C.text, fontSize: T.small, fontFamily: F.family },
-  habitNum: { width: 200, color: C.text, fontSize: T.small, fontWeight: '800', fontFamily: F.family },
-  habitBase: { width: 220, color: C.dim, fontSize: T.label, fontFamily: F.family },
-  moment: { backgroundColor: C.surface2, borderRadius: R.m, padding: SP.m, marginTop: SP.l },
-  momentKicker: { color: C.faint, fontSize: 22, fontWeight: '800', letterSpacing: 3, fontFamily: F.family },
-  said: { color: C.dim, fontSize: T.body, marginBottom: SP.s, fontFamily: F.family },
-  rephrase: { color: C.mint, fontSize: T.body, fontWeight: '800', fontFamily: F.family },
-  foot: { color: C.faint, fontSize: T.label, marginTop: SP.m, fontFamily: F.family },
+  scrim: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,10,9,0.86)', alignItems: 'center', justifyContent: 'center' },
+  card: { width: 1560, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
+  kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
+  headline: { color: C.ink, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.s, fontFamily: F.family },
+  body: { flexDirection: 'row', marginTop: SP.xl },
+  left: { flex: 1, marginRight: SP.xxl },
+  metrics: { flexDirection: 'row', marginBottom: SP.l },
+  metric: { flex: 1 },
+  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -3, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },
+  metricLabel: { color: C.inkDim, fontSize: T.body, fontFamily: F.family },
+  habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
+  habitLabel: { flex: 1, color: C.ink, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
+  habitNum: { color: C.inkDim, fontSize: T.body, marginRight: SP.l, fontFamily: F.family },
+  pill: { borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, minWidth: 120, alignItems: 'center' },
+  pillText: { fontSize: T.label, fontWeight: '700', fontFamily: F.family },
+  moment: { width: 600, backgroundColor: C.ink, borderRadius: R.m, padding: SP.xl },
+  momentKicker: { color: C.dim, fontSize: T.label, fontWeight: '600', fontFamily: F.family },
+  said: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: 6, fontFamily: F.family },
+  rephrase: { color: C.lime, fontSize: T.title, lineHeight: 50, fontWeight: '700', marginTop: 6, fontFamily: F.family },
+  foot: { color: C.inkFaint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
+  debug: { color: C.inkFaint, fontSize: 20, marginTop: SP.xs, fontFamily: F.mono },
 });
