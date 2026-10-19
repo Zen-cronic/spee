@@ -37,7 +37,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
     if (k === 'left') step(-1);
     if (k === 'right') step(1);
   };
-  const right = m.status !== 'online' ? (m.status === 'offline' ? 'Hub offline, retrying…' : 'Connecting…') : `${m.mics ? `phone paired · ${m.code ?? ''}` : `pair code ${m.code ?? '····'}`}`;
+  const right = m.status !== 'online' ? (m.status === 'offline' ? 'Hub offline, retrying…' : 'Connecting…') : m.mics ? 'Phone paired' : `Pair code ${m.code ?? '····'}`;
   const diag = debug ? `${config.platform} · seq ${s.lastSeq ?? '–'} · applied ${s.applied} · dup ${s.duplicates} · gaps ${s.gaps}${m.rttMs !== null ? ` · rtt ${m.rttMs} ms` : ''} · meters ${s.practice.frames} @ ${config.metersHz} Hz` : null;
 
   let screen;
@@ -56,13 +56,13 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
       screen = <PairingView code={m.code} joinUrl={m.joinUrl} status={m.status} mics={m.mics} />;
       break;
     default:
-      screen = <WeekView stats={m.stats} today={s.practiceToday} deck={s.drill.deck} transferHeadline={m.transfer?.headline ?? null} />;
+      screen = <WeekView stats={m.stats} today={s.practiceToday} deck={s.drill.deck} transfer={m.transfer} />;
   }
   return (
     <FocusRoot key="mirror" initial={`tab-${cur}`} onBack={onBack} onKey={onKey}>
       <View style={styles.root}>
         <TopBar view={s.view} onShow={m.show} right={right} rightTone={m.status === 'online' ? 'ok' : 'warn'} />
-        {s.viewReason && s.viewBy && s.viewBy !== 'remote' ? <Text style={styles.reason} numberOfLines={1}>{`${TAB_LABEL[s.view]}: ${s.viewReason} (${s.viewBy})`}</Text> : <View style={styles.reasonSpacer} />}
+        {debug && s.viewReason && s.viewBy && s.viewBy !== 'remote' ? <Text style={styles.reason} numberOfLines={1}>{`${TAB_LABEL[s.view]}: ${s.viewReason} (${s.viewBy})`}</Text> : <View style={styles.reasonSpacer} />}
         <View style={styles.body}>{screen}</View>
         <DataLabel label={s.dataLabel ?? m.stats?.dataLabel ?? null} synthetic={s.synthetic || !!m.stats?.synthetic} replay={s.replay} extra={diag} />
       </View>
@@ -79,8 +79,8 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: SAFE.x, paddingVertical: SAFE.y },
   body: { flex: 1, overflow: 'hidden' },
-  reason: { color: C.faint, fontSize: T.label, height: 36, marginTop: 4, fontFamily: F.family },
-  reasonSpacer: { height: 40 },
+  reason: { color: C.faint, fontSize: T.label, height: 32, marginTop: 4, fontFamily: F.family },
+  reasonSpacer: { height: 36 },
   offline: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.amber, padding: 14 },
   offlineText: { color: C.bg, fontSize: T.small, fontWeight: '800', textAlign: 'center', fontFamily: F.family },
 });
