@@ -436,7 +436,7 @@ Bridge intent on a phone attempt:
 | `attempt.verified` | Bee confirmed, or gave up | `{attemptId, cardId, status: "verified"\|"unverified", via: "stream"\|"poll"\|null, speakerScore, latencyMs, beeText, replay, reason}` |
 | `attempt.graded` | Bee's text graded (only after `verified`) | `{attempt (status graded, counted, final, agreement, box), card, deck}` |
 | `stats.updated` | after every settled attempt | `{dataLabel, practiceToday, weekPer100: {words, hedges, vague, fillers, restarts}, transferHeadline, deck}` |
-| `session.ended` | a session ends | `{summary}` |
+| `session.ended` | a session ends; sent again with the updated summary when Bee settles one of its attempts late (and no drill has started since) | `{summary}` |
 
 Order per attempt:
 

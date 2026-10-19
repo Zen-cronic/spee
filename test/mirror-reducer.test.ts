@@ -105,16 +105,32 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     expect(s.drill.stage).toBe("graded");
     expect(s.drill.summary).toEqual(summary);
   });
-  it("a verdict that lands after session.ended stays, and moves from pending in the summary (review L49)", () => {
+  it("a verdict that lands after session.ended stays, and the hub's re-sent summary replaces the old one", () => {
     const card = { id: "k1", resay: "x" } as any;
-    const summary = { passed: 0, failed: 0, unverified: 0, pending: 1 } as any;
-    const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
+    const summary = { sessionId: "s1", passed: 0, failed: 0, unverified: 0, pending: 1, beeOverrules: 0 } as any;
+    const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: false, reasons: [] } } }, card };
     let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 }, { type: "event", event: ev(3, "session.ended", { summary }), now: 2 });
     expect(s.drill.stage).toBe("provisional"); // still with Bee, not closed
     expect(s.drill.summary?.pending).toBe(1);
-    s = run(s, { type: "event", event: ev(4, "attempt.graded", { attempt: { id: "a1", status: "graded", final: { pass: true, grade: { reasons: [] } } }, card }), now: 3 });
+    s = run(s, { type: "event", event: ev(4, "attempt.graded", { attempt: { id: "a1", cardId: "k1", status: "graded", agreement: "bee-overrules", final: { pass: true, grade: { reasons: [] } } }, card }), now: 3 });
     expect(s.drill.stage).toBe("graded");
-    expect(s.drill.summary).toMatchObject({ passed: 1, pending: 0 });
+    expect(s.drill.summary).toEqual(summary); // the TV does not count on its own
+    const settled = { ...summary, passed: 1, pending: 0, beeOverrules: 1 };
+    s = run(s, { type: "event", event: ev(5, "session.ended", { summary: settled }), now: 4 });
+    expect(s.drill.stage).toBe("graded");
+    expect(s.drill.card?.id).toBe("k1");
+    expect(s.drill.summary).toEqual(settled);
+  });
+  it("a late verdict for the previous card never replaces the card that is open now", () => {
+    const c1 = { id: "c1", resay: "one" } as any;
+    const c2 = { id: "c2", resay: "two" } as any;
+    const prov = { attempt: { id: "a1", cardId: "c1", provisional: { source: "phone", text: "one", grade: { pass: true, reasons: [] } } }, card: c1 };
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card: c1 }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 }, { type: "event", event: ev(3, "card.open", { card: c2 }), now: 2 });
+    expect(s.drill).toMatchObject({ stage: "card", card: { id: "c2" } });
+    const deck = { total: 6, dueNow: 2 } as any;
+    s = run(s, { type: "event", event: ev(4, "attempt.verified", { attemptId: "a1", cardId: "c1", status: "verified", beeText: "one" }), now: 3 }, { type: "event", event: ev(5, "attempt.graded", { attempt: { id: "a1", cardId: "c1", status: "graded", final: { pass: true, grade: { reasons: [] } } }, card: c1, deck }), now: 4 });
+    expect(s.drill).toMatchObject({ stage: "card", card: { id: "c2" }, attemptId: null, graded: null, verified: null });
+    expect(s.drill.deck).toEqual(deck); // the deck summary still moves
   });
   it("DRILLS TODAY reads today's tally from stats.updated, not the week's", () => {
     const today = { attempts: 2, counted: 2, passed: 1, unverified: 0, beeOverrules: 0 };

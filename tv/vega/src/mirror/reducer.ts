@@ -233,11 +233,9 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
   };
 }
 
-// A verdict that arrived after the session summary: move it from pending to its outcome.
-function settleLate(sum: SessionSummary, outcome: 'passed' | 'failed' | 'unverified'): SessionSummary {
-  if (!sum.pending) return sum;
-  return { ...sum, pending: sum.pending - 1, [outcome]: sum[outcome] + 1 };
-}
+// A verdict for a card other than the one on screen: an attempt Bee was still checking when the
+// next card opened. The open card stays; the hub re-sends the session summary when it settles one.
+const otherCard = (s: MirrorState, cardId: unknown) => !!s.drill.card && typeof cardId === 'string' && cardId !== s.drill.card.id;
 
 function drillFromAttempt(at: any): Partial<DrillState> {
   const out: Partial<DrillState> = { attemptId: at.id };
@@ -311,22 +309,25 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       if (s.drill.attemptId && p.attemptId !== s.drill.attemptId) return s;
       return { ...s, drill: { ...s.drill, attemptId: p.attemptId, stage: 'checking', checking: { reason: p.reason ?? '' } } };
     case 'attempt.verified': {
+      if (otherCard(s, p.cardId)) return s;
       const same = !s.drill.attemptId || p.attemptId === s.drill.attemptId;
       const base = same ? s.drill : { ...s.drill, attemptId: p.attemptId, provisional: null, checking: null, graded: null };
-      const summary = s.drill.summary && p.status !== 'verified' ? settleLate(s.drill.summary, 'unverified') : s.drill.summary;
-      return { ...s, drill: { ...base, summary, attemptId: p.attemptId, stage: p.status === 'verified' ? 'verified' : 'unverified', verified: { status: p.status, via: p.via ?? null, speakerScore: p.speakerScore ?? null, latencyMs: p.latencyMs ?? null, beeText: p.beeText ?? null, replay: !!p.replay, reason: p.reason ?? '' } }, ...switched(s, 'drill', p.status === 'verified' ? 'verified by Bee' : 'Bee could not verify', 'Bee') };
+      return { ...s, drill: { ...base, attemptId: p.attemptId, stage: p.status === 'verified' ? 'verified' : 'unverified', verified: { status: p.status, via: p.via ?? null, speakerScore: p.speakerScore ?? null, latencyMs: p.latencyMs ?? null, beeText: p.beeText ?? null, replay: !!p.replay, reason: p.reason ?? '' } }, ...switched(s, 'drill', p.status === 'verified' ? 'verified by Bee' : 'Bee could not verify', 'Bee') };
     }
     case 'attempt.graded': {
       const at = p.attempt ?? {};
+      if (otherCard(s, at.cardId ?? p.card?.id)) return { ...s, drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
       const same = at.id === s.drill.attemptId;
       const base = same ? s.drill : { ...s.drill, provisional: null, checking: null };
-      // After session.ended the summary counted this attempt as pending: settle it there (review L49).
-      const summary = s.drill.summary ? settleLate(s.drill.summary, at.final?.pass ? 'passed' : 'failed') : null;
-      return { ...s, drill: { ...base, ...drillFromAttempt(at), card: p.card ?? s.drill.card, deck: p.deck ?? s.drill.deck, stage: 'graded', summary }, ...switched(s, 'drill', 'graded from Bee', 'Bee') };
+      return { ...s, drill: { ...base, ...drillFromAttempt(at), card: p.card ?? s.drill.card, deck: p.deck ?? s.drill.deck, stage: 'graded' }, ...switched(s, 'drill', 'graded from Bee', 'Bee') };
     }
     case 'stats.updated':
       return { ...s, statsVersion: s.statsVersion + 1, practiceToday: p.practiceToday ?? s.practiceToday, dataLabel: p.dataLabel ?? s.dataLabel, synthetic: s.synthetic || isSynthetic(p.dataLabel), drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
     case 'session.ended': {
+      // The hub re-sends the summary of a session it already ended when Bee settles one of its
+      // attempts late: replace the summary only.
+      const sum = p.summary as SessionSummary | null | undefined;
+      if (sum && s.drill.summary && sum.sessionId === s.drill.summary.sessionId) return { ...s, drill: { ...s.drill, summary: sum } };
       // The hub closed the card. A verdict, or an attempt Bee is still checking (its verdict can land
       // after the session ends), stays on screen with the summary under it; a card nobody attempted
       // is closed, so the summary shows instead.

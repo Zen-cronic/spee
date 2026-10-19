@@ -368,7 +368,18 @@ export class CoachHub extends EventEmitter {
       this.persistAttempts();
       this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "unverified", via: null, speakerScore: null, latencyMs: null, beeText: null, replay: !!this.opts.replay, reason: v.reason });
     }
+    this.resendSummary(a);
     this.publishStats();
+  }
+
+  // Bee settled an attempt of a session that already ended (its summary counted it as pending):
+  // send session.ended again with the updated summary, so every screen shows the same tally the hub
+  // would give now (Bee's overrules included). Not once another drill has started: a re-sent
+  // session.ended would close that drill's card on the screens.
+  private resendSummary(a: Attempt) {
+    const s = this.lastSession;
+    if (!s || s.id !== a.sessionId || s.endedAt === null || this.session || this.open) return;
+    this.publish("session.ended", { summary: this.sessionSummary(s) });
   }
 
   private onBeeAttempt(b: BeeAttempt) {

@@ -55,9 +55,13 @@ function renderCard() {
 }
 
 const stages: string[] = [];
+let overLine: { sessionId: string; at: number } | null = null; // the "Session over" line, replaced when the hub re-sends it
 function stage(cls: string, text: string, reset = false) {
-  if (reset) stages.length = 0;
+  if (reset) (stages.length = 0), (overLine = null);
   stages.push(`<div class="${cls}">${esc(text)}</div>`);
+  renderStages();
+}
+function renderStages() {
   const el = $("pipeline");
   el.hidden = false;
   el.innerHTML = stages.join("");
@@ -83,11 +87,19 @@ function onEvent(topic: string, p: Record<string, any>) {
   }
   // The session's card is closed (by the phone, the TV, Alexa or idle expiry): drop it, so the next
   // attempt is not refused with "open a card first" under a card that is still on screen. An attempt
-  // still with Bee keeps its pipeline, and its verdict still shows when it lands.
+  // still with Bee keeps its pipeline, and its verdict still shows when it lands. When Bee settles
+  // that attempt, the hub sends session.ended again with the updated tally: replace the line.
   if (topic === "session.ended") {
     card = null;
     renderCard();
-    stage("dim", sessionOverLine(p.summary));
+    const sid = typeof p.summary?.sessionId === "string" ? (p.summary.sessionId as string) : null;
+    if (sid && overLine?.sessionId === sid && overLine.at < stages.length) {
+      stages[overLine.at] = `<div class="dim">${esc(sessionOverLine(p.summary))}</div>`;
+      renderStages();
+    } else {
+      stage("dim", sessionOverLine(p.summary));
+      overLine = sid ? { sessionId: sid, at: stages.length - 1 } : null;
+    }
     return;
   }
   const id = p.attempt?.id ?? p.attemptId;
