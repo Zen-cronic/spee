@@ -601,8 +601,33 @@ export class CoachHub extends EventEmitter {
     const today = this.today();
     if (this.statsDay === null) this.statsDay = today;
     if (today === this.statsDay) return false;
+    // The day is marked before the stats are computed: if that throws, it is tried again tomorrow
+    // (or with the next settled attempt), not on every tick for the rest of the day.
+    this.statsDay = today;
     this.publishStats();
     return true;
+  }
+
+  // The server's once-a-tick housekeeping. Each job runs on its own, so one that throws never
+  // skips the others (purge first: a hung poll must not keep other speakers' text in memory), and
+  // a job that keeps failing with the same error is logged once, not on every tick.
+  private tickErrors = new Map<string, string>();
+  housekeep(log: (event: string, data?: Record<string, unknown>) => void): void {
+    const jobs: [string, () => unknown][] = [
+      ["purge", () => this.verifier.purge()],
+      ["expire-idle", () => this.expireIdle()],
+      ["roll-day", () => this.rollDay()],
+    ];
+    for (const [job, run] of jobs) {
+      try {
+        run();
+        this.tickErrors.delete(job);
+      } catch (err) {
+        const error = String((err as Error)?.message ?? err);
+        if (this.tickErrors.get(job) !== error) log("hub.tick-error", { job, error });
+        this.tickErrors.set(job, error);
+      }
+    }
   }
 
   publishStats() {

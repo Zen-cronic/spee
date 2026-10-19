@@ -126,4 +126,30 @@ describe("today's drill tally on the screens", () => {
     expect(hub.rollDay()).toBe(false); // once per day
     hub.dispose();
   });
+
+  it("a day roll that throws is tried once, logged once, and never stops the purge", () => {
+    const setup = demoSetup({ pace: 0.01, stateDir: null });
+    setup.stop();
+    setup.hub.dispose();
+    const opts = (setup.hub as unknown as { opts: ConstructorParameters<typeof CoachHub>[0] }).opts;
+    let now = Date.parse("2026-10-21T03:59:58Z");
+    const hub = new CoachHub({ ...opts, clock: () => now });
+    let purges = 0;
+    let statsRuns = 0;
+    hub.verifier.purge = () => void purges++;
+    // A bad record: computing the week's stats throws.
+    hub.stats = () => {
+      statsRuns++;
+      throw new Error("bad session record");
+    };
+    const logged: { event: string; data?: Record<string, unknown> }[] = [];
+    const log = (event: string, data?: Record<string, unknown>) => void logged.push({ event, data });
+    hub.housekeep(log); // remembers the day
+    now += 3000; // past midnight
+    for (let i = 0; i < 30; i++, now += 1000) hub.housekeep(log);
+    expect(purges).toBe(31);
+    expect(statsRuns).toBe(1); // tried once for the new day, not every second
+    expect(logged).toEqual([{ event: "hub.tick-error", data: { job: "roll-day", error: "bad session record" } }]);
+    hub.dispose();
+  });
 });

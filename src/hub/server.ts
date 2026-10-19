@@ -350,13 +350,9 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
 
   let ticking = false;
   const tick = setInterval(() => {
-    try {
-      hub.expireIdle();
-      hub.rollDay(); // a new local day: publish stats.updated so screens drop yesterday's tally
-      hub.verifier.purge(); // outside the guard: a hung poll must not keep other speakers' text in memory
-    } catch (err) {
-      log("hub.expire-error", { error: String((err as Error)?.message ?? err) });
-    }
+    // Purge Bee text, close an idle drill, and on a new local day publish stats.updated so screens
+    // drop yesterday's tally; each on its own, outside the poll guard below.
+    hub.housekeep(log);
     if (ticking) return;
     ticking = true;
     hub.verifier
