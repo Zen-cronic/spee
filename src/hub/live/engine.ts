@@ -21,7 +21,7 @@ import { localDate } from "../../real/deck.js";
 import { computeBaseline, type Baseline } from "./baseline.js";
 import { clockTime, LivePolicy, modeNarration } from "./policy.js";
 import type { Principles } from "./principles.js";
-import { buildRecap } from "./recap.js";
+import { composeRecap } from "./recap.js";
 import { phraseRecap, type PhraseFn } from "./recapPrompt.js";
 import { firing, nudgeText, windowThresholds } from "./rules.js";
 import { ConversationWindow, type Analysis, type RuleEvidence, type WinLine } from "./window.js";
@@ -342,7 +342,7 @@ export class LiveEngine {
   private async makeRecap(w: ConversationWindow, a: Analysis, endedAt: number) {
     if (this.stopped || this.deleted.has(w.conversationId)) return;
     const on = this.policy.isEnabled();
-    const recap = buildRecap({
+    const { recap, slots } = composeRecap({
       id: newId("rcp", this.now()),
       win: w,
       a,
@@ -357,7 +357,7 @@ export class LiveEngine {
       monologueMs: this.th.monologue.nudgeMs,
     });
     if (this.o.phrase) {
-      const p = await phraseRecap(recap, this.o.principles, this.o.phrase);
+      const p = await phraseRecap(recap, slots, this.o.principles, this.o.phrase);
       if (p) (Object.assign(recap, p), (recap.phrasing = "llm"), this.counters.llmAccepted++);
       else this.counters.llmRejected++;
       recap.createdAt = this.now();

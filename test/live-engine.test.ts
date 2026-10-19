@@ -128,7 +128,7 @@ describe("other scripts and suppressions", () => {
     await play("monologue");
     expect(of("nudge.sent").map((p) => p.nudge.rule)).toEqual(["monologue"]);
     expect(of("nudge.sent")[0].nudge.evidence.value).toBeGreaterThanOrEqual(90_000);
-    expect(of("recap.ready")[0].recap.headline).toMatch(/^One turn ran \d\.\d minutes without a break\./);
+    expect(of("recap.ready")[0].recap.headline).toMatch(/^A long turn: \d\.\d minutes without a break\./);
   });
   it("short: under 60 wearer words -> conversation.ended recap skipped-short, no recap", async () => {
     boot();

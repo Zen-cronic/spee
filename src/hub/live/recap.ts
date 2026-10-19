@@ -95,7 +95,21 @@ export function paceWord(wpm: number | null, base: number | null): "steady" | "f
   return wpm > base * 1.15 ? "fast" : wpm < base * 0.85 ? "slow" : "steady";
 }
 
+// The template's numbers as named slots: the phrasing a model may write uses these names in braces
+// ({hedges_rate}) and code fills in the values, so a model never writes a number itself
+// (live/recapPrompt.ts). `template` is the recap's own phrasing with every number as its slot.
+export interface RecapSlots {
+  values: Record<string, string>;
+  template: { headline: string; narration: string; wristText: string };
+}
+// Slot-name stems per habit: {hedges_count}, {like_rate}, {vague_usual}, {restarts_count}.
+export const SLOT_HABIT: Record<RecapKey, string> = { hedges: "hedges", "filler:like": "like", vague: "vague", restart: "restarts" };
+
 export function buildRecap(i: RecapInput): Recap {
+  return composeRecap(i).recap;
+}
+
+export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots } {
   const { a, baseline } = i;
   const words = a.englishWords;
   const habits = recapHabits(a, baseline);
@@ -108,38 +122,54 @@ export function buildRecap(i: RecapInput): Recap {
   const storyMs = (i.endedAt - i.win.startedAt) / i.pace;
   const hedges = habits.find((h) => h.key === "hedges")!;
 
+  // Every number below goes through a slot: `{name}` in the template, its value in `values`.
+  const values: Record<string, string> = {};
+  const slot = (name: string, value: string | number) => ((values[name] = String(value)), `{${name}}`);
+  const rate = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_rate`, f1(h.per100));
+  const usual = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_usual`, f1(h.baselinePer100!));
+  const count = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_count`, h.count);
+  // Every habit's count may be named, whatever the template says ("no hedges" may become "{hedges_count} hedges").
+  for (const h of habits) values[`${SLOT_HABIT[h.key as RecapKey]}_count`] = String(h.count);
+
   const longTurn = a.longestMonologueMs >= (i.monologueMs ?? 90_000) ? a.longestMonologueMs : 0; // conversation time (unscaled)
   const turnMin = (Math.round(longTurn / 6000) / 10).toFixed(1);
   let headline: string;
   if (worse[0]) {
     const w = worse[0];
-    headline = `${SHORT[w.key as RecapKey]} ran high: ${f1(w.per100)} per 100 words against your usual ${f1(w.baselinePer100!)}.${better[0] ? ` ${SHORT[better[0].key as RecapKey]} was down.` : ""}`;
-  } else if (longTurn) headline = `One turn ran ${turnMin} minutes without a break.${hedges.count === 0 ? " No hedges." : ""}`;
+    headline = `${SHORT[w.key as RecapKey]} ran high: ${rate(w)} per 100 words against your usual ${usual(w)}.${better[0] ? ` ${SHORT[better[0].key as RecapKey]} was down.` : ""}`;
+  } else if (longTurn) headline = `A long turn: ${slot("longest_turn_min", turnMin)} minutes without a break.${hedges.count === 0 ? " No hedges." : ""}`;
   else if (better[0]) {
     const b = better[0];
-    headline = b.count === 0 ? `No ${SHORT[b.key as RecapKey].toLowerCase()} this time (usually ${f1(b.baselinePer100!)} per 100 words).` : `${SHORT[b.key as RecapKey]} was down: ${f1(b.per100)} per 100 words against your usual ${f1(b.baselinePer100!)}.`;
+    headline = b.count === 0 ? `No ${SHORT[b.key as RecapKey].toLowerCase()} this time (usually ${usual(b)} per 100 words).` : `${SHORT[b.key as RecapKey]} was down: ${rate(b)} per 100 words against your usual ${usual(b)}.`;
   } else if (hedges.baselinePer100 != null) {
-    headline = `A typical conversation: ${f1(hedges.per100)} hedges per 100 words against your usual ${f1(hedges.baselinePer100)}.`;
-  } else headline = `${a.window.wearer.words} words from you, ${hedges.count} hedges.`;
+    headline = `A typical conversation: ${rate(hedges)} hedges per 100 words against your usual ${usual(hedges)}.`;
+  } else headline = `${slot("words", a.window.wearer.words)} words from you, ${count(hedges)} hedges.`;
 
   const focus = worse[0] ?? hedges;
   const verb: Record<RecapKey, (n: number) => string> = {
-    hedges: (n) => (n ? `You hedged ${n} ${n === 1 ? "time" : "times"}` : "You didn't hedge once"),
-    "filler:like": (n) => (n ? `You said "like" ${n} ${n === 1 ? "time" : "times"}` : `You never said "like"`),
-    vague: (n) => (n ? `You gave ${n} vague ${n === 1 ? "answer" : "answers"}` : "You gave no vague answers"),
-    restart: (n) => (n ? `You restarted ${n} ${n === 1 ? "time" : "times"}` : "You never restarted a sentence"),
+    hedges: (n) => (n ? `You hedged ${count(focus)} ${n === 1 ? "time" : "times"}` : "You didn't hedge at all"),
+    "filler:like": (n) => (n ? `You said "like" ${count(focus)} ${n === 1 ? "time" : "times"}` : `You never said "like"`),
+    vague: (n) => (n ? `You gave ${count(focus)} vague ${n === 1 ? "answer" : "answers"}` : "You gave no vague answers"),
+    restart: (n) => (n ? `You restarted ${count(focus)} ${n === 1 ? "time" : "times"}` : "You never restarted a sentence"),
   };
   const minutes = Math.round(storyMs / 60_000);
-  const s1 = minutes >= 1 ? `That conversation ran about ${minutes} ${minutes === 1 ? "minute" : "minutes"}.` : "That conversation ran under a minute.";
-  const vs = focus.baselinePer100 != null && focus.count > 0 ? `, ${f1(focus.per100)} per 100 words against your usual ${f1(focus.baselinePer100)}` : "";
-  const paceClause = wpm == null ? "" : pace === "steady" ? `, and your pace held at ${wpm} words a minute` : pace === "fast" ? `, and you spoke fast at ${wpm} words a minute (usually ${baseWpm})` : pace === "slow" ? `, and you spoke slowly at ${wpm} words a minute (usually ${baseWpm})` : `, at ${wpm} words a minute`;
-  const s2 = !worse[0] && longTurn ? `Your longest turn ran ${turnMin} minutes without a break${paceClause}.` : `${verb[focus.key as RecapKey](focus.count)}${vs}${paceClause}.`;
-  const s3 = moment ? (moment.habit === "hedges" ? `Try it without the hedges: "${moment.rephrase}"` : `Try it without the "like": "${moment.rephrase}"`) : !worse[0] && longTurn ? "Next time, check in with a question before the 90-second mark." : "";
-  const narration = [s1, s2, s3].filter(Boolean).join(" ");
-  const what = worse[0] ? `${WRIST[worse[0].key as RecapKey]} high` : longTurn ? "one long turn" : "a typical talk";
-  const wristText = clipWrist(`[coach] Recap: ${what}${pace ? `, pace ${pace}` : ""}`);
+  const s1 = minutes >= 1 ? `That conversation ran about ${slot("minutes", minutes)} ${minutes === 1 ? "minute" : "minutes"}.` : "That conversation ran under a minute.";
+  const vs = focus.baselinePer100 != null && focus.count > 0 ? `, ${rate(focus)} per 100 words against your usual ${usual(focus)}` : "";
+  const w = () => slot("wpm", wpm!);
+  const bw = () => slot("usual_wpm", baseWpm!);
+  const paceClause = wpm == null ? "" : pace === "steady" ? `, and your pace held at ${w()} words a minute` : pace === "fast" ? `, and you spoke fast at ${w()} words a minute (usually ${bw()})` : pace === "slow" ? `, and you spoke slowly at ${w()} words a minute (usually ${bw()})` : `, at ${w()} words a minute`;
+  const s2 = !worse[0] && longTurn ? `Your longest turn ran ${slot("longest_turn_min", turnMin)} minutes without a break${paceClause}.` : `${verb[focus.key as RecapKey](focus.count)}${vs}${paceClause}.`;
+  const s3 = moment ? (moment.habit === "hedges" ? `Try it without the hedges: "${moment.rephrase}"` : `Try it without the "like": "${moment.rephrase}"`) : !worse[0] && longTurn ? `Next time, check in with a question before the ${slot("check_in_seconds", 90)}-second mark.` : "";
+  const narrationT = [s1, s2, s3].filter(Boolean).join(" ");
+  const what = worse[0] ? `${WRIST[worse[0].key as RecapKey]} high` : longTurn ? "a long turn" : "a typical talk";
+  const wristT = `[coach] Recap: ${what}${pace ? `, pace ${pace}` : ""}`;
+  const fill = (t: string) => fillSlots(t, values);
+  const narration = fill(narrationT);
+  const wristText = clipWrist(fill(wristT));
+  const slots: RecapSlots = { values, template: { headline, narration: narrationT, wristText: wristT } };
+  headline = fill(headline);
 
-  return {
+  const recap: Recap = {
     dataLabel: i.dataLabel,
     synthetic: i.synthetic,
     id: i.id,
@@ -166,4 +196,10 @@ export function buildRecap(i: RecapInput): Recap {
     nudges: { ...i.win.nudges },
     delivery: i.delivery,
   };
+  return { recap, slots };
+}
+
+/** `{name}` placeholders replaced by their values; an unknown name is left as it is. */
+export function fillSlots(text: string, values: Record<string, string>): string {
+  return text.replace(/\{([a-z_]+)\}/g, (m, name: string) => values[name] ?? m);
 }

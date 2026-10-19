@@ -10,8 +10,9 @@ import type { BeeLine } from "../src/hub/bee.js";
 import { RECAP_MOMENT_MAX_WORDS, WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import type { Baseline } from "../src/hub/live/baseline.js";
 import { DEFAULT_THRESHOLDS, loadPrinciples, parseThresholds, principlesFromText } from "../src/hub/live/principles.js";
-import { buildRecap, verdictOf } from "../src/hub/live/recap.js";
-import { acceptPhrasing, numberFacts, numbersIn, phraseRecap, recapPrompt, RECAP_LLM_MODEL, type PhraseFn } from "../src/hub/live/recapPrompt.js";
+import { buildRecap, composeRecap, fillSlots, type RecapInput, type RecapSlots } from "../src/hub/live/recap.js";
+import { verdictOf } from "../src/hub/live/recap.js";
+import { acceptPhrasing, phraseRecap, recapPrompt, RECAP_LLM_MODEL, slotsIn, type PhraseFn } from "../src/hub/live/recapPrompt.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
 
@@ -40,10 +41,25 @@ function conversation() {
   }
   return w;
 }
-const recapOf = (w: ConversationWindow, baseline: Baseline | null = BASE) => {
-  const a = w.analyze(T0 + 300_000, windowThresholds(DEFAULT_THRESHOLDS), baseline);
-  return buildRecap({ id: "rcp_t", win: w, a, baseline, endedAt: T0 + 120_000, createdAt: T0 + 121_000, pace: 1, dataLabel: "SYNTHETIC", synthetic: true, delivery: { wrist: "replay", todoId: null } });
+const inputOf = (w: ConversationWindow, baseline: Baseline | null = BASE, o: Partial<RecapInput> = {}): RecapInput => {
+  const a = w.analyze(T0 + 400_000, windowThresholds(DEFAULT_THRESHOLDS), baseline);
+  return { id: "rcp_t", win: w, a, baseline, endedAt: T0 + 120_000, createdAt: T0 + 121_000, pace: 1, dataLabel: "SYNTHETIC", synthetic: true, delivery: { wrist: "replay", todoId: null }, ...o };
 };
+const recapOf = (w: ConversationWindow, baseline: Baseline | null = BASE) => buildRecap(inputOf(w, baseline));
+// One unbroken stretch from the wearer (no hedges), then a short reply: the long-turn recap.
+function longTurn() {
+  const w = new ConversationWindow("c", T0, true);
+  const said = ["The billing export finished on Monday and the totals match the ledger.", "We moved the release of the mobile build to Friday afternoon.", "The search page loads quickly on the staging server now.", "The alerting review is booked with the platform team next week."];
+  let t = 0;
+  for (let k = 0; k < 4; k++)
+    for (const s of said) {
+      const d = (s.split(" ").length / 140) * 60;
+      w.upsert(line("wearer", s, t, t + d));
+      t += d + 0.3;
+    }
+  w.upsert(line("other", "sounds good", t, t + 2));
+  return composeRecap(inputOf(w, BASE, { endedAt: T0 + 360_000, monologueMs: 60_000 }));
+}
 
 describe("recap template", () => {
   it("metrics against the baseline, a short wearer moment with its rephrase, generated wrist text", () => {
@@ -102,73 +118,112 @@ describe("principles", () => {
   });
 });
 
-describe("optional model phrasing", () => {
+describe("optional model phrasing: the model writes slots, code writes the numbers", () => {
   const principles = principlesFromText("Lead with the decision before the details, every single time.", "local");
-  // the template: "Hedges ran high: 7.5 per 100 words against your usual 1.4. ..." and "That
-  // conversation ran about 2 minutes. You hedged 6 times, 7.5 per 100 words against your usual 1.4,
-  // and your pace held at 140 words a minute. ..."
-  const good = { headline: "Hedges ran high today: 7.5 per 100 words, usually 1.4.", narration: 'About two minutes at 140 words a minute. You hedged 6 times. Try: "We could ship the export on Friday."', wristText: "[coach] Recap: hedges high" };
-  it("injects the rubric into the system prompt only, with Haiku as the only model", async () => {
-    const r = recapOf(conversation());
-    const p = recapPrompt(r, principles);
+  // The template: "Hedges ran high: {hedges_rate} per 100 words against your usual {hedges_usual}. ..." and
+  // "That conversation ran about {minutes} minutes. You hedged {hedges_count} times, {hedges_rate} per 100
+  // words against your usual {hedges_usual}, and your pace held at {wpm} words a minute. ..."
+  const good = { headline: "Hedges ran high today: {hedges_rate} per 100 words, usually {hedges_usual}.", narration: 'This conversation took about {minutes} minutes at {wpm} words a minute. You hedged {hedges_count} times. Try: "We could ship the export on Friday."', wristText: "[coach] Recap: hedges high" };
+  const hedgy = () => composeRecap(inputOf(conversation()));
+  const filled = (o: typeof good, slots: RecapSlots) => ({ headline: fillSlots(o.headline, slots.values), narration: fillSlots(o.narration, slots.values), wristText: fillSlots(o.wristText, slots.values) });
+
+  it("slots: the template's numbers by name, and the template itself is an accepted phrasing", () => {
+    const { recap, slots } = hedgy();
+    expect(slots.values).toMatchObject({ hedges_count: "6", minutes: "2", wpm: "140", hedges_usual: "1.4" });
+    expect(slots.template.headline).toBe('Hedges ran high: {hedges_rate} per 100 words against your usual {hedges_usual}. "Like" was down.');
+    expect(fillSlots(slots.template.headline, slots.values)).toBe(recap.headline);
+    expect(fillSlots(slots.template.narration, slots.values)).toBe(recap.narration);
+    expect(acceptPhrasing(slots.template, recap, slots, principles)).toEqual({ headline: recap.headline, narration: recap.narration, wristText: recap.wristText });
+    const lt = longTurn();
+    expect(lt.recap.headline).toMatch(/^A long turn: \d\.\d minutes without a break\./);
+    expect(slotsIn(lt.slots.template.narration)).toEqual(["minutes", "longest_turn_min", "wpm", "check_in_seconds"]);
+    expect(acceptPhrasing(lt.slots.template, lt.recap, lt.slots, principles)).toEqual({ headline: lt.recap.headline, narration: lt.recap.narration, wristText: lt.recap.wristText });
+  });
+  it("injects the rubric into the system prompt only, gives the slots and the slotted template, with Haiku as the only model", async () => {
+    const { recap, slots } = hedgy();
+    const p = recapPrompt(recap, slots, principles);
     expect(p.system).toContain("Lead with the decision");
     expect(p.user).not.toContain("Lead with the decision");
+    expect(JSON.parse(p.user.slice(p.user.indexOf("\n") + 1))).toMatchObject({ slots: slots.values, template: slots.template });
     let chain: string[] | undefined;
     const fake: PhraseFn = async (o) => ((chain = o.chain), { input: good, modelId: RECAP_LLM_MODEL });
-    expect(await phraseRecap(r, principles, fake)).toEqual(good);
+    const out = await phraseRecap(recap, slots, principles, fake);
+    expect(out).toEqual(filled(good, slots));
+    expect(out!.narration).toMatch(/^This conversation took about 2 minutes at 140 words a minute\. You hedged 6 times\./);
     expect(chain).toEqual(["us.anthropic.claude-haiku-4-5-20251001-v1:0"]);
   });
   it("falls back to the template: timeout, error, bad shape, long wrist text, invented quote, shared shingle", async () => {
-    const r = recapOf(conversation());
+    const { recap, slots } = hedgy();
     const never: PhraseFn = () => new Promise(() => {});
     const t0 = Date.now();
-    expect(await phraseRecap(r, principles, never, 50)).toBeNull();
+    expect(await phraseRecap(recap, slots, principles, never, 50)).toBeNull();
     expect(Date.now() - t0).toBeLessThan(1000);
-    expect(await phraseRecap(r, principles, async () => Promise.reject(new Error("AccessDenied")))).toBeNull();
-    expect(acceptPhrasing({ headline: 1 }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, wristText: `[coach] ${"x".repeat(60)}` }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, wristText: "Recap: no prefix" }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, narration: 'You said "the vault code is secret" twice.' }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, narration: "Remember to lead with the decision before the details." }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, narration: "One. Two. Three. Four." }, r, principles)).toBeNull();
-    expect(acceptPhrasing(good, r, principles)).toEqual(good);
+    expect(await phraseRecap(recap, slots, principles, async () => Promise.reject(new Error("AccessDenied")))).toBeNull();
+    const ok = (o: Partial<typeof good>) => acceptPhrasing({ ...good, ...o }, recap, slots, principles);
+    expect(acceptPhrasing({ headline: 1 }, recap, slots, principles)).toBeNull();
+    expect(ok({ wristText: `[coach] ${"x".repeat(60)}` })).toBeNull();
+    expect(ok({ wristText: "Recap: no prefix" })).toBeNull();
+    expect(ok({ narration: `${good.narration} You said "the vault code is secret".` })).toBeNull();
+    expect(ok({ narration: `${good.narration.replace(' Try: "We could ship the export on Friday."', "")} Remember to lead with the decision before the details.` })).toBeNull();
+    expect(ok({ narration: `${good.narration} Again. More.` })).toBeNull();
+    expect(ok({})).toEqual(filled(good, slots));
   });
-  it("keeps the template's numbers: a changed, added or dropped number falls back to the template", () => {
-    const r = recapOf(conversation());
-    expect(r.narration).toContain("You hedged 6 times");
-    const n = (narration: string) => acceptPhrasing({ ...good, narration }, r, principles);
-    expect(n("About two minutes at 140 words a minute. You hedged 31 times.")).toBeNull(); // a different count
-    expect(n("About two minutes at 140 words a minute. You hedged thirty-one times.")).toBeNull(); // in words
-    expect(n("About two minutes at 140 words a minute. You hedged 6 times, 9.8 per 100 words.")).toBeNull(); // an added rate
-    expect(n("About two minutes at 140 words a minute. You hedged a lot.")).toBeNull(); // the count dropped
-    expect(acceptPhrasing({ ...good, wristText: "[coach] Recap: 20 hedges" }, r, principles)).toBeNull();
-    expect(acceptPhrasing({ ...good, headline: "Hedges ran high: 7.5 per 100 words." }, r, principles)).toBeNull(); // the usual 1.4 dropped
-    expect(n("About 2 minutes at 140 words a minute. You hedged six times.")).not.toBeNull(); // digits or words
-    expect(numbersIn('1,400 words, 7.5 per hundred, twice "on Friday"')).toEqual(["1400", "7.5", "100", "2"]);
+  it("refuses any number the model wrote itself, in digits or in words, and any unknown or missing slot", () => {
+    const { recap, slots } = hedgy();
+    const n = (narration: string, headline = good.headline) => acceptPhrasing({ ...good, headline, narration }, recap, slots, principles);
+    const base = "This conversation took about {minutes} minutes at {wpm} words a minute.";
+    expect(n(`${base} You hedged {hedges_count} times.`)).not.toBeNull();
+    expect(n(`${base} You hedged 6 times.`)).toBeNull(); // the right count, but written by the model
+    expect(n(`${base} You hedged six times.`)).toBeNull();
+    expect(n(`${base} You hedged thirty-one times.`)).toBeNull();
+    expect(n(`${base} You hedged {hedges_count} times, twice in one sentence.`)).toBeNull();
+    expect(n(`${base} You hedged {hedges_count} times, 9.8 per 100 words.`)).toBeNull(); // an added rate
+    expect(n(`${base} You hedged {hedges_total} times.`)).toBeNull(); // not a slot
+    expect(n(`${base} You hedged {hedges_count times.`)).toBeNull(); // a broken slot
+    expect(n(`${base} You hedged a lot.`)).toBeNull(); // {hedges_count} dropped
+    expect(n(`You hedged {hedges_count} times at {wpm} words a minute.`)).toBeNull(); // {minutes} dropped
+    expect(n(good.narration, "Hedges ran high: {hedges_rate} per 100 words.")).toBeNull(); // {hedges_usual} dropped
+    expect(acceptPhrasing({ ...good, wristText: "[coach] Recap: 20 hedges" }, recap, slots, principles)).toBeNull();
+    // "per 100 words" is the one number a phrasing may write: it is a unit, not a fact.
+    expect(n(`${base} You hedged {hedges_count} times, {hedges_rate} per 100 words against your usual {hedges_usual}.`)).not.toBeNull();
   });
-  it("keeps each number on its fact: a phrasing that moves a number to another habit or quantity falls back", () => {
-    const r = recapOf(conversation());
-    const like = r.metrics.habits.find((h) => h.key === "filler:like")!.count;
-    expect(like).not.toBe(6);
-    const n = (narration: string, headline = good.headline) => acceptPhrasing({ ...good, headline, narration }, r, principles);
-    // The minutes and the hedge count swapped: the same set of numbers, now about the wrong things.
-    expect(n("About 6 minutes at 140 words a minute. You hedged 2 times.")).toBeNull();
-    expect(n("About two minutes at 6 words a minute. You hedged 140 times.")).toBeNull();
-    // The rate and the usual rate swapped.
-    expect(n(good.narration, "Hedges ran high today: 1.4 per 100 words, usually 7.5.")).toBeNull();
-    // Another habit's count given the hedge count.
-    expect(n(`About two minutes at 140 words a minute. You hedged 6 times and said "like" 6 times.`)).toBeNull();
-    // Reordered and reworded, every number still on its fact: accepted.
-    expect(n(`You hedged 6 times in about two minutes, at 140 words a minute, and said "like" ${like} times.`)).not.toBeNull();
-    expect(n(good.narration, "At 7.5 hedges per 100 words against 1.4 usually, hedging ran high.")).not.toBeNull();
-    expect(numberFacts('You hedged 6 times and said "like" 2 times, in about 2 minutes.')).toEqual(["hedge:6", "like:2", "minute:2"]);
-    expect(numberFacts("You spoke fast at 160 words a minute (usually 150).")).toEqual(["wpm:160", "usual-wpm:150"]);
+  it("a swapped number cannot be accepted: the conversation's minutes and the longest turn's", () => {
+    const { recap, slots } = longTurn();
+    expect(recap.narration).toMatch(/^That conversation ran about 6 minutes\. Your longest turn ran 1\.3 minutes/);
+    const n = (narration: string) => acceptPhrasing({ headline: slots.template.headline, narration, wristText: slots.template.wristText }, recap, slots, principles);
+    const rest = "and your pace held at {wpm} words a minute. Check in before the {check_in_seconds}-second mark.";
+    expect(n(`That conversation ran about {minutes} minutes. Your longest turn ran {longest_turn_min} minutes, ${rest}`)).not.toBeNull();
+    // The swap as numbers (what the earlier check let through), and as slots.
+    expect(n(`That conversation ran about 1.3 minutes. Your longest turn ran 6 minutes, ${rest}`)).toBeNull();
+    expect(n(`That conversation ran about {longest_turn_min} minutes. Your longest turn ran {minutes} minutes, ${rest}`)).toBeNull();
+    // The model's sentence must name the turn for the turn's minutes, and the conversation for its own.
+    expect(n(`You talked for {longest_turn_min} minutes straight in a {minutes} minute conversation, ${rest}`)).toBeNull();
+  });
+  it("a swapped number cannot be accepted: two habits' rates, or a rate and its usual", () => {
+    // A recap whose headline is about "like" and whose narration is about hedges.
+    const slots: RecapSlots = {
+      values: { like_rate: "0.8", like_usual: "2.1", hedges_rate: "1.5", hedges_usual: "1.4", hedges_count: "3", like_count: "1", vague_count: "0", restarts_count: "0", minutes: "4", wpm: "138" },
+      template: {
+        headline: '"Like" was down: {like_rate} per 100 words against your usual {like_usual}.',
+        narration: "That conversation ran about {minutes} minutes. You hedged {hedges_count} times, {hedges_rate} per 100 words against your usual {hedges_usual}, and your pace held at {wpm} words a minute.",
+        wristText: "[coach] Recap: a typical talk, pace steady",
+      },
+    };
+    const recap = { moment: null } as never;
+    const n = (headline: string, narration = slots.template.narration) => acceptPhrasing({ headline, narration, wristText: slots.template.wristText }, recap, slots, principles);
+    expect(n('"Like" dropped to {like_rate} per 100 words, usually {like_usual}.')).toEqual({ headline: '"Like" dropped to 0.8 per 100 words, usually 2.1.', narration: fillSlots(slots.template.narration, slots.values), wristText: slots.template.wristText });
+    // The two habits' rate pairs traded: the like sentence carries the hedge slots (and the other way).
+    expect(n('"Like" was down: {hedges_rate} per 100 words against your usual {hedges_usual}.', "That conversation ran about {minutes} minutes. You hedged {hedges_count} times, {like_rate} per 100 words against your usual {like_usual}, and your pace held at {wpm} words a minute.")).toBeNull();
+    expect(n('"Like" was down: 1.5 per 100 words against your usual 1.4.')).toBeNull();
+    // A rate and its usual traded: "usual" points at the slot next to it.
+    expect(n('"Like" was down: {like_usual} per 100 words against your usual {like_rate}.')).toBeNull();
+    expect(n('"Like" was down to {like_rate} per 100 words from {like_usual}.')).toBeNull(); // the usual not marked as usual
   });
   it("hands callTool a sanitize hook, so a phrasing that echoes the principles is never cached (review H10)", async () => {
-    const r = recapOf(conversation());
+    const { recap, slots } = hedgy();
     let sanitize: ((x: unknown) => unknown) | undefined;
     const fake: PhraseFn = async (o) => ((sanitize = o.sanitize), { input: good, modelId: RECAP_LLM_MODEL });
-    await phraseRecap(r, principles, fake);
+    await phraseRecap(recap, slots, principles, fake);
     expect(sanitize).toBeTypeOf("function");
     expect(sanitize!(good)).toEqual(good);
     expect(sanitize!({ ...good, narration: "Remember to lead with the decision before the details." })).toBeNull();
