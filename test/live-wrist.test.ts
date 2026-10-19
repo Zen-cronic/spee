@@ -74,6 +74,21 @@ describe("BeeTodoWrist", () => {
     expect(res2).toMatchObject({ status: "scheduled", todoId: String(JSON.parse(landed).id) });
     expect(t.calls.map((c) => c.args[1])).toEqual(["create", "list"]);
   });
+  it("a create whose output has no id is checked against the list before any retry (one alarm, not three)", async () => {
+    let landed = "";
+    const r = rig((a) => {
+      if (a[1] === "create") return (landed = created(a)), "Created.";
+      if (a[1] === "list") return JSON.stringify([JSON.parse(landed)]);
+      return "{}";
+    });
+    const res = await r.w.send({ kind: "nudge", refId: "n3", text: "[coach] quiet create" });
+    expect(res).toMatchObject({ status: "scheduled", todoId: String(JSON.parse(landed).id) });
+    expect(r.calls.map((c) => c.args[1])).toEqual(["create", "list"]);
+    // a notice line before the JSON is read past
+    const n = rig((a) => (a[1] === "create" ? `A new version of bee is available.\n${created(a)}` : "[]"));
+    expect(await n.w.send({ kind: "nudge", refId: "n4", text: "[coach] notice first" })).toMatchObject({ status: "scheduled", todoId: String(nextId) });
+    expect(n.calls.map((c) => c.args[1])).toEqual(["create"]);
+  });
   it("opens the circuit after 3 consecutive failures, then fails fast", async () => {
     const r = rig(() => new Error("bee: not logged in"));
     const res = await r.w.send({ kind: "nudge", refId: "n1", text: "[coach] fail" });
@@ -126,6 +141,7 @@ describe("BeeTodoWrist", () => {
     expect(parseTodo('{"id":29154389,"text":"x","alarm_at":1792177029000}')).toEqual({ id: "29154389", alarmAt: 1792177029000 });
     expect(parseTodo('{"todo":{"id":"7","alarmAt":"2026-10-20T17:30:10Z"}}')).toEqual({ id: "7", alarmAt: T0 + 10_000 });
     expect(parseTodo("not json")).toBeNull();
+    expect(parseTodo('Update available\n{\n "id": 9,\n "alarm_at": 1792177029000\n}')).toEqual({ id: "9", alarmAt: 1792177029000 });
     expect(parseTodoList('[{"id":1,"text":"a","completed":false,"alarm_at":null}]')).toEqual([{ id: "1", text: "a", completed: false, alarmAt: null }]);
     expect(parseTodoList('{"items":[{"id":2}]}')[0]!.id).toBe("2");
     expect(alarmIso(T0 + 10_400)).toBe("2026-10-20T17:30:11Z");

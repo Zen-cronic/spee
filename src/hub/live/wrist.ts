@@ -139,11 +139,30 @@ const toMs = (v: unknown): number | null => {
   if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return Date.parse(v);
   return null;
 };
+// The JSON a CLI printed, or the last JSON value in its output when a notice line comes first
+// (an update banner, a warning). Throws when there is none.
+function cliJson(stdout: string): unknown {
+  try {
+    return JSON.parse(stdout);
+  } catch (err) {
+    const lines = stdout.split(/\r?\n/);
+    for (let i = lines.length - 1; i > 0; i--) {
+      if (!/^\s*[[{]/.test(lines[i]!)) continue;
+      try {
+        return JSON.parse(lines.slice(i).join("\n"));
+      } catch {
+        /* not the start of the value: look further up */
+      }
+    }
+    throw err;
+  }
+}
+
 // `bee todos create --json` printed {id, text, alarm_at (ms), completed, created_at, ...} on
-// 2026-10-16; read defensively (a wrapper object, string ids).
+// 2026-10-16; read defensively (a wrapper object, string ids, a notice line before the JSON).
 export function parseTodo(stdout: string): { id: string; alarmAt: number | null } | null {
   try {
-    const o = JSON.parse(stdout) as Record<string, any>;
+    const o = cliJson(stdout) as Record<string, any>;
     const t = (o && (o.todo ?? o.data ?? o)) as Record<string, unknown>;
     const id = t?.id;
     if (typeof id !== "number" && typeof id !== "string") return null;
@@ -160,7 +179,7 @@ export interface ListedTodo {
 }
 export function parseTodoList(stdout: string): ListedTodo[] {
   try {
-    const o = JSON.parse(stdout) as unknown;
+    const o = cliJson(stdout);
     const arr = (Array.isArray(o) ? o : ((o as Record<string, unknown>).todos ?? (o as Record<string, unknown>).items ?? (o as Record<string, unknown>).data ?? [])) as Record<string, unknown>[];
     return (Array.isArray(arr) ? arr : [])
       .filter((t) => t && (typeof t.id === "number" || typeof t.id === "string"))
@@ -348,8 +367,10 @@ export class BeeTodoWrist implements Wrist {
       for (let i = 0; i < attempts; i++) {
         if (this.circuitOpenUntil() != null) return this.fail(`wrist circuit open after ${this.failures} failures`);
         const alarm = Math.ceil((this.clock() + this.leadMs) / 1000) * 1000;
+        let ran = false; // the CLI exited 0: the to-do exists even if its output did not parse
         try {
           const out = await this.call(["todos", "create", "--text", req.text, "--alarm-at", alarmIso(alarm), "--json"]);
+          ran = true;
           const t = parseTodo(out);
           if (!t) throw new Error("bee todos create: no id in the output");
           return this.created(req, t.id, t.alarmAt ?? alarm);
@@ -357,8 +378,9 @@ export class BeeTodoWrist implements Wrist {
           last = errText(e);
           this.noteFailure();
           this.log("wrist.create.failed", { kind: req.kind, refId: req.refId, attempt: i + 1, error: last });
-          if (last === "timeout") {
-            // The create may have landed after all: adopt it rather than create a duplicate.
+          if (last === "timeout" || ran) {
+            // The create may have landed after all (a timeout, or output with no id): adopt it rather
+            // than create a duplicate alarm.
             const found = await this.call(["todos", "list", "--limit", "50", "--json"]).then(parseTodoList, () => [] as ListedTodo[]);
             const hit = found.find((x) => x.text === req.text && x.alarmAt != null && Math.abs(x.alarmAt - alarm) <= 2000);
             if (hit) return this.created(req, hit.id, hit.alarmAt!);
