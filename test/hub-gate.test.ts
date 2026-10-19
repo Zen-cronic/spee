@@ -66,11 +66,20 @@ describe("gate: what counts as public", () => {
       expect(env.pairToken).toBe(PAIR);
       expect(env.mcpToken).toBe(first.mcpToken);
       expect(JSON.parse(readFileSync(path, "utf8")).PAIR_TOKEN).toBe(first.pairToken);
-      // a broken file is replaced, never fatal
+      // reuse prints only the last 4 characters (review L54)
+      const lines: string[] = [];
+      resolveTokens({}, (l) => lines.push(l), path);
+      expect(lines.join("\n")).not.toContain(first.pairToken);
+      expect(lines.join("\n")).toContain(`…${first.pairToken.slice(-4)}`);
+      // a broken file never locks phones out: the last good copy is used (review L56)
       writeFileSync(path, "{nope");
-      const fresh = resolveTokens({}, () => {}, path);
-      expect(fresh.pairToken).not.toBe(first.pairToken);
-      expect(resolveTokens({}, () => {}, path).pairToken).toBe(fresh.pairToken);
+      expect(resolveTokens({}, () => {}, path).pairToken).toBe(first.pairToken);
+      expect(statSync(`${path}.bak`).mode & 0o777).toBe(0o600);
+      // --rotate-tokens makes new ones and saves them
+      const rotated = resolveTokens({}, () => {}, path, { rotate: true });
+      expect(rotated.pairToken).not.toBe(first.pairToken);
+      expect(resolveTokens({}, () => {}, path).pairToken).toBe(rotated.pairToken);
+      expect(statSync(path).mode & 0o777).toBe(0o600);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

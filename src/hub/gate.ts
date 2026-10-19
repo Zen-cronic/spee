@@ -28,16 +28,17 @@
 //      (ports 5183 tv/web, 5184 web/phone, 5175 web/sim) and HUB_ALLOWED_ORIGINS (comma-separated).
 //    CORS answers echo an allowed Origin (never `*`) with `vary: origin`.
 //
-// When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated, printed once on the console and
-// saved to <stateDir>/tokens.json (git-ignored, mode 0600); later starts reuse it, so a hub restart
-// does not lock out every paired phone and MCP client (review M40). Tokens never appear in a response or a log, with one exception by design: a WebSocket peer
+// When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated, printed in full once (the start
+// that generates it) and saved to <stateDir>/tokens.json (git-ignored, mode 0600). Later starts reuse
+// it, so a hub restart does not lock out every paired phone and MCP client (review M40), and print
+// only its last 4 characters. `--rotate-tokens` (rotateTokens) generates new ones, which unpairs
+// every phone: do it after a recording or a shared log showed a token or the TV's pairing QR. Tokens never appear in a response or a log, with one exception by design: a WebSocket peer
 // that presented the pair token, or a trusted one with an allowed (or no) Origin, gets
 // `welcome.joinUrl` with #k= (a URL fragment) so the TV can show it as a QR code (src/hub/bridgeGuard.ts).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
-import { dirname } from "node:path";
+import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import type { Duplex } from "node:stream";
 
 export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (?k=$PAIR_TOKEN)"];
@@ -59,10 +60,10 @@ export interface GateOptions {
 }
 const gopts = (o: GateOptions | string[] | undefined): GateOptions => (Array.isArray(o) ? { extraLanHosts: o } : (o ?? {}));
 
-// Tokens from the environment, else the ones saved by an earlier start in `savePath`, else generated
-// (and saved there). The value is printed through `print` unless it came from the environment.
-export function resolveTokens(env: Record<string, string | undefined> = process.env, print: (line: string) => void = (l) => console.log(l), savePath: string | null = null): GateTokens {
-  const saved = savePath ? readSavedTokens(savePath, print) : {};
+// Tokens from the environment, else the ones saved by an earlier start in `savePath` (unless
+// `rotate`), else generated and saved there. A token is printed in full only when generated.
+export function resolveTokens(env: Record<string, string | undefined> = process.env, print: (line: string) => void = (l) => console.log(l), savePath: string | null = null, opts: { rotate?: boolean } = {}): GateTokens {
+  const saved = savePath && !opts.rotate ? readSavedTokens(savePath, print) : {};
   const toSave: Record<string, string> = {};
   const one = (name: "PAIR_TOKEN" | "MCP_TOKEN"): [string, "env" | "generated"] => {
     const v = env[name]?.trim();
@@ -73,7 +74,7 @@ export function resolveTokens(env: Record<string, string | undefined> = process.
     const old = saved[name];
     if (old) {
       toSave[name] = old;
-      print(`hub: ${name} is unset; reusing the one saved in ${savePath}: ${old}  (delete that file to get a new one)`);
+      print(`hub: ${name} is unset; reusing the one saved in ${savePath} (…${old.slice(-4)}; --rotate-tokens makes a new one and unpairs every phone)`);
       return [old, "generated"];
     }
     const t = randomBytes(18).toString("base64url");
@@ -85,9 +86,7 @@ export function resolveTokens(env: Record<string, string | undefined> = process.
   const [mcpToken, mcp] = one("MCP_TOKEN");
   if (savePath && Object.keys(toSave).length && (toSave.PAIR_TOKEN !== saved.PAIR_TOKEN || toSave.MCP_TOKEN !== saved.MCP_TOKEN)) {
     try {
-      mkdirSync(dirname(savePath), { recursive: true });
-      writeFileSync(savePath, JSON.stringify({ ...saved, ...toSave }) + "\n", { mode: 0o600 });
-      chmodSync(savePath, 0o600);
+      writeJsonAtomic(savePath, { ...(opts.rotate ? {} : saved), ...toSave }, { mode: 0o600 });
     } catch (err) {
       print(`hub: warning: could not save the generated tokens (${(err as Error).message}); a restart will make new ones`);
     }
@@ -96,15 +95,9 @@ export function resolveTokens(env: Record<string, string | undefined> = process.
 }
 
 function readSavedTokens(path: string, print: (line: string) => void): Partial<Record<"PAIR_TOKEN" | "MCP_TOKEN", string>> {
-  if (!existsSync(path)) return {};
-  try {
-    const j = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-    const ok = (v: unknown) => (typeof v === "string" && v.length >= 16 ? v : undefined);
-    return { PAIR_TOKEN: ok(j.PAIR_TOKEN), MCP_TOKEN: ok(j.MCP_TOKEN) };
-  } catch {
-    print(`hub: warning: ${path} does not parse; generating new tokens`);
-    return {};
-  }
+  const j = readJsonSafe<Record<string, unknown>>(path, () => ({}), (m) => print(`hub: warning: ${m}`));
+  const ok = (v: unknown) => (typeof v === "string" && v.length >= 16 ? v : undefined);
+  return j && typeof j === "object" ? { PAIR_TOKEN: ok(j.PAIR_TOKEN), MCP_TOKEN: ok(j.MCP_TOKEN) } : {};
 }
 
 const digest = (s: string) => createHash("sha256").update(s).digest();

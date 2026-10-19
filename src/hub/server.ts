@@ -45,8 +45,9 @@ export interface HubServerOptions {
   setup?: Setup; // inject (tests)
   fixtureV2?: boolean; // demo only: the v2 live routes answer from fixtures/contract-v2/
   plugins?: HubPlugin[]; // inject (tests); default: the fixed registry (plugins.ts)
-  pairToken?: string; // default: env PAIR_TOKEN, else generated and printed once
-  mcpToken?: string; // default: env MCP_TOKEN, else generated and printed once
+  pairToken?: string; // default: env PAIR_TOKEN, else saved in <stateDir>/tokens.json or generated
+  mcpToken?: string; // default: env MCP_TOKEN, else saved in <stateDir>/tokens.json or generated
+  rotateTokens?: boolean; // ignore the saved tokens and generate new ones (CLI --rotate-tokens)
   publicBaseUrl?: string | null; // default: env PUBLIC_BASE_URL (the tunnel's https origin)
   extraLanHosts?: string[]; // more Host names to treat as LAN (tests)
   trustLan?: boolean; // trust LAN devices like loopback (default: env HUB_TRUST_LAN=1, else false)
@@ -114,7 +115,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const print = (line: string) => {
     if (!opts.quiet) console.log(line);
   };
-  const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print, setup.stateDir ? join(setup.stateDir, "tokens.json") : null);
+  const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print, setup.stateDir ? join(setup.stateDir, "tokens.json") : null, { rotate: !!opts.rotateTokens });
   const publicBaseUrl = ((opts.publicBaseUrl === undefined ? process.env.PUBLIC_BASE_URL : opts.publicBaseUrl) ?? "").trim().replace(/\/+$/, "") || null;
   const extraLanHosts = opts.extraLanHosts ?? [];
   const trustLan = opts.trustLan ?? process.env.HUB_TRUST_LAN === "1";
@@ -591,6 +592,7 @@ if (process.argv[1] && /server\.(ts|js)$/.test(process.argv[1])) {
     stateDir: opt("--state-dir"),
     fixtureV2: args.includes("--fixture-v2"),
     trustLan: args.includes("--lan") ? true : undefined,
+    rotateTokens: args.includes("--rotate-tokens"),
   }).catch((err) => {
     console.error(`hub: ${(err as Error).message}`);
     killChildren("SIGKILL");

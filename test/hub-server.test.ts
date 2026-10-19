@@ -19,11 +19,19 @@ const post = async (p: string, b: unknown = {}) => {
   return { status: r.status, body: (await r.json()) as any };
 };
 
+// The hub saves generated tokens only; exported ones (as the startup line suggests) must not change
+// what this file asserts (review L53).
+const envTokens = { PAIR_TOKEN: process.env.PAIR_TOKEN, MCP_TOKEN: process.env.MCP_TOKEN };
 beforeAll(async () => {
+  delete process.env.PAIR_TOKEN;
+  delete process.env.MCP_TOKEN;
   stateDir = mkdtempSync(join(tmpdir(), "hub-"));
   s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir }) });
 });
-afterAll(async () => s.close());
+afterAll(async () => {
+  await s.close();
+  for (const [k, v] of Object.entries(envTokens)) if (v !== undefined) process.env[k] = v;
+});
 
 describe("hub server (demo)", () => {
   it("rejects what the contract does not allow", async () => {

@@ -3,13 +3,16 @@
 // copied to <path>.bak; a file that does not parse is moved aside to <path>.corrupt-<time> and the
 // .bak is used instead, so one bad write never stops the hub from starting. All of these sit next
 // to the state file, in the same git-ignored directory.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-export function writeJsonAtomic(path: string, data: unknown): void {
+// `mode` (for example 0o600 for secrets) is applied to the tmp file before the rename, so the file is
+// never readable more widely, even for a moment.
+export function writeJsonAtomic(path: string, data: unknown, opts: { mode?: number } = {}): void {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, JSON.stringify(data, null, 1) + "\n");
+  writeFileSync(tmp, JSON.stringify(data, null, 1) + "\n", opts.mode === undefined ? undefined : { mode: opts.mode });
+  if (opts.mode !== undefined) chmodSync(tmp, opts.mode); // a leftover tmp keeps its old mode otherwise
   renameSync(tmp, path);
 }
 
