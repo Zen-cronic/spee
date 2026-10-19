@@ -148,6 +148,18 @@ describe("gate: the hub server", () => {
         ws.on("error", () => done("rejected"));
       });
     expect(await sub(PAIR)).toEqual({ result: "welcome", protocol: WS_PROTOCOL });
+    // Whatever order a client offers them in, or the token alone: the response never carries the token.
+    const tokenProto = wsProtocols(PAIR)![1]!;
+    const answered = (offered: string[]) =>
+      new Promise<string | undefined>((resolve) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${s.port}/ws`, offered, { headers: NGROK });
+        ws.on("upgrade", (res) => resolve(res.headers["sec-websocket-protocol"] as string | undefined));
+        ws.on("error", () => undefined);
+        ws.on("close", () => resolve("closed before upgrade"));
+        setTimeout(() => ws.terminate(), 500);
+      });
+    expect(await answered([tokenProto, WS_PROTOCOL])).toBe(WS_PROTOCOL);
+    expect(await answered([tokenProto])).toBeUndefined();
     expect((await sub("wrong-token-wrong")).result).toBe("rejected");
     expect(protocolToken(wsProtocols("tök en/+=")!.join(", "))).toBe("tök en/+=");
     const lan = await wsOutcome(s.port, "");

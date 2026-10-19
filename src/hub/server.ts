@@ -23,7 +23,7 @@ import { parseRange, parseSource } from "./stats.js";
 import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
-import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, type PluginInfo, type RoomTopic } from "./contract.js";
+import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, WS_PROTOCOL, type PluginInfo, type RoomTopic } from "./contract.js";
 import { addressKind, bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, tunnelWarning, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
 import { guardBridge } from "./bridgeGuard.js";
 import { installProcessGuards, killChildren } from "./processGuards.js";
@@ -190,6 +190,9 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     joinUrl: baseJoinUrl, // ?k= is added only for authenticated peers (bridgeGuard.ts)
     log: (event, data) => log(`bridge.${event}`, data),
     roomGraceMs: ROOM_GRACE_MS,
+    // The phone offers [WS_PROTOCOL, "k.<token>"]. Only WS_PROTOCOL may be selected, so the pair token
+    // never comes back in the Sec-WebSocket-Protocol response header (tunnel inspectors record it).
+    protocols: [WS_PROTOCOL],
     // Behind ngrok every peer arrives from the tunnel's loopback socket, so key the hello and
     // wrong-code limits on the client address ngrok appends (the last x-forwarded-for entry). Only a
     // loopback socket (the tunnel agent) may name it: a direct peer that sends its own header is

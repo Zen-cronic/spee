@@ -12,7 +12,9 @@ export const CONTRACT_VERSION = 2 as const;
 
 // The phone's pair token on the /ws upgrade: offered as the WebSocket subprotocols
 // [WS_PROTOCOL, WS_TOKEN_PREFIX + base64url(token)], so it never sits in a URL (proxy and tunnel
-// access logs). The hub selects WS_PROTOCOL and never echoes the token. ?k=<token> still works.
+// access logs). The hub lists only WS_PROTOCOL as selectable (BridgeHub's `protocols`), so it answers
+// with WS_PROTOCOL and never with the token, whatever order a client offers them in; a client that
+// offers only the token gets no subprotocol back. ?k=<token> still works.
 export const WS_PROTOCOL = "speaking-mirror" as const;
 export const WS_TOKEN_PREFIX = "k." as const;
 

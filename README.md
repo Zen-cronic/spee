@@ -77,7 +77,7 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
   - The drilled and control habits are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any drill attempt).
   - The endpoint refuses to report an unregistered habit as drilled.
 - **Privacy.** Stream text stays in memory until Bee tags it as the wearer. Untagged and other-speaker lines are never sent to a surface or written to disk.
-- **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.1.tgz`.
+- **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.2.tgz`.
 
 ## Privacy design
 
