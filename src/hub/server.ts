@@ -24,7 +24,7 @@ import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
 import { CONTRACT_VERSION, ROOM_RELAY_MAX_HZ, ROOM_TOPICS, type PluginInfo, type RoomTopic } from "./contract.js";
-import { bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
+import { addressKind, bearerOk, gateHttp, installUpgradeGate, isPublicRequest, mustAuthenticate, originPolicy, PUBLIC_ROUTES, resolveTokens, tokenEquals, type GateOptions, type GateTokens, type UpgradeDecision } from "./gate.js";
 import { guardBridge } from "./bridgeGuard.js";
 import { installProcessGuards, killChildren } from "./processGuards.js";
 import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
@@ -189,11 +189,15 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     log: (event, data) => log(`bridge.${event}`, data),
     roomGraceMs: ROOM_GRACE_MS,
     // Behind ngrok every peer arrives from the tunnel's loopback socket, so key the hello and
-    // wrong-code limits on the client address ngrok appends (the last x-forwarded-for entry).
+    // wrong-code limits on the client address ngrok appends (the last x-forwarded-for entry). Only a
+    // loopback socket (the tunnel agent) may name it: a direct peer that sends its own header is
+    // keyed on its socket, so a fresh header per upgrade buys no fresh budget (review L40).
     rateKey: (req) => {
+      const addr = req.socket.remoteAddress ?? "unknown";
+      if (addressKind(addr) !== "loopback") return addr;
       const xff = req.headers["x-forwarded-for"];
       const last = (Array.isArray(xff) ? xff.join(",") : xff ?? "").split(",").map((s) => s.trim()).filter(Boolean).pop();
-      return last ? `fwd:${last}` : req.socket.remoteAddress ?? "unknown";
+      return last ? `fwd:${last}` : addr;
     },
     onRoomClose: guarded("onRoomClose", undefined, (room: Room) => {
       const sweep = roomSweeps.get(room.code);
