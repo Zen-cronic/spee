@@ -13,7 +13,7 @@ import { WORDMARK } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
 import { listen, speechCtor, type Listener, type SpeechRec } from "./speech.js";
-import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
+import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const now = () => performance.timeOrigin + performance.now();
@@ -91,7 +91,14 @@ function onEvent(topic: string, p: Record<string, any>) {
     return;
   }
   const id = p.attempt?.id ?? p.attemptId;
-  if (!myAttempt || id !== myAttempt) return;
+  if (!id || !ATTEMPT_TOPICS.has(topic)) return;
+  if (id !== myAttempt) {
+    // Bee can grade a line it already heard before this phone's intent names the attempt (the wearer
+    // typed what they had just said): keep it for onIntent (review L38).
+    early.push([topic, p]);
+    if (early.length > 20) early.shift();
+    return;
+  }
   if (topic === "attempt.status") stage("wait", "Checking with Bee (stream timed out, asking the Bee CLI)…");
   if (topic === "attempt.verified") stage(p.status === "verified" ? "bee" : "bad", p.status === "verified" ? `Verified by Bee (speaker ${p.speakerScore ?? "–"}, ${p.latencyMs ?? "–"} ms)` : `Not verified: ${p.reason}`);
   if (topic === "attempt.graded") {
@@ -102,6 +109,9 @@ function onEvent(topic: string, p: Record<string, any>) {
   }
 }
 
+const ATTEMPT_TOPICS = new Set(["attempt.status", "attempt.verified", "attempt.graded"]);
+const early: [string, Record<string, any>][] = [];
+
 function onIntent(m: IntentMsg) {
   if (m.from !== client?.clientId) return;
   const p = (m.payload ?? {}) as Record<string, any>;
@@ -109,6 +119,9 @@ function onIntent(m: IntentMsg) {
     myAttempt = p.attemptId ?? null;
     stage(p.provisionalPass ? "ok" : "bad", `Preview: ${p.provisionalPass ? "pass" : "fail"} (provisional)`, true);
     stage("wait", "Waiting for Bee to hear you…");
+    const mine = early.filter(([, p]) => (p.attempt?.id ?? p.attemptId) === myAttempt);
+    early.length = 0;
+    for (const [topic, p] of mine) onEvent(topic, p);
   } else if (m.name === "attempt.rejected") stage("bad", `Not sent: ${p.message ?? p.error ?? "open a card first"}`, true);
   else if (m.name === "practice.summary") $("take-state").textContent = m.ok ? `The TV has the summary (event ${p.seq}).` : `The hub refused the summary: ${p.message ?? p.error}`;
 }
@@ -133,7 +146,7 @@ function setupDrillVoice() {
   mic.onclick = () => {
     if (rec) return rec.stop();
     rec = new SR();
-    rec.lang = "en-US";
+    rec.lang = speechLang(card); // the card's language: a French card is dictated in French (review L47)
     rec.interimResults = true;
     rec.continuous = false;
     utteranceId = `utt_${Date.now().toString(36)}`;

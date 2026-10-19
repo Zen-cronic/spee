@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeMeters, sanitizeSummary } from "../src/hub/mirror.js";
 import { ProsodyEngine, synthVoice } from "../web/phone/src/prosody.js";
-import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, takeSummary, wsUrl, type MicPhase } from "../web/phone/src/take.js";
+import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsUrl, type MicPhase } from "../web/phone/src/take.js";
 
 describe("join URL", () => {
   it("reads the room code and the pair token from /p/<code>?k=...", () => {
@@ -69,5 +69,13 @@ describe("sessionOverLine (review M20)", () => {
     expect(sessionOverLine({ passed: 2, failed: 1, unverified: 0, beeOverrules: 1 })).toBe("Session over: 2 passed, 1 failed, 0 unverified, Bee overruled 1.");
     expect(sessionOverLine(null)).toBe("Session over.");
     expect(sessionOverLine({ passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
+  });
+});
+
+describe("speechLang (review L47)", () => {
+  it("dictates a card in its own language", () => {
+    expect(speechLang({ lang: "fr" } as any)).toBe("fr-FR");
+    expect(speechLang({ lang: "en" } as any)).toBe("en-US");
+    expect(speechLang(null)).toBe("en-US");
   });
 });

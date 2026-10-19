@@ -1,7 +1,7 @@
 // Pure helpers for the phone page: the join URL, practice-take frames and the take summary in the
 // contract's shapes (src/hub/contract.ts). No DOM, so test/phone-take.test.ts can run them against
 // the hub's own sanitizer.
-import type { PracticeMeters, PracticeSummary, SessionSummary } from "../../../src/hub/contract.js";
+import type { CardView, PracticeMeters, PracticeSummary, SessionSummary } from "../../../src/hub/contract.js";
 import type { MeterCore, SummaryCore } from "./prosody.js";
 
 export interface Join {
@@ -74,3 +74,6 @@ export function sessionOverLine(s: Partial<SessionSummary> | null | undefined): 
   if (!s) return "Session over.";
   return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.pending ? `, ${s.pending} still with Bee` : ""}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
 }
+
+// The dictation language for a drill card: French cards in French, everything else in US English.
+export const speechLang = (card: Pick<CardView, "lang"> | null | undefined): string => (card?.lang === "fr" ? "fr-FR" : "en-US");
