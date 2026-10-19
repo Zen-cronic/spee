@@ -147,13 +147,21 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card: c2 }), now: 0 }, { type: "event", event: ev(2, "attempt.status", { attemptId: "a2", cardId: "c2", status: "polling", reason: "r" }), now: 1 });
     expect(s.drill).toMatchObject({ stage: "checking", attemptId: "a2", checking: { reason: "r" } });
   });
-  it("DRILLS TODAY reads today's tally from stats.updated, not the week's", () => {
+  it("DRILLS TODAY reads today's tally from the hub.state snapshot, then stats.updated, never an older count", () => {
     const today = { attempts: 2, counted: 2, passed: 1, unverified: 0, beeOverrules: 0 };
-    let s = run(initialMirror(), { type: "practiceToday", practice: { ...today, passed: 0 } });
+    const snap = (lastSeq: number, practiceToday: unknown) => ({ type: "hubState", state: { mode: "live", dataLabel: "x", bootId: "b1", lastSeq, state: "idle", narration: "", verdictReady: false, retryAfterMs: null, session: null, openCard: null, lastAttempt: null, deck: null, practiceToday, bee: {} } as any, now: 0 }) as MirrorAction;
+    let s = run(initialMirror(), snap(4, { ...today, passed: 0 }));
     expect(s.practiceToday?.passed).toBe(0);
-    s = run(s, { type: "event", event: ev(1, "stats.updated", { dataLabel: "x", practiceToday: today, weekPer100: {}, transferHeadline: null, deck: null }), now: 0 });
+    s = run(s, { type: "event", event: ev(5, "stats.updated", { dataLabel: "x", practiceToday: today, weekPer100: {}, transferHeadline: null, deck: null }), now: 0 });
     expect(s.practiceToday).toEqual(today);
     expect(s.statsVersion).toBe(1);
+    // A stats.updated the snapshot already reflects (seq at or below its lastSeq) is not applied again.
+    s = run(initialMirror(), snap(6, today), { type: "event", event: ev(5, "stats.updated", { dataLabel: "x", practiceToday: { ...today, passed: 0 }, weekPer100: {}, transferHeadline: null, deck: null }), now: 0 });
+    expect(s.practiceToday).toEqual(today);
+    // The local day turned on the hub: its stats.updated carries a zero tally.
+    const zero = { attempts: 0, counted: 0, passed: 0, unverified: 0, beeOverrules: 0 };
+    s = run(s, { type: "event", event: ev(7, "stats.updated", { dataLabel: "x", practiceToday: zero, weekPer100: {}, transferHeadline: null, deck: null }), now: 1 });
+    expect(s.practiceToday).toEqual(zero);
   });
   it("a phone's focus from another room is ignored; a screen's or Alexa's reaches every room", () => {
     let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: focus(1, "practice", { takeId: "t-other", room: "AB2C" }), now: 0 });

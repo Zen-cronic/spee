@@ -198,6 +198,9 @@ export interface HubState {
   openCard: CardView | null;
   lastAttempt: Attempt | null;
   deck: DeckSummary;
+  // Today's drill tally (the hub's local day) as of this snapshot; stats.updated carries it after,
+  // and the hub publishes stats.updated again when the local day turns. Optional: older hubs omit it.
+  practiceToday?: PracticeCounts;
   bee: BeeFeedStatus;
 }
 export interface SessionResponse extends HubState {

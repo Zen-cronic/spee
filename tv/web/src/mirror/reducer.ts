@@ -117,7 +117,7 @@ export interface MirrorState {
   recapShownAt: number | null;
   recapWanted: string | null; // a focus asked for a recap id we do not hold yet
   statsVersion: number; // bumped on stats.updated: refetch stats and transfer
-  practiceToday: PracticeCounts | null; // today's drill tally (stats.updated, or GET /api/stats?range=today)
+  practiceToday: PracticeCounts | null; // today's drill tally: the hub.state snapshot, then stats.updated (sent again when the hub's day turns)
   lastTopic: string | null;
 }
 
@@ -131,7 +131,6 @@ export type MirrorAction =
   | { type: 'recapFetched'; ok: boolean }
   | { type: 'dismissRecap' }
   | { type: 'liveState'; live: LiveState }
-  | { type: 'practiceToday'; practice: PracticeCounts }
   | { type: 'recap'; recap: Recap; show: boolean; now: number };
 
 const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });
@@ -200,8 +199,6 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
     case 'recapFetched':
       // a finished fetch (found or not) clears the request, so the next "show my recap" fetches again
       return s.recapWanted === null ? s : { ...s, recapWanted: null };
-    case 'practiceToday':
-      return { ...s, practiceToday: a.practice };
     case 'liveState':
       return { ...s, live: { ...s.live, mode: a.live.mode, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
@@ -230,6 +227,8 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
     dataLabel: h.dataLabel,
     synthetic: isSynthetic(h.dataLabel) || h.mode === 'demo',
     replay: s.replay || !!h.bee?.replay,
+    // In the same snapshot as lastSeq, so a later stats.updated (seq above it) always wins.
+    practiceToday: h.practiceToday ?? s.practiceToday,
     drill: d,
   };
 }

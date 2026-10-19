@@ -352,6 +352,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const tick = setInterval(() => {
     try {
       hub.expireIdle();
+      hub.rollDay(); // a new local day: publish stats.updated so screens drop yesterday's tally
       hub.verifier.purge(); // outside the guard: a hung poll must not keep other speakers' text in memory
     } catch (err) {
       log("hub.expire-error", { error: String((err as Error)?.message ?? err) });

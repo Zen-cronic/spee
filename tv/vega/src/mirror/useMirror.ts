@@ -102,15 +102,6 @@ export function useMirror(cfg: MirrorConfig) {
       alive = false;
     };
   }, [status, state.statsVersion, cfg.httpBase]);
-  // today's drill tally until the first stats.updated carries it (the week's practice block counts 7 days)
-  useEffect(() => {
-    if (status !== 'online') return;
-    let alive = true;
-    void getJson<StatsResponse>(`${cfg.httpBase}/api/stats?range=today`).then((r) => alive && r?.practice && dispatch({ type: 'practiceToday', practice: r.practice }));
-    return () => {
-      alive = false;
-    };
-  }, [status, cfg.httpBase]);
   useEffect(() => {
     if (status !== 'online') return;
     void getJson<LiveState>(`${cfg.httpBase}/api/live`).then((r) => r && r.mode && dispatch({ type: 'liveState', live: r }));

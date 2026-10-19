@@ -399,7 +399,7 @@ Connect with the bridge client (`tv-voice-bridge`, vendored as `vendor/tv-voice-
 **Hub to every peer** (every room, every role): each event is `{"type":"app","topic":"<event>","payload":{seq, at, ...}}`.
 
 - `seq` increases strictly across all events. Render in `seq` order and drop duplicates by `seq`.
-- On joining, a peer gets `hub.state` (`seq: 0`), the same object as `GET /api/state`. It carries `bootId` (new on every hub start) and `lastSeq` (the last `seq` published when the snapshot was taken); both are optional for older hubs.
+- On joining, a peer gets `hub.state` (`seq: 0`), the same object as `GET /api/state`. It carries `bootId` (new on every hub start) and `lastSeq` (the last `seq` published when the snapshot was taken); both are optional for older hubs. It also carries `practiceToday`, today's drill tally (the hub's local day), so a screen needs no separate fetch for DRILLS TODAY; `stats.updated` carries it after that, and the hub publishes `stats.updated` again when its local day turns, so a screen left on overnight shows a zero tally, not yesterday's.
   - **Reconnect** (same `bootId`): events at or below `lastSeq` are already in the snapshot; apply the ones above it.
   - **Restart** (a different `bootId`): `seq` started again at 1, so drop the old high-water mark. Without this, a TV that had seen seq 340 ignored the next 340 events.
 - **Drill sessions expire.** A session (or a lone open card) with no card, attempt or verdict for 10 minutes is ended (`session.ended`), unless Bee is still checking an attempt. Alexa's `SessionEndedRequest` also ends the session that skill session started (its id rides in the session attributes); a session started since by anyone else is left alone. Either way, an abandoned drill does not keep live nudges muted as `drill-active` or keep matching everyday speech as attempts.
@@ -435,7 +435,7 @@ Bridge intent on a phone attempt:
 | `attempt.status` | the stream timed out; polling | `{attemptId, cardId, status: "polling", reason}` |
 | `attempt.verified` | Bee confirmed, or gave up | `{attemptId, cardId, status: "verified"\|"unverified", via: "stream"\|"poll"\|null, speakerScore, latencyMs, beeText, replay, reason}` |
 | `attempt.graded` | Bee's text graded (only after `verified`) | `{attempt (status graded, counted, final, agreement, box), card, deck}` |
-| `stats.updated` | after every settled attempt | `{dataLabel, practiceToday, weekPer100: {words, hedges, vague, fillers, restarts}, transferHeadline, deck}` |
+| `stats.updated` | after every settled attempt, and when the hub's local day turns | `{dataLabel, practiceToday, weekPer100: {words, hedges, vague, fillers, restarts}, transferHeadline, deck}` |
 | `session.ended` | a session ends; sent again with the updated summary when Bee settles one of its attempts late (and no drill has started since) | `{summary}` |
 
 Order per attempt:

@@ -99,3 +99,31 @@ describe("a Bee line counts once, and only after the card opened", () => {
     expect(ok?.beeUtteranceIds).toEqual([2, 3]);
   });
 });
+
+describe("today's drill tally on the screens", () => {
+  it("is in the join snapshot, and stats.updated goes out again when the hub's local day turns", () => {
+    const setup = demoSetup({ pace: 0.01, stateDir: null });
+    setup.stop();
+    setup.hub.dispose();
+    const opts = (setup.hub as unknown as { opts: ConstructorParameters<typeof CoachHub>[0] }).opts;
+    // 23:59:58 in Toronto (EDT, UTC-4) on 2026-10-20, with two drills earlier that day.
+    let now = Date.parse("2026-10-21T03:59:58Z");
+    const earlier = (id: string, h: number): Attempt => ({ ...(opts.attempts ?? [])[0]!, id, status: "graded", counted: true, final: { source: "bee", pass: true } as Attempt["final"], createdAt: now - h * 3600_000 });
+    const hub = new CoachHub({ ...opts, clock: () => now, attempts: [earlier("t1", 2), earlier("t2", 1)] });
+    const published: { topic: string; payload: Record<string, unknown> }[] = [];
+    hub.on("event", (e) => published.push(e));
+    expect(hub.sessionState().practiceToday).toMatchObject({ attempts: 2, counted: 2, passed: 2 });
+    expect(hub.rollDay()).toBe(false); // first look: remembers the day, publishes nothing
+    now += 1500; // 23:59:59.5
+    expect(hub.rollDay()).toBe(false);
+    now += 1000; // 00:00:00.5 the next day
+    expect(hub.rollDay()).toBe(true);
+    const stats = published.filter((e) => e.topic === "stats.updated");
+    expect(stats).toHaveLength(1);
+    expect(stats[0]!.payload.practiceToday).toEqual({ attempts: 0, counted: 0, passed: 0, unverified: 0, beeOverrules: 0 });
+    expect(hub.sessionState().practiceToday).toMatchObject({ attempts: 0 });
+    now += 5000;
+    expect(hub.rollDay()).toBe(false); // once per day
+    hub.dispose();
+  });
+});

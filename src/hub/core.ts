@@ -14,7 +14,7 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEven
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
-import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type SequencedTopic } from "./contract.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, type DrillEvent, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
@@ -75,6 +75,14 @@ export interface HubOptions {
 const ids = { n: 0 };
 export const DRILL_IDLE_MS = 10 * 60_000;
 const newId = (p: string, now: number) => `${p}_${now.toString(36)}${(ids.n++).toString(36).padStart(3, "0")}`;
+
+const practiceCounts = (as: Attempt[]): PracticeCounts => ({
+  attempts: as.length,
+  counted: as.filter((a) => a.counted).length,
+  passed: as.filter((a) => a.final?.pass).length,
+  unverified: as.filter((a) => a.status === "unverified").length,
+  beeOverrules: as.filter((a) => a.agreement === "bee-overrules").length,
+});
 
 export class CoachHub extends EventEmitter {
   readonly mode: "live" | "demo";
@@ -494,6 +502,7 @@ export class CoachHub extends EventEmitter {
       openCard: openCard ? this.view(openCard) : null,
       lastAttempt: lastShown,
       deck: this.deckSummary(),
+      practiceToday: this.practiceToday(),
       bee: { replay: !!this.opts.replay, pendingVerifications: this.verifier.pendingCount(), lastEventAt: this.verifier.lastEventAt, counters: this.verifier.counters },
     };
   }
@@ -559,13 +568,7 @@ export class CoachHub extends EventEmitter {
       sessions: ss.map((s) => ({ id: s.id, kind: s.kind, date: localDate(s.startMs, this.tz), words: habitRates([s]).words, synthetic: !!s.synthetic })),
       habits: habitRates(ss),
       talk: talkSummary(ss),
-      practice: as && {
-        attempts: as.length,
-        counted: as.filter((a) => a.counted).length,
-        passed: as.filter((a) => a.final?.pass).length,
-        unverified: as.filter((a) => a.status === "unverified").length,
-        beeOverrules: as.filter((a) => a.agreement === "bee-overrules").length,
-      },
+      practice: as && practiceCounts(as),
       drilledVsNextSession: nextSessionDeltas(this.sessions, this.drillEvents(), this.tz, source).map((d) => ({
         ...d,
         preregistered: !!this.prereg && isRegistered(d.habit, new Set([...this.prereg.drilled, ...this.prereg.control].map((h) => h.habit))),
@@ -581,10 +584,32 @@ export class CoachHub extends EventEmitter {
     return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLineKeys }) };
   }
 
+  // Today's drill tally (the hub's local day), without computing the rest of the stats.
+  practiceToday(): PracticeCounts {
+    const today = this.today();
+    return practiceCounts(this.attempts.filter((a) => localDate(a.createdAt, this.tz) === today));
+  }
+
+  // The day the screens' tally was last published for. When the local day turns, publish again, so
+  // a TV left on overnight does not show yesterday's drills as today's. Checked at most once a second.
+  private statsDay: string | null = null;
+  private dayCheckedAt = -Infinity;
+  rollDay(): boolean {
+    const now = this.clock();
+    if (now - this.dayCheckedAt < 1000) return false;
+    this.dayCheckedAt = now;
+    const today = this.today();
+    if (this.statsDay === null) this.statsDay = today;
+    if (today === this.statsDay) return false;
+    this.publishStats();
+    return true;
+  }
+
   publishStats() {
     const week = this.stats({ kind: "week" });
     const t = this.transfer();
-    const today = this.stats({ kind: "today" }).practice!;
+    const today = this.practiceToday();
+    this.statsDay = this.today();
     this.publish("stats.updated", {
       dataLabel: this.dataLabel,
       practiceToday: today,
