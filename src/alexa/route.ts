@@ -1,7 +1,8 @@
 // Intent routing (packet C). The interaction model has a catch-all AttemptIntent ("{attempt}") so
 // Alexa hands over the user's drill sentence verbatim. On a real device (2026-10-16) the catch-all
 // also swallowed "how did I do", so commands said inside it are rescued here by whole-utterance
-// match: a drill sentence that merely contains "next" or "stop" stays an attempt. Pure.
+// match: a drill sentence that merely contains "next" or "stop" stays an attempt. Pure, and shared
+// with the browser simulator (web/sim/src/router.ts), so both surfaces route the same words alike.
 import type { AlexaIntent } from "../hub/contract.js";
 import type { AlexaRequestEnvelope } from "./types.js";
 
@@ -59,6 +60,9 @@ export function parseMinutes(s: string | undefined | null): number | null {
   return NUMBER_WORDS[t] ?? null;
 }
 
+// Live coaching minutes as the hub takes them: whole minutes, 1 to 180.
+export const clampMinutes = (m: number | null | undefined): number | undefined => (m ? Math.max(1, Math.min(180, Math.round(m))) : undefined);
+
 const HOW_DID_I_DO = "(how did i do|how'd i do|how did that go|how did it go|how was that|did i pass|did i get it|did that pass|what's the verdict|what is the verdict|verdict)( (on|with) (that|it|this one))?( this time)?";
 const RULES: [AlexaIntent, RegExp][] = [
   ["HowDidIDoIntent", new RegExp(`^${HOW_DID_I_DO}$`)],
@@ -82,8 +86,20 @@ export function classifyUtterance(text: string): { intent: AlexaIntent; minutes:
   }
   // A drill sentence with "how did I do" run on: grade the sentence; the verdict needs turn 2.
   const merged = new RegExp(`^(.+?) ${HOW_DID_I_DO}$`).exec(n);
-  if (merged && merged[1]!.split(" ").length >= 3) return { intent: "AttemptIntent", minutes: null, text: merged[1]! };
+  if (merged && merged[1]!.split(" ").length >= 3) return { intent: "AttemptIntent", minutes: null, text: rawPrefix(text, merged[1]!) };
   return { intent: "AttemptIntent", minutes: null, text };
+}
+
+// The words of `raw` that normalize to `cut`, in the user's own casing and without trailing
+// punctuation ("The export shipped on Monday. What's the verdict?" -> "The export shipped on
+// Monday"); `cut` itself when no prefix matches.
+function rawPrefix(raw: string, cut: string): string {
+  const words = raw.trim().split(/\s+/);
+  for (let i = 1; i < words.length; i++) {
+    const prefix = words.slice(0, i).join(" ");
+    if (normalize(prefix) === cut) return prefix.replace(/[\s,.;:!?-]+$/, "");
+  }
+  return cut;
 }
 
 export function routeRequest(env: AlexaRequestEnvelope): Routed {

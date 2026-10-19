@@ -50,7 +50,7 @@ describe("intent rescue from the catch-all slot", () => {
   });
   it("a sentence with 'how did I do' run on is graded without the tail", () => {
     const r = routeRequest(catchAll("The report is ready for review how did I do"));
-    expect(r).toMatchObject({ intent: "AttemptIntent", text: "the report is ready for review" });
+    expect(r).toMatchObject({ intent: "AttemptIntent", text: "The report is ready for review" }); // the user's own words, tail cut
   });
   it("live coaching minutes, from the slot or the words", () => {
     expect(classifyUtterance("turn on live coaching for 30 minutes")).toMatchObject({ intent: "LiveCoachOnIntent", minutes: 30 });

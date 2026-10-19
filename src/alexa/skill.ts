@@ -9,7 +9,7 @@
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
 import type { AlexaIntent, CardView, VerdictResponse } from "../hub/contract.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
-import { routeRequest, type Routed } from "./route.js";
+import { clampMinutes, routeRequest, type Routed } from "./route.js";
 import { clip, failReason, line, sayCard, seconds } from "./speech.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, SessionAttributes } from "./types.js";
 
@@ -180,7 +180,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   }
 
   async function live(enabled: boolean): Promise<Out> {
-    const minutes = enabled && routed.minutes ? Math.max(1, Math.min(180, Math.round(routed.minutes))) : undefined;
+    const minutes = enabled ? clampMinutes(routed.minutes) : undefined;
     const r = await track("POST /api/live/mode", hub.liveMode({ enabled, by: "alexa", ...(minutes ? { minutes } : {}) }));
     if (!r.ok) return hubDown();
     return info(clip(r.body.narration), SPEECH.infoReprompt);

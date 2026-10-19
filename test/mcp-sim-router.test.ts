@@ -2,7 +2,8 @@
 // a scripted MCP tool caller (packet C, web/sim/src/router.ts and dialog.ts). Pure: no browser.
 import { describe, expect, it } from "vitest";
 import { Dialog, type ToolReply } from "../web/sim/src/dialog.js";
-import { HELP_TEXT, minutesIn, normalize, route, type DrillState } from "../web/sim/src/router.js";
+import { HELP_TEXT, normalize, route, type DrillState } from "../web/sim/src/router.js";
+import { classifyUtterance } from "../src/alexa/route.js";
 import { MCP_TOOLS, type McpToolName } from "../src/hub/contract.js";
 
 const idle: DrillState = { cardOpen: false, attemptId: null };
@@ -40,6 +41,16 @@ describe("router", () => {
   });
   it("a sentence run into 'how did I do' submits the sentence alone", () => {
     expect(toolOf("The report is ready for review. How did I do?", open)).toEqual(["submit_attempt", { text: "The report is ready for review" }]);
+    expect(toolOf("The export shipped on Monday. What's the verdict on that?", open)).toEqual(["submit_attempt", { text: "The export shipped on Monday" }]);
+    expect(toolOf("The export shipped on Monday. Did that pass this time?", open)).toEqual(["submit_attempt", { text: "The export shipped on Monday" }]);
+  });
+  it("routes every utterance the way the Alexa skill does", () => {
+    const intentTool: Record<string, string> = { HowDidIDoIntent: "get_verdict", HowAmIDoingIntent: "how_am_i_doing", LiveCoachOnIntent: "live_coach", LiveCoachOffIntent: "live_coach", DidItTransferIntent: "did_it_transfer", "AMAZON.NextIntent": "next_card", "AMAZON.StopIntent": "end_drill", StartDrillIntent: "start_drill", AttemptIntent: "submit_attempt" };
+    for (const u of ["verdict", "did that pass", "skip that", "go on", "that's all", "stop drilling", "how am i going", "quiz me", "turn on live coaching for half an hour", "The deploy finished this morning."]) {
+      const c = classifyUtterance(u);
+      const r = route(u, waiting);
+      expect(r.kind === "tool" ? r.tool : r.kind, u).toBe(intentTool[c.intent]);
+    }
   });
   it("with no card open, an unknown utterance gets help, not an attempt", () => {
     expect(toolOf("the report is ready", idle)).toEqual(["help", "no card open"]);
@@ -57,10 +68,12 @@ describe("router", () => {
   });
   it("normalize and minutes", () => {
     expect(normalize("Okay, so: HOW did I do?!")).toBe("how did i do");
-    expect(minutesIn("turn on live coaching for 45 minutes")).toBe(45);
-    expect(minutesIn("turn on live coaching for two hours")).toBe(120);
-    expect(minutesIn("turn on live coaching for 999 minutes")).toBe(180);
-    expect(minutesIn("turn on live coaching")).toBeUndefined();
+    const minutes = (t: string) => (route(t, idle) as { args: { minutes?: number } }).args.minutes;
+    expect(minutes("turn on live coaching for 45 minutes")).toBe(45);
+    expect(minutes("turn on live coaching for two hours")).toBe(120);
+    expect(minutes("turn on live coaching for half an hour")).toBe(30);
+    expect(minutes("turn on live coaching for 999 minutes")).toBe(180);
+    expect(minutes("turn on live coaching")).toBeUndefined();
   });
 });
 
