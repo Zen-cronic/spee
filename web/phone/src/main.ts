@@ -128,7 +128,8 @@ function onIntent(m: IntentMsg) {
 
 function sendUtterance(text: string, speechEndAt: number) {
   if (!client || !text.trim()) return;
-  client.sendFinal(text.trim(), { speechEndAt });
+  // null: the link is down (reconnecting), so nothing reached the hub; say so rather than "Sent"
+  if (client.sendFinal(text.trim(), { speechEndAt }) === null) return void stage("bad", "Not sent: reconnecting to the TV. Say it again in a moment.", true);
   stage("dim", `Sent: "${text.trim()}"`, true);
 }
 
