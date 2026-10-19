@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   brand: { flexShrink: 0, color: C.text, fontSize: T.small, fontWeight: '700', fontFamily: F.family },
   tabs: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.pill, padding: 6 },
   right: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  footer: { flexDirection: 'row', alignItems: 'center', height: 36, marginTop: SP.s },
+  footer: { flexDirection: 'row', alignItems: 'center', height: 36, marginTop: SP.m },
   synthDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.amber, marginRight: SP.s },
   synthetic: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   real: { color: C.faint, fontSize: T.label, fontFamily: F.family },

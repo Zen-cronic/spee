@@ -65,7 +65,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
           ) : null}
           <View style={styles.pauseRow}>
             <Text style={[styles.pauseNum, !done && m?.pause.active && { color: C.ink }]}>{String(pauses)}</Text>
-            <Text style={styles.pauseLabel}>{!done && m?.pause.active ? 'pausing now' : `pause${pauses === 1 ? '' : 's'}`}</Text>
+            <Text style={styles.pauseLabel}>{`pause${pauses === 1 ? '' : 's'}${!done && m?.pause.active ? ' · pausing now' : ''}`}</Text>
           </View>
           <Text style={styles.note}>Measured on your phone</Text>
         </View>

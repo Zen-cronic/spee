@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { TransferHabit, TransferResponse } from '../contract';
 import { useDebug } from '../debug';
-import { fmt1, fmtDate, fmtWords, pctChange, shortHabit } from '../mirror/format';
+import { curly, fmt1, fmtDate, fmtWords, pctChange, shortHabit } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -17,7 +17,7 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
   const control = transfer.habits.filter((x) => x.role !== 'drilled');
   const allDropped = drilled.length > 0 && drilled.every((x) => x.verdict === 'dropped');
   const controlFlat = control.every((x) => x.verdict !== 'dropped');
-  const title = allDropped && controlFlat ? 'The habits you drilled dropped. The one you didn’t, didn’t.' : transfer.headline;
+  const title = allDropped && controlFlat ? 'The habits you drilled dropped. The one you didn’t, didn’t.' : curly(transfer.headline);
   return (
     <View style={styles.wrap} testID="view-transfer">
       <Text style={styles.kicker}>Since your first drill · real speech, from Bee</Text>

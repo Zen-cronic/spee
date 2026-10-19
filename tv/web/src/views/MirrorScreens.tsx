@@ -61,7 +61,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
   return (
     <FocusRoot key="mirror" initial={`tab-${cur}`} onBack={onBack} onKey={onKey}>
       <View style={styles.root}>
-        <TopBar view={s.view} onShow={m.show} right={right} rightTone={m.status === 'online' ? 'ok' : 'warn'} />
+        <TopBar view={s.view} onShow={m.show} right={s.view === 'pair' && m.status === 'online' ? null : right} rightTone={m.status === 'online' ? 'ok' : 'warn'} />
         {debug && s.viewReason && s.viewBy && s.viewBy !== 'remote' ? <Text style={styles.reason} numberOfLines={1}>{`${TAB_LABEL[s.view]}: ${s.viewReason} (${s.viewBy})`}</Text> : <View style={styles.reasonSpacer} />}
         <View style={styles.body}>{screen}</View>
         <DataLabel label={s.dataLabel ?? m.stats?.dataLabel ?? null} synthetic={s.synthetic || !!m.stats?.synthetic} replay={s.replay} extra={diag} />
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg, paddingHorizontal: SAFE.x, paddingVertical: SAFE.y },
   body: { flex: 1, overflow: 'hidden' },
   reason: { color: C.faint, fontSize: T.label, height: 32, marginTop: 4, fontFamily: F.family },
-  reasonSpacer: { height: 36 },
+  reasonSpacer: { height: 28 },
   offline: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: C.amber, padding: 14 },
   offlineText: { color: C.bg, fontSize: T.small, fontWeight: '800', textAlign: 'center', fontFamily: F.family },
 });

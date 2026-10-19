@@ -1,9 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
-import { fmt1, fmtWords, frac, niceMax, pctChange, shortHabit, topWord, WEEK_HABITS } from '../mirror/format';
+import { fmt1, fmtWords, pctChange, shortHabit, topWord, WEEK_HABITS } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
-
-const BAR_W = 420;
 
 /**
  * Home: the one thing to do now (the drills waiting, today's tally checked by Bee), this week's
@@ -13,7 +11,6 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
   if (!stats) return <Empty text="Loading your week…" />;
   const h = stats.habits;
   const rows = WEEK_HABITS.map((w) => ({ ...w, rate: h[w.key], top: 'breakdown' in h[w.key] ? topWord((h[w.key] as { breakdown: Record<string, number> }).breakdown) : null }));
-  const max = niceMax(Math.max(...rows.map((r) => r.rate.per100)));
   const sessions = stats.sessions.length;
   const due = deck?.dueNow ?? null;
   return (
@@ -40,8 +37,8 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
         ) : null}
         <View style={{ flex: 1 }} />
         <View style={styles.tally}>
-          <Text style={styles.tallyText}>{today && today.counted > 0 ? `${today.passed} of ${today.counted} passed today` : 'No drills done yet today'}</Text>
-          <View style={styles.beeRow}>
+          {today && today.counted > 0 ? <Text style={styles.tallyText}>{`${today.passed} of ${today.counted} passed today`}</Text> : null}
+          <View style={[styles.beeRow, !(today && today.counted > 0) && { marginTop: 0 }]}>
             <View style={styles.beeDot} />
             <Text style={styles.beeText}>Every drill is checked by Bee</Text>
           </View>
@@ -58,9 +55,6 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
               <View style={styles.rowLabel}>
                 <Text style={styles.habit}>{r.label}</Text>
                 <Text style={styles.top} numberOfLines={1}>{r.top ? `mostly ${r.top}` : r.key === 'restarts' ? 'never drilled' : ' '}</Text>
-              </View>
-              <View style={styles.track}>
-                <View style={[styles.fill, { width: Math.max(10, frac(r.rate.per100, max) * BAR_W) }]} />
               </View>
               <Text style={styles.rate}>{fmt1(r.rate.per100)}</Text>
             </View>
@@ -81,18 +75,24 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
   return (
     <View style={[styles.card, styles.working]} testID="week-transfer">
       <View style={styles.workHead}>
-        <Text style={styles.cardTitle}>{shown ? 'It’s working' : 'Since you started drilling'}</Text>
-        <Text style={styles.cardNote} numberOfLines={2}>{control ? `${shortHabit(control.label)}, never drilled: ${control.verdict === 'no change' ? 'no change' : control.verdict}` : 'since your first drill'}</Text>
+        <Text style={styles.cardTitle} numberOfLines={1}>{shown ? 'It’s working' : 'Since drilling'}</Text>
+        <Text style={styles.cardNote} numberOfLines={1}>since your first drill</Text>
       </View>
       {drilled.map((x) => {
         const pct = pctChange(x.before.per100, x.after.per100);
         return (
-          <View key={x.habit} style={styles.workItem}>
+          <View key={x.habit} style={[styles.workItem, styles.workDelta]}>
             <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }]}>{pct === null ? '–' : `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%`}</Text>
             <Text style={styles.workLabel}>{shortHabit(x.label)}</Text>
           </View>
         );
       })}
+      {control ? (
+        <View style={styles.workItem}>
+          <Text style={[styles.workNum, styles.workFlat]}>{control.verdict === 'no change' ? 'Flat' : control.verdict === 'dropped' ? 'Down' : control.verdict === 'rose' ? 'Up' : '–'}</Text>
+          <Text style={[styles.workLabel, styles.workControl]}>{`${shortHabit(control.label)}, the control`}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, flexDirection: 'row' },
   hero: { width: 720, backgroundColor: C.paper, borderRadius: R.l, ...PAD, marginRight: SP.l },
   heroKicker: { color: C.inkDim, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
-  heroNum: { color: C.ink, fontSize: 260, lineHeight: 266, fontWeight: '700', letterSpacing: -8, paddingHorizontal: 16, marginLeft: -16, marginTop: SP.xs, fontFamily: F.family },
+  heroNum: { color: C.ink, fontSize: 300, lineHeight: 300, fontWeight: '700', letterSpacing: -8, paddingHorizontal: 16, marginLeft: -16, marginTop: SP.xs, fontFamily: F.family },
   heroDone: { fontSize: T.big, lineHeight: 140, letterSpacing: -3 },
   heroLabel: { color: C.ink, fontSize: T.h2, fontWeight: '600', marginTop: -SP.s, fontFamily: F.family },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginTop: SP.xl },
@@ -127,18 +127,19 @@ const styles = StyleSheet.create({
   cardHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: SP.s },
   cardTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },
   cardNote: { color: C.faint, fontSize: T.label, marginTop: 4, fontFamily: F.family },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderColor: C.rule },
   rowLabel: { flex: 1 },
   habit: { color: C.text, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   top: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
-  track: { width: BAR_W, height: 14, borderRadius: 7, backgroundColor: C.surface2, marginHorizontal: SP.xl },
-  fill: { height: 14, borderRadius: 7, backgroundColor: C.dim },
-  rate: { width: 120, textAlign: 'right', color: C.text, fontSize: 56, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 8, fontFamily: F.family },
+  rate: { width: 140, textAlign: 'right', color: C.text, fontSize: 52, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 8, fontFamily: F.family },
   working: { flexDirection: 'row', alignItems: 'center', marginTop: SP.l },
-  workHead: { flex: 1, paddingRight: SP.xl },
-  workItem: { marginLeft: SP.xxl },
-  workNum: { color: C.text, fontSize: 80, lineHeight: 92, fontWeight: '700', letterSpacing: -2, paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
-  workLabel: { color: C.dim, fontSize: T.body, fontFamily: F.family },
+  workHead: { width: 240 },
+  workItem: { marginLeft: SP.l, flexShrink: 0 },
+  workDelta: { minWidth: 168 },
+  workNum: { color: C.text, fontSize: 56, lineHeight: 68, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
+  workFlat: { color: C.dim },
+  workControl: { maxWidth: 190 },
+  workLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: C.dim, fontSize: T.title, textAlign: 'center', fontFamily: F.family },
 });

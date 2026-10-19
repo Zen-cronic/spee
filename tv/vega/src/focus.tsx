@@ -72,7 +72,7 @@ export function FocusButton(props: {id: string; row: number; col: number; label:
       onFocus={onFocus}
       onBlur={onBlur}
       style={[styles.btn, props.small && styles.btnSmall, {backgroundColor: bg, borderColor: border}, focused && styles.lift, props.style]}>
-      <Text style={[styles.btnText, props.small && {fontSize: T.label}, {color: ink}]}>{props.label}</Text>
+      <Text style={[styles.btnText, props.small && {fontSize: T.body}, {color: ink}]}>{props.label}</Text>
     </Pressable>
   );
 }
@@ -97,5 +97,5 @@ const styles = StyleSheet.create({
   // the focus ring: a thick white border plus a lift in scale (a physical change, not colour alone)
   ring: {borderColor: C.focus, borderWidth: 5, transform: [{scale: 1.05}]},
   lift: {transform: [{scale: 1.06}]},
-  btnText: {fontSize: T.small, fontWeight: '700', fontFamily: F.family},
+  btnText: {fontSize: T.small, fontWeight: '600', fontFamily: F.family},
 });

@@ -1,7 +1,7 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import type { Recap } from '../contract';
 import { useDebug } from '../debug';
-import { fmt1, fmtInt, fmtMs, fmtPct, shortHabit } from '../mirror/format';
+import { curly, fmt1, fmtInt, fmtMs, fmtPct, shortHabit } from '../mirror/format';
 import { useEnter } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
@@ -24,7 +24,7 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
     <View style={styles.scrim} testID="recap-overlay">
       <Animated.View style={[styles.card, enter]}>
         <Text style={styles.kicker}>{`After your conversation · ${fmtMs(recap.durationMs)} · from Bee`}</Text>
-        <Text style={styles.headline} numberOfLines={2}>{recap.headline}</Text>
+        <Text style={styles.headline} numberOfLines={2}>{curly(recap.headline)}</Text>
         <View style={styles.body}>
           <View style={styles.left}>
             <View style={styles.metrics}>
@@ -83,9 +83,9 @@ const styles = StyleSheet.create({
   habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
   habitLabel: { flex: 1, color: C.ink, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   habitNum: { color: C.inkDim, fontSize: T.body, marginRight: SP.l, fontFamily: F.family },
-  pill: { borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, minWidth: 120, alignItems: 'center' },
+  pill: { borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, width: 150, alignItems: 'center' },
   pillText: { fontSize: T.label, fontWeight: '700', fontFamily: F.family },
-  moment: { width: 600, backgroundColor: C.ink, borderRadius: R.m, padding: SP.xl },
+  moment: { width: 600, alignSelf: 'stretch', backgroundColor: C.ink, borderRadius: R.m, padding: SP.xl },
   momentKicker: { color: C.dim, fontSize: T.label, fontWeight: '600', fontFamily: F.family },
   said: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: 6, fontFamily: F.family },
   rephrase: { color: C.lime, fontSize: T.title, lineHeight: 50, fontWeight: '700', marginTop: 6, fontFamily: F.family },
