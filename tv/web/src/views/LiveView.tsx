@@ -2,7 +2,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped } from '../contract';
 import { useDebug } from '../debug';
-import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
+import { curly, fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import type { DrillState, LiveSlice } from '../mirror/reducer';
 import { useEnter, useLoop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
@@ -39,8 +39,8 @@ function Tracker({ steps }: { steps: { label: string; state: StepState; bee?: bo
   return (
     <View style={styles.tracker} testID="drill-tracker">
       <View style={styles.trackLine} />
-      {steps.map((s) => (
-        <View key={s.label} style={styles.step}>
+      {steps.map((s, i) => (
+        <View key={s.label} style={[styles.step, { alignItems: i === 0 ? 'flex-start' : i === steps.length - 1 ? 'flex-end' : 'center' }]}>
           <Dot state={s.state} bee={s.bee} />
           <Text style={[styles.stepLabel, s.state === 'todo' && { color: C.inkFaint }]}>{s.label}</Text>
         </View>
@@ -83,12 +83,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
     support = g.pass ? `Checked by Bee.${g.dueAfter ? ` Next review ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.reasons) ?? 'Close'}. Say it again.`;
     band = g.pass ? styles.bandPass : styles.bandFail;
     ink = g.pass ? C.limeInk : C.coralInk;
-    if (overrules) {
-      status = g.pass ? 'Passed. Bee overrules.' : 'Not yet. Bee overrules.';
-      support = overruleText(pv?.source, g.pass, g.beeText);
-      band = styles.bandBee;
-      ink = C.lavenderInk;
-    }
+    if (overrules) support = curly(overruleText(pv?.source, g.pass, g.beeText));
   } else if (st === 'unverified') {
     status = 'Bee didn’t catch that one.';
     support = 'It doesn’t count. Say it again.';
@@ -107,11 +102,18 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
     <View style={styles.fill}>
       <Text style={styles.kicker} numberOfLines={1}>{card.said ? `Instead of “${card.said}”, say` : 'Say'}</Text>
       <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
-      <View style={{ flex: 1 }} />
       <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
-        <Text style={[styles.status, { color: ink }]} numberOfLines={1}>{status}</Text>
+        <View style={styles.bandHead}>
+          <Text style={[styles.status, { color: ink }]} numberOfLines={1}>{status}</Text>
+          {overrules ? (
+            <View style={styles.beeTag}>
+              <Text style={styles.beeTagText}>Bee overrules</Text>
+            </View>
+          ) : null}
+        </View>
         {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 3 : 2}>{support}</Text> : null}
       </Animated.View>
+      <View style={{ flex: 1 }} />
       <Tracker
         steps={[
           { label: 'You said it', state: heard },
@@ -126,6 +128,11 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
       ) : null}
     </View>
   );
+}
+
+function Listening() {
+  const pulse = useLoop(true, 900);
+  return <Animated.View style={[styles.listenDot, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }]} />;
 }
 
 function Mode({ mode }: { mode: LiveMode | null }) {
@@ -159,7 +166,14 @@ function ConversationPanel({ live }: { live: LiveSlice }) {
         <Text style={styles.convoTitle}>Conversation</Text>
         <Mode mode={live.mode} />
       </View>
-      <View style={!w && styles.ghost}>
+      {!w ? (
+        <View style={styles.listening}>
+          <Listening />
+          <Text style={styles.listenTitle}>{live.ended ? 'Conversation ended.' : 'Bee is listening.'}</Text>
+          <Text style={styles.listenHint}>{live.ended ? `${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'Your pace and habits show here when you talk. Other voices are never shown.'}</Text>
+        </View>
+      ) : (
+      <View>
         <View style={styles.stats}>
           <View style={styles.stat}>
             <Text style={styles.statBig}>{w ? fmtInt(w.wearer.wpm) : '–'}</Text>
@@ -176,13 +190,13 @@ function ConversationPanel({ live }: { live: LiveSlice }) {
           <Counter label="“like”" value={w ? String(w.recent.likes) : '–'} over={over('like-streak')} />
         </View>
       </View>
-      {!w ? <Text style={styles.hint}>{live.ended ? `Conversation ended: ${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'Waiting for Bee to hear you talk. Other voices are never shown.'}</Text> : null}
+      )}
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
       <View style={{ flex: 1 }} />
       {nudge ? (
         <View style={styles.nudge} testID="nudge-card">
           <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge not delivered: ${RULE_LABEL[nudge.rule]}` : `Wrist nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
-          <Text style={styles.nudgeText} numberOfLines={1}>{nudge.text.replace(/^\[[^\]]*\]\s*/, '')}</Text>
+          <Text style={styles.nudgeText} numberOfLines={1}>{curly(nudge.text.replace(/^\[[^\]]*\]\s*/, ''))}</Text>
           {nudge.wrist.status !== 'failed' ? <Text style={styles.nudgeWhen}>{`Buzzed ${fmtMs(nudge.latencyMs.total)} after you said it${nudge.replay ? ' (replay)' : ''}`}</Text> : null}
           {debug ? <HopTimeline nudge={nudge} width={700} /> : null}
         </View>
@@ -201,30 +215,34 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   sentence: { color: C.ink, fontSize: 60, lineHeight: 72, fontWeight: '700', letterSpacing: -1, marginTop: SP.m, fontFamily: F.family },
-  band: { height: 224, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.l, justifyContent: 'center' },
+  band: { height: 224, marginTop: SP.xl, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.l, justifyContent: 'center' },
   bandIdle: { backgroundColor: 'rgba(0,0,0,0.05)' },
   bandWait: { backgroundColor: 'rgba(187,174,247,0.35)' },
   bandPass: { backgroundColor: C.lime },
   bandFail: { backgroundColor: C.coral },
-  bandBee: { backgroundColor: C.lavender },
+  bandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  beeTag: { backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6 },
+  beeTagText: { color: C.lavenderInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
+  listening: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SP.xl },
+  listenDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.lavender, marginBottom: SP.l },
+  listenTitle: { color: C.text, fontSize: T.h2, fontWeight: '700', textAlign: 'center', fontFamily: F.family },
+  listenHint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.s, textAlign: 'center', maxWidth: 620, fontFamily: F.family },
   status: { fontSize: 52, lineHeight: 62, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
   support: { color: C.inkDim, fontSize: T.body, lineHeight: 38, marginTop: 4, fontFamily: F.family },
   supportSmall: { fontSize: T.label, lineHeight: 32 },
-  ghost: { opacity: 0.35 },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
-  tracker: { flexDirection: 'row', marginTop: SP.xl },
-  trackLine: { position: 'absolute', left: 18, right: 120, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
-  step: { flex: 1 },
+  tracker: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SP.xl },
+  trackLine: { position: 'absolute', left: 18, right: 18, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
+  step: {},
   dot: { width: 36, height: 36, borderRadius: 18, borderWidth: 3 },
-  stepLabel: { color: C.ink, fontSize: T.label, fontWeight: '600', marginTop: SP.s, fontFamily: F.family },
+  stepLabel: { color: C.ink, fontSize: T.body, fontWeight: '600', marginTop: SP.s, fontFamily: F.family },
   debug: { color: C.inkDim, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
   debugDark: { color: C.faint, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
   convoTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },
   mode: { flexDirection: 'row', alignItems: 'center' },
   modeDot: { width: 14, height: 14, borderRadius: 7, marginRight: SP.s },
   modeText: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  hint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.xl, fontFamily: F.family },
   stats: { flexDirection: 'row', marginTop: SP.xl },
   stat: { flex: 1 },
   statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -3, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },

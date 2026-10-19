@@ -136,18 +136,23 @@ export function pctChange(before: number | null | undefined, after: number | nul
   return Math.round((after / before - 1) * 100);
 }
 
-/** A habit's short display name: 'hedges (I guess, I think...)' -> 'Hedges', '"like" as a filler' -> '"Like"'. */
+/** Straight double quotes to typographic ones, for display: 'Bee heard "um"' -> 'Bee heard “um”'. */
+export function curly(text: string): string {
+  return text.replace(/"([^"]*)"/g, '“$1”');
+}
+
+/** A habit's short display name: 'hedges (I guess, I think...)' -> 'Hedges', '"like" as a filler' -> '“Like”'. */
 export function shortHabit(label: string): string {
   const s = label.replace(/\s*\(.*$/, '').replace(/ as a filler$/, '').trim();
   const i = s.search(/[a-z]/i);
-  return i < 0 ? s : s.slice(0, i) + s[i]!.toUpperCase() + s.slice(i + 1);
+  return curly(i < 0 ? s : s.slice(0, i) + s[i]!.toUpperCase() + s.slice(i + 1));
 }
 
-/** The most frequent word of a breakdown map, quoted: {"i guess": 15, "i think": 5} -> '"i guess"'. */
+/** The most frequent word of a breakdown map, quoted: {"i guess": 15, "i think": 5} -> '“I guess”'. */
 export function topWord(b: Record<string, number> | undefined): string | null {
   if (!b) return null;
   const top = Object.entries(b).sort((x, y) => y[1] - x[1])[0];
-  return top ? `"${top[0]}"` : null;
+  return top ? `“${top[0].replace(/\bi\b/g, 'I')}”` : null;
 }
 
 /**
