@@ -1,7 +1,7 @@
 // The public-access gate (src/hub/gate.ts): a tunnel must expose only /alexa, the static phone and
 // simulator pages, /mcp with the bearer token and /ws with the pair token.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, resolveTokens, tokenEquals } from "../src/hub/gate.js";
@@ -75,11 +75,18 @@ describe("gate: what counts as public", () => {
       writeFileSync(path, "{nope");
       expect(resolveTokens({}, () => {}, path).pairToken).toBe(first.pairToken);
       expect(statSync(`${path}.bak`).mode & 0o777).toBe(0o600);
-      // --rotate-tokens makes new ones and saves them
+      // --rotate-tokens makes new ones and saves them, and deletes every old copy (.bak, .corrupt-*)
+      expect(readdirSync(join(dir, "state")).some((f) => f.includes(".corrupt-"))).toBe(true);
       const rotated = resolveTokens({}, () => {}, path, { rotate: true });
       expect(rotated.pairToken).not.toBe(first.pairToken);
+      expect(readdirSync(join(dir, "state"))).toEqual(["tokens.json"]);
       expect(resolveTokens({}, () => {}, path).pairToken).toBe(rotated.pairToken);
       expect(statSync(path).mode & 0o777).toBe(0o600);
+      // a damaged file after the rotation never brings a leaked token back
+      writeFileSync(path, "{nope");
+      const after = resolveTokens({}, () => {}, path);
+      expect([after.pairToken, after.mcpToken]).not.toContain(first.pairToken);
+      expect(after.pairToken).toBe(rotated.pairToken); // the backup taken since the rotation
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

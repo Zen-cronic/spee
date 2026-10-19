@@ -31,14 +31,16 @@
 // When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated, printed in full once (the start
 // that generates it) and saved to <stateDir>/tokens.json (git-ignored, mode 0600). Later starts reuse
 // it, so a hub restart does not lock out every paired phone and MCP client (review M40), and print
-// only its last 4 characters. `--rotate-tokens` (rotateTokens) generates new ones, which unpairs
-// every phone: do it after a recording or a shared log showed a token or the TV's pairing QR. Tokens never appear in a response or a log, with one exception by design: a WebSocket peer
-// that presented the pair token, or a trusted one with an allowed (or no) Origin, gets
-// `welcome.joinUrl` with #k= (a URL fragment) so the TV can show it as a QR code (src/hub/bridgeGuard.ts).
+// only its last 4 characters. `--rotate-tokens` (rotateTokens) generates new ones and deletes the old
+// copies (tokens.json.bak, tokens.json.corrupt-*), which unpairs every phone: do it after a recording
+// or a shared log showed a token or the TV's pairing QR. Tokens never appear in a response or a log,
+// with one exception by design: a WebSocket peer that presented the pair token, or a trusted one
+// with an allowed (or no) Origin, gets `welcome.joinUrl` with #k= (a URL fragment) so the TV can show
+// it as a QR code (src/hub/bridgeGuard.ts).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
-import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
+import { readJsonSafe, removeCopies, writeJsonAtomic } from "./atomic.js";
 import type { Duplex } from "node:stream";
 
 export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (?k=$PAIR_TOKEN)"];
@@ -63,6 +65,15 @@ const gopts = (o: GateOptions | string[] | undefined): GateOptions => (Array.isA
 // Tokens from the environment, else the ones saved by an earlier start in `savePath` (unless
 // `rotate`), else generated and saved there. A token is printed in full only when generated.
 export function resolveTokens(env: Record<string, string | undefined> = process.env, print: (line: string) => void = (l) => console.log(l), savePath: string | null = null, opts: { rotate?: boolean } = {}): GateTokens {
+  // A rotation also deletes the backup and any moved-aside copies, which still hold the old tokens.
+  if (savePath && opts.rotate) {
+    try {
+      const gone = removeCopies(savePath);
+      if (gone.length) print(`hub: --rotate-tokens removed ${gone.length} old copy(ies) of ${savePath}`);
+    } catch (err) {
+      print(`hub: warning: could not remove the old copies of ${savePath} (${(err as Error).message}); delete ${savePath}.bak and ${savePath}.corrupt-* by hand`);
+    }
+  }
   const saved = savePath && !opts.rotate ? readSavedTokens(savePath, print) : {};
   const toSave: Record<string, string> = {};
   const one = (name: "PAIR_TOKEN" | "MCP_TOKEN"): [string, "env" | "generated"] => {

@@ -1,7 +1,7 @@
 // Review fixes for the verifier and the hub's state files: H9 (a hung poll must not keep other
 // speakers' text in memory), M8 (polls only recent conversations), M11 (a failing verdict write
 // surfaces), M12 (no Bee-only attempt long after a card opened), M9 (crash-safe state files).
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -84,9 +84,36 @@ describe("state files (M9)", () => {
       writeFileSync(p, '{"attempts": [{"id": "a'); // a torn write
       const warnings: string[] = [];
       expect(readJsonSafe(p, () => ({ attempts: [] }), (m) => warnings.push(m))).toEqual({ attempts: [{ id: "a1" }] });
-      expect(warnings[0]).toMatch(/loaded .*\.bak/);
+      expect(warnings[0]).toMatch(/restored .*\.bak/);
       expect(readdirSync(dir).some((f) => f.includes(".corrupt-"))).toBe(true);
       expect(JSON.parse(readFileSync(`${p}.bak`, "utf8"))).toEqual({ attempts: [{ id: "a1" }] });
+      // the backup is written back, so the next start reads the file itself, not the fallback
+      expect(JSON.parse(readFileSync(p, "utf8"))).toEqual({ attempts: [{ id: "a1" }] });
+      const later: string[] = [];
+      expect(readJsonSafe(p, () => ({ attempts: [] }), (m) => later.push(m))).toEqual({ attempts: [{ id: "a1" }] });
+      expect(later).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("a restored file keeps the backup's mode, and a leftover tmp is replaced, never written through", () => {
+    const dir = mkdtempSync(join(tmpdir(), "bee-atomic-"));
+    try {
+      const p = join(dir, "tokens.json");
+      writeJsonAtomic(p, { PAIR_TOKEN: "a".repeat(20) }, { mode: 0o600 });
+      readJsonSafe(p, () => ({}));
+      writeFileSync(p, "{nope");
+      readJsonSafe(p, () => ({}), () => {});
+      expect(statSync(p).mode & 0o777).toBe(0o600);
+      // a stale tmp that points elsewhere (a symlink) is removed, not followed
+      const elsewhere = join(dir, "elsewhere.txt");
+      writeFileSync(elsewhere, "untouched", { mode: 0o644 });
+      symlinkSync(elsewhere, `${p}.tmp`);
+      writeJsonAtomic(p, { PAIR_TOKEN: "b".repeat(20) }, { mode: 0o600 });
+      expect(readFileSync(elsewhere, "utf8")).toBe("untouched");
+      expect(statSync(elsewhere).mode & 0o777).toBe(0o644);
+      expect(statSync(p).mode & 0o777).toBe(0o600);
+      expect(JSON.parse(readFileSync(p, "utf8")).PAIR_TOKEN).toBe("b".repeat(20));
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
