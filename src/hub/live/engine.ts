@@ -262,6 +262,8 @@ export class LiveEngine {
 
   private act(w: ConversationWindow, e: RuleEvidence, a: Analysis, line: WinLine) {
     w.consume(e.rule, a);
+    // A rule that fires after the mode's end but before its timer ran: turn it off and say so now.
+    this.checkExpiry();
     const now = this.now();
     const first = Math.min(...[...w.lines.values()].map((x) => x.ctStart));
     const d = this.policy.decide({ rule: e.rule, now, conversationMs: line.ctEnd - first, drillActive: this.o.hub.drillActive(DRILL_RECENT_MS * this.o.pace), wristDownUntil: this.o.wrist.circuitOpenUntil() });

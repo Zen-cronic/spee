@@ -181,6 +181,19 @@ describe("other scripts and suppressions", () => {
   });
 });
 
+describe("mode expiry and state files", () => {
+  it("a rule that fires after the mode ran out, before its timer, publishes live.mode off first", async () => {
+    boot();
+    engine.setMode({ enabled: true, minutes: 1, by: "test" });
+    clearTimeout((engine as unknown as { expiryTimer: NodeJS.Timeout }).expiryTimer); // a late timer on a busy loop
+    await play("story");
+    expect(of("live.mode").map((p) => [p.mode.enabled, p.mode.reason])).toEqual([[true, "on"], [false, "expired"]]);
+    const t = topics();
+    expect(t.indexOf("live.mode", 1)).toBeLessThan(t.indexOf("nudge.skipped"));
+    expect(of("nudge.skipped")[0].skip.reason).toBe("off");
+  });
+});
+
 describe("the wrist circuit", () => {
   it("3 failed creates open the circuit: live mode turns off (wrist-down) and the nudge reports failed", async () => {
     let w: BeeTodoWrist | null = null;
