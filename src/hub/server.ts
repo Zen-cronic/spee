@@ -30,6 +30,7 @@ import { installProcessGuards, killChildren } from "./processGuards.js";
 import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
 import { createPlugins } from "./plugins.js";
 import { createFixtureRouter } from "./fixtureV2.js";
+import { serveHome, type HomeStatus } from "./home.js";
 
 export { CONTRACT_VERSION };
 export const DEFAULT_PORT = 8791; // Rack Board uses 8792, the bridge example 8800
@@ -337,6 +338,22 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   };
 
   const stateSnapshot = () => ({ mode: hub.mode, dataLabel: hub.dataLabel, bootId: hub.bootId, lastSeq: hub.lastSeq, ...hub.sessionState() });
+  // The home page's status line (home.ts): never a token, only counts and a TV's pair code.
+  const homeStatus = (): HomeStatus => {
+    const rooms = [...bridge.rooms.values()];
+    const roles = (r: (typeof rooms)[number], role: string) => [...r.peers.values()].filter((p) => p.role === role).length;
+    const tv = rooms.find((r) => roles(r, "screen") > 0);
+    const beeStream = String(setup.describe.beeStream ?? "");
+    return {
+      demo: !!setup.demo,
+      dataLabel: setup.demo ? hub.dataLabel : null,
+      bee: setup.demo ? "replay" : beeStream.startsWith("bee stream") ? "live" : "off",
+      pairCode: tv?.code ?? null,
+      screens: rooms.reduce((n, r) => n + roles(r, "screen"), 0),
+      phones: rooms.reduce((n, r) => n + roles(r, "mic"), 0),
+      drillsDue: hub.deckSummary().dueNow,
+    };
+  };
 
   let ticking = false;
   const tick = setInterval(() => {
@@ -395,6 +412,9 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       return v ? send(res, 200, v) : fail(res, 404, "unknown_attempt", `no attempt ${attemptMatch[1]}`);
     }
     switch (route) {
+      case "GET /":
+      case "HEAD /":
+        return serveHome(req, res, homeStatus());
       case "GET /api/health":
         return send(res, 200, {
           ok: true,
