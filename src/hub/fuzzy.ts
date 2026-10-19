@@ -6,7 +6,7 @@
 //   1. edit distance on the word, or on a light phonetic key ("rec" -> "rek", "rack" -> "rak"),
 //      with a length-scaled budget and the first letter fixed;
 //   2. compound joins ("standup" ~ "stand up", "rackboard" ~ "rack board").
-import { FILLER_RE, HEDGE_RE, wordCount } from "../real/text.js";
+import { FILLER_RE, HEDGE_RE } from "../real/text.js";
 
 export type Lang = "en" | "fr";
 
@@ -213,8 +213,15 @@ export function attemptSpan(target: string, beeText: string, lang: Lang = "en"):
   };
 }
 
-// A sentence made only of hedges and fillers ("I guess.", "Um.", "Maybe, I think.").
+// A sentence made of hedges and fillers, plus at most two tag words ("I guess.", "Um.", "Maybe, I
+// think.", "I guess so.", "Yeah, I think so."): the attempt's own trailing hedge, not a new remark.
+const TAG_WORDS: Record<Lang, Set<string>> = {
+  en: new Set(["so", "yeah", "yes", "ok", "okay", "right", "anyway", "then", "really", "too", "well", "not"]),
+  fr: new Set(["oui", "ouais", "bon", "voilà", "voila", "alors", "donc", "quoi", "bref", "non", "pas"]),
+};
 function bareHabit(sentence: string, lang: Lang): boolean {
   const rest = sentence.replace(new RegExp(HEDGE_RE[lang].source, "gi"), " ").replace(new RegExp(FILLER_RE[lang].source, "gi"), " ");
-  return rest !== sentence && wordCount(rest) === 0;
+  if (rest === sentence) return false;
+  const left = rest.toLowerCase().split(/[^\p{L}\p{N}']+/u).filter(Boolean);
+  return left.length <= 2 && left.every((w) => TAG_WORDS[lang].has(w));
 }

@@ -189,6 +189,11 @@ describe("attempt span (Bee merged the attempt with other speech)", () => {
     const hedge = { lang: "en" as const, resay: "The deploy finished this morning.", habit: { kind: "hedge" as const, targets: [], label: "hedges" } };
     const after = attemptSpan(hedge.resay, "The deploy finished this morning. I think that went better.");
     expect(grade(hedge, after.graded, after.habitText).pass).toBe(true);
+    // a trailing hedge with a tag word is still the attempt's (review L50)
+    for (const bee of ["The deploy finished this morning. I guess so.", "The deploy finished this morning. Yeah, I think so. How did I do?"]) {
+      const span = attemptSpan(hedge.resay, bee);
+      expect(grade(hedge, span.graded, span.habitText).pass, bee).toBe(false);
+    }
     // two bare habit sentences in a row both stay with the attempt
     expect(attemptSpan(hedge.resay, "The deploy finished this morning. I guess. Maybe. How did I do?").habitText).toBe("The deploy finished this morning. I guess. Maybe.");
   });
