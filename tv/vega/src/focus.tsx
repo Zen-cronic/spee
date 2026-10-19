@@ -57,9 +57,10 @@ export function FocusButton(props: {id: string; row: number; col: number; label:
     if (props.current) focusRef(ref);
   }, [props.current]);
   const tone = props.tone ?? 'default';
-  const bg = tone === 'accent' ? C.mint : tone === 'active' ? C.surface2 : tone === 'ghost' ? 'transparent' : C.surface;
-  const ink = tone === 'accent' ? C.mintInk : tone === 'active' ? C.mint : tone === 'ghost' ? C.dim : C.text;
-  const border = tone === 'accent' ? C.mint : tone === 'active' ? C.mint : tone === 'ghost' ? C.rule : C.line;
+  // focus is a filled paper pill (an inverted, physical change); the current tab is a raised charcoal pill
+  const bg = focused ? C.paper : tone === 'accent' ? C.lime : tone === 'active' ? C.surface2 : tone === 'ghost' ? 'transparent' : C.surface;
+  const ink = focused ? C.ink : tone === 'accent' ? C.limeInk : tone === 'active' ? C.text : tone === 'ghost' ? C.dim : C.text;
+  const border = focused ? C.focus : 'transparent';
   return (
     <Pressable
       ref={ref}
@@ -70,7 +71,7 @@ export function FocusButton(props: {id: string; row: number; col: number; label:
       onPress={props.onPress}
       onFocus={onFocus}
       onBlur={onBlur}
-      style={[styles.btn, props.small && styles.btnSmall, {backgroundColor: bg, borderColor: border}, focused && styles.ring, props.style]}>
+      style={[styles.btn, props.small && styles.btnSmall, {backgroundColor: bg, borderColor: border}, focused && styles.lift, props.style]}>
       <Text style={[styles.btnText, props.small && {fontSize: T.label}, {color: ink}]}>{props.label}</Text>
     </Pressable>
   );
@@ -91,9 +92,10 @@ export function FocusCard(props: {id: string; row: number; col: number; onPress:
 }
 
 const styles = StyleSheet.create({
-  btn: {paddingHorizontal: 30, paddingVertical: 14, borderRadius: R.m, borderWidth: 3, marginRight: SP.m},
-  btnSmall: {paddingHorizontal: 22, paddingVertical: 8},
+  btn: {paddingHorizontal: 32, paddingVertical: 14, borderRadius: R.pill, borderWidth: 3, marginRight: SP.xs},
+  btnSmall: {paddingHorizontal: 28, paddingVertical: 10},
   // the focus ring: a thick white border plus a lift in scale (a physical change, not colour alone)
   ring: {borderColor: C.focus, borderWidth: 5, transform: [{scale: 1.05}]},
-  btnText: {fontSize: T.small, fontWeight: '800', fontFamily: F.family},
+  lift: {transform: [{scale: 1.06}]},
+  btnText: {fontSize: T.small, fontWeight: '700', fontFamily: F.family},
 });

@@ -129,3 +129,52 @@ export function niceMax(v: number): number {
 
 /** dBFS on the volume meter: -60..0 mapped to 0..1. */
 export const dbFrac = (db: number): number => Math.max(0, Math.min(1, (db + 60) / 60));
+
+/** Before -> after as a whole-number percent change (2.47 -> 0.64 is -74); null without a before rate. */
+export function pctChange(before: number | null | undefined, after: number | null | undefined): number | null {
+  if (before === null || before === undefined || after === null || after === undefined || !(before > 0) || !Number.isFinite(after)) return null;
+  return Math.round((after / before - 1) * 100);
+}
+
+/** A habit's short display name: 'hedges (I guess, I think...)' -> 'Hedges', '"like" as a filler' -> '"Like"'. */
+export function shortHabit(label: string): string {
+  const s = label.replace(/\s*\(.*$/, '').replace(/ as a filler$/, '').trim();
+  const i = s.search(/[a-z]/i);
+  return i < 0 ? s : s.slice(0, i) + s[i]!.toUpperCase() + s.slice(i + 1);
+}
+
+/** The most frequent word of a breakdown map, quoted: {"i guess": 15, "i think": 5} -> '"i guess"'. */
+export function topWord(b: Record<string, number> | undefined): string | null {
+  if (!b) return null;
+  const top = Object.entries(b).sort((x, y) => y[1] - x[1])[0];
+  return top ? `"${top[0]}"` : null;
+}
+
+/**
+ * The grader's first failed rule in plain words ("FAIL fillers: 1 filler ("um"); allowed 0" ->
+ * 'Bee heard "um"'). Null on a pass.
+ */
+export function plainReason(reasons: string[]): string | null {
+  const fail = reasons.find((r) => r.startsWith('FAIL'));
+  if (!fail) return null;
+  const m = /^FAIL (\w+): (.*)$/.exec(fail);
+  const rule = m?.[1] ?? '';
+  const detail = m?.[2] ?? fail;
+  const quoted = [...detail.matchAll(/"([^"]+)"/g)].map((q) => `“${q[1]}”`);
+  switch (rule) {
+    case 'nonempty':
+      return 'Bee heard nothing';
+    case 'habit':
+      return quoted.length ? `You still said ${quoted.slice(0, 2).join(' and ')}` : 'The old habit was still there';
+    case 'fillers':
+      return quoted.length ? `Bee heard ${quoted.slice(0, 2).join(' and ')}` : 'Bee heard a filler';
+    case 'content': {
+      const missing = /missing: ([^;]+)/.exec(detail)?.[1];
+      return missing ? `A few words were missing: ${missing.split(', ').slice(0, 3).join(', ')}` : 'It didn’t match the sentence';
+    }
+    case 'required':
+      return quoted.length ? `You didn’t say ${quoted.join(' or ')}` : 'A key word was missing';
+    default:
+      return detail;
+  }
+}
