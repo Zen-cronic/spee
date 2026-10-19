@@ -19,7 +19,7 @@ import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, type DrillEvent, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
 
-export type ProvisionalSource = "phone" | "alexa" | "typed";
+export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed";
 export type AttemptStatus = "pending_bee" | "polling" | "graded" | "unverified";
 
 export interface Attempt {

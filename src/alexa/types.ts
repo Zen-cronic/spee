@@ -10,7 +10,7 @@ export interface AlexaIntentPayload {
   confirmationStatus?: string;
   slots?: Record<string, AlexaSlot>;
 }
-export type SessionAttributes = Record<string, unknown> & { attemptId?: string; cardId?: string };
+export type SessionAttributes = Record<string, unknown> & { attemptId?: string; cardId?: string; drillSessionId?: string }; // drillSessionId: the hub session this skill session started
 export interface AlexaRequestEnvelope {
   version: string;
   session?: {

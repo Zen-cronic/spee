@@ -83,7 +83,7 @@ export class HubClient {
   startSession = (b: { by?: string; size?: number } = {}) => this.call<SessionStartResponse>("POST", "/api/session/start", b);
   nextCard = () => this.call<SessionNextResponse>("POST", "/api/session/next", {});
   endSession = () => this.call<SessionEndResponse>("POST", "/api/session/end", {});
-  attempt = (b: { text: string; source: "alexa" | "phone" | "typed"; cardId?: string; speechEndAt?: number }) => this.call<AttemptAccepted>("POST", "/api/attempt", b);
+  attempt = (b: { text: string; source: "alexa" | "mcp" | "phone" | "typed"; cardId?: string; speechEndAt?: number }) => this.call<AttemptAccepted>("POST", "/api/attempt", b);
   verdict = (id: string) => this.call<VerdictResponse>("GET", `/api/attempts/${encodeURIComponent(id)}`);
   stats = (q: { range?: string; source?: SourceSel } = {}) => this.call<StatsResponse>("GET", `/api/stats${qs(q)}`);
   transfer = (q: { habit?: string; source?: SourceSel } = {}) => this.call<TransferResponse>("GET", `/api/transfer${qs(q)}`);

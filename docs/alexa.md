@@ -8,7 +8,7 @@ Three voice surfaces share one hub and one contract ([CONTRACT.md](CONTRACT.md),
 
 All three reach the hub through one loopback client, [`src/mcp/hubClient.ts`](../src/mcp/hubClient.ts) (`ctx.selfUrl()`), so they obey the HTTP contract exactly. Nothing in an `/alexa` or `/mcp` request calls a model. Logs carry intent and tool names, routes, statuses and timings, never what was said.
 
-**Bee is the grader of record.** What Alexa, the browser mic or a typed line hears is a provisional preview (`source: "alexa"`). The verdict spoken is always Bee's final grade.
+**Bee is the grader of record.** What Alexa, the browser mic or a typed line hears is a provisional preview (`source: "alexa"` from the skill, `source: "mcp"` from an MCP client such as `/sim/`). The verdict spoken is always Bee's final grade.
 
 ## Files
 
@@ -48,7 +48,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 | `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.NavigateHomeIntent` | `GET /api/session`, then `POST /api/session/end` if one is running | `That's the drill: 2 of 3 Bee-graded attempts passed. Bye.` | ends |
 | `AMAZON.HelpIntent` | none | how to use it | open |
 | `AMAZON.FallbackIntent` | none | asks for the sentence again, or how to start | open |
-| `SessionEndedRequest` | none | (empty response) | |
+| `SessionEndedRequest` | `GET /api/session`, then `POST /api/session/end` only for the drill this skill session started (its id rides in the session attributes) | (empty response) | |
 
 **Catch-all rescue** (`route.ts`). The model's catch-all slot also swallows commands; on a real device (2026-10-16) "how did I do" arrived as `AttemptIntent`. Whole-utterance rules move it back:
 
@@ -76,8 +76,8 @@ Each result is `content: [{type:"text", text: <narration>}]` plus `structuredCon
 
 | Tool | Args | Route | Narration |
 |---|---|---|---|
-| `start_drill` | `size?` 1-10 | `POST /api/session/start {by:"alexa"}` | route `narration` (`Say this: "..."`) |
-| `submit_attempt` | `text`, `card_id?` | `POST /api/attempt {source:"alexa"}` | route `narration` ("Got it. I'm checking with Bee...") |
+| `start_drill` | `size?` 1-10 | `POST /api/session/start {by:"mcp"}` | route `narration` (`Say this: "..."`) |
+| `submit_attempt` | `text`, `card_id?` | `POST /api/attempt {source:"mcp"}` | route `narration` ("Got it. I'm checking with Bee...") |
 | `get_verdict` | `attempt_id` | `GET /api/attempts/<id>` | route `narration` |
 | `drill_status` | | `GET /api/session` | route `narration` |
 | `next_card` | | `POST /api/session/next` | route `narration`, or the summary when done |

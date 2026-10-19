@@ -48,13 +48,13 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
     let card = start.structuredContent?.card;
     if (card) {
       const open = await tvFrom(tvAt, (e) => e.topic === "card.open" && e.payload.card?.id === card.id);
-      ctx.check(!start.isError && open?.payload.by === "alexa" && text(start) === `Say this: "${card.resay}"`, "MCP start_drill -> the TV gets card.open for the same card; narration says the card");
+      ctx.check(!start.isError && open?.payload.by === "mcp" && text(start) === `Say this: "${card.resay}"`, "MCP start_drill -> the TV gets card.open for the same card; narration says the card");
     } else {
       // An earlier module drilled every due card: start_drill must say so, not fail; the flow goes
       // on with a practice card.
       ctx.check(!start.isError && start.structuredContent?.card === null && text(start).length > 0, "MCP start_drill with nothing due answers (no card) instead of failing");
       const any = (await ctx.get("/api/deck")).body.cards?.[0];
-      card = any ? (await ctx.post("/api/card/open", { cardId: any.id, by: "alexa" })).body.card : null;
+      card = any ? (await ctx.post("/api/card/open", { cardId: any.id, by: "mcp" })).body.card : null;
       notes.push("no card was due at start_drill: the phone attempt used a practice card");
     }
     if (!card) return { name: "mcp", ...ctx.counts(), note: "no card could be opened" };
@@ -79,7 +79,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
       const t0 = Date.now();
       const sub = await call("submit_attempt", { text: card2.resay, card_id: card2.id });
       const id = sub.structuredContent?.attempt?.id as string | undefined;
-      ctx.check(!sub.isError && Date.now() - t0 < 1000 && sub.structuredContent?.attempt.status === "pending_bee" && sub.structuredContent.attempt.provisional.source === "alexa" && /checking with Bee/.test(text(sub)), "MCP submit_attempt returns pending_bee at once (source alexa) with the checking-with-Bee narration");
+      ctx.check(!sub.isError && Date.now() - t0 < 1000 && sub.structuredContent?.attempt.status === "pending_bee" && sub.structuredContent.attempt.provisional.source === "mcp" && /checking with Bee/.test(text(sub)), "MCP submit_attempt returns pending_bee at once (source mcp) with the checking-with-Bee narration");
       const pending = await call("get_verdict", { attempt_id: id });
       ctx.check(pending.structuredContent?.verdictReady === false && typeof pending.structuredContent.retryAfterMs === "number", "an early get_verdict is not ready and says when to ask again");
       let v: Res = pending;

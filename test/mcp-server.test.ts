@@ -87,13 +87,13 @@ describe("MCP over Streamable HTTP (stateless)", () => {
     };
 
     const start = await run("start_drill", { size: 3 });
-    expect(start.structuredContent!.session.by).toBe("alexa");
+    expect(start.structuredContent!.session.by).toBe("mcp"); // never "alexa": the skill ends only its own sessions
     expect(start.content[0]!.text).toBe(`Say this: "${start.structuredContent!.card.resay}"`);
     const status = await run("drill_status");
     expect(status.structuredContent!.state).toBe("card_open");
     await fetch(`${s.url}/api/demo/scenario`, { method: "POST", body: JSON.stringify({ scenario: "verified" }) });
     const sub = await run("submit_attempt", { text: start.structuredContent!.card.resay });
-    expect(sub.structuredContent!.attempt).toMatchObject({ status: "pending_bee", provisional: { source: "alexa" } });
+    expect(sub.structuredContent!.attempt).toMatchObject({ status: "pending_bee", provisional: { source: "mcp" } });
     expect(sub.content[0]!.text).toMatch(/checking with Bee/);
     const id = sub.structuredContent!.attempt.id as string;
     const early = await run("get_verdict", { attempt_id: id });

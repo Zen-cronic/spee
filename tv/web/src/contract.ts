@@ -120,7 +120,7 @@ export interface DeckSummary {
   nextDueDate: string | null;
 }
 
-export type ProvisionalSource = "phone" | "alexa" | "typed";
+export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed"; // mcp: an MCP client (the /sim/ simulator, an assistant)
 export type AttemptStatus = "pending_bee" | "polling" | "graded" | "unverified";
 export type Agreement = "agree" | "bee-overrules" | "bee-only";
 export interface Attempt {

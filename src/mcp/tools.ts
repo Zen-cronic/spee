@@ -49,7 +49,7 @@ export const TOOL_DEFS: ToolDef[] = [
     title: "Start a drill",
     description: "Start a drill session and open the first due card. Returns the sentence to say. Mirrored on the TV.",
     input: { size: z.number().int().min(1).max(10).optional().describe("cards in the session (1-10, default 3)") },
-    run: async (hub, a) => outcome("POST /api/session/start", await hub.startSession({ by: "alexa", ...(a.size !== undefined ? { size: a.size as number } : {}) }), (b) => narr(b) ?? ""),
+    run: async (hub, a) => outcome("POST /api/session/start", await hub.startSession({ by: "mcp", ...(a.size !== undefined ? { size: a.size as number } : {}) }), (b) => narr(b) ?? ""),
   },
   {
     name: "submit_attempt",
@@ -57,7 +57,7 @@ export const TOOL_DEFS: ToolDef[] = [
     description:
       "Send what the user said for the open card. Returns at once with status pending_bee: Bee (the wearable) is the grader of record and its line lands 5-20 s later. End the turn, then call get_verdict with the attempt id when the user asks how they did.",
     input: { text: z.string().min(1).max(2000).describe("the user's words, as transcribed"), card_id: z.string().optional().describe("a card to open first (default: the open card)") },
-    run: async (hub, a) => outcome("POST /api/attempt", await hub.attempt({ text: a.text as string, source: "alexa", ...(a.card_id ? { cardId: a.card_id as string } : {}) }), (b) => narr(b) ?? ""),
+    run: async (hub, a) => outcome("POST /api/attempt", await hub.attempt({ text: a.text as string, source: "mcp", ...(a.card_id ? { cardId: a.card_id as string } : {}) }), (b) => narr(b) ?? ""),
   },
   {
     name: "get_verdict",

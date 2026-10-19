@@ -79,7 +79,7 @@ describe("two-turn drill", () => {
     expect(state.session.by).toBe("alexa");
     expect(text(launch)).toBe(`Speech coach. Say this: "${resay}"`);
     expect(launch.envelope.response.shouldEndSession).toBe(false);
-    expect(launch.envelope.sessionAttributes).toEqual({ cardId: state.openCard.id });
+    expect(launch.envelope.sessionAttributes).toEqual({ cardId: state.openCard.id, drillSessionId: state.session.id });
     expect(launch.hubCalls).toEqual(["POST /api/session/start 200"]);
 
     await post("/api/demo/scenario", { scenario: "verified" });
@@ -112,7 +112,7 @@ describe("two-turn drill", () => {
     const next = (await get("/api/session")).openCard;
     expect(text(verdict)).toBe(`Bee heard it: a pass. Next, say: "${next.resay}"`);
     expect(verdict.hubCalls).toEqual(["GET /api/attempts/<id> 200", "POST /api/session/next 200"]);
-    expect(verdict.envelope.sessionAttributes).toEqual({ cardId: next.id });
+    expect(verdict.envelope.sessionAttributes).toEqual({ cardId: next.id, drillSessionId: state.session.id }); // the drill id rides along every turn
     const graded = await get(`/api/attempts/${attemptId}`);
     expect(graded.attempt).toMatchObject({ status: "graded", counted: true, final: { source: "bee", pass: true } });
     // logs carry intent names and timings, never what was said
@@ -202,22 +202,27 @@ describe("other intents", () => {
     expect((await get("/api/session")).session).toBeNull();
     const end = await handleAlexa(env("session-ended"), fake().deps);
     expect(end.envelope).toEqual({ version: "1.0", response: {} });
-    expect(end.hubCalls).toEqual(["GET /api/session 200"]); // nothing running: nothing to end
+    expect(end.hubCalls).toEqual([]); // this skill session started no drill: nothing to end
   });
   it("an abandoned Alexa drill (SessionEndedRequest) ends the hub session, so live nudges are not muted (review H13)", async () => {
-    await handleAlexa(env("launch"), fake().deps);
-    expect((await get("/api/session")).session?.by).toBe("alexa");
+    const launch = await handleAlexa(env("launch"), fake().deps);
+    const attrs = launch.envelope.sessionAttributes!;
+    const started = (await get("/api/session")).session;
+    expect(started?.by).toBe("alexa");
+    expect(attrs.drillSessionId).toBe(started.id);
     expect(s.setup.hub.drillActive()).toBe(true);
-    const end = await handleAlexa(env("session-ended"), fake().deps);
+    const end = await handleAlexa(env("session-ended", { attrs }), fake().deps);
     expect(end.envelope).toEqual({ version: "1.0", response: {} });
     expect(end.hubCalls).toEqual(["GET /api/session 200", "POST /api/session/end 200"]);
     expect((await get("/api/session")).session).toBeNull();
     expect(s.setup.hub.drillActive(0)).toBe(false);
-    // a session started elsewhere (the TV, the phone) is left alone
-    await post("/api/session/start", { by: "tv" });
-    expect((await handleAlexa(env("session-ended"), fake().deps)).hubCalls).toEqual(["GET /api/session 200"]);
-    expect((await get("/api/session")).session?.by).toBe("tv");
-    await post("/api/session/end", {});
+    // a session started elsewhere since (the TV, the simulator over MCP, another Alexa session) is left alone
+    for (const by of ["tv", "mcp", "alexa"]) {
+      await post("/api/session/start", { by });
+      expect((await handleAlexa(env("session-ended", { attrs }), fake().deps)).hubCalls).toEqual(["GET /api/session 200"]);
+      expect((await get("/api/session")).session?.by).toBe(by);
+      await post("/api/session/end", {});
+    }
   });
   it("an unreachable hub is a short apology, not a crash", async () => {
     const down = { ...fake().deps, hub: new HubClient("http://127.0.0.1:9", { timeoutMs: 500 }) };

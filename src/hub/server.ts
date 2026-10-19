@@ -91,7 +91,7 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
   return o && typeof o === "object" && !Array.isArray(o) ? o : {};
 }
 
-const SOURCES = new Set<ProvisionalSource>(["phone", "alexa", "typed"]);
+const SOURCES = new Set<ProvisionalSource>(["phone", "alexa", "mcp", "typed"]);
 
 export async function startHubServer(opts: HubServerOptions = {}): Promise<HubServer> {
   const log = (event: string, data: Record<string, unknown> = {}) => {
@@ -447,7 +447,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
         const b = await body(req);
         if (typeof b.text !== "string" || !b.text.trim()) return fail(res, 400, "bad_request", "text (string) is required");
         const source = (b.source ?? "typed") as ProvisionalSource;
-        if (!SOURCES.has(source)) return fail(res, 400, "bad_request", "source must be phone, alexa or typed (Bee attempts arrive through the stream)");
+        if (!SOURCES.has(source)) return fail(res, 400, "bad_request", "source must be phone, alexa, mcp or typed (Bee attempts arrive through the stream)");
         if (b.beeScenario !== undefined) {
           if (!setup.demo) return fail(res, 400, "demo_only", "beeScenario is only accepted in demo mode");
           if (!(String(b.beeScenario) in DEMO_SCENARIOS)) return fail(res, 400, "bad_request", `beeScenario must be one of ${Object.keys(DEMO_SCENARIOS).join(", ")}`);

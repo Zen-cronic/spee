@@ -128,7 +128,7 @@ Habit keys are used by stats, transfer and the pre-registration file:
 | `POST /api/session/start` `{by?, size? (1-10, default 3)}` | Alexa | starts a drill session and opens the first due card |
 | `POST /api/session/next` | Alexa | opens the next due card, or ends the session when `size` cards were counted or nothing is due: `{card, done, summary?}` |
 | `POST /api/session/end` | Alexa | ends the session: `{summary}` |
-| `POST /api/attempt` `{text, source: "phone"\|"alexa"\|"typed", cardId?, speechEndAt? (hub-clock ms)}` | Alexa, phone, typed | provisional attempt on the open card (or on `cardId`, which it opens). Returns **202** at once: `{attempt, narration, verdictUrl, retryAfterMs}` with `status: "pending_bee"` |
+| `POST /api/attempt` `{text, source: "phone"\|"alexa"\|"mcp"\|"typed", cardId?, speechEndAt? (hub-clock ms)}` | Alexa, MCP clients, phone, typed | provisional attempt on the open card (or on `cardId`, which it opens). Returns **202** at once: `{attempt, narration, verdictUrl, retryAfterMs}` with `status: "pending_bee"` |
 | `GET /api/attempts/<id>` | Alexa (turn 2) | **the verdict**: `{attempt, status, verdictReady, retryAfterMs, narration}` |
 | `GET /api/attempts?limit=20` | TV | recent attempts, newest first |
 | `GET /api/deck` | TV | `{summary, cards[], today}` |
@@ -402,7 +402,7 @@ Connect with the bridge client (`tv-voice-bridge`, vendored as `vendor/tv-voice-
 - On joining, a peer gets `hub.state` (`seq: 0`), the same object as `GET /api/state`. It carries `bootId` (new on every hub start) and `lastSeq` (the last `seq` published when the snapshot was taken); both are optional for older hubs.
   - **Reconnect** (same `bootId`): events at or below `lastSeq` are already in the snapshot; apply the ones above it.
   - **Restart** (a different `bootId`): `seq` started again at 1, so drop the old high-water mark. Without this, a TV that had seen seq 340 ignored the next 340 events.
-- **Drill sessions expire.** A session (or a lone open card) with no card, attempt or verdict for 10 minutes is ended (`session.ended`), unless Bee is still checking an attempt. Alexa's `SessionEndedRequest` also ends a session the skill started. Either way, an abandoned drill does not keep live nudges muted as `drill-active` or keep matching everyday speech as attempts.
+- **Drill sessions expire.** A session (or a lone open card) with no card, attempt or verdict for 10 minutes is ended (`session.ended`), unless Bee is still checking an attempt. Alexa's `SessionEndedRequest` also ends the session that skill session started (its id rides in the session attributes); a session started since by anyone else is left alone. Either way, an abandoned drill does not keep live nudges muted as `drill-active` or keep matching everyday speech as attempts.
 - **Event order.** `attempt.provisional` is always published before that attempt's `attempt.verified` and `attempt.graded`.
 - SSE (`GET /api/events`) carries the same events as `event: <topic>`, `id: <seq>`, `data: <payload>`.
 
@@ -562,8 +562,8 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
 
   | Tool | Calls |
   |---|---|
-  | `start_drill` | `POST /api/session/start {by:"alexa", size}` |
-  | `submit_attempt(text)` | `POST /api/attempt {source:"alexa", text}` (returns at once) |
+  | `start_drill` | `POST /api/session/start {by:"mcp", size}` |
+  | `submit_attempt(text)` | `POST /api/attempt {source:"mcp", text}` (returns at once) |
   | `get_verdict(attempt_id)` | `GET /api/attempts/<id>` |
   | `drill_status` | `GET /api/session` |
   | `next_card` | `POST /api/session/next` |

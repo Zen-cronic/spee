@@ -25,7 +25,7 @@ export function sessionTally(prefix: string, s: { passed: number; failed: number
 
 // The BEE OVERRULES caption. Bee and the preview disagree in either direction, so the caption
 // follows Bee's verdict: the preview said the opposite.
-const PREVIEW_BY: Record<string, string> = { phone: 'The phone', alexa: 'Alexa', typed: 'The typed preview' };
+const PREVIEW_BY: Record<string, string> = { phone: 'The phone', alexa: 'Alexa', mcp: 'The assistant', typed: 'The typed preview' };
 export function overruleText(previewSource: string | null | undefined, beePass: boolean, beeText: string | null | undefined): string {
   const who = PREVIEW_BY[previewSource ?? ''] ?? 'The preview';
   const heard = `"${beeText ?? ''}"`;

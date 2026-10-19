@@ -154,12 +154,15 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     "AMAZON.HelpIntent": async () => ({ text: SPEECH.help, reprompt: SPEECH.helpReprompt, attrs }),
     "AMAZON.FallbackIntent": async () => (attrs.cardId ? { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs } : { text: SPEECH.fallbackIdle, reprompt: SPEECH.helpReprompt, attrs }),
     Unknown: async () => (attrs.cardId ? { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs } : { text: SPEECH.fallbackIdle, reprompt: SPEECH.helpReprompt, attrs }),
-    // Alexa closed the session (the user went quiet, said nothing valid, or an error). A drill the
-    // skill started is ended on the hub too, so it does not keep live nudges muted (drill-active).
-    // No speech is allowed in this response.
+    // Alexa closed the session (the user went quiet, said nothing valid, or an error). The drill this
+    // skill session started (its id is in the session attributes) is ended on the hub too, so it does
+    // not keep live nudges muted (drill-active). A drill started since by anyone else (the simulator,
+    // an MCP client, the TV, another Alexa session) is left alone. No speech is allowed here.
     SessionEndedRequest: async () => {
+      const mine = typeof attrs.drillSessionId === "string" ? attrs.drillSessionId : null;
+      if (!mine) return null;
       const state = await track("GET /api/session", hub.session());
-      if (state.ok && state.body.session?.by === "alexa") await track("POST /api/session/end", hub.endSession());
+      if (state.ok && state.body.session?.id === mine) await track("POST /api/session/end", hub.endSession());
       return null;
     },
   };
@@ -168,11 +171,11 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     const r = await track("POST /api/session/start", hub.startSession({ by: "alexa" }));
     if (!r.ok) return hubDown();
     const card = r.body.card;
-    if (!card) return { text: SPEECH.launchNoCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId", "cardId") };
+    if (!card) return { text: SPEECH.launchNoCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId", "cardId", "drillSessionId") };
     return {
       text: line([sayCard(kind === "launch" ? "Speech coach. Say this:" : "Here's your first card. Say:", card.resay)]),
       reprompt: sayCard("Say:", card.resay),
-      attrs: { ...without(attrs, "attemptId"), cardId: card.id },
+      attrs: { ...without(attrs, "attemptId"), cardId: card.id, drillSessionId: r.body.session.id },
     };
   }
 
@@ -184,7 +187,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   }
 
   async function stop(): Promise<Out> {
-    const bye: Out = { text: SPEECH.bye, end: true, attrs: without(attrs, "attemptId", "cardId") };
+    const bye: Out = { text: SPEECH.bye, end: true, attrs: without(attrs, "attemptId", "cardId", "drillSessionId") };
     const state = await track("GET /api/session", hub.session());
     if (state.ok && !state.body.session) return bye; // nothing running: don't repeat an old summary
     const r = await track("POST /api/session/end", hub.endSession());
