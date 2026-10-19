@@ -1,8 +1,9 @@
 // Optional model phrasing for a recap (off by default; COACH_RECAP_LLM=1 turns it on in live mode).
 //
 // The model only rewords the template recap: the numbers, the verdicts and the moment are decided
-// by code (live/recap.ts) and passed in, and acceptPhrasing holds it to them (every number of the
-// template kept, none added, in digits or in words). It runs off the request path, one call at a time, with a
+// by code (live/recap.ts) and passed in, and acceptPhrasing holds it to them: every number of the
+// template kept, none added, in digits or in words, and each one still about the same thing (see
+// numberFacts). It runs off the request path, one call at a time, with a
 // 6 s timeout; on any failure or failed check the template phrasing stays. Model: Claude Haiku 4.5
 // on Bedrock (profile hackathon-1, via src/llm/bedrock.ts callTool). Tests inject a fake.
 //
@@ -72,6 +73,70 @@ export function numbersIn(text: string): string[] {
   }
   return out;
 }
+// What a number in a recap is about, so a phrasing cannot move a number to another fact ("hedged 6
+// times and said like 2 times" becoming "hedged 2 times and said like 6 times"). A number belongs to
+// the nearest fact word in its clause (else in its sentence): a habit (hedge, like, vague, restart),
+// minutes, words, words a minute, or a rate when "per 100 words" follows within two words.
+// "usual"/"usually" marks the number nearest to it, the same way, as the baseline. The result is "kind:number" keys, e.g. "hedge:6", "rate:7.5",
+// "usual-rate:1.4", "minute:2"; a number with no fact word in its sentence is "none:<n>".
+type Tok = { t: string; num: string | null; kind: string | null; usual: boolean; skip: boolean; clause: number };
+const HABIT_WORD: [RegExp, string][] = [[/^hedg/, "hedge"], [/^likes?$/, "like"], [/^vague/, "vague"], [/^restart/, "restart"]];
+export function numberFacts(text: string): string[] {
+  const out: string[] = [];
+  for (const sentence of text.replace(/"(like)"/gi, "$1").split(/(?<=[.!?])\s+/)) {
+    const toks: Tok[] = [];
+    let clause = 0;
+    for (const m of sentence.matchAll(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\p{L}+|[,;:()\u2013\u2014]/gu)) {
+      const t = m[0].toLowerCase();
+      if (!/[\p{L}\d]/u.test(t)) {
+        clause++;
+        continue;
+      }
+      const num = /^\d/.test(t) ? numKey(Number(t.replace(/,/g, ""))) : t in WORD_NUMBERS ? numKey(WORD_NUMBERS[t]!) : null;
+      toks.push({ t, num, kind: null, usual: false, skip: false, clause });
+    }
+    const at = (i: number) => toks[i]?.t ?? "";
+    for (let i = 0; i < toks.length; i++) {
+      const k = toks[i]!;
+      if (k.kind) continue;
+      if (k.t === "per" && toks[i + 1]?.num === "100" && /^words?$/.test(at(i + 2))) {
+        for (const j of [i, i + 1, i + 2]) (toks[j]!.kind = "rate"), (toks[j]!.skip = j === i + 1);
+      } else if (/^words?$/.test(k.t) && /^(a|per)$/.test(at(i + 1)) && /^minutes?$/.test(at(i + 2))) {
+        for (const j of [i, i + 1, i + 2]) toks[j]!.kind = "wpm";
+      } else if (k.t === "wpm") k.kind = "wpm";
+      else if (/^minutes?$/.test(k.t)) k.kind = "minute";
+      else if (/^words?$/.test(k.t)) k.kind = "words";
+      else if (k.num === null) k.kind = HABIT_WORD.find(([re]) => re.test(k.t))?.[1] ?? null;
+    }
+    const nums = toks.map((k, i) => (k.num !== null && !k.skip ? i : -1)).filter((i) => i >= 0);
+    // The nearest token to i that passes `ok`, in i's clause first, then anywhere in the sentence (a tie
+    // goes to the later one when `later`, else the earlier one).
+    const nearest = (i: number, ok: (j: number) => boolean, later: boolean) => {
+      for (const same of [true, false])
+        for (let d = 1; d < toks.length; d++) {
+          const order = later ? [i + d, i - d] : [i - d, i + d];
+          const j = order.find((j) => j >= 0 && j < toks.length && (!same || toks[j]!.clause === toks[i]!.clause) && ok(j));
+          if (j !== undefined) return j;
+        }
+      return -1;
+    };
+    // Each "usual" marks the number nearest to it (a tie goes to the number after it: "usual 1.4").
+    toks.forEach((k, i) => {
+      if (!/^usual(ly)?$/.test(k.t)) return;
+      const near = nearest(i, (j) => nums.includes(j), true);
+      if (near >= 0) toks[near]!.usual = true;
+    });
+    for (const i of nums) {
+      const rate = [i + 1, i + 2].some((j) => toks[j]?.kind === "rate" && toks[j]!.clause === toks[i]!.clause);
+      const j = rate ? -1 : nearest(i, (j) => toks[j]!.kind !== null, false);
+      const kind = rate ? "rate" : j >= 0 ? toks[j]!.kind : "none";
+      out.push(`${toks[i]!.usual ? "usual-" : ""}${kind}:${toks[i]!.num}`);
+    }
+  }
+  return out;
+}
+const HABIT_KIND: Record<string, string> = { hedges: "hedge", "filler:like": "like", vague: "vague", restart: "restart" };
+
 // Text with its quotes removed: the quote rule below checks them, and a quoted moment may hold
 // numbers of its own (only quotes in `allowed` are removed; anything else is still counted).
 const unquoted = (s: string, allowed: string[] | null) => s.replace(/"([^"]*)"/g, (q, inner: string) => (allowed === null || allowed.includes(fold(inner)) ? " " : q));
@@ -92,13 +157,14 @@ export function acceptPhrasing(out: unknown, recap: Recap, principles: Principle
     const q = fold(m[1]!);
     if (q.split(" ").length >= 3 && !allowed.includes(q)) return null;
   }
-  // Numbers: every one the template states is kept, and none is added (a count of zero is a fact
-  // too, so "no hedges" may become "zero hedges").
-  const want = new Set(numbersIn(unquoted(`${recap.headline} ${recap.narration}`, null)));
-  const may = new Set([...want, ...numbersIn(unquoted(recap.wristText, null)), ...recap.metrics.habits.map((h) => numKey(h.count))]);
-  const said = numbersIn(unquoted(`${headline} ${narration}`, allowed));
+  // Numbers: every one the template states is kept, about the same fact, and none is added (a
+  // habit's count is a fact too, so "no hedges" may become "zero hedges").
+  const facts = (t: string, keep: string[] | null) => numberFacts(unquoted(t.replace(/"(like)"/gi, "$1"), keep));
+  const want = new Set([...facts(recap.headline, null), ...facts(recap.narration, null)]);
+  const may = new Set([...want, ...facts(recap.wristText, null), ...recap.metrics.habits.flatMap((h) => (HABIT_KIND[h.key] ? [`${HABIT_KIND[h.key]}:${numKey(h.count)}`] : []))]);
+  const said = [...facts(headline, allowed), ...facts(narration, allowed)];
   if ([...want].some((n) => !said.includes(n))) return null;
-  if ([...said, ...numbersIn(wristText)].some((n) => !may.has(n))) return null;
+  if ([...said, ...facts(wristText, null)].some((n) => !may.has(n))) return null;
   return { headline, narration, wristText };
 }
 

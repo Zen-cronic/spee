@@ -11,7 +11,7 @@ import { RECAP_MOMENT_MAX_WORDS, WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import type { Baseline } from "../src/hub/live/baseline.js";
 import { DEFAULT_THRESHOLDS, loadPrinciples, parseThresholds, principlesFromText } from "../src/hub/live/principles.js";
 import { buildRecap, verdictOf } from "../src/hub/live/recap.js";
-import { acceptPhrasing, numbersIn, phraseRecap, recapPrompt, RECAP_LLM_MODEL, type PhraseFn } from "../src/hub/live/recapPrompt.js";
+import { acceptPhrasing, numberFacts, numbersIn, phraseRecap, recapPrompt, RECAP_LLM_MODEL, type PhraseFn } from "../src/hub/live/recapPrompt.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
 
@@ -145,6 +145,24 @@ describe("optional model phrasing", () => {
     expect(acceptPhrasing({ ...good, headline: "Hedges ran high: 7.5 per 100 words." }, r, principles)).toBeNull(); // the usual 1.4 dropped
     expect(n("About 2 minutes at 140 words a minute. You hedged six times.")).not.toBeNull(); // digits or words
     expect(numbersIn('1,400 words, 7.5 per hundred, twice "on Friday"')).toEqual(["1400", "7.5", "100", "2"]);
+  });
+  it("keeps each number on its fact: a phrasing that moves a number to another habit or quantity falls back", () => {
+    const r = recapOf(conversation());
+    const like = r.metrics.habits.find((h) => h.key === "filler:like")!.count;
+    expect(like).not.toBe(6);
+    const n = (narration: string, headline = good.headline) => acceptPhrasing({ ...good, headline, narration }, r, principles);
+    // The minutes and the hedge count swapped: the same set of numbers, now about the wrong things.
+    expect(n("About 6 minutes at 140 words a minute. You hedged 2 times.")).toBeNull();
+    expect(n("About two minutes at 6 words a minute. You hedged 140 times.")).toBeNull();
+    // The rate and the usual rate swapped.
+    expect(n(good.narration, "Hedges ran high today: 1.4 per 100 words, usually 7.5.")).toBeNull();
+    // Another habit's count given the hedge count.
+    expect(n(`About two minutes at 140 words a minute. You hedged 6 times and said "like" 6 times.`)).toBeNull();
+    // Reordered and reworded, every number still on its fact: accepted.
+    expect(n(`You hedged 6 times in about two minutes, at 140 words a minute, and said "like" ${like} times.`)).not.toBeNull();
+    expect(n(good.narration, "At 7.5 hedges per 100 words against 1.4 usually, hedging ran high.")).not.toBeNull();
+    expect(numberFacts('You hedged 6 times and said "like" 2 times, in about 2 minutes.')).toEqual(["hedge:6", "like:2", "minute:2"]);
+    expect(numberFacts("You spoke fast at 160 words a minute (usually 150).")).toEqual(["wpm:160", "usual-wpm:150"]);
   });
   it("hands callTool a sanitize hook, so a phrasing that echoes the principles is never cached (review H10)", async () => {
     const r = recapOf(conversation());
