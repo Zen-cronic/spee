@@ -3,7 +3,7 @@
 Bee hears you say "I guess" four times in two minutes, and about 20 seconds later your wrist buzzes. When the conversation ends you get a recap. When you practise, you re-say the line to Alexa or your phone, and the attempt is graded from **Bee's own wearer-tagged transcript**, not from the mic you said it into. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
 
 - **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins.
-- **AI finds the habits; deterministic code grades and decides.** Hedges ("I guess", "kind of") and "like" are the hero habits; fillers, vague answers and restarts are tracked too.
+- **AI finds the habits; deterministic code grades and decides.** Hedges ("I guess", "kind of") and "like" are the hero habits, the two drilled and pre-registered in `prereg/transfer.json`. Vague answers and the other fillers are tracked too, and restarts are the undrilled control.
 - **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator), Fire TV (a Vega app) and a phone page (drills and practice meters).
 
 ## Start here (no accounts, no keys, about 2 minutes)
@@ -17,9 +17,9 @@ Then open:
 
 - **TV:** http://localhost:8791/tv/ (arrow keys and Enter move along the tabs);
 - **Alexa+ simulator:** http://localhost:8791/sim/ (a real MCP client: type or say "quiz me", repeat the sentence, then "how did I do?");
-- **Phone:** scan the TV's QR from a phone on the same Wi-Fi.
+- **Phone:** scan the TV's QR from a phone on the same Wi-Fi. Over plain `http://` on the LAN the phone can type a drill attempt, but browsers allow the microphone (voice drills and practice meters) only on https: run `ngrok http 8791` and start the hub with `PUBLIC_BASE_URL=https://<your-ngrok-host>`, so the QR carries the https link ([`docs/tv.md`](docs/tv.md), "Mic check").
 
-`npm run demo:replay` prints the whole live story with its latency hops, with no Bee, Watch or AWS. The Fire TV app builds with `npm run tv:vega:build` and runs on the Vega Virtual Device (`docs/tv.md`).
+`npm run demo:replay` prints the whole live story with its latency hops, with no Bee, Watch or AWS. The Fire TV app has its own install: `npm install --prefix tv/vega && npm run tv:vega:build`, then it runs on the Vega Virtual Device (`docs/tv.md`).
 
 Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a Bee account, `npm run hub` runs the same surfaces on your real data.
 
@@ -40,15 +40,15 @@ flowchart LR
   H["Coach hub<br/>Node, one port"] -->|"Bee to-do + alarm"| W
   A["Alexa skill<br/>custom skill"] <-->|"POST /alexa"| H
   S["/sim/ and any<br/>MCP client"] <-->|"/mcp"| H
-  H <-->|"tv-voice-bridge<br/>WebSocket"| T["Fire TV<br/>Speaking Mirror (Vega)"]
-  P["Phone page<br/>drill + practice"] <-->|"tv-voice-bridge"| H
+  H <-->|"tv-voice-bridge WebSocket<br/>+ HTTP /api"| T["Fire TV<br/>Speaking Mirror (Vega)"]
+  P["Phone page<br/>drill + practice"] <-->|"tv-voice-bridge<br/>(https for the mic)"| H
 ```
 
 - **Bee (Watch + `bee` CLI)** is the input of record: `bee stream` delivers wearer-tagged lines for habits, live nudges and every drill grade, and Bee to-dos with alarms are the wrist nudges.
 - **The hub** holds all state. It verifies each attempt against Bee (`src/hub/bee.ts`), grades it deterministically (`src/hub/grade.ts`), runs the live coach and recaps (`src/hub/live/`), and serves every surface from one port behind a public-access gate (`src/hub/gate.ts`).
 - **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
-- **Fire TV** shows the week, the live drill pipeline and the before/after check; it reaches the hub through [`tv-voice-bridge`](https://github.com/Zen-cronic/tv-voice-bridge), vendored as a tarball.
-- **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge.
+- **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
+- **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge. Its microphone needs https (the `ngrok http` link above); over LAN `http://` it is typing only.
 
 ## Coach hub (shared core for the TV mirror and the Alexa drill session)
 
@@ -72,7 +72,7 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
   - 0 fillers;
   - at least 80% of the target sentence is matched, with fuzzy word matching for ASR slips ("car" for "card", "rec board" for "rack board");
   - every concrete word the fix introduces is said.
-- **Hero habits.** Hedges ("I guess", "kind of") and vague answers ("that thing", "getting there", "and stuff"). Fillers support them, and restarts are the control.
+- **Hero habits.** Hedges ("I guess", "kind of") and the filler "like": the two drilled habits, pre-registered in `prereg/transfer.json`. Vague answers ("that thing", "getting there", "and stuff") and the other fillers are tracked, and restarts are the undrilled control.
 - **Transfer.** `GET /api/transfer` asks whether a drilled habit dropped in later non-drill real speech, compared with a control habit that was deliberately not drilled. It reports rates per 100 words with 95% intervals, before vs after the first drill, and a plain verdict.
   - The drilled and control habits are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any drill attempt).
   - The endpoint refuses to report an unregistered habit as drilled.

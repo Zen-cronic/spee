@@ -15,7 +15,7 @@ const PREREG: TransferPrereg = {
 const filler = (n: number) => new Array(n).fill("The export finished on time and the totals match the ledger today.").join(" ");
 
 describe("habit keys and rates", () => {
-  it("counts hero habits (hedges, vague answers) and supporting ones", () => {
+  it("counts the drilled habits (hedges, \"like\") and the tracked ones", () => {
     expect(countHabitKey("hedge:i guess", "I guess it works, I guess.")).toBe(2);
     expect(countHabitKey("hedges", "I think it's kind of done, maybe.")).toBe(3);
     expect(countHabitKey("vague", "I fixed that thing and stuff, it's getting there.")).toBe(3);

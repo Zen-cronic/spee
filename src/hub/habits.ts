@@ -1,10 +1,11 @@
 // Habit vocabulary shared by the grader, the stats and the transfer check. Every habit here is
 // counted by a deterministic rule (regex or token rule), never by a model.
 //
-// Hero habits: hedges ("I guess", "kind of") and vague answers (vague referents such as "that
-// thing", vague status such as "pretty much done", vague tags such as "and stuff"). Fillers
-// ("like", "um") support them. Restarts and trailing-off are tracked too; restarts are the
-// default pre-registered control habit.
+// Hero habits: hedges ("I guess", "kind of") and the filler "like", the two drilled habits in the
+// pre-registration (prereg/transfer.json). Vague answers (vague referents such as "that thing",
+// vague status such as "pretty much done", vague tags such as "and stuff") and the other fillers
+// ("um") are tracked. Restarts and trailing-off are tracked too; restarts are the pre-registered
+// control habit.
 import { splitSentences } from "../analyze/segment.js";
 import { sentenceKind, VAGUE_RE_EN, YEAH_TIC_RE } from "../real/talk.js";
 import { FILLER_RE, HEDGE_RE, listRe, repeats } from "../real/text.js";
