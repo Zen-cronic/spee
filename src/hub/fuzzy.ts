@@ -214,10 +214,11 @@ export function attemptSpan(target: string, beeText: string, lang: Lang = "en"):
 }
 
 // A sentence made of hedges and fillers, plus at most two tag words ("I guess.", "Um.", "Maybe, I
-// think.", "I guess so.", "Yeah, I think so."): the attempt's own trailing hedge, not a new remark.
+// think.", "I guess so.", "Yeah, I think so.", "Je pense que oui.", "Je crois que si."): the
+// attempt's own trailing hedge, not a new remark.
 const TAG_WORDS: Record<Lang, Set<string>> = {
   en: new Set(["so", "yeah", "yes", "ok", "okay", "right", "anyway", "then", "really", "too", "well", "not"]),
-  fr: new Set(["oui", "ouais", "bon", "voilà", "voila", "alors", "donc", "quoi", "bref", "non", "pas"]),
+  fr: new Set(["oui", "ouais", "bon", "voilà", "voila", "alors", "donc", "quoi", "bref", "non", "pas", "que", "si"]),
 };
 function bareHabit(sentence: string, lang: Lang): boolean {
   const rest = sentence.replace(new RegExp(HEDGE_RE[lang].source, "gi"), " ").replace(new RegExp(FILLER_RE[lang].source, "gi"), " ");

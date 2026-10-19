@@ -194,6 +194,12 @@ describe("attempt span (Bee merged the attempt with other speech)", () => {
       const span = attemptSpan(hedge.resay, bee);
       expect(grade(hedge, span.graded, span.habitText).pass, bee).toBe(false);
     }
+    // the same in French: "Je pense que oui." is the attempt's trailing hedge, not a new remark
+    const fr = { lang: "fr" as const, resay: "Le déploiement est terminé ce matin.", habit: { kind: "hedge" as const, targets: [], label: "hedges" } };
+    for (const bee of ["Le déploiement est terminé ce matin. Je pense que oui.", "Le déploiement est terminé ce matin. Je crois que non.", "Le déploiement est terminé ce matin. Je pense, oui."]) {
+      const span = attemptSpan(fr.resay, bee, "fr");
+      expect(grade(fr, span.graded, span.habitText).pass, bee).toBe(false);
+    }
     // two bare habit sentences in a row both stay with the attempt
     expect(attemptSpan(hedge.resay, "The deploy finished this morning. I guess. Maybe. How did I do?").habitText).toBe("The deploy finished this morning. I guess. Maybe.");
   });
