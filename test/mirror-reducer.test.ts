@@ -132,6 +132,21 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     expect(s.drill).toMatchObject({ stage: "card", card: { id: "c2" }, attemptId: null, graded: null, verified: null });
     expect(s.drill.deck).toEqual(deck); // the deck summary still moves
   });
+  it("Bee still checking the previous card's attempt never puts the open card into checking", () => {
+    const c1 = { id: "c1", resay: "one" } as any;
+    const c2 = { id: "c2", resay: "two" } as any;
+    const prov = { attempt: { id: "a1", cardId: "c1", provisional: { source: "phone", text: "one", grade: { pass: true, reasons: [] } } }, card: c1 };
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card: c1 }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 }, { type: "event", event: ev(3, "card.open", { card: c2 }), now: 2 });
+    // 30 s later the hub starts polling for a1, then gives up on it.
+    s = run(s, { type: "event", event: ev(4, "attempt.status", { attemptId: "a1", cardId: "c1", status: "polling", reason: "stream timed out" }), now: 3 });
+    expect(s.drill).toMatchObject({ stage: "card", card: { id: "c2" }, attemptId: null, checking: null });
+    s = run(s, { type: "event", event: ev(5, "attempt.verified", { attemptId: "a1", cardId: "c1", status: "unverified", reason: "gave up" }), now: 4 }, { type: "event", event: ev(6, "session.ended", { summary: { sessionId: "s1" } }), now: 5 });
+    // Nobody attempted c2, so the session's end closes it and the summary shows.
+    expect(s.drill).toMatchObject({ stage: "idle", card: null });
+    // The open card's own attempt still gets its checking state.
+    s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card: c2 }), now: 0 }, { type: "event", event: ev(2, "attempt.status", { attemptId: "a2", cardId: "c2", status: "polling", reason: "r" }), now: 1 });
+    expect(s.drill).toMatchObject({ stage: "checking", attemptId: "a2", checking: { reason: "r" } });
+  });
   it("DRILLS TODAY reads today's tally from stats.updated, not the week's", () => {
     const today = { attempts: 2, counted: 2, passed: 1, unverified: 0, beeOverrules: 0 };
     let s = run(initialMirror(), { type: "practiceToday", practice: { ...today, passed: 0 } });

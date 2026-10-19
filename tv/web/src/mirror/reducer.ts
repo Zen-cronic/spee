@@ -307,6 +307,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       return { ...s, drill: { ...s.drill, card: p.card ?? s.drill.card, attemptId: at.id ?? null, stage: 'provisional', provisional: at.provisional ? { source: at.provisional.source, text: at.provisional.text, pass: !!at.provisional.grade?.pass, reasons: at.provisional.grade?.reasons ?? [] } : null, checking: null, verified: null, graded: null }, view: 'drill', viewReason: 'attempt received', viewBy: at.provisional?.source ?? null };
     }
     case 'attempt.status':
+      if (otherCard(s, p.cardId)) return s;
       if (s.drill.attemptId && p.attemptId !== s.drill.attemptId) return s;
       return { ...s, drill: { ...s.drill, attemptId: p.attemptId, stage: 'checking', checking: { reason: p.reason ?? '' } } };
     case 'attempt.verified': {
