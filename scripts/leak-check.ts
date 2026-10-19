@@ -216,7 +216,9 @@ const templatePath = "coach/principles.template.md";
 const principles = new Set<string>();
 if (existsSync(principlesPath)) {
   const generic = new Set(existsSync(templatePath) ? shingles(readFileSync(templatePath, "utf8")) : []);
-  for (const g of shingles(readFileSync(principlesPath, "utf8"))) if (!generic.has(g) && !allFunction(g)) principles.add(g);
+  // Link targets are public references, not private wording.
+  const prose = readFileSync(principlesPath, "utf8").replace(/https?:\/\/\S+/g, " ");
+  for (const g of shingles(prose)) if (!generic.has(g) && !allFunction(g)) principles.add(g);
 }
 const termsPath = "coach/private-terms.local.txt";
 const terms = existsSync(termsPath)

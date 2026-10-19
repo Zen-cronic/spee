@@ -94,7 +94,8 @@ export function parseThresholds(md: string): CoachThresholds | null {
 export function principlesFromText(md: string | null, source: Principles["source"]): Principles {
   const th = md ? parseThresholds(md) : null;
   const rubric = (md ?? "").replace(/```json[\s\S]*?```/g, "").trim();
-  const set = new Set(shingles(rubric).filter((g) => !g.split(" ").every((w) => FUNCTION.has(w))));
+  // Link targets are public references, not private wording.
+  const set = new Set(shingles(rubric.replace(/https?:\/\/\S+/g, " ")).filter((g) => !g.split(" ").every((w) => FUNCTION.has(w))));
   return {
     source,
     thresholds: th ?? DEFAULT_THRESHOLDS,

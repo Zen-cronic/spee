@@ -91,6 +91,12 @@ describe("principles", () => {
     expect(p.sharesShingle("Try it without the hedges.")).toBe(false);
     expect(parseThresholds("```json\n{\"version\":2}\n```")).toBeNull();
   });
+
+  it("ignores link targets: a cited URL is a public reference, not private wording", () => {
+    const p = principlesFromText("Pause before the key point. [Source](https://docs.example.com/guide/pauses/before/points)", "local");
+    expect(p.sharesShingle("See docs.example.com/guide/pauses/before/points for the guide.")).toBe(false);
+    expect(p.sharesShingle("Always pause before the key point.")).toBe(true);
+  });
   it("the committed template parses to the contract thresholds", () => {
     expect(loadPrinciples().thresholds).toEqual(DEFAULT_THRESHOLDS);
   });
