@@ -21,10 +21,13 @@ export interface HomeStatus {
   drillsDue: number | null;
 }
 
-/** Fill the status slot. "<" is escaped so no value can close the script element. */
+/**
+ * Fill the status slot. "<" is escaped so no value can close the script element, and the filled
+ * slot goes in through a function, so "$&", "$'" and "$`" in a value are written as they are.
+ */
 export function renderHome(template: string, status: HomeStatus): string {
   const json = JSON.stringify(status).replace(/</g, "\\u003c");
-  return template.replace(HOME_SLOT, `<script id="hub-status" type="application/json">${json}</script>`);
+  return template.replace(HOME_SLOT, () => `<script id="hub-status" type="application/json">${json}</script>`);
 }
 
 export function serveHome(req: IncomingMessage, res: ServerResponse, status: HomeStatus, root: string = REPO_ROOT): void {

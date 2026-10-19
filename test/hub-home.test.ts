@@ -54,4 +54,10 @@ describe("hub home page", () => {
     expect(html).not.toContain("</script><script>alert");
     expect(statusOf(html).dataLabel).toBe("</script><script>alert(1)</script>");
   });
+  it("writes a value with $&, $' or $` as it is, not as a replacement pattern", () => {
+    const label = "SYNTHETIC $' $& $` $$ label";
+    const html = renderHome(`<body>${HOME_SLOT}<p>after</p></body>`, { demo: true, dataLabel: label, bee: "replay", pairCode: null, screens: 0, phones: 0, drillsDue: 0 });
+    expect(statusOf(html).dataLabel).toBe(label);
+    expect(html.match(/<p>after<\/p>/g)).toHaveLength(1);
+  });
 });
