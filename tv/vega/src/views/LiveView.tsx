@@ -2,7 +2,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { Chip } from '../components/Chip';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, RuleState } from '../contract';
-import { fmtInt, fmtMs, fmtPct, RULE_LABEL, SKIP_LABEL } from '../mirror/format';
+import { fmtDay, fmtInt, fmtMs, fmtPct, overruleText, RULE_LABEL, SKIP_LABEL } from '../mirror/format';
 import type { DrillState, LiveSlice } from '../mirror/reducer';
 import { useEnter, useLoop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
@@ -74,17 +74,25 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
         <Step n={1} title={pv ? `Preview (${pv.source}): ${pv.pass ? 'pass' : 'fail'}` : 'Waiting for your attempt'} state={pv ? (pv.pass ? 'done' : 'bad') : previewState} detail={pv ? `"${pv.text}"` : null} />
         <Step n={2} title="Checking with Bee" state={checkState} detail={st === 'checking' ? 'stream timed out, asking the Bee CLI' : st === 'provisional' ? 'waiting for Bee to tag your line' : null} />
         <Step n={3} title={st === 'unverified' ? 'Not verified by Bee' : 'Verified by Bee'} state={verifyState} bee detail={v ? (v.status === 'verified' ? `speaker ${v.speakerScore ?? '–'} · ${fmtMs(v.latencyMs)} after you spoke · via ${v.via ?? '–'}${v.replay ? ' · replay' : ''}` : v.reason) : st === 'unverified' ? 'no counted attempt' : null} />
-        <Step n={4} title={g ? `Graded from Bee: ${g.pass ? 'PASS' : 'FAIL'}` : 'Graded'} state={gradeState} detail={g ? `${g.reasons.filter((r) => r.startsWith('FAIL')).slice(0, 1).join('') || g.reasons[0] || ''}${g.boxFrom !== null ? `  ·  box ${g.boxFrom} → ${g.boxTo}` : ''}` : null} />
+        <Step n={4} title={g ? `Graded from Bee: ${g.pass ? 'PASS' : 'FAIL'}` : 'Graded'} state={gradeState} detail={g ? `${gradeWhy(g.reasons)}${g.boxFrom !== null ? `  ·  box ${g.boxFrom} → ${g.boxTo}${g.dueAfter ? `, next ${fmtDay(g.dueAfter)}` : ''}` : ''}` : null} />
       </View>
       {g?.agreement === 'bee-overrules' ? (
         <View style={styles.overrule} testID="bee-overrules">
           <Chip text="BEE OVERRULES" tone="bee" big />
-          <Text style={styles.overruleText} numberOfLines={3}>{`The phone heard a pass. Bee heard "${g.beeText ?? ''}" and that is what counts.`}</Text>
+          <Text style={styles.overruleText} numberOfLines={3}>{overruleText(pv?.source, g.pass, g.beeText)}</Text>
         </View>
       ) : null}
       {d.summary ? <Text style={styles.hint}>{`Session over: ${d.summary.passed} passed, ${d.summary.failed} failed, ${d.summary.unverified} unverified${d.summary.beeOverrules ? `, Bee overruled ${d.summary.beeOverrules}` : ''}.`}</Text> : null}
     </View>
   );
+}
+
+// The reason worth a glance: the first failed rule, or on a pass the content match (not "8 words heard").
+function gradeWhy(reasons: string[]): string {
+  const fail = reasons.find((r) => r.startsWith('FAIL'));
+  if (fail) return fail;
+  const ok = reasons.find((r) => r.startsWith('ok content')) ?? reasons[0] ?? '';
+  return ok.replace(/^ok [^:]+: /, '');
 }
 
 function ModeChip({ mode }: { mode: LiveMode | null }) {

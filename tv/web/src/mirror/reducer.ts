@@ -54,7 +54,7 @@ export interface DrillState {
   provisional: { source: string; text: string; pass: boolean; reasons: string[] } | null;
   checking: { reason: string } | null;
   verified: { status: 'verified' | 'unverified'; via: string | null; speakerScore: number | null; latencyMs: number | null; beeText: string | null; replay: boolean; reason: string } | null;
-  graded: { pass: boolean; reasons: string[]; agreement: string | null; counted: boolean; boxFrom: number | null; boxTo: number | null; beeText: string | null } | null;
+  graded: { pass: boolean; reasons: string[]; agreement: string | null; counted: boolean; boxFrom: number | null; boxTo: number | null; dueAfter: string | null; beeText: string | null } | null;
   summary: SessionSummary | null;
 }
 
@@ -236,7 +236,7 @@ function drillFromAttempt(at: any): Partial<DrillState> {
   if (at.bee) out.verified = { status: 'verified', via: at.bee.via ?? null, speakerScore: at.bee.speakerScore ?? null, latencyMs: at.bee.latencyMs ?? null, beeText: at.bee.gradedText ?? at.bee.text ?? null, replay: !!at.bee.replay, reason: at.reason ?? '' };
   if (at.status === 'graded' && at.final) {
     out.stage = 'graded';
-    out.graded = { pass: !!at.final.pass, reasons: at.final.grade?.reasons ?? [], agreement: at.agreement ?? null, counted: !!at.counted, boxFrom: at.box?.from ?? null, boxTo: at.box?.to ?? null, beeText: at.bee?.gradedText ?? at.bee?.text ?? null };
+    out.graded = { pass: !!at.final.pass, reasons: at.final.grade?.reasons ?? [], agreement: at.agreement ?? null, counted: !!at.counted, boxFrom: at.box?.from ?? null, boxTo: at.box?.to ?? null, dueAfter: at.box?.dueAfter ?? null, beeText: at.bee?.gradedText ?? at.bee?.text ?? null };
   }
   return out;
 }

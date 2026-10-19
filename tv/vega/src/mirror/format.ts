@@ -8,6 +8,26 @@ export const fmtPct = (x: number | null | undefined): string => (x === null || x
 export const fmtWords = (n: number): string => (n >= 10_000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
 /** 0 -> "0 s", 40 -> "40 ms", 17390 -> "17.4 s", 48000 -> "48 s", 74000 -> "1 min 14 s". */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// "2026-10-22" -> "Thu Oct 22". A calendar date, so it is read in UTC (no time zone shift).
+export function fmtDay(ymd: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd ?? '');
+  if (!m) return '–';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return `${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+// The BEE OVERRULES caption. Bee and the preview disagree in either direction, so the caption
+// follows Bee's verdict: the preview said the opposite.
+const PREVIEW_BY: Record<string, string> = { phone: 'The phone', alexa: 'Alexa', typed: 'The typed preview' };
+export function overruleText(previewSource: string | null | undefined, beePass: boolean, beeText: string | null | undefined): string {
+  const who = PREVIEW_BY[previewSource ?? ''] ?? 'The preview';
+  const heard = `"${beeText ?? ''}"`;
+  return beePass ? `${who} heard a fail. Bee heard ${heard} and passed it: Bee is what counts.` : `${who} heard a pass. Bee heard ${heard} and that is what counts.`;
+}
+
 export function fmtMs(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return '–';
   if (ms === 0) return '0 s';

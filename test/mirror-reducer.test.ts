@@ -166,9 +166,9 @@ describe("screens switch on events", () => {
     // a live-conversation event does not pull the screen away from a drill in progress
     s = run(s, { type: "event", event: ev(5, "conversation.started", { conversationId: "c1", startedAt: 0, replay: true }), now: 4 });
     expect(s.view).toBe("drill");
-    s = run(s, { type: "event", event: ev(6, "attempt.graded", { attempt: { ...attempt, status: "graded", counted: true, final: { source: "bee", pass: false, grade: { reasons: ["FAIL fillers: 1 filler"] } }, agreement: "bee-overrules", box: { from: 2, to: 1 }, bee: { text: "Um, the migration is not done yet.", replay: true } }, card, deck: null }), now: 5 });
+    s = run(s, { type: "event", event: ev(6, "attempt.graded", { attempt: { ...attempt, status: "graded", counted: true, final: { source: "bee", pass: false, grade: { reasons: ["FAIL fillers: 1 filler"] } }, agreement: "bee-overrules", box: { from: 2, to: 1, dueAfter: "2026-10-22" }, bee: { text: "Um, the migration is not done yet.", replay: true } }, card, deck: null }), now: 5 });
     expect(s.drill.stage).toBe("graded");
-    expect(s.drill.graded).toMatchObject({ pass: false, agreement: "bee-overrules", boxFrom: 2, boxTo: 1 });
+    expect(s.drill.graded).toMatchObject({ pass: false, agreement: "bee-overrules", boxFrom: 2, boxTo: 1, dueAfter: "2026-10-22" });
     expect(s.drill.provisional?.pass).toBe(true); // the preview stays beside the verdict that overruled it
     s = run(s, { type: "event", event: ev(7, "live.window", { window: (story[1]!.payload as any).window }), now: 6 });
     expect(s.view).toBe("live"); // the drill is settled
