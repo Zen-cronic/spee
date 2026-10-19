@@ -14,7 +14,8 @@
 //
 // Screens switch on events: a drill event shows the drill, a live-conversation event shows the
 // live window (unless a drill or a practice take is in progress), meters show practice,
-// `recap.ready` raises the recap overlay, and `mirror.focus` shows whatever a peer asked for.
+// `recap.ready` raises the recap overlay, and `mirror.focus` shows whatever a peer asked for (a
+// phone's focus only on its own room's screen).
 import type {
   CardView,
   ConversationEnded,
@@ -363,6 +364,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
     }
     case 'mirror.focus': {
       const f = p as unknown as MirrorFocus;
+      if (s.room && f.room && f.room.toUpperCase() !== s.room.toUpperCase()) return s; // another room's phone
       if (f.view === 'recap') {
         const have = !!s.recap && (!f.recapId || s.recap.id === f.recapId);
         return { ...s, recapVisible: have, recapShownAt: have ? now : s.recapShownAt, recapWanted: have ? null : (f.recapId ?? 'latest'), viewBy: f.by ?? null, viewReason: f.reason ?? null };

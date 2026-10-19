@@ -140,6 +140,15 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     expect(s.practiceToday).toEqual(today);
     expect(s.statsVersion).toBe(1);
   });
+  it("a phone's focus from another room is ignored; a screen's or Alexa's reaches every room", () => {
+    let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: focus(1, "practice", { takeId: "t-other", room: "AB2C" }), now: 0 });
+    expect(views(s)).toBe("week");
+    expect(s.practice.takeId).toBeNull();
+    s = run(s, { type: "event", event: focus(2, "practice", { takeId: "t-mine", room: "hj3h" }), now: 1 });
+    expect(views(s)).toBe("practice");
+    s = run(s, { type: "event", event: focus(3, "transfer", { by: "alexa", room: null }), now: 2 });
+    expect(views(s)).toBe("transfer");
+  });
   it("a practice summary from another room is ignored", () => {
     const sum = (room: string) => ({ summary: { takeId: `t-${room}`, room, from: "phone", startedAt: 0, endedAt: 1, words: 3, provisional: true } });
     let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: ev(1, "practice.summary", sum("AB2C")), now: 0 });

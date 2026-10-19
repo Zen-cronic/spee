@@ -148,9 +148,13 @@ describe("mirror plugin on a demo hub", () => {
     phone.app("mirror.focus", { view: "nope" }, "u_focus_bad");
     expect(await until(() => feed.events.some((e) => e.topic === "mirror.focus" && e.data.view === "transfer"))).toBe(true);
     const f = feed.events.find((e) => e.topic === "mirror.focus" && e.data.view === "transfer")!;
-    expect(f.data).toMatchObject({ view: "transfer", by: "tv", reason: "show the transfer", recapId: null, takeId: null });
+    expect(f.data).toMatchObject({ view: "transfer", by: "tv", reason: "show the transfer", recapId: null, takeId: null, room: null });
     expect(await until(() => !!phone.intent("u_focus_bad"))).toBe(true);
     expect(phone.intent("u_focus_bad")).toMatchObject({ ok: false });
+    // a phone's focus names its room, so another room's TV does not switch
+    phone.app("mirror.focus", { view: "practice", reason: "practice take started", takeId: "take_focus" }, "u_focus_phone");
+    expect(await until(() => feed.events.some((e) => e.topic === "mirror.focus" && e.data.takeId === "take_focus"))).toBe(true);
+    expect(feed.events.find((e) => e.topic === "mirror.focus" && e.data.takeId === "take_focus")!.data).toMatchObject({ by: "phone-1", room: code });
   });
   it("POST /api/demo/mirror plays a metered synthetic take to the room, then the summary", async () => {
     const r = await post("/api/demo/mirror", { room: code.toLowerCase() });

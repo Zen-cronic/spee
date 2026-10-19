@@ -7,7 +7,8 @@
 //                                dropped) and stamped `from` = the mic's clientId.
 //   app practice.summary (mic)   published as `practice.summary` (sequenced); the hub stamps
 //                                room, from and provisional: true. Intent `practice.summary`.
-//   app mirror.focus     (any)   published as `mirror.focus` with by = the peer's name.
+//   app mirror.focus     (any)   published as `mirror.focus` with by = the peer's name; a mic's
+//                                carries its room, so only that room's screens follow it.
 //   POST /api/demo/mirror        demo only. "practice-take" plays a synthetic take: a synthetic
 //                                voice is metered by the phone's own prosody engine
 //                                (web/phone/src/prosody.ts), its frames go to the screens at
@@ -156,7 +157,7 @@ export function createMirrorPlugin(opts: MirrorOptions = {}): HubPlugin {
     const take = demoTake(takeMs);
     const startedAt = ctx.hub.clock();
     const period = 1000 / PRACTICE_METERS_HZ;
-    ctx.publish("mirror.focus", { view: "practice", by: "demo-phone", reason: "practice take started", recapId: null, takeId });
+    ctx.publish("mirror.focus", { view: "practice", by: "demo-phone", reason: "practice take started", recapId: null, takeId, room });
     take.frames.forEach((f, i) =>
       later(i * period, () => {
         const frame: PracticeMeters = { takeId, ...f, at: startedAt + f.t, from: "demo-phone" };
@@ -205,7 +206,8 @@ export function createMirrorPlugin(opts: MirrorOptions = {}): HubPlugin {
           if (!MIRROR_VIEWS.includes(p.view as MirrorView)) return { name: "mirror.focus", ok: false, payload: { error: "bad_request", message: `view must be one of ${MIRROR_VIEWS.join(", ")}` } };
           const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.slice(0, max) : null);
           const id = (v: unknown) => (typeof v === "string" && ID_RE.test(v) ? v : null);
-          ctx.publish("mirror.focus", { view: p.view as MirrorView, by: from.name ?? from.clientId, reason: str(p.reason, 120), recapId: id(p.recapId), takeId: id(p.takeId) });
+          // A phone's focus (a take starting) is for its own TV; a screen's or Alexa's is for every screen.
+          ctx.publish("mirror.focus", { view: p.view as MirrorView, by: from.name ?? from.clientId, reason: str(p.reason, 120), recapId: id(p.recapId), takeId: id(p.takeId), room: from.role === "mic" ? room.code : null });
           stats.focus++;
           return { name: "mirror.focus", ok: true, payload: { view: p.view } };
         }

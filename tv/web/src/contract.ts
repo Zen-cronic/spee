@@ -593,6 +593,7 @@ export interface MirrorFocus {
   reason: string | null;
   recapId: string | null;
   takeId: string | null;
+  room?: string | null; // the bridge room of the phone mic that asked: only that room's screens follow it
 }
 // POST /api/demo/mirror (demo only)
 export type DemoMirrorScript = "practice-take" | "focus";
