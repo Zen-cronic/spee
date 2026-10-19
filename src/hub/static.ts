@@ -8,6 +8,7 @@
 // slashes, backslashes, NUL bytes, dotfiles and symlinks out of the mount are refused.
 import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { pipeline } from "node:stream/promises";
 import { extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { HubPlugin, PluginCtx } from "./plugin.js";
@@ -134,12 +135,8 @@ export async function serveStatic(req: IncomingMessage, res: ServerResponse, url
     res.end();
     return true;
   }
-  await new Promise<void>((resolve) => {
-    const s = createReadStream(realFile);
-    s.on("error", () => (res.destroy(), resolve()));
-    s.on("end", () => resolve());
-    s.pipe(res);
-  });
+  // pipeline() destroys the file stream when the client goes away mid-download (review L39); pipe() did not.
+  await pipeline(createReadStream(realFile), res).catch(() => res.destroy());
   return true;
 }
 
