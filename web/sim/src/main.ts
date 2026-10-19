@@ -36,12 +36,14 @@ function token(): string | null {
 function logLine(list: HTMLOListElement, cls: string, head: string, body: unknown) {
   const li = document.createElement("li");
   li.className = cls;
-  const h = document.createElement("div");
+  const entry = document.createElement("details");
+  const h = document.createElement("summary");
   h.className = "h";
   h.textContent = `${new Date().toLocaleTimeString()}  ${head}`;
   const pre = document.createElement("pre");
   pre.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 1);
-  li.append(h, pre);
+  entry.append(h, pre);
+  li.append(entry);
   list.prepend(li);
   while (list.children.length > LOG_MAX) list.lastElementChild?.remove();
 }
@@ -88,7 +90,10 @@ async function connect(): Promise<Client> {
   const tools = await c.listTools();
   conn.className = "dot on";
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-  connText.textContent = `MCP connected: ${tools.tools.length} tools${t ? "" : local ? " (this machine, no token)" : " (LAN, no token)"}`;
+  const detail = `MCP connected: ${tools.tools.length} tools${t ? "" : local ? " (this machine, no token)" : " (LAN, no token)"}`;
+  connText.textContent = "Connected";
+  connText.parentElement!.title = detail;
+  $("mcp-detail").textContent = detail;
   client = c;
   return c;
 }
@@ -114,12 +119,18 @@ function speak(text: string) {
 
 // Turns
 const turns = $<HTMLOListElement>("turns");
-function addTurn(who: "you" | "coach", text: string, meta?: string) {
+function addTurn(who: "you" | "coach", text: string, meta?: string, verdict?: "pass" | "fail" | null) {
   const li = document.createElement("li");
   li.className = who;
   const t = document.createElement("div");
   t.className = "t";
-  t.textContent = text;
+  if (verdict) {
+    const tag = document.createElement("span");
+    tag.className = `tag ${verdict}`;
+    tag.textContent = verdict === "pass" ? "Passed" : "Not yet";
+    t.append(tag);
+  }
+  t.append(text);
   li.append(t);
   if (meta) {
     const m = document.createElement("div");
@@ -132,6 +143,7 @@ function addTurn(who: "you" | "coach", text: string, meta?: string) {
 }
 function showCard(text: string | null) {
   $("card").hidden = !text;
+  $("hello").hidden = !!text;
   $("card-text").textContent = text ?? "";
 }
 function showLabel(label: string | null) {
@@ -150,7 +162,7 @@ async function say(text: string, via: "typed" | "mic") {
   try {
     const turn: Turn = await dialog.handle(heard);
     const meta = turn.routed.kind === "tool" ? `router: "${turn.routed.rule}" -> ${turn.calls.join(" -> ")}` : `router: ${turn.routed.rule}`;
-    addTurn("coach", turn.speech, meta);
+    addTurn("coach", turn.speech, meta, turn.verdict);
     showCard(turn.card);
     showLabel(turn.dataLabel);
     speak(turn.speech);
@@ -167,7 +179,12 @@ $<HTMLFormElement>("say").addEventListener("submit", (e) => {
   void say(input.value, "typed");
   input.value = "";
 });
-for (const b of document.querySelectorAll<HTMLButtonElement>("#quick button")) b.addEventListener("click", () => void say(b.dataset.say ?? "", "typed"));
+for (const b of document.querySelectorAll<HTMLButtonElement>("#quick button")) {
+  b.addEventListener("click", () => {
+    b.closest("details")?.removeAttribute("open");
+    void say(b.dataset.say ?? "", "typed");
+  });
+}
 
 // Mic in (Web Speech)
 type Recognition = { lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((e: any) => void) | null; onend: (() => void) | null; onerror: ((e: any) => void) | null; start(): void; stop(): void };
@@ -186,7 +203,7 @@ if (!Rec) {
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     micBtn.classList.add("live");
-    micBtn.textContent = "Listening";
+    micBtn.setAttribute("aria-label", "Listening: tap to stop");
     rec.onresult = (e) => {
       const text = e.results?.[0]?.[0]?.transcript ?? "";
       void say(text, "mic");
@@ -195,7 +212,7 @@ if (!Rec) {
     rec.onend = () => {
       rec = null;
       micBtn.classList.remove("live");
-      micBtn.textContent = "Mic";
+      micBtn.setAttribute("aria-label", "Talk: use the microphone");
     };
     rec.start();
   });
@@ -224,5 +241,4 @@ if (onLan && "EventSource" in window) {
     });
 } else sseState.textContent = "SSE feed is LAN-only (through the tunnel the simulator uses /mcp alone)";
 
-addTurn("coach", 'Say "quiz me" to start a drill.', "simulator ready");
 void connect().catch(() => undefined);

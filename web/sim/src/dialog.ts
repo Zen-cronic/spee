@@ -18,6 +18,7 @@ export interface Turn {
   speech: string;
   card: string | null; // the sentence to say now, if a card is open
   dataLabel: string | null;
+  verdict: "pass" | "fail" | null; // Bee's final grade, on the turn that reports it
 }
 
 export class Dialog {
@@ -43,13 +44,14 @@ export class Dialog {
     const routed = route(heard, this.state);
     const calls: McpToolName[] = [];
     let label: string | null = null;
+    let verdict: Turn["verdict"] = null;
     const call = async (name: McpToolName, args: Record<string, unknown>) => {
       calls.push(name);
       const r = await this.call(name, args);
       if (r.structured?.synthetic === true && typeof r.structured.dataLabel === "string") label = r.structured.dataLabel;
       return r;
     };
-    const done = (speech: string): Turn => ({ heard, routed, calls, speech, card: this.card, dataLabel: label });
+    const done = (speech: string): Turn => ({ heard, routed, calls, speech, card: this.card, dataLabel: label, verdict });
     if (routed.kind === "help") return done(this.state.cardOpen && this.card ? `Say: "${this.card}"` : HELP_TEXT);
 
     const r = await call(routed.tool, routed.args);
@@ -66,6 +68,7 @@ export class Dialog {
         const v = r.structured!;
         if (!v.verdictReady) return done(r.text);
         this.state.attemptId = null;
+        if (v.status === "graded") verdict = v.attempt?.final?.pass ? "pass" : "fail";
         if (v.status === "graded" && v.attempt?.final?.pass) {
           const n = await call("next_card", {});
           this.take(n);
