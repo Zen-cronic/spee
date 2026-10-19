@@ -12,11 +12,13 @@ const tag = (id: number): BeeEvent => ({ type: "tagged-utterance", utterance_id:
 
 describe("an attempt left waiting for Bee by a hub restart", () => {
   it("is closed as unverified on the next start, so the verdict answers instead of 'ask again'", () => {
-    const first = demoSetup({ pace: 0.01, stateDir: null }).hub;
+    const setup = demoSetup({ pace: 0.01, stateDir: null });
+    const first = setup.hub;
     first.openCard({ by: "alexa" });
     const a = first.submit({ text: "the billing export", source: "alexa" }) as Attempt;
     expect(a.status).toBe("pending_bee");
     const saved: Attempt[] = JSON.parse(JSON.stringify(first.attempts)); // what attempts.json holds
+    setup.stop(); // the demo director's replay timers, so nothing ingests into a disposed hub (review L30)
     first.dispose();
 
     const opts = (first as unknown as { opts: ConstructorParameters<typeof CoachHub>[0] }).opts;
