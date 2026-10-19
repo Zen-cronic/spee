@@ -1,9 +1,10 @@
 // An attempt counts at most once, and never hangs: a restart closes what the last hub left waiting for
 // Bee, and one Bee line verifies one attempt even when the phone and Alexa both previewed it.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BeeVerifier, type BeeEvent, type Verification } from "../src/hub/bee.js";
 import { CoachHub, type Attempt } from "../src/hub/core.js";
 import { demoSetup, wearerRule } from "../src/hub/setup.js";
+import { localDate } from "../src/real/deck.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
 const TARGET = "The billing export is ready for review today.";
@@ -151,5 +152,39 @@ describe("today's drill tally on the screens", () => {
     expect(statsRuns).toBe(1); // tried once for the new day, not every second
     expect(logged).toEqual([{ event: "hub.tick-error", data: { job: "roll-day", error: "bad session record" } }]);
     hub.dispose();
+  });
+});
+
+describe("today's tally stays cheap as attempts pile up", () => {
+  it("reads each stored attempt's local date once a day, with one date formatter per time zone", () => {
+    const setup = demoSetup({ pace: 0.01, stateDir: null });
+    setup.stop();
+    setup.hub.dispose();
+    const opts = (setup.hub as unknown as { opts: ConstructorParameters<typeof CoachHub>[0] }).opts;
+    let now = Date.parse("2026-10-21T15:00:00Z");
+    const one = (id: string, createdAt: number): Attempt => ({ ...(opts.attempts ?? [])[0]!, id, status: "graded", counted: true, final: { source: "bee", pass: true } as Attempt["final"], createdAt });
+    // 600 attempts over the past 25 days, 3 of them today.
+    const old = Array.from({ length: 597 }, (_, i) => one(`o${i}`, now - 86_400_000 - i * 3600_000));
+    const hub = new CoachHub({ ...opts, clock: () => now, attempts: [...old, one("t1", now - 3_600_000), one("t2", now - 1_800_000), one("t3", now - 60_000)] });
+    const format = vi.spyOn(Intl.DateTimeFormat.prototype as unknown as { format: unknown }, "format", "get"); // format is a getter: one read per call
+    const ctor = vi.spyOn(Intl, "DateTimeFormat");
+    try {
+      expect(localDate(now, "America/Toronto")).toBe("2026-10-21");
+      expect(hub.practiceToday()).toMatchObject({ attempts: 3, counted: 3 });
+      const first = format.mock.calls.length;
+      expect(first).toBeGreaterThanOrEqual(600);
+      for (let i = 0; i < 100; i++) hub.sessionState();
+      // Each later call reads only today's date: no stored attempt again.
+      expect(format.mock.calls.length - first).toBeLessThanOrEqual(100 * 2);
+      expect(ctor).not.toHaveBeenCalled(); // the formatter was built before, and is reused
+      hub.attempts.push(one("t4", now));
+      expect(hub.practiceToday()).toMatchObject({ attempts: 4 });
+      now += 86_400_000; // the next day: the tally starts again from the stored attempts
+      expect(hub.practiceToday()).toMatchObject({ attempts: 0 });
+    } finally {
+      ctor.mockRestore();
+      format.mockRestore();
+      hub.dispose();
+    }
   });
 });

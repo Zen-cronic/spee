@@ -584,10 +584,19 @@ export class CoachHub extends EventEmitter {
     return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLineKeys }) };
   }
 
-  // Today's drill tally (the hub's local day), without computing the rest of the stats.
+  // Today's drill tally (the hub's local day), without computing the rest of the stats. Every
+  // sessionState() asks for it, so today's attempts are kept as they are found: each stored attempt's
+  // date is read once a day, and a call with no new attempt reads none.
+  private todays: { day: string; from: Attempt[]; scanned: number; picked: Attempt[] } | null = null;
   practiceToday(): PracticeCounts {
     const today = this.today();
-    return practiceCounts(this.attempts.filter((a) => localDate(a.createdAt, this.tz) === today));
+    let c = this.todays;
+    if (!c || c.day !== today || c.from !== this.attempts || c.scanned > this.attempts.length) c = this.todays = { day: today, from: this.attempts, scanned: 0, picked: [] };
+    for (; c.scanned < this.attempts.length; c.scanned++) {
+      const a = this.attempts[c.scanned]!;
+      if (localDate(a.createdAt, this.tz) === today) c.picked.push(a);
+    }
+    return practiceCounts(c.picked);
   }
 
   // The day the screens' tally was last published for. When the local day turns, publish again, so

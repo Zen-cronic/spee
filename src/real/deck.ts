@@ -19,7 +19,13 @@ export interface Deck {
   cards: Card[];
 }
 
-export const localDate = (ms: number, tz = TZ) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+// One formatter per time zone: building an Intl.DateTimeFormat costs far more than formatting with one.
+const dayFormats = new Map<string, Intl.DateTimeFormat>();
+export const localDate = (ms: number, tz = TZ) => {
+  let f = dayFormats.get(tz);
+  if (!f) dayFormats.set(tz, (f = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" })));
+  return f.format(new Date(ms));
+};
 export const addDays = (date: string, n: number) => {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
