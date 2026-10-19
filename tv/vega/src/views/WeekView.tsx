@@ -8,14 +8,14 @@ import { C, F, R, SP, T } from '../theme';
 const BAR_W = 760;
 const HABIT_COLOR: Record<string, string> = { hedges: C.coral, vague: C.amber, fillers: C.lavender, restarts: C.dim };
 
-/** The week's habit rates from Bee, per 100 words, with 95% interval whiskers. */
-export function WeekView({ stats, deck, transferHeadline }: { stats: StatsResponse | null; deck: DeckSummary | null; transferHeadline: string | null }) {
+/** The week's habit rates from Bee, per 100 words, with 95% interval whiskers, and today's drills. */
+export function WeekView({ stats, today, deck, transferHeadline }: { stats: StatsResponse | null; today: StatsResponse['practice'] | null; deck: DeckSummary | null; transferHeadline: string | null }) {
   if (!stats) return <Empty text="Loading the week from the hub…" />;
   const h = stats.habits;
   const rows = WEEK_HABITS.map((w) => ({ ...w, rate: h[w.key], breakdown: 'breakdown' in h[w.key] ? topBreakdown((h[w.key] as { breakdown: Record<string, number> }).breakdown) : '' }));
   const max = niceMax(Math.max(...rows.map((r) => r.rate.ci95[1])));
   const sessions = stats.sessions.length;
-  const p = stats.practice;
+  const p = today; // today's drills, never the week's practice block
   return (
     <View style={styles.wrap} testID="view-week">
       <View style={styles.main}>
@@ -46,8 +46,8 @@ export function WeekView({ stats, deck, transferHeadline }: { stats: StatsRespon
         </View>
         <View style={styles.card}>
           <Text style={styles.kicker}>DRILLS TODAY</Text>
-          <Text style={styles.big}>{`${p.passed}/${p.counted}`}</Text>
-          <Text style={styles.sideText}>{`passed, graded from Bee${p.beeOverrules ? ` · Bee overruled ${p.beeOverrules}` : ''}${p.unverified ? ` · ${p.unverified} unverified` : ''}`}</Text>
+          <Text style={styles.big}>{p ? `${p.passed}/${p.counted}` : '–'}</Text>
+          <Text style={styles.sideText}>{p ? `passed, graded from Bee${p.beeOverrules ? ` · Bee overruled ${p.beeOverrules}` : ''}${p.unverified ? ` · ${p.unverified} unverified` : ''}` : 'loading today from the hub'}</Text>
           {deck ? <Text style={styles.sideText}>{`${deck.dueNow} card${deck.dueNow === 1 ? '' : 's'} due now`}</Text> : null}
         </View>
         {transferHeadline ? (

@@ -7,7 +7,8 @@ import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
  * The mirror's connection to the hub, shared by the web TV and the Vega app (only MirrorConfig
  * differs). Joins the bridge as a `screen`, feeds sequenced events and `hub.state` to the reducer,
  * batches the room-scoped meters at `metersHz` (10 on the web, 5 on Vega), and fetches the week's
- * stats and the transfer result on start and after every `stats.updated`.
+ * stats and the transfer result on start and after every `stats.updated` (today's drill tally on
+ * start; `stats.updated` carries it after that).
  *
  * Privacy: nothing is written to storage. The room code lives in this module for the app run
  * only, and every bit of wearer text on screen is what the hub served.
@@ -101,6 +102,15 @@ export function useMirror(cfg: MirrorConfig) {
       alive = false;
     };
   }, [status, state.statsVersion, cfg.httpBase]);
+  // today's drill tally until the first stats.updated carries it (the week's practice block counts 7 days)
+  useEffect(() => {
+    if (status !== 'online') return;
+    let alive = true;
+    void getJson<StatsResponse>(`${cfg.httpBase}/api/stats?range=today`).then((r) => alive && r?.practice && dispatch({ type: 'practiceToday', practice: r.practice }));
+    return () => {
+      alive = false;
+    };
+  }, [status, cfg.httpBase]);
   useEffect(() => {
     if (status !== 'online') return;
     void getJson<LiveState>(`${cfg.httpBase}/api/live`).then((r) => r && r.mode && dispatch({ type: 'liveState', live: r }));

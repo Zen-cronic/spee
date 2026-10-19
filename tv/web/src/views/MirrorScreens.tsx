@@ -56,7 +56,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
       screen = <PairingView code={m.code} joinUrl={m.joinUrl} status={m.status} mics={m.mics} />;
       break;
     default:
-      screen = <WeekView stats={m.stats} deck={s.drill.deck} transferHeadline={m.transfer?.headline ?? null} />;
+      screen = <WeekView stats={m.stats} today={s.practiceToday} deck={s.drill.deck} transferHeadline={m.transfer?.headline ?? null} />;
   }
   return (
     <FocusRoot key="mirror" initial={`tab-${cur}`} onBack={onBack} onKey={onKey}>

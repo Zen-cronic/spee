@@ -31,6 +31,7 @@ import type {
   PracticeSummary,
   Recap,
   SessionSummary,
+  StatsResponse,
 } from '../contract';
 
 export type ScreenView = MirrorView | 'pair';
@@ -115,6 +116,7 @@ export interface MirrorState {
   recapShownAt: number | null;
   recapWanted: string | null; // a focus asked for a recap id we do not hold yet
   statsVersion: number; // bumped on stats.updated: refetch stats and transfer
+  practiceToday: StatsResponse['practice'] | null; // today's drill tally (stats.updated, or GET /api/stats?range=today)
   lastTopic: string | null;
 }
 
@@ -128,6 +130,7 @@ export type MirrorAction =
   | { type: 'recapFetched'; ok: boolean }
   | { type: 'dismissRecap' }
   | { type: 'liveState'; live: LiveState }
+  | { type: 'practiceToday'; practice: StatsResponse['practice'] }
   | { type: 'recap'; recap: Recap; show: boolean; now: number };
 
 const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });
@@ -160,6 +163,7 @@ export function initialMirror(view: ScreenView = 'week'): MirrorState {
     recapShownAt: null,
     recapWanted: null,
     statsVersion: 0,
+    practiceToday: null,
     lastTopic: null,
   };
 }
@@ -195,6 +199,8 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
     case 'recapFetched':
       // a finished fetch (found or not) clears the request, so the next "show my recap" fetches again
       return s.recapWanted === null ? s : { ...s, recapWanted: null };
+    case 'practiceToday':
+      return { ...s, practiceToday: a.practice };
     case 'liveState':
       return { ...s, live: { ...s.live, mode: a.live.mode, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
@@ -319,7 +325,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       return { ...s, drill: { ...base, ...drillFromAttempt(at), card: p.card ?? s.drill.card, deck: p.deck ?? s.drill.deck, stage: 'graded', summary }, ...switched(s, 'drill', 'graded from Bee', 'Bee') };
     }
     case 'stats.updated':
-      return { ...s, statsVersion: s.statsVersion + 1, dataLabel: p.dataLabel ?? s.dataLabel, synthetic: s.synthetic || isSynthetic(p.dataLabel), drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
+      return { ...s, statsVersion: s.statsVersion + 1, practiceToday: p.practiceToday ?? s.practiceToday, dataLabel: p.dataLabel ?? s.dataLabel, synthetic: s.synthetic || isSynthetic(p.dataLabel), drill: { ...s.drill, deck: p.deck ?? s.drill.deck } };
     case 'session.ended': {
       // The hub closed the card. A verdict, or an attempt Bee is still checking (its verdict can land
       // after the session ends), stays on screen with the summary under it; a card nobody attempted

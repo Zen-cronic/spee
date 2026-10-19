@@ -116,6 +116,14 @@ describe("stale screens (review M19, M20, M22, M23)", () => {
     expect(s.drill.stage).toBe("graded");
     expect(s.drill.summary).toMatchObject({ passed: 1, pending: 0 });
   });
+  it("DRILLS TODAY reads today's tally from stats.updated, not the week's", () => {
+    const today = { attempts: 2, counted: 2, passed: 1, unverified: 0, beeOverrules: 0 };
+    let s = run(initialMirror(), { type: "practiceToday", practice: { ...today, passed: 0 } });
+    expect(s.practiceToday?.passed).toBe(0);
+    s = run(s, { type: "event", event: ev(1, "stats.updated", { dataLabel: "x", practiceToday: today, weekPer100: {}, transferHeadline: null, deck: null }), now: 0 });
+    expect(s.practiceToday).toEqual(today);
+    expect(s.statsVersion).toBe(1);
+  });
   it("a practice summary from another room is ignored", () => {
     const sum = (room: string) => ({ summary: { takeId: `t-${room}`, room, from: "phone", startedAt: 0, endedAt: 1, words: 3, provisional: true } });
     let s = run(initialMirror(), { type: "room", code: "HJ3H" }, { type: "event", event: ev(1, "practice.summary", sum("AB2C")), now: 0 });
