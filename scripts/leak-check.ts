@@ -28,7 +28,8 @@
 //    private coach principles and the build outputs must be git-ignored.
 // 9. Files: read as a stream (any size; 5 MB and up included), with JSON escapes undone first (so
 //    "x\nnext" is two words). Audio files (mp3, wav, m4a, ...) that could be committed FAIL: Bee
-//    stores no audio, and a recording would carry other speakers' voices. Images (png, jpg, ...)
+//    stores no audio, and a recording would carry other speakers' voices; video files FAIL the same
+//    way. Images and PDFs (png, jpg, pdf, ...)
 //    cannot be text-screened but can show drill or live text, so each one FAILS unless a person has
 //    looked at it and its sha256 is in leak-check-images.txt (`--approve-images` records the current
 //    images after that look; a changed image needs a new look). Other binary files (archives, fonts)
@@ -73,10 +74,13 @@ const unescape = (s: string) =>
     .replace(/\\[nrtbf]/g, " ")
     .replace(/\\(["'\\/])/g, "$1");
 
-const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], { encoding: "utf8" })
-  .split("\n")
+// NUL-separated and unquoted, so a path with accents or spaces is screened like any other (review L51).
+const listed = execFileSync("git", ["-c", "core.quotePath=false", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], { encoding: "utf8" })
+  .split("\0")
   .filter(Boolean)
-  .filter((f) => f !== "package-lock.json" && existsSync(f));
+  .filter((f) => f !== "package-lock.json");
+const files = listed.filter((f) => existsSync(f));
+const missing = listed.length - files.length; // tracked but deleted in the working tree: nothing to commit
 
 // When each committable file last changed, from git (see Provenance above).
 const committedAt = new Map<string, number>();
@@ -267,7 +271,10 @@ const maxN = Math.max(1, ...lengths);
 
 const JWT = /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}/g;
 const BEARER = /Bearer\s+[A-Za-z0-9._-]{20,}/g;
-const IMAGES = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".avif"]);
+// Images and PDFs can show drill or live text but cannot be text-screened: a person reviews each.
+const IMAGES = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".heic", ".avif", ".pdf"]);
+// Video carries the room's audio (other speakers' voices) as well as frames: it fails like audio.
+const VIDEO = new Set([".mp4", ".m4v", ".mov", ".webm", ".mkv", ".avi", ".wmv", ".flv", ".mpg", ".mpeg", ".3gp"]);
 const REVIEWED_IMAGES = "leak-check-images.txt";
 const APPROVED_PREDATES = "leak-check-predates.txt";
 const ledger = (path: string) => new Set(existsSync(path) ? readFileSync(path, "utf8").split("\n").filter((l) => l && !l.startsWith("#")) : []);
@@ -349,9 +356,9 @@ let largest = 0;
 for (const f of files) {
   const st = statSync(f);
   largest = Math.max(largest, st.size);
-  if (AUDIO.has(extname(f).toLowerCase())) {
+  if (AUDIO.has(extname(f).toLowerCase()) || VIDEO.has(extname(f).toLowerCase())) {
     bad++;
-    console.log(`  ${f}: committable AUDIO file (${st.size} bytes): recordings carry other speakers' voices; keep audio out of the repository`);
+    console.log(`  ${f}: committable ${AUDIO.has(extname(f).toLowerCase()) ? "AUDIO" : "VIDEO"} file (${st.size} bytes): recordings carry other speakers' voices; keep audio and video out of the repository (host the demo video on YouTube or Vimeo)`);
     continue;
   }
   if (IMAGES.has(extname(f).toLowerCase())) {
@@ -368,8 +375,10 @@ for (const f of files) {
   if (h.other.size + h.short.size && st.mtimeMs < since) {
     const byMtime = fresh(h.other, other, st.mtimeMs) + fresh(h.short, otherShort, st.mtimeMs);
     const key = `${sha256(f)}  ${f}`;
+    // only a file that fails by its git date needs a person to vouch for its mtime (review L55)
+    const byGit = fresh(h.other, other, since) + fresh(h.short, otherShort, since);
     if (approved.has(key)) since = st.mtimeMs;
-    else if (byMtime === 0) approvable.push(key);
+    else if (byMtime === 0 && byGit > 0) approvable.push(key);
   }
   const otherHits = fresh(h.other, other, since);
   const shortHits = fresh(h.short, otherShort, since);
@@ -382,7 +391,8 @@ for (const f of files) {
     );
   else if (predates) console.log(`  ${f}: predates ${predates} (other-speaker hit(s) in a file dated before the recording by git or an approved mtime; not a leak)`);
 }
-console.log(`Images: ${images.length - unreviewed} of ${images.length} reviewed (${REVIEWED_IMAGES}).`);
+console.log(`Images and PDFs: ${images.length - unreviewed} of ${images.length} reviewed (${REVIEWED_IMAGES}).`);
+if (missing) console.log(`${missing} tracked file(s) deleted in the working tree (not screened; nothing to commit).`);
 if (approvable.length && argv.includes("--approve-predates")) {
   writeFileSync(APPROVED_PREDATES, `# Files whose other-speaker hits all predate the recording by mtime, vouched for by a person (scripts/leak-check.ts --approve-predates).\n${[...approved, ...approvable].sort((a, b) => a.slice(66).localeCompare(b.slice(66))).join("\n")}\n`);
   console.log(`Recorded ${approvable.length} file(s) in ${APPROVED_PREDATES}; re-run the check to apply. Approve only files you know were not copied in with an old mtime.`);
