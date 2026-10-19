@@ -254,6 +254,9 @@ describe("the bridge's rate key behind the tunnel", () => {
     for (const r of cases) expect(bridgeRateKey(r)).toBe(forwardedClient(r));
     expect(bridgeRateKey(cases[0]!)).toBe("203.0.113.7"); // what ngrok appended, not what the client wrote
     expect(bridgeRateKey(cases[3]!)).toBe("198.51.100.4"); // not from the tunnel agent: the socket itself
+    // A proxy that appends ip:port: each connection's new source port is not a new key.
+    expect(bridgeRateKey(req("127.0.0.1", "6.6.6.6, 203.0.113.7:51544"))).toBe("203.0.113.7");
+    expect(bridgeRateKey(req("127.0.0.1", "[2001:db8::7]:443"))).toBe("2001:db8::7");
   });
 
   it("a tunnel client that writes a fresh x-forwarded-for each time still runs out of wrong-code guesses", async () => {

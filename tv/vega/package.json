@@ -21,7 +21,7 @@
     "@amazon-devices/react-native-kepler": "~4.0.0",
     "react": "19.2.0",
     "react-native": "0.83.0",
-    "tv-voice-bridge": "file:../../vendor/tv-voice-bridge-0.3.2.tgz"
+    "tv-voice-bridge": "file:../../vendor/tv-voice-bridge-0.3.3.tgz"
   },
   "engines": {
     "node": ">=20"
