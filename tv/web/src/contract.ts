@@ -260,6 +260,13 @@ export interface TalkSummary {
   sentences: number;
 }
 // GET /api/stats
+export interface PracticeCounts {
+  attempts: number;
+  counted: number;
+  passed: number;
+  unverified: number;
+  beeOverrules: number;
+}
 export interface StatsResponse {
   dataLabel: string;
   synthetic: boolean;
@@ -269,7 +276,7 @@ export interface StatsResponse {
   sessions: { id: string; kind: "conversation" | "meeting" | "voice_note"; date: string; words: number; synthetic: boolean }[];
   habits: HabitRates;
   talk: TalkSummary | null;
-  practice: { attempts: number; counted: number; passed: number; unverified: number; beeOverrules: number };
+  practice: PracticeCounts | null; // drill attempts in the range; null for session:<id> and meeting:<id> (a conversation is not a drill period)
   drilledVsNextSession: {
     habit: string;
     label: string;
@@ -698,7 +705,7 @@ export interface TopicPayloads {
   "attempt.status": { attemptId: string; cardId: string; status: "polling"; reason: string };
   "attempt.verified": { attemptId: string; cardId: string; status: "verified" | "unverified"; via: "stream" | "poll" | null; speakerScore: number | null; latencyMs: number | null; beeText: string | null; replay: boolean; reason: string };
   "attempt.graded": { attempt: Attempt; card: CardView; deck: DeckSummary };
-  "stats.updated": { dataLabel: string; practiceToday: StatsResponse["practice"]; weekPer100: { words: number; hedges: number; vague: number; fillers: number; restarts: number }; transferHeadline: string | null; deck: DeckSummary };
+  "stats.updated": { dataLabel: string; practiceToday: PracticeCounts; weekPer100: { words: number; hedges: number; vague: number; fillers: number; restarts: number }; transferHeadline: string | null; deck: DeckSummary };
   "session.ended": { summary: SessionSummary | null };
   "conversation.started": ConversationStarted;
   "live.window": { window: LiveWindow };

@@ -114,13 +114,14 @@ export function habitRates(sessions: StatSession[]): HabitRates {
   };
 }
 
-export type RangeSpec = { kind: "today" | "week" | "all" } | { kind: "session"; id: string };
+// `label` is the range as asked ("meeting:<id>" or "session:<id>"), echoed back in the response.
+export type RangeSpec = { kind: "today" | "week" | "all" } | { kind: "session"; id: string; label?: string };
 
 export function parseRange(s: string | null | undefined): RangeSpec | null {
   const v = (s ?? "week").trim();
   if (v === "today" || v === "week" || v === "all") return { kind: v };
   const m = /^(?:meeting|session):(.+)$/.exec(v);
-  return m ? { kind: "session", id: m[1]! } : null;
+  return m ? { kind: "session", id: m[1]!, label: v } : null;
 }
 
 export function selectSessions(all: StatSession[], r: RangeSpec, nowMs: number, tz?: string, source: SourceSel = "bee"): StatSession[] {

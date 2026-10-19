@@ -541,23 +541,25 @@ export class CoachHub extends EventEmitter {
     const now = this.clock();
     const ss = selectSessions(this.sessions, range, now, this.tz, source);
     const today = this.today();
+    // Drill counts belong to a period (today, the week, all time). A conversation or meeting range has
+    // no drill period, so its practice block is null rather than every drill ever.
     const inRange = (t: number) => {
       const d = localDate(t, this.tz);
       if (range.kind === "today") return d === today;
       if (range.kind === "week") return d >= selectFrom(today);
       return true;
     };
-    const as = this.attempts.filter((a) => inRange(a.createdAt));
+    const as = range.kind === "session" ? null : this.attempts.filter((a) => inRange(a.createdAt));
     return {
       dataLabel: this.dataLabel,
       synthetic: this.mode === "demo",
-      range: range.kind === "session" ? `session:${range.id}` : range.kind,
+      range: range.kind === "session" ? (range.label ?? `session:${range.id}`) : range.kind,
       source,
       sources: sourceBreakdown(ss),
       sessions: ss.map((s) => ({ id: s.id, kind: s.kind, date: localDate(s.startMs, this.tz), words: habitRates([s]).words, synthetic: !!s.synthetic })),
       habits: habitRates(ss),
       talk: talkSummary(ss),
-      practice: {
+      practice: as && {
         attempts: as.length,
         counted: as.filter((a) => a.counted).length,
         passed: as.filter((a) => a.final?.pass).length,
@@ -582,7 +584,7 @@ export class CoachHub extends EventEmitter {
   publishStats() {
     const week = this.stats({ kind: "week" });
     const t = this.transfer();
-    const today = this.stats({ kind: "today" }).practice;
+    const today = this.stats({ kind: "today" }).practice!;
     this.publish("stats.updated", {
       dataLabel: this.dataLabel,
       practiceToday: today,

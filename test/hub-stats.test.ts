@@ -148,3 +148,20 @@ describe("deterministic real-data habit cards", async () => {
     expect(stripHedges("Well, I guess, it works.", ["i guess"])).toBe("Well, it works.");
   });
 });
+
+describe("GET /api/stats ranges", () => {
+  it("a conversation or meeting range has no drill period: practice is null and the range is echoed as asked", async () => {
+    const { demoSetup } = await import("../src/hub/setup.js");
+    const { parseRange } = await import("../src/hub/stats.js");
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const id = hub.sessions[0]!.id;
+    for (const asked of [`meeting:${id}`, `session:${id}`]) {
+      const s = hub.stats(parseRange(asked)!);
+      expect(s.range).toBe(asked);
+      expect(s.practice).toBeNull();
+      expect(s.sessions.map((x) => x.id)).toEqual([id]);
+    }
+    expect(hub.stats({ kind: "all" }).practice!.attempts).toBe(hub.attempts.length);
+    hub.dispose();
+  });
+});

@@ -28,11 +28,11 @@ import type {
   MirrorView,
   Nudge,
   NudgeSkipped,
+  PracticeCounts,
   PracticeMeters,
   PracticeSummary,
   Recap,
   SessionSummary,
-  StatsResponse,
 } from '../contract';
 
 export type ScreenView = MirrorView | 'pair';
@@ -117,7 +117,7 @@ export interface MirrorState {
   recapShownAt: number | null;
   recapWanted: string | null; // a focus asked for a recap id we do not hold yet
   statsVersion: number; // bumped on stats.updated: refetch stats and transfer
-  practiceToday: StatsResponse['practice'] | null; // today's drill tally (stats.updated, or GET /api/stats?range=today)
+  practiceToday: PracticeCounts | null; // today's drill tally (stats.updated, or GET /api/stats?range=today)
   lastTopic: string | null;
 }
 
@@ -131,7 +131,7 @@ export type MirrorAction =
   | { type: 'recapFetched'; ok: boolean }
   | { type: 'dismissRecap' }
   | { type: 'liveState'; live: LiveState }
-  | { type: 'practiceToday'; practice: StatsResponse['practice'] }
+  | { type: 'practiceToday'; practice: PracticeCounts }
   | { type: 'recap'; recap: Recap; show: boolean; now: number };
 
 const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });

@@ -134,7 +134,7 @@ Habit keys are used by stats, transfer and the pre-registration file:
 | `GET /api/deck` | TV | `{summary, cards[], today}` |
 | `GET /api/deck/next` | any | the card that "next" would open (does not open it), plus the open card |
 | `POST /api/card/open` `{cardId?, by?}` | any | opens a card outside a session (practice; a card that is not due changes no box on a pass) |
-| `GET /api/stats?range=today\|week\|all\|session:<id>\|meeting:<id>&source=bee\|all` | TV | habit rates per 100 words with 95% intervals, practice counts, drilled-vs-next-session glance |
+| `GET /api/stats?range=today\|week\|all\|session:<id>\|meeting:<id>&source=bee\|all` | TV | habit rates per 100 words with 95% intervals, practice counts (`null` for a `session:` or `meeting:` range, which is echoed back as asked), drilled-vs-next-session glance |
 | `GET /api/transfer?source=bee\|all&habit=<key>?` | TV, Alexa | the transfer result: drilled vs the pre-registered control |
 | `GET /api/brief` | Alexa, TV | pre-meeting nudge: next calendar event (Bee today brief), top habit, one warm-up card |
 | `GET /api/events` | Alexa simulator, TV web | Server-Sent Events: the same events as the WebSocket |

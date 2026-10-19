@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Heading } from '../components/Chrome';
 import { RateBar } from '../components/RateBar';
-import type { DeckSummary, StatsResponse } from '../contract';
+import type { DeckSummary, PracticeCounts, StatsResponse } from '../contract';
 import { fmt2, fmtWords, niceMax, topBreakdown, WEEK_HABITS } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 
@@ -9,7 +9,7 @@ const BAR_W = 760;
 const HABIT_COLOR: Record<string, string> = { hedges: C.coral, vague: C.amber, fillers: C.lavender, restarts: C.dim };
 
 /** The week's habit rates from Bee, per 100 words, with 95% interval whiskers, and today's drills. */
-export function WeekView({ stats, today, deck, transferHeadline }: { stats: StatsResponse | null; today: StatsResponse['practice'] | null; deck: DeckSummary | null; transferHeadline: string | null }) {
+export function WeekView({ stats, today, deck, transferHeadline }: { stats: StatsResponse | null; today: PracticeCounts | null; deck: DeckSummary | null; transferHeadline: string | null }) {
   if (!stats) return <Empty text="Loading the week from the hub…" />;
   const h = stats.habits;
   const rows = WEEK_HABITS.map((w) => ({ ...w, rate: h[w.key], breakdown: 'breakdown' in h[w.key] ? topBreakdown((h[w.key] as { breakdown: Record<string, number> }).breakdown) : '' }));
