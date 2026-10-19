@@ -14,6 +14,7 @@
 // their prefixes, the generic OPTIONS answer, the v1 core routes, then 404.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
+import { join } from "node:path";
 import { BridgeHub, type Room } from "@rackboard/tv-voice-bridge/hub";
 import type { AppMsg, PeerInfo } from "@rackboard/tv-voice-bridge";
 import { buildBrief } from "./brief.js";
@@ -113,7 +114,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const print = (line: string) => {
     if (!opts.quiet) console.log(line);
   };
-  const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print);
+  const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print, setup.stateDir ? join(setup.stateDir, "tokens.json") : null);
   const publicBaseUrl = ((opts.publicBaseUrl === undefined ? process.env.PUBLIC_BASE_URL : opts.publicBaseUrl) ?? "").trim().replace(/\/+$/, "") || null;
   const extraLanHosts = opts.extraLanHosts ?? [];
   const trustLan = opts.trustLan ?? process.env.HUB_TRUST_LAN === "1";

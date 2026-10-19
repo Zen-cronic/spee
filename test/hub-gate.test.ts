@@ -1,6 +1,9 @@
 // The public-access gate (src/hub/gate.ts): a tunnel must expose only /alexa, the static phone and
 // simulator pages, /mcp with the bearer token and /ws with the pair token.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { bearerOk, hostIsLocal, isPublicRequest, resolveTokens, tokenEquals } from "../src/hub/gate.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -49,6 +52,28 @@ describe("gate: what counts as public", () => {
     const k = resolveTokens({ PAIR_TOKEN: PAIR, MCP_TOKEN: MCP }, (l) => kept.push(l));
     expect(k).toMatchObject({ pairToken: PAIR, mcpToken: MCP, source: { pair: "env", mcp: "env" } });
     expect(kept.join("\n")).not.toContain(PAIR);
+  });
+  it("a generated token is saved (0600) and reused on the next start, so paired phones survive a restart (review M40)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gate-tokens-"));
+    const path = join(dir, "state", "tokens.json");
+    try {
+      const first = resolveTokens({}, () => {}, path);
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+      const second = resolveTokens({}, () => {}, path);
+      expect(second).toEqual(first);
+      // an exported token still wins, and does not overwrite the saved one
+      const env = resolveTokens({ PAIR_TOKEN: PAIR }, () => {}, path);
+      expect(env.pairToken).toBe(PAIR);
+      expect(env.mcpToken).toBe(first.mcpToken);
+      expect(JSON.parse(readFileSync(path, "utf8")).PAIR_TOKEN).toBe(first.pairToken);
+      // a broken file is replaced, never fatal
+      writeFileSync(path, "{nope");
+      const fresh = resolveTokens({}, () => {}, path);
+      expect(fresh.pairToken).not.toBe(first.pairToken);
+      expect(resolveTokens({}, () => {}, path).pairToken).toBe(fresh.pairToken);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

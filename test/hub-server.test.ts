@@ -1,5 +1,5 @@
 // The hub server in-process, in demo mode (synthetic fixtures, Bee replay at 1% pace).
-import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -67,7 +67,8 @@ describe("hub server (demo)", () => {
     expect(JSON.stringify((await get("/api/attempts?limit=50")).body)).not.toContain(SECRET);
   });
   it("persists deck and attempts to the state dir", async () => {
-    expect(readdirSync(stateDir).sort()).toEqual(["attempts.json", "deck.json"]);
+    expect(readdirSync(stateDir).sort()).toEqual(["attempts.json", "deck.json", "tokens.json"]);
+    expect(statSync(join(stateDir, "tokens.json")).mode & 0o777).toBe(0o600); // generated tokens, reused on restart (review M40)
   });
 });
 
