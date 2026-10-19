@@ -443,14 +443,14 @@ export class BeeVerifier {
     });
   }
 
-  // A line counts for a card only if Bee delivered it after the card opened and it was spoken no
-  // earlier than the opening (minus the clock slack).
   // The latest opening of a card (a card can be opened again in a later session).
   private cardOf(cardId: string): OpenCard | undefined {
     for (let i = this.cards.length - 1; i >= 0; i--) if (this.cards[i]!.cardId === cardId) return this.cards[i];
     return undefined;
   }
 
+  // A line counts for a card only if Bee delivered it after the card opened and it was spoken no
+  // earlier than the opening (minus the clock slack).
   private afterOpen(u: Utt, c: OpenCard) {
     return u.receivedAt >= c.openedAt && u.startMs >= c.openedAt - this.t.slackMs;
   }
