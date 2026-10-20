@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { BridgeClient } from 'tv-voice-bridge';
-import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, SettingTag, StatsResponse, TransferResponse } from '../contract';
+import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, StatsResponse, TransferResponse } from '../contract';
 import { nextSetting } from './format';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
+import { createSettingSender } from './settingSender';
 
 /**
  * The mirror's connection to the hub, shared by the web TV and the Vega app (only MirrorConfig
@@ -129,24 +130,35 @@ export function useMirror(cfg: MirrorConfig) {
   }, [state.recapWanted, cfg.httpBase]);
 
   // The setting chip (the recap overlay's, or Live's last conversation): the next setting at once,
-  // then the hub's answer; the old one back if the hub refused.
+  // then the hub's answer to the last press (settingSender.ts: one POST at a time per conversation,
+  // quick presses folded into one); after a failure, what the hub has.
   const stateRef = useRef(state);
   stateRef.current = state;
+  const recapIds = useRef(new Map<string, string>());
+  const sender = useMemo(
+    () =>
+      createSettingSender({
+        post: (id, setting) =>
+          fetch(`${cfg.httpBase}/api/sessions/${encodeURIComponent(id)}/setting`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ setting }) })
+            .then(async (res) => (res.ok ? ((await res.json()) as SettingResponse).tag ?? null : null))
+            .catch(() => null),
+        current: async (id) => {
+          const rid = recapIds.current.get(id);
+          return rid ? ((await getJson<Recap>(`${cfg.httpBase}/api/recaps/${encodeURIComponent(rid)}`))?.setting ?? null) : null;
+        },
+        apply: (id, tag) => dispatch({ type: 'recapSetting', conversationId: id, setting: tag, now: Date.now() }),
+      }),
+    [cfg.httpBase],
+  );
   const cycleSetting = useCallback(
     (which: 'recap' | 'last') => {
       const s = stateRef.current;
       const r = which === 'recap' ? s.recap : s.latestRecap;
       if (!r || !r.setting) return;
-      const old: SettingTag = r.setting;
-      const want = nextSetting(old.setting);
-      const id = r.conversationId;
-      dispatch({ type: 'recapSetting', conversationId: id, setting: { setting: want, source: 'you', confidence: 'high', reasons: ['you'] }, now: Date.now() });
-      void fetch(`${cfg.httpBase}/api/sessions/${encodeURIComponent(id)}/setting`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ setting: want }) })
-        .then(async (res) => (res.ok ? ((await res.json()) as SettingResponse) : null))
-        .catch(() => null)
-        .then((out) => dispatch({ type: 'recapSetting', conversationId: id, setting: out?.tag ?? old, now: Date.now() }));
+      recapIds.current.set(r.conversationId, r.id);
+      void sender(r.conversationId, r.setting, nextSetting(r.setting.setting));
     },
-    [cfg.httpBase],
+    [sender],
   );
 
   const show = useCallback((view: ScreenView) => dispatch({ type: 'show', view }), []);
