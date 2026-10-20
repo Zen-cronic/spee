@@ -49,6 +49,34 @@ const CLEAN = [
   "The mobile crash rate fell after the image library upgrade.",
 ];
 
+// Clean synthetic small talk for the casual (evening and weekend) sessions: no habit words.
+const CASUAL = [
+  "We walked along the lake after dinner and watched the boats come in.",
+  "My sister is visiting next month with her two dogs.",
+  "The new bakery on the corner sells sourdough until noon.",
+  "I finished the mystery novel on the train home.",
+  "We are planning a cabin trip for the long weekend in May.",
+  "The farmers market had the first apples of the season.",
+  "Our neighbours painted their fence a bright shade of green.",
+  "I tried the ramen place downtown and the broth was excellent.",
+  "The soccer game went to penalties and our side won.",
+  "My cousin started a pottery class on Thursday evenings.",
+  "We found a quiet trail through the ravine behind the library.",
+  "The museum has a new exhibit on old maps of the city.",
+  "I fixed the bike chain and rode to the market this morning.",
+  "Our book club picked a travel memoir for next month.",
+  "The concert in the park starts at seven on Saturday.",
+  "We cooked a big pot of chili and froze half of it.",
+  "My niece learned to swim at the community pool this summer.",
+  "The ferry to the island runs every half hour on weekends.",
+  "I planted tulip bulbs along the front path yesterday.",
+  "We watched the meteor shower from the roof until midnight.",
+  "The cafe by the station roasts its own beans every Tuesday.",
+  "My brother is building a canoe in his garage.",
+  "We played board games until the power came back on.",
+  "The pumpkin patch outside town opens next weekend.",
+];
+
 // Clean (habit-free) synthetic sentences, also used by the live demo scripts (src/hub/live/demoScripts.ts).
 export const DEMO_SENTENCES: readonly string[] = CLEAN;
 
@@ -85,27 +113,37 @@ export interface SessionPlan {
   start: string; // ISO with offset
   sentences: number;
   marks: Partial<Record<Mark, number>>;
+  speakers?: number; // distinct speakers heard, the wearer included (a count, as Bee's sessions carry)
+  casual?: boolean; // small talk (CASUAL sentences) instead of work talk
 }
 
 // Before drilling (Oct 13-15 morning) vs after (Oct 15 afternoon onward). Bee conversations are
 // the input of record; the two meetings are the secondary caption source.
+// The weekday Bee conversations are work talk (2 to 4 speakers in work hours); the four evening and
+// weekend ones are casual (src/hub/settings.ts tags them).
 export const PLANS: SessionPlan[] = [
-  { id: "demo-bee-1013", kind: "conversation", start: "2026-10-13T10:05:00-04:00", sentences: 26, marks: { iguess: 7, like: 9, restart: 2, vague: 3, ithink: 1, um: 2 } },
-  { id: "demo-bee-1014", kind: "conversation", start: "2026-10-14T09:50:00-04:00", sentences: 26, marks: { iguess: 6, like: 9, restart: 3, vague: 2, ithink: 1, um: 2 } },
+  { id: "demo-bee-1013", kind: "conversation", start: "2026-10-13T10:05:00-04:00", sentences: 26, marks: { iguess: 7, like: 9, restart: 2, vague: 3, ithink: 1, um: 2 }, speakers: 3 },
+  { id: "demo-bee-1014", kind: "conversation", start: "2026-10-14T09:50:00-04:00", sentences: 26, marks: { iguess: 6, like: 9, restart: 3, vague: 2, ithink: 1, um: 2 }, speakers: 2 },
   { id: "demo-meet-1014", kind: "meeting", start: "2026-10-14T11:00:00-04:00", sentences: 12, marks: { iguess: 2, like: 4, restart: 1, vague: 1 } },
-  { id: "demo-bee-1015", kind: "conversation", start: "2026-10-15T09:40:00-04:00", sentences: 26, marks: { iguess: 7, like: 10, restart: 2, vague: 2, ithink: 1, um: 2 } },
-  { id: "demo-bee-1016", kind: "conversation", start: "2026-10-16T10:10:00-04:00", sentences: 23, marks: { iguess: 1, like: 2, restart: 2, vague: 2, ithink: 1, um: 2 } },
+  { id: "demo-bee-1015", kind: "conversation", start: "2026-10-15T09:40:00-04:00", sentences: 26, marks: { iguess: 7, like: 10, restart: 2, vague: 2, ithink: 1, um: 2 }, speakers: 3 },
+  { id: "demo-bee-1016", kind: "conversation", start: "2026-10-16T10:10:00-04:00", sentences: 23, marks: { iguess: 1, like: 2, restart: 2, vague: 2, ithink: 1, um: 2 }, speakers: 2 },
   { id: "demo-meet-1019", kind: "meeting", start: "2026-10-19T11:00:00-04:00", sentences: 12, marks: { like: 2, restart: 1, vague: 1 } },
-  { id: "demo-bee-1019", kind: "conversation", start: "2026-10-19T15:20:00-04:00", sentences: 24, marks: { iguess: 1, like: 2, restart: 3, vague: 2, ithink: 1, um: 2 } },
-  { id: "demo-bee-1020", kind: "conversation", start: "2026-10-20T09:35:00-04:00", sentences: 23, marks: { like: 2, restart: 2, vague: 1, ithink: 1, um: 1 } },
+  { id: "demo-bee-1019", kind: "conversation", start: "2026-10-19T15:20:00-04:00", sentences: 24, marks: { iguess: 1, like: 2, restart: 3, vague: 2, ithink: 1, um: 2 }, speakers: 3 },
+  { id: "demo-bee-1020", kind: "conversation", start: "2026-10-20T09:35:00-04:00", sentences: 23, marks: { like: 2, restart: 2, vague: 1, ithink: 1, um: 1 }, speakers: 4 },
+  // Appended (their seeds follow the eight above, which keep theirs); buildSessions sorts by start.
+  { id: "demo-bee-1010", kind: "conversation", start: "2026-10-10T19:30:00-04:00", sentences: 20, marks: { iguess: 3, like: 3, restart: 2 }, speakers: 2, casual: true },
+  { id: "demo-bee-1011", kind: "conversation", start: "2026-10-11T12:00:00-04:00", sentences: 20, marks: { iguess: 3, like: 3, restart: 1, vague: 1 }, speakers: 3, casual: true },
+  { id: "demo-bee-1017", kind: "conversation", start: "2026-10-17T20:15:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 2 }, speakers: 2, casual: true },
+  { id: "demo-bee-1018", kind: "conversation", start: "2026-10-18T11:30:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 1, vague: 1 }, speakers: 3, casual: true },
 ];
 
 export function buildSessions(): StatSession[] {
   return PLANS.map((p, si) => {
     const r = rng(1000 + si);
-    const pool = [...CLEAN];
+    const src = p.casual ? CASUAL : CLEAN;
+    const pool = [...src];
     const picked: string[] = [];
-    for (let i = 0; i < p.sentences; i++) picked.push(pool.splice(Math.floor(r() * pool.length), 1)[0] ?? CLEAN[i % CLEAN.length]!);
+    for (let i = 0; i < p.sentences; i++) picked.push(pool.splice(Math.floor(r() * pool.length), 1)[0] ?? src[i % src.length]!);
     const marks: Mark[] = [];
     for (const [m, n] of Object.entries(p.marks) as [Mark, number][]) for (let k = 0; k < n; k++) marks.push(m);
     const slots = picked.map((_, i) => i);
@@ -129,8 +167,8 @@ export function buildSessions(): StatSession[] {
       });
       timeline = { session: p.id, durationMin: Math.round(sec / 60), speakers: 5, highlightLinesSkipped: 0, steps };
     }
-    return { id: p.id, kind: p.kind, startMs, lines, timeline, synthetic: true };
-  });
+    return { id: p.id, kind: p.kind, startMs, lines, timeline, synthetic: true, ...(p.speakers ? { speakers: p.speakers } : {}) };
+  }).sort((a, b) => a.startMs - b.startMs);
 }
 
 const card = (c: Omit<HubCard, "box" | "due" | "added" | "relapses" | "lastSeenSession" | "score" | "key" | "line"> & { box: number; due: string; session: string; score?: number }): HubCard => {

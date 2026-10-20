@@ -43,7 +43,7 @@ describe("live routes (demo hub)", () => {
     const r = await get("/api/live");
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ synthetic: true, mode: { enabled: false, reason: "default" }, conversation: null, drillActive: false, wrist: { channel: "replay", healthy: true }, lastNudge: null, recentNudges: [], recentSkips: [], lastRecapId: null });
-    expect(r.body.baseline).toEqual({ source: "bee week (non-drill conversations; synthetic)", range: "week", words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, fillersPer100: 2.43, wpm: 140 });
+    expect(r.body.baseline).toEqual({ source: "bee week (non-drill conversations; synthetic)", range: "week", words: 1834, hedgesPer100: 1.2, likesPer100: 1.58, fillersPer100: 2.07, wpm: 140 });
   });
   it("POST /api/live/mode validates, answers with narration and publishes live.mode", async () => {
     for (const b of [{}, { enabled: "yes" }, { enabled: true, minutes: 0 }, { enabled: true, minutes: 181 }, { enabled: true, rules: { nope: true } }, { enabled: true, rules: { monologue: 1 } }]) expect((await post("/api/live/mode", b)).body.error, JSON.stringify(b)).toBe("bad_request");
