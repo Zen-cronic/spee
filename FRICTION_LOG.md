@@ -36,6 +36,10 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 | FL-22 | Fire TV Stick, Vega CLI | Connecting a real stick: "No devices found", then "Connection refused" | Medium | worked around |
 | FL-23 | Vega manifest | The docs call `icon` required; the validator calls it optional | Low | open |
 | FL-24 | React Native for Vega | Text and animated styles render differently from react-native-web | Low | worked around |
+| FL-25 | Amazon Bedrock | Every Anthropic model fails until a use-case form is submitted | Medium | worked around |
+| FL-26 | Amazon Bedrock, AWS Marketplace | A model call accepts a Marketplace offer even when the call fails | Medium | worked around |
+| FL-27 | Hackathon rules, Devpost form | The private-repo sharing instructions disagree, and the list changed | Low | worked around |
+| FL-28 | Hackathon rules, office hours | Office hours said development may continue; the written update forbids it | Low | worked around |
 
 ---
 
@@ -412,3 +416,59 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Severity:** Low (cosmetic, but on the most important numbers on the screen)
 - **Workaround used (about 35 min):** sibling `Text`s in a row instead of nesting; attach the animated style from the first render; side padding with a negative margin on big numerals, weight 800 instead of a synthetic 900, and no negative letter spacing on light numerals ([docs/tv.md](docs/tv.md), "Rendering").
 - **Actionable suggestion:** document nested-`Text` style inheritance and native-driver attach timing on Vega (or warn in dev builds), don't clip glyph ink at the layout box, and list which weights the system font ships.
+
+## AWS
+
+### FL-25: Amazon Bedrock refuses every Anthropic model, even on non-streaming Converse, until a use-case form is submitted (Amazon Bedrock)
+- **Date:** 2026-10-14, until 15:12 EDT
+- **Task attempted:** run the coach's proof of concept on Claude Haiku 4.5 through the Bedrock Converse API in us-east-1 (forced tool use, structured output).
+- **Steps taken:**
+  1. `aws bedrock-runtime converse --region us-east-1 --model-id us.anthropic.claude-haiku-4-5-20251001-v1:0 --messages '[{"role":"user","content":[{"text":"ping"}]}]'`
+  2. The same from the proof-of-concept code, streaming and non-streaming.
+  3. AWS console → Amazon Bedrock → Model access → "Submit use case details for Anthropic".
+- **Expected result:** a model listed as available answers, or the error names the console page that fixes it.
+- **Actual result:** `ResourceNotFoundException: Model use case details have not been submitted for this account. Fill out the Anthropic use case details form before using the model.` The form is submitted once per account, and AWS says the answers are shared with Anthropic. Access opened at 15:12, about two minutes after the form went in.
+- **Severity:** Medium
+- **Workaround used:** ran the proof of concept on `openai.gpt-oss-120b-1:0` until the form went through, then re-ran it on Claude. Time not recorded beyond that.
+- **Actionable suggestion:** put the console path (or a link) in the error, show the gate in `get-foundation-model-availability`, and mention the form in the hackathon's AWS setup guidance.
+
+### FL-26: Invoking a third-party Bedrock model accepts its AWS Marketplace offer, even when the call fails (Amazon Bedrock / AWS Marketplace)
+- **Date:** 2026-10-14 15:08–15:13 EDT (observed once, not re-checked)
+- **Task attempted:** a short sweep of Converse calls across the models Bedrock listed in us-east-1, to pick a fallback while Anthropic access was gated (FL-25).
+- **Steps taken:**
+  1. One Converse call per model, with forced tool use.
+  2. One model rejected the request with a `ValidationException` (it does not accept `toolChoice.tool`).
+  3. Read the account's email and `aws marketplace-agreement search-agreements`.
+- **Expected result:** a failed call subscribes the account to nothing, and a paid Marketplace subscription needs an explicit accept.
+- **Actual result:** four Marketplace agreements were created, each with an email "You accepted an AWS Marketplace offer", one of them for the model whose call had failed. The Claude usage that followed bills as Marketplace usage types (`MP:USE1_InputTokenCount-Units`, `MP:USE1_OutputTokenCount-Units`), so whether a promotional credit covers it depends on the credit.
+- **Severity:** Medium
+- **Workaround used:** cancelled the two unneeded agreements the same day with `aws bedrock delete-foundation-model-agreement`, and stopped sweep-probing third-party models. Time not recorded.
+- **Actionable suggestion:** never create an agreement on a failed call; require an explicit accept (in the console or with `create-foundation-model-agreement`) before the first paid call; and say in the response when a call subscribed the account.
+
+## Hackathon process
+
+### FL-27: The private-repo sharing instructions disagree between the Devpost form, the rules and the final checklist, and the reviewer list changed during the event (hackathon rules / Devpost form)
+- **Date:** 2026-10-07 (the form against the rules) and 2026-10-20 (the rules re-fetched)
+- **Task attempted:** keep the product repo private and share it with the judges, as the rules allow.
+- **Steps taken:**
+  1. The Devpost form's helper text says to share a private repo with "@AmazonAppDev".
+  2. The rules (2026-09-16 update) listed six individual GitHub accounts instead.
+  3. The rules re-fetched on 2026-10-20 list five; one account was removed.
+  4. The official "Final stretch" update's checklist asks for "a link to your public code repository, with an open source license visible at the top", while the rules still allow a private repo shared with the reviewers.
+- **Expected result:** one list of accounts in one place, with the date it changed, and one answer on whether a private repo is acceptable.
+- **Actual result:** three sources, three answers.
+- **Severity:** Low
+- **Workaround used:** follow the current rules: invite the five listed accounts and Devpost's testing account (planned for 2026-10-22), then check acceptance two days later, because GitHub invites expire after 7 days. Time: minutes.
+- **Actionable suggestion:** keep the reviewer list in one place (the rules), date every change, say whether an organization invite counts, and make the checklist match the rules on private repos.
+
+### FL-28: Office Hours 2 said development may continue after the deadline; the official written update forbids any edit until the winners are announced (hackathon rules / office hours)
+- **Date:** 2026-10-19 (Office Hours 2) and 2026-10-20 (the update read)
+- **Task attempted:** plan the work after the submission deadline (2026-10-23 12:00 PDT, 15:00 EDT).
+- **Steps taken:**
+  1. At Office Hours 2, an entrant asked whether development can continue after the deadline. The hosts said yes: judges see the repo as of the deadline, and a release tag helps.
+  2. Read the official update, https://amazonappdev2026.devpost.com/updates/46539-final-stretch: "Once the deadline passes, submissions are locked. Please do not edit your code repo, video, or any project materials from the deadline until after the winner announcement, even minor changes could affect your eligibility."
+- **Expected result:** one answer.
+- **Actual result:** the recorded session and the written update contradict each other.
+- **Severity:** Low
+- **Workaround used:** follow the written update: tag the submission commit, then make no pushes, tags or edits to the submitted repos, the video or the Devpost page from the deadline until the winners are announced on 2026-12-03. Time: minutes.
+- **Actionable suggestion:** add a correction to the Office Hours 2 recording, and an FAQ entry that matches the update.
