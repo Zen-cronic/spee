@@ -9,6 +9,7 @@ const hub = process.env.HUB_URL ?? "http://127.0.0.1:8791";
 export default defineConfig({
   root,
   base: "/sim/",
+  publicDir: "../public", // the favicons, shared with the phone page
   build: {
     outDir: "../../dist/web/sim",
     emptyOutDir: true,
