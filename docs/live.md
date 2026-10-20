@@ -93,7 +93,7 @@ Notes on how the rules are computed:
 
 `BeeTodoWrist` runs `bee todos create --text "[coach] ..." --alarm-at <iso> --json` through `execFile`, never a shell. The CLI owns authentication, and the hub never reads the token.
 
-- **Text.** At most 60 characters, starting `[coach] `. It is generated from the rule and its numbers, for example `[coach] 4 hedges in 2 min. Say it plainly.`, and never quotes a transcript. Any other text is refused before the CLI is called.
+- **Text.** At most 60 characters, starting `[coach] `. It is generated from the rule and its numbers, for example `[coach] 4 unsure words in 2 minutes. Say it plainly.`, and never quotes a transcript. Any other text is refused before the CLI is called.
 - **Alarm lead.** `NUDGE_ALARM_LEAD_S` (default 10). The alarm time is rounded up to the whole second, in the format the probe verified (`2026-10-16T20:22:10Z`).
 - **Queue.** One CLI call at a time, at least 1.5 s apart, each with a 10 s timeout. Creates go ahead of cleanups, and a create that waited over 30 s in the queue is dropped as stale.
 - **Retries.** A failed create is retried twice. After a **timeout**, the to-do list is checked first: if the create landed (same text, alarm within 2 s), it is adopted instead of duplicated. A create that exits 0 is never retried: when its output has no id (a notice line before or after the JSON is read past), the list is checked once, and if the to-do is not there either the nudge is `scheduled` with a null `todoId` (no cleanup) and the circuit does not count it.
@@ -142,9 +142,9 @@ Notes on how the rules are computed:
   - four habits (`hedges`, `filler:like`, `vague`, `restart`) with per-100 rates. The verdict comes from a Poisson z-score against the baseline: |z| >= 1 is `worse` or `better`, otherwise `typical`.
 - **Moment.** One wearer sentence of 4 to 12 words showing the worst habit (hedges or "like"), with a mechanical rephrase (`stripHedges` / `stripFillers`).
 - **Phrasing (template).**
-  - Headline: `Hedges ran high: 4.2 per 100 words against your usual 1.4. "Like" was down.`
+  - Headline: `Unsure words ran high: 4.2 per 100 words against your usual 1.4. Filler "like" was down.`
   - Narration: 3 sentences.
-  - Wrist text: `[coach] Recap: hedges high, pace steady`.
+  - Wrist text: `[coach] Recap: more unsure words than usual, pace steady`.
   - When no habit ran high but one turn reached 90 s, the recap leads with the long turn.
 - **Optional model phrasing** (`COACH_RECAP_LLM=1`, live mode only; loaded lazily so the AWS SDK stays out of demo and tests):
   - Claude Haiku 4.5 on Bedrock (`us.anthropic.claude-haiku-4-5-20251001-v1:0`, profile `hackathon-1`, through `callTool`).
@@ -167,7 +167,7 @@ Notes on how the rules are computed:
 Deterministic, at most 4 sentences:
 
 1. **The lead.** The live conversation (`basis: "live"`, from 20 wearer words). Otherwise today's last recap (`"recap"`), which leads with the habit that ran high or a long turn. Otherwise the week (`"week"`).
-2. **The first signal**, only when a drilled habit has a next conversation since its first drill: `First signal, from one conversation and not proof: in your next conversation after drilling, "like" went from 5.4 to 2.1 per 100 words.` With under 100 words on a side it says the conversation was too short to compare, never a number.
+2. **The first signal**, only when a drilled habit has a next conversation since its first drill: `First signal, from one conversation and not proof: in your next conversation after practising, filler "like" went from 5.4 to 2.1 per 100 words.` With under 100 words on a side it says the conversation was too short to compare, never a number.
 3. **The week.** The top habit's rate (hedges or vague answers when they have at least 3 occurrences, otherwise fillers or restarts) and the number of due drills.
 4. **Live mode.** `Live coaching is on until 2:30 PM.` or `Live coaching is off.`
 

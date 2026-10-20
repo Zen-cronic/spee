@@ -3,7 +3,7 @@
 Bee hears you say "I guess" four times in two minutes, and about 20 seconds later your wrist buzzes. When the conversation ends you get a recap. When you practise, you re-say the line to Alexa or your phone, and the attempt is graded from **Bee's own wearer-tagged transcript**, not from the mic you said it into. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
 
 - **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins.
-- **AI finds the habits; deterministic code grades and decides.** Hedges ("I guess", "kind of") and "like" are the hero habits, the two drilled and pre-registered in `prereg/transfer.json`. Vague answers and the other fillers are tracked too, and restarts are the undrilled control.
+- **AI finds the habits; deterministic code grades and decides.** Unsure words ("I guess", "maybe", "kind of") and the filler "like" are the hero habits: the two you practise, pre-registered in `prereg/transfer.json` (keys `hedges` and `filler:like`). Vague answers and the other filler words ("um", "uh", "you know") are tracked too, and starting over ("the the", key `restart`) is the one you deliberately don't practise, kept for comparison.
 - **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator), Fire TV (a Vega app) and a phone page (drills and practice meters).
 
 ## Start here (no accounts, no keys, about 2 minutes)
@@ -28,7 +28,7 @@ Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a 
 - **Demo mode replays Bee.** `npm run demo` replays recorded-shape Bee events; the "verified by Bee" step there is the replay, and the screens say so.
 - **Latency is set by Bee.** A tagged line reaches the hub about 5.4 s (median; range 4.3 to 14.7 s) after you stop speaking, measured on our Watch. A wrist nudge therefore lands about 17 to 20 s after the line that triggered it, and a voice drill takes two turns, because an Alexa reply must come within 8 s.
 - **The Watch buzzes only while Bee is recording and the iPhone is locked.** Otherwise the alarm shows on the iPhone (iOS notification mirroring).
-- **The before/after check is pre-registered but young.** `prereg/transfer.json` fixed the drilled habits (hedges and "like") and an undrilled control (restarts) before the first drill. `GET /api/transfer` says "not drilled yet", "too little data" or "no change" until real speech after the drills shows a drop, and it says so when the control dropped too.
+- **The before/after check is pre-registered but young.** `prereg/transfer.json` fixed the practised habits (unsure words and filler "like") and the one you don't practise (starting over) before the first practice. `GET /api/transfer` reports `not drilled yet`, `too little data` or `no change` until real speech after practice shows a drop, and it says so when the one you didn't practise dropped too.
 - **Alexa+ third-party add-ons are partner-gated**, so the Alexa surface is a classic custom skill (tested in the Alexa iPhone app) plus an MCP server any MCP client can use; `/sim/` is that client in a browser, with a keyword router standing in for Alexa+'s model.
 - **No audio is stored by Bee**, so tone and pitch exist only in phone practice mode; Bee-based coaching works from words and timing.
 
@@ -52,7 +52,7 @@ flowchart LR
 
 ## Coach hub (shared core for the TV mirror and the Alexa drill session)
 
-The hub is the single state behind every surface: a Fire TV "speaking mirror" (habit rates, the drilled-vs-control transfer chart, live sync) and an Alexa+ drill session (next card, re-say it, graded, schedule updated). Its contract, with example payloads for every endpoint and event, is [`docs/CONTRACT.md`](docs/CONTRACT.md).
+The hub is the single state behind every surface: a Fire TV "speaking mirror" (habit rates, the before-and-after check of the habits you practise against the one you don't, live sync) and Alexa+ practice (next line, re-say it, graded by Bee, schedule updated). Its contract, with example payloads for every endpoint and event, is [`docs/CONTRACT.md`](docs/CONTRACT.md).
 
 ```bash
 npm run hub                     # live: real gitignored data, spawned `bee stream`, Bee CLI fallback poll (port 8791)
@@ -72,10 +72,10 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
   - 0 fillers;
   - at least 80% of the target sentence is matched, with fuzzy word matching for ASR slips ("car" for "card", "rec board" for "rack board");
   - every concrete word the fix introduces is said.
-- **Hero habits.** Hedges ("I guess", "kind of") and the filler "like": the two drilled habits, pre-registered in `prereg/transfer.json`. Vague answers ("that thing", "getting there", "and stuff") and the other fillers are tracked, and restarts are the undrilled control.
-- **Transfer.** `GET /api/transfer` asks whether a drilled habit dropped in later non-drill real speech, compared with a control habit that was deliberately not drilled. It reports rates per 100 words with 95% intervals, before vs after the first drill, and a plain verdict.
-  - The drilled and control habits are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any drill attempt).
-  - The endpoint refuses to report an unregistered habit as drilled.
+- **Hero habits.** Unsure words ("I guess", "maybe", "kind of") and the filler "like": the two practised habits, pre-registered in `prereg/transfer.json`. Vague answers ("that thing", "getting there", "and stuff") and the other filler words are tracked, and starting over ("the the") is the one you don't practise, kept for comparison (the control).
+- **Is it working?** `GET /api/transfer` asks whether a practised habit dropped in later real speech (practice lines excluded), compared with the habit you deliberately didn't practise. It reports rates per 100 words with 95% intervals, before vs after your first practice, and a plain verdict.
+  - Both are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any practice).
+  - The endpoint refuses to report an unregistered habit as practised.
 - **Finished conversations are picked up automatically.** Once Bee marks a conversation complete, the running hub fetches it, keeps the wearer's lines through the same wearer filter and mislabel rules as `npm run real`, and refreshes the stats and the first signal. No rerun or restart is needed ([`docs/live.md`](docs/live.md)).
 - **Privacy.** Stream text stays in memory until Bee tags it as the wearer. Untagged and other-speaker lines are never sent to a surface or written to disk.
 - **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.3.tgz`.
