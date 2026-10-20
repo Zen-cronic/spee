@@ -219,6 +219,38 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
     expect(n('"Like" was down: {like_usual} per 100 words against your usual {like_rate}.')).toBeNull();
     expect(n('"Like" was down to {like_rate} per 100 words from {like_usual}.')).toBeNull(); // the usual not marked as usual
   });
+  it("the template is an accepted phrasing in every branch: worse, clean, better, typical, long turn, no baseline", () => {
+    const window = (said: string[]) => {
+      const w = new ConversationWindow("c", T0, true);
+      let t = 0;
+      for (const x of said) {
+        const d = (x.split(" ").length / 140) * 60;
+        w.upsert(line("wearer", x, t, t + d));
+        t += d + 1;
+        w.upsert(line("other", "right", t, t + 1));
+        t += 2;
+      }
+      return w;
+    };
+    const plain = ["The billing export finished on Monday and the totals match the ledger.", "We moved the release of the mobile build to Friday afternoon.", "The search page loads quickly on the staging server now."];
+    const cases: [string, ConversationWindow, Baseline | null][] = [
+      ["worse", conversation(), BASE],
+      ["clean", window(plain), BASE],
+      ["clean, many words", window([...plain, ...plain, ...plain, ...plain, ...plain]), BASE],
+      ["better", window([...plain, ...plain, ...plain, ...plain, ...plain]), { ...BASE, hedgesPer100: 6, likesPer100: 6 }],
+      ["typical", window([...plain, "I think the alerting review is booked for next week.", ...plain]), { ...BASE, hedgesPer100: 2.5 }],
+      ["no baseline", window([...plain, "I guess the alerting review is booked."]), null],
+    ];
+    const seen = new Set<string>();
+    for (const [name, w, base] of cases) {
+      const { recap, slots } = composeRecap(inputOf(w, base));
+      seen.add(slots.template.narration.split(".")[1]!.trim().split(" ").slice(0, 3).join(" "));
+      expect(acceptPhrasing(slots.template, recap, slots, principles), name).toEqual({ headline: recap.headline, narration: recap.narration, wristText: recap.wristText });
+    }
+    const lt = longTurn();
+    expect(acceptPhrasing(lt.slots.template, lt.recap, lt.slots, principles)).not.toBeNull();
+    expect(seen.has("You didn't use")).toBe(true); // the clean branch was exercised
+  });
   it("hands callTool a sanitize hook, so a phrasing that echoes the principles is never cached (review H10)", async () => {
     const { recap, slots } = hedgy();
     let sanitize: ((x: unknown) => unknown) | undefined;

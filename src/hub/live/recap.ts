@@ -150,7 +150,7 @@ export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots }
 
   const focus = worse[0] ?? hedges;
   const verb: Record<RecapKey, (n: number) => string> = {
-    hedges: (n) => (n ? `You used ${count(focus)} unsure ${n === 1 ? "word" : "words"}` : "You didn't use a single unsure word"),
+    hedges: (n) => (n ? `You used ${count(focus)} unsure ${n === 1 ? "word" : "words"}` : "You didn't use any unsure words"),
     "filler:like": (n) => (n ? `You said "like" ${count(focus)} ${n === 1 ? "time" : "times"}` : `You never said "like"`),
     vague: (n) => (n ? `You gave ${count(focus)} vague ${n === 1 ? "answer" : "answers"}` : "You gave no vague answers"),
     restart: (n) => (n ? `You started over ${count(focus)} ${n === 1 ? "time" : "times"}` : "You never had to start over"),
