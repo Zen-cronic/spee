@@ -15,7 +15,7 @@ import { DEFAULT_THRESHOLDS } from "../src/hub/live/principles.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
-import { autoSetting, localClock, nextSetting, parseWorkHours, SettingsBook } from "../src/hub/settings.js";
+import { autoSetting, localClock, nextSetting, parseWorkHours, rewordRecapSetting, SettingsBook } from "../src/hub/settings.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { mergeCorpus, type StatSession } from "../src/hub/stats.js";
 import { raw } from "./helpers-http.js";
@@ -112,6 +112,33 @@ function smallHub() {
   hub.drillEvents = () => [{ at: at("2026-10-15T12:00:00-04:00"), habitKeys: ["hedges", "filler:like"] }];
   return hub;
 }
+
+describe("a recap re-worded after a setting change", () => {
+  const habits = [
+    { key: "hedges", label: "", count: 5, per100: 2.4, baselinePer100: 1.4, verdict: "worse" as const },
+    { key: "filler:like", label: "", count: 0, per100: 0, baselinePer100: 0.8, verdict: "better" as const },
+  ];
+  const recap = {
+    headline: "Unsure words ran high: 2.4 per 100 words against your usual 1.4 at work.",
+    narration: 'That conversation ran about 12 minutes. You used 5 unsure words, 2.4 out of every 100 words you said against your usual 1.4 at work. Try it without the unsure words: "I am at work on the export until five, 1.4 at work."',
+    moment: { text: "I guess I am at work on the export until five, 1.4 at work.", rephrase: "I am at work on the export until five, 1.4 at work." },
+    setting: { setting: "meeting" as const, source: "you" as const, confidence: "high" as const, reasons: ["you" as const] },
+    metrics: { baselineSetting: "work" as const, habits },
+  };
+  it("re-words only the comparison, never the wearer's quoted moment", () => {
+    const out = rewordRecapSetting(recap);
+    expect(out.headline).toBe("Unsure words ran high: 2.4 per 100 words against your usual 1.4 from work talk.");
+    expect(out.narration).toContain("against your usual 1.4 from work talk.");
+    expect(out.narration).toContain('"I am at work on the export until five, 1.4 at work."');
+  });
+  it("words that are not a usual of this recap stay as written; the same setting changes nothing", () => {
+    const other = { ...recap, headline: "No filler \"like\" this time (usually 0.8 per 100 words at work). You were at work early.", narration: "Back at work: 2.0 at work." };
+    const out = rewordRecapSetting(other);
+    expect(out.headline).toBe("No filler \"like\" this time (usually 0.8 per 100 words from work talk). You were at work early.");
+    expect(out.narration).toBe("Back at work: 2.0 at work.");
+    expect(rewordRecapSetting({ ...recap, setting: { ...recap.setting, setting: "work" as const } })).toEqual({ ...recap, setting: { ...recap.setting, setting: "work" } });
+  });
+});
 
 describe("per-setting view", () => {
   it("rates and before/after per setting, with 'too little speech' instead of a number", () => {

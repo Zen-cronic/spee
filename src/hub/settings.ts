@@ -41,14 +41,51 @@ export function usualWhereNow(baselineSetting: ConversationSetting | null | unde
   return ` ${now && now !== baselineSetting ? SETTING_FROM[baselineSetting] : SETTING_WHERE[baselineSetting]}`;
 }
 
-/** A recap as served with its current setting: its "usual in <setting>" re-worded when the wearer set another one. */
-export function rewordRecapSetting<R extends { headline: string; narration: string; setting?: SettingTag | null; metrics: { baselineSetting?: ConversationSetting | null } }>(r: R): R {
+/**
+ * A recap as served with its current setting: its "usual <n> in <setting>" re-worded when the wearer
+ * set another one. The phrases are rebuilt from the recap's own numbers (each habit's usual, as the
+ * recap wrote it: "usual 1.4 at work", "usually 1.4 per 100 words at work"), so only a comparison is
+ * re-worded. A quoted span (the wearer's moment and its rephrase) is never touched, even when it holds
+ * the same words.
+ */
+export function rewordRecapSetting<R extends { headline: string; narration: string; setting?: SettingTag | null; moment?: { text: string; rephrase: string } | null; metrics: { baselineSetting?: ConversationSetting | null; habits?: { baselinePer100: number | null }[] } }>(r: R): R {
   const bs = r.metrics.baselineSetting;
   const now = r.setting?.setting;
   if (!bs || !now || now === bs) return r;
-  const from = SETTING_WHERE[bs];
-  const re = new RegExp(`\\b${from}\\b`, "gi");
-  return { ...r, headline: r.headline.replace(re, SETTING_FROM[bs]), narration: r.narration.replace(re, SETTING_FROM[bs]) };
+  const usuals = [...new Set((r.metrics.habits ?? []).flatMap((h) => (h.baselinePer100 == null ? [] : [h.baselinePer100.toFixed(1)])))];
+  const pairs = usuals.flatMap((n) => [`${n} ${SETTING_WHERE[bs]}`, `${n} per 100 words ${SETTING_WHERE[bs]}`].map((was) => [was, was.replace(SETTING_WHERE[bs], SETTING_FROM[bs])] as const));
+  const keep = [r.moment?.rephrase, r.moment?.text].filter((x): x is string => !!x && x.trim().length > 0);
+  const reword = (text: string) => outsideQuotes(text, keep, (part) => pairs.reduce((t, [was, now]) => replacePhrase(t, was, now), part));
+  return { ...r, headline: reword(r.headline), narration: reword(r.narration) };
+}
+// `was` as a whole phrase (no digit or letter running into either end), every time.
+function replacePhrase(text: string, was: string, now: string): string {
+  let out = "";
+  let i = 0;
+  for (let j = text.indexOf(was); j >= 0; j = text.indexOf(was, j + 1)) {
+    const before = text[j - 1] ?? "";
+    const after = text[j + was.length] ?? "";
+    if (/[\p{L}\p{N}.]/u.test(before) || /[\p{L}\p{N}]/u.test(after) || j < i) continue;
+    out += text.slice(i, j) + now;
+    i = j + was.length;
+  }
+  return out + text.slice(i);
+}
+// `f` applied to the text outside quoted spans ("...", curly quotes too) and outside every `keep` string.
+function outsideQuotes(text: string, keep: string[], f: (part: string) => string): string {
+  const spans: [number, number][] = [];
+  for (const m of text.matchAll(/"[^"]*"|\u201c[^\u201d]*\u201d/g)) spans.push([m.index, m.index + m[0].length]);
+  for (const k of keep) for (let j = text.indexOf(k); j >= 0; j = text.indexOf(k, j + 1)) spans.push([j, j + k.length]);
+  spans.sort((a, b) => a[0] - b[0]);
+  let out = "";
+  let i = 0;
+  for (const [a, b] of spans) {
+    if (b <= i) continue;
+    if (a > i) out += f(text.slice(i, a));
+    out += text.slice(Math.max(a, i), b);
+    i = b;
+  }
+  return out + f(text.slice(i));
 }
 // The words a setting needs before its rates are shown or used as a recap's usual (the baseline's minimum).
 export const SETTING_MIN_WORDS = 400;
