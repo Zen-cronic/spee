@@ -40,8 +40,16 @@ export class Dialog {
     this.state.cardOpen = !!c;
   }
 
+  // Learn the card the hub has open (the TV, the phone or the API may have opened it) through
+  // drill_status, so "Say this" shows it and the next sentence is an attempt on it.
+  async sync(): Promise<string | null> {
+    const r = await this.call("drill_status", {});
+    if (!r.isError && r.structured && "openCard" in r.structured) this.setCard(r.structured.openCard);
+    return this.card;
+  }
+
   async handle(heard: string): Promise<Turn> {
-    const routed = route(heard, this.state);
+    let routed = route(heard, this.state);
     const calls: McpToolName[] = [];
     let label: string | null = null;
     let verdict: Turn["verdict"] = null;
@@ -52,12 +60,19 @@ export class Dialog {
       return r;
     };
     const done = (speech: string): Turn => ({ heard, routed, calls, speech, card: this.card, dataLabel: label, verdict });
+    // A sentence with no card known here: someone else may have opened one. Ask the hub before
+    // answering with help, and route it again as an attempt on that card.
+    if (routed.kind === "help" && routed.rule === "no card open") {
+      this.take(await call("drill_status", {}));
+      if (this.state.cardOpen) routed = route(heard, this.state);
+    }
     if (routed.kind === "help") return done(this.state.cardOpen && this.card ? `Say: "${this.card}"` : HELP_TEXT);
 
     const r = await call(routed.tool, routed.args);
     this.take(r);
     if (r.isError) {
       if (routed.tool === "get_verdict") this.state.attemptId = null;
+      if (r.structured?.error === "no_open_card") this.setCard(null); // closed on the hub (a pass, idle, another surface)
       return done(r.structured?.error === "no_open_card" ? 'No card is open. Say "quiz me" to start a drill.' : r.text);
     }
     switch (routed.tool) {
@@ -72,6 +87,8 @@ export class Dialog {
         if (v.status === "graded" && v.attempt?.final?.pass) {
           const n = await call("next_card", {});
           this.take(n);
+          // a lone card (no session) closes on its pass: there is no session to move on in
+          if (n.structured?.done && !n.structured?.summary) return done(`${r.text} Say "quiz me" for another card.`);
           return done(`${r.text} ${n.structured?.done ? n.text : this.card ? `Next, say: "${this.card}"` : n.text}`);
         }
         return done(this.card ? `${r.text} Say it again: "${this.card}"` : r.text);

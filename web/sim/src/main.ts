@@ -173,6 +173,21 @@ async function say(text: string, via: "typed" | "mic") {
   }
 }
 
+// The card the hub has open, whoever opened it (the TV, the phone, the API): shown under "Say this"
+// so the next sentence is an attempt on it. On connect, and on the hub's card events (LAN).
+let syncing = false;
+async function syncCard() {
+  if (busy || syncing) return;
+  syncing = true;
+  try {
+    showCard(await dialog.sync());
+  } catch {
+    // the next turn asks again
+  } finally {
+    syncing = false;
+  }
+}
+
 $<HTMLFormElement>("say").addEventListener("submit", (e) => {
   e.preventDefault();
   const input = $<HTMLInputElement>("text");
@@ -238,7 +253,12 @@ if (onLan && "EventSource" in window) {
               ? { seq: d.seq, card: d.card?.id, by: d.by }
               : { seq: d.seq };
       logLine(sseList, "ev", t, brief);
+      if (t === "card.open" || t === "session.ended") void syncCard();
     });
+  // re-sent when a lone card closes (a pass, or idle)
+  es.addEventListener("hub.state", () => void syncCard());
 } else sseState.textContent = "SSE feed is LAN-only (through the tunnel the simulator uses /mcp alone)";
 
-void connect().catch(() => undefined);
+void connect()
+  .then(() => syncCard())
+  .catch(() => undefined);

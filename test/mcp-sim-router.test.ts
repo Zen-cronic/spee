@@ -157,3 +157,68 @@ describe("dialog: the same two-turn drill as the Alexa skill", () => {
     expect((await d.handle("help")).speech).toBe('Say: "The report is ready for review."');
   });
 });
+
+// The hub already has a card open (the TV, the phone or the API opened it); the simulator has not
+// seen it. Its next sentence must be an attempt on that card, not help and not a new drill.
+function tvOpened() {
+  const calls: McpToolName[] = [];
+  let open: { id: string; resay: string } | null = { id: "c-tv", resay: "The dashboard loads slowly on Mondays." };
+  const reply = (text: string, structured: Record<string, any>, isError = false): ToolReply => ({ text, structured, isError });
+  const call = async (name: McpToolName): Promise<ToolReply> => {
+    calls.push(name);
+    switch (name) {
+      case "drill_status":
+        return reply(open ? `Say this: "${open.resay}"` : "No drill is running.", { state: open ? "card_open" : "idle", session: null, openCard: open, lastAttempt: null });
+      case "submit_attempt":
+        return open ? reply("Got it. I'm checking with Bee.", { attempt: { id: "att_tv", cardId: open.id, status: "pending_bee" } }) : reply("open a card first (no_open_card)", { error: "no_open_card", message: "open a card first" }, true);
+      case "get_verdict":
+        open = null; // Bee's pass closed the lone card
+        return reply("Bee heard it. That's a pass.", { verdictReady: true, status: "graded", attempt: { id: "att_tv", final: { pass: true } } });
+      case "next_card":
+        return reply("No drill is running.", { card: null, done: true, narration: "" });
+      default:
+        return reply("", { error: "nope", message: "nope" }, true);
+    }
+  };
+  return { call, calls, close: () => (open = null) };
+}
+
+describe("dialog: a card someone else opened", () => {
+  it("sync shows the open card under Say this", async () => {
+    const d = new Dialog(tvOpened().call);
+    expect(await d.sync()).toBe("The dashboard loads slowly on Mondays.");
+    expect(d.state.cardOpen).toBe(true);
+  });
+  it("the sentence is an attempt on the hub's open card (drill_status, then submit_attempt; never start_drill)", async () => {
+    const h = tvOpened();
+    const d = new Dialog(h.call);
+    const t = await d.handle("The dashboard loads slowly on Mondays.");
+    expect(t.calls).toEqual(["drill_status", "submit_attempt"]);
+    expect(t.routed).toMatchObject({ kind: "tool", tool: "submit_attempt", args: { text: "The dashboard loads slowly on Mondays." } });
+    expect(t.card).toBe("The dashboard loads slowly on Mondays.");
+    expect(d.state.attemptId).toBe("att_tv");
+    // the pass closes the lone card: no session to move on in
+    const v = await d.handle("how did I do?");
+    expect(v.calls).toEqual(["get_verdict", "next_card"]);
+    expect(v.speech).toBe('Bee heard it. That\'s a pass. Say "quiz me" for another card.');
+    expect(v.card).toBeNull();
+    expect(h.calls).not.toContain("start_drill");
+  });
+  it("a card closed on the hub since: the attempt is refused and the stale card is dropped", async () => {
+    const h = tvOpened();
+    const d = new Dialog(h.call);
+    await d.sync();
+    h.close();
+    const t = await d.handle("The dashboard loads slowly on Mondays.");
+    expect(t.speech).toBe('No card is open. Say "quiz me" to start a drill.');
+    expect(t.card).toBeNull();
+    expect(d.state.cardOpen).toBe(false);
+  });
+  it("nothing open on the hub either: help, after asking once", async () => {
+    const h = tvOpened();
+    h.close();
+    const t = await new Dialog(h.call).handle("hello there");
+    expect(t.calls).toEqual(["drill_status"]);
+    expect(t.speech).toBe(HELP_TEXT);
+  });
+});
