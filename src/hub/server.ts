@@ -6,6 +6,7 @@
 //   npm run hub -- --no-bee           # live without the stream (attempts end "unverified")
 //   npm run hub -- --demo --fixture-v2  # demo, and the v2 live routes answer from fixtures/contract-v2/
 //   npm run hub -- --lan              # trust other devices on the LAN like this machine (real Fire TV stick)
+//   npm run hub -- --no-mask          # do not mask the private terms on screens and in speech (mask.ts)
 //
 // Logs are JSON lines with event names and ids only: never transcript text, never the Bee token,
 // never a gate token. docs/CONTRACT.md is the contract for every endpoint and event.
@@ -31,6 +32,8 @@ import { underPrefix, type HubPlugin, type PluginCtx } from "./plugin.js";
 import { createPlugins } from "./plugins.js";
 import { createFixtureRouter } from "./fixtureV2.js";
 import { serveHome, type HomeStatus } from "./home.js";
+import { loadMaskTerms, maskDeep, maskStatus, setMaskTerms, type MaskMode } from "./mask.js";
+import { REPO_ROOT } from "./static.js";
 
 export { CONTRACT_VERSION };
 export const DEFAULT_PORT = 8791; // Rack Board uses 8792, the bridge example 8800
@@ -54,6 +57,10 @@ export interface HubServerOptions {
   trustLan?: boolean; // trust LAN devices like loopback (default: env HUB_TRUST_LAN=1, else false)
   allowedOrigins?: string[]; // extra browser origins (default: env HUB_ALLOWED_ORIGINS, comma-separated)
   roomGraceMs?: number; // a room with no screen is closed after this (default 60 s; tests)
+  // Private terms to mask on screens and in speech (mask.ts). Default: loaded from maskDir
+  // (coach/private-terms.local.txt and coach/mask-terms.local.txt); [] or env HUB_MASK=0 turns it off.
+  maskTerms?: string[];
+  maskDir?: string;
 }
 
 export interface HubServer {
@@ -117,6 +124,9 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const print = (line: string) => {
     if (!opts.quiet) console.log(line);
   };
+  // Masking: output-only (mask.ts). The terms are loaded here and never logged; the log says only on/off and a count.
+  setMaskTerms(opts.maskTerms ?? (process.env.HUB_MASK === "0" ? [] : loadMaskTerms(opts.maskDir ?? join(REPO_ROOT, "coach"))));
+  log("hub.masking", { masking: maskStatus() });
   const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print, setup.stateDir ? join(setup.stateDir, "tokens.json") : null, { rotate: !!opts.rotateTokens });
   const publicBaseUrl = ((opts.publicBaseUrl === undefined ? process.env.PUBLIC_BASE_URL : opts.publicBaseUrl) ?? "").trim().replace(/\/+$/, "") || null;
   const extraLanHosts = opts.extraLanHosts ?? [];
@@ -140,9 +150,12 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
 
   // No wildcard CORS: an allowed Origin is echoed by handle() before routing (res.setHeader), so the
   // JSON writer, SSE and the plugins all inherit it.
+  // Every JSON body goes out masked: speech for the Alexa endpoint and the loopback hub client
+  // (x-hub-mask: speech, used by Alexa and MCP), screen otherwise.
+  const maskModes = new WeakMap<ServerResponse, MaskMode>();
   const send = (res: ServerResponse, status: number, data: unknown) => {
     res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-    res.end(JSON.stringify(data, null, 1));
+    res.end(JSON.stringify(maskDeep(data, maskModes.get(res) ?? "screen"), null, 1));
   };
   const fail = (res: ServerResponse, status: number, error: string, message: string) => send(res, status, { error, message });
   const pathOf = (u: string | undefined) => {
@@ -238,7 +251,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   });
   const upgrades = new WeakMap<IncomingMessage, UpgradeDecision>();
   const removeUpgradeGate = installUpgradeGate(server, tokens, log, gateOpts, upgrades);
-  const guard = guardBridge(bridge, { log, decisions: upgrades, withToken: (u) => `${u}#k=${encodeURIComponent(tokens.pairToken)}` }); // a fragment: never sent to a server or logged by a tunnel
+  const guard = guardBridge(bridge, { log, decisions: upgrades, mask: (m) => maskDeep(m, "screen"), withToken: (u) => `${u}#k=${encodeURIComponent(tokens.pairToken)}` }); // a fragment: never sent to a server or logged by a tunnel
 
   // Room-scoped relay: one room's screens only, at most ROOM_RELAY_MAX_HZ per room and topic. A frame
   // inside the window is not lost: the latest one is sent when the window ends (trailing edge).
@@ -307,7 +320,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   hub.on("event", (ev: HubEvent) => {
     log("hub.event", { topic: ev.topic, seq: ev.payload.seq, attemptId: (ev.payload.attempt as { id?: string } | undefined)?.id ?? ev.payload.attemptId, cardId: (ev.payload.card as { id?: string } | undefined)?.id ?? ev.payload.cardId, status: ev.payload.status });
     for (const room of bridge.rooms.values()) bridge.broadcast(room, { type: "app", topic: ev.topic, payload: ev.payload });
-    const frame = `event: ${ev.topic}\nid: ${ev.payload.seq}\ndata: ${JSON.stringify(ev.payload)}\n\n`;
+    const frame = `event: ${ev.topic}\nid: ${ev.payload.seq}\ndata: ${JSON.stringify(maskDeep(ev.payload, "screen"))}\n\n`;
     for (const res of sse) sseWrite(res, frame);
   });
   // A change with no contract topic (a lone card closed for idling): every peer rebases on a fresh
@@ -316,7 +329,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     log("hub.state-changed", why);
     const payload = { seq: 0, at: hub.clock(), ...stateSnapshot() };
     for (const room of bridge.rooms.values()) bridge.broadcast(room, { type: "app", topic: "hub.state", payload });
-    const frame = `event: hub.state\ndata: ${JSON.stringify(payload)}\n\n`;
+    const frame = `event: hub.state\ndata: ${JSON.stringify(maskDeep(payload, "screen"))}\n\n`;
     for (const res of sse) sseWrite(res, frame);
   });
   // An SSE client that stops reading is dropped once 1 MB is queued for it.
@@ -367,6 +380,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     const method = req.method ?? "GET";
     const g = gateHttp(req, path, tokens, gateOpts);
     res.setHeader("vary", "origin");
+    maskModes.set(res, path === "/alexa" || req.headers["x-hub-mask"] === "speech" ? "speech" : "screen");
     if (!g.allow) {
       log("gate.denied", { method, path, reason: g.reason, ...(g.error ? { origin: true } : {}) });
       return fail(res, g.status ?? 403, g.error ?? "forbidden", g.reason);
@@ -404,7 +418,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     switch (route) {
       case "GET /":
       case "HEAD /":
-        return serveHome(req, res, homeStatus());
+        return serveHome(req, res, maskDeep(homeStatus(), "screen"));
       case "GET /api/health":
         return send(res, 200, {
           ok: true,
@@ -419,6 +433,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
           publicBaseUrl,
           plugins: pluginInfo(),
           gate: { publicRoutes: PUBLIC_ROUTES, pairToken: tokens.source.pair, mcpToken: tokens.source.mcp },
+          masking: maskStatus(),
         });
       case "GET /api/state":
       case "GET /api/session":
@@ -492,7 +507,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
         return send(res, 200, { events: hub.recent });
       case "GET /api/events": {
         res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
-        res.write(`event: hub.state\ndata: ${JSON.stringify({ seq: 0, at: hub.clock(), ...stateSnapshot() })}\n\n`);
+        res.write(`event: hub.state\ndata: ${JSON.stringify(maskDeep({ seq: 0, at: hub.clock(), ...stateSnapshot() }, "screen"))}\n\n`);
         sse.add(res);
         const ka = setInterval(() => sseWrite(res, ": keepalive\n\n"), 15_000);
         req.on("close", () => {
@@ -590,6 +605,7 @@ if (process.argv[1] && /server\.(ts|js)$/.test(process.argv[1])) {
     fixtureV2: args.includes("--fixture-v2"),
     trustLan: args.includes("--lan") ? true : undefined,
     rotateTokens: args.includes("--rotate-tokens"),
+    maskTerms: args.includes("--no-mask") ? [] : undefined,
   }).catch((err) => {
     console.error(`hub: ${(err as Error).message}`);
     killChildren("SIGKILL");

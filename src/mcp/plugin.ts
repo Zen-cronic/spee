@@ -12,6 +12,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { CONTRACT_VERSION } from "../hub/contract.js";
 import type { HubPlugin, PluginCtx } from "../hub/plugin.js";
 import { HubClient } from "./hubClient.js";
+import { maskDeep } from "../hub/mask.js";
 import { TOOL_DEFS } from "./tools.js";
 
 export const MCP_PREFIXES = ["/mcp"];
@@ -37,7 +38,9 @@ export function buildMcpServer(hub: HubClient, log?: PluginCtx["log"]): McpServe
       log?.("mcp.tool", { tool: def.name, route: o.route, status: o.result.status, ms: Date.now() - t0 });
       const b = o.result.body;
       const structured = b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : { value: b };
-      return { content: [{ type: "text" as const, text: o.text || (o.result.ok ? "Done." : "The hub refused that.") }], structuredContent: structured, ...(o.result.ok ? {} : { isError: true }) };
+      // An assistant reads this aloud: private terms come out as "name" (src/hub/mask.ts).
+      const out = maskDeep({ text: o.text || (o.result.ok ? "Done." : "The hub refused that."), structured }, "speech");
+      return { content: [{ type: "text" as const, text: out.text }], structuredContent: out.structured, ...(o.result.ok ? {} : { isError: true }) };
     });
   }
   return server;

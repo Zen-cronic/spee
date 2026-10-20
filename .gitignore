@@ -57,6 +57,8 @@ AGENTS.md
 # Coach principles: the operator's own notes and banned terms (never commit; leak-check screens for them)
 coach/principles.local.md
 coach/private-terms.local.txt
+# Names to hide on screen while filming (src/hub/mask.ts; never commit)
+coach/mask-terms.local.txt
 
 # Live coaching state (wearer metrics, recaps, wrist ledger); /real/ above already covers it
 real/live/

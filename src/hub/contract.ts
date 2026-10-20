@@ -727,6 +727,9 @@ export interface HealthV2 {
   gate: { publicRoutes: string[]; pairToken: "env" | "generated"; mcpToken: "env" | "generated" };
   ws: string;
   sse: string;
+  // Display masking of private terms (src/hub/mask.ts): "on (N terms)" or "off". Never a term.
+  // Additive: older hubs omit it.
+  masking?: string;
 }
 
 // Coach thresholds: the fenced JSON block at the end of coach/principles.template.md (or the

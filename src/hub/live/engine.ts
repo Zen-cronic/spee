@@ -28,6 +28,7 @@ import { phraseRecap, type PhraseFn } from "./recapPrompt.js";
 import { firing, nudgeText, windowThresholds } from "./rules.js";
 import { ConversationWindow, type Analysis, type RuleEvidence, type WinLine } from "./window.js";
 import type { Wrist } from "./wrist.js";
+import { maskOut } from "../mask.js";
 
 export const DRILL_RECENT_MS = 5 * 60_000; // a card opened this recently counts as drilling
 // Observed 2026-10-16: Bee sends update-conversation (state PROCESSING, end_time set) when the
@@ -288,7 +289,7 @@ export class LiveEngine {
     const id = newId("ndg", now);
     const text = nudgeText(e);
     const hops = { spokenAt: Math.round(line.endAt), beeAt: line.beeAt, detectedAt: now };
-    void this.o.wrist.send({ kind: "nudge", refId: id, text }).then((r) => {
+    void this.o.wrist.send({ kind: "nudge", refId: id, text: maskOut(text, "screen") }).then((r) => {
       if (this.stopped) return;
       const nudge: Nudge = {
         id,
@@ -370,7 +371,7 @@ export class LiveEngine {
     this.publish("recap.ready", { recap });
     this.log("live.recap.ready", { id: recap.id, conversationId: recap.conversationId, phrasing: recap.phrasing });
     if (on && this.policy.isEnabled()) {
-      const r = await this.o.wrist.send({ kind: "recap", refId: recap.id, text: recap.wristText });
+      const r = await this.o.wrist.send({ kind: "recap", refId: recap.id, text: maskOut(recap.wristText, "screen") }); // the watch shows it: masked (src/hub/mask.ts)
       recap.delivery = { wrist: r.status, todoId: r.todoId };
     } else if (on) recap.delivery = { wrist: "off", todoId: null };
     this.saveRecaps();

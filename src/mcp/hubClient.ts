@@ -55,7 +55,8 @@ export class HubClient {
     try {
       const r = await this.doFetch(this.base() + path, {
         method,
-        headers: body === undefined ? undefined : { "content-type": "application/json" },
+        // Alexa and MCP answers are spoken: the hub masks private terms as "name", not "▒▒▒" (src/hub/mask.ts).
+        headers: body === undefined ? { "x-hub-mask": "speech" } : { "content-type": "application/json", "x-hub-mask": "speech" },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(this.timeoutMs),
       });

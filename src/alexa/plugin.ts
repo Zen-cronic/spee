@@ -10,6 +10,7 @@ import type { HubPlugin, PluginCtx } from "../hub/plugin.js";
 import { HubClient } from "../mcp/hubClient.js";
 import { handleAlexa, type SkillDeps } from "./skill.js";
 import { ssml } from "./speech.js";
+import { maskOut } from "../hub/mask.js";
 import type { AlexaRequestEnvelope } from "./types.js";
 import { signatureVerifier, type SigResult } from "./signature.js";
 import { isAlexaApiEndpoint, resolveSkillId, verifyAlexaRequest } from "./verify.js";
@@ -55,7 +56,7 @@ export function progressiveSender(opts: { allowed?: (url: string) => boolean; fe
       const r = await doFetch(`${ep}/v1/directives`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${sys.apiAccessToken}` },
-        body: JSON.stringify({ header: { requestId: env.request.requestId }, directive: { type: "VoicePlayer.Speak", speech: ssml(speech) } }),
+        body: JSON.stringify({ header: { requestId: env.request.requestId }, directive: { type: "VoicePlayer.Speak", speech: ssml(maskOut(speech, "speech")) } }),
         signal: AbortSignal.timeout(1500),
       });
       return r.status >= 200 && r.status < 300;

@@ -341,6 +341,7 @@ check(h2b?.contractVersion === CONTRACT_VERSION && CONTRACT_VERSION === 2, "heal
 check(JSON.stringify(h2b?.plugins?.map((p: any) => p.name)) === JSON.stringify(PLUGIN_NAMES), `health lists the plugins in registry order (${PLUGIN_NAMES.join(", ")})`);
 check(h2b?.plugins?.every((p: any) => Array.isArray(p.routes) && p.routes.length > 0 && ["stub", "ready", "degraded", "off"].includes(p.status)), "every plugin describes its routes and status");
 check(h2b?.gate?.pairToken === "env" && h2b?.gate?.mcpToken === "env" && noTokens(h2.text), "health reports token sources, never the tokens");
+check(typeof h2b?.masking === "string" && /^(off|on \(\d+ terms?\))$/.test(h2b.masking), `health reports display masking as on/off and a count only (${h2b?.masking})`);
 const v2Routes: [string, string, unknown?][] = [
   ["GET", "/api/live"],
   ["POST", "/api/live/mode", {}],

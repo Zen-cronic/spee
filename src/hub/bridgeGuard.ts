@@ -10,6 +10,7 @@
 // - welcome.joinUrl carries #k=<PAIR_TOKEN> only for a peer the gate marked `authenticated`
 //   (src/hub/gate.ts). The joinUrl the bridge builds never has it; it is added here, so if the bridge
 //   internals change and the wrapper cannot install, peers get the token-less URL (fail closed).
+// - Every outbound frame goes through the hub's display mask (`mask`, src/hub/mask.ts) when given.
 // - Backpressure: practice.meters frames are dropped for a peer with more than WS_DROP_METERS_AT
 //   bytes queued, and a peer above WS_TERMINATE_AT is disconnected.
 import type { IncomingMessage } from "node:http";
@@ -84,7 +85,7 @@ export interface BridgeGuard {
   installed: { upgrade: boolean; send: boolean };
 }
 
-export function guardBridge(bridge: BridgeHub, o: { log: Log; decisions: WeakMap<IncomingMessage, UpgradeDecision>; withToken: (joinUrl: string) => string; maxPayload?: number }): BridgeGuard {
+export function guardBridge(bridge: BridgeHub, o: { log: Log; decisions: WeakMap<IncomingMessage, UpgradeDecision>; withToken: (joinUrl: string) => string; maxPayload?: number; mask?: <M>(msg: M) => M }): BridgeGuard {
   const auth = new WeakMap<WebSocket, boolean>();
   const installed = { upgrade: false, send: false };
   const guardSocket = (ws: WebSocket, req: IncomingMessage) => {
@@ -138,6 +139,7 @@ export function guardBridge(bridge: BridgeHub, o: { log: Log; decisions: WeakMap
       return false;
     }
     if (buffered > WS_DROP_METERS_AT && msg.type === "app" && msg.topic === "practice.meters") return false;
+    if (o.mask) msg = o.mask(msg); // display masking (mask.ts): a copy, ids and links untouched
     if (msg.type === "welcome" && typeof msg.joinUrl === "string" && auth.get(socket)) msg = { ...msg, joinUrl: o.withToken(msg.joinUrl) };
     return send(socket, msg);
   };

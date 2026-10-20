@@ -239,6 +239,7 @@ const PRIVATE = [
   "fixtures/private/x.json",
   "coach/principles.local.md",
   "coach/private-terms.local.txt",
+  "coach/mask-terms.local.txt",
   "tv/web/dist/index.html",
   "tv/vega/build/x.js",
   "tv/vega/buildinfo.json",
