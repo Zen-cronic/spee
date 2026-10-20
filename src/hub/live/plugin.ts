@@ -18,7 +18,7 @@
 // Bedrock when COACH_RECAP_LLM=1 in live mode. See docs/live.md.
 import { join } from "node:path";
 import { NUDGE_RULES, type DemoLiveResponse, type DemoLiveScript, type LiveModeRequest, type NudgeRule, type Recap, type SettingResponse } from "../contract.js";
-import { isSetting, rewordRecapSetting, SettingsBook } from "../settings.js";
+import { isSetting, rewordRecapSetting, sameConversation, SettingsBook } from "../settings.js";
 import { parseSource } from "../stats.js";
 import type { HubPlugin, PluginCtx } from "../plugin.js";
 import { matchRoute } from "../plugin.js";
@@ -179,7 +179,9 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
           const key = recap ? recap.conversationId : id;
           book!.set(key, b.setting, recap ? { startMs: recap.startedAt, endMs: recap.endedAt } : undefined);
           const tag = recap ? recapTag(book!, recap) : book!.tagSession(id)!;
-          const recapIds = e.recaps.filter((r) => r.conversationId === key || (session && session.startMs >= r.startedAt - 120_000 && session.startMs <= r.endedAt + 120_000)).map((r) => r.id);
+          // The recaps of this conversation (its own id, or the same time by the lookup's rule) that now show this setting.
+          const ofThis = (r: Recap) => r.conversationId === key || (!!session && sameConversation([session.startMs, session.endMs ?? session.startMs], [r.startedAt, r.endedAt]));
+          const recapIds = e.recaps.filter((r) => ofThis(r) && recapTag(book!, r).setting === tag.setting).map((r) => r.id);
           ctx.log("settings.set", { id: key, setting: b.setting ?? null });
           // The per-setting rates and the screens' recaps move: the screens refetch on stats.updated.
           ctx.hub.publishStats();

@@ -369,4 +369,20 @@ describe("over HTTP (demo hub, synthetic)", () => {
     await post(`/api/sessions/${recap.conversationId}/setting`, { setting: "work" });
     expect((await get(`/api/recaps/${recap.id}`)).body.headline).toBe(recap.headline);
   });
+
+  it("the answer's recapIds are the recaps that now show the choice: never the conversation just before", async () => {
+    const recap = (await get("/api/recaps?limit=1")).body.recaps[0];
+    expect(recap).toBeTruthy();
+    const session = (id: string, startMs: number, endMs: number): StatSession => ({ id, kind: "conversation", startMs, endMs, lines: [], speakers: 2, synthetic: true });
+    // a separate conversation that starts a minute after the recap's ended
+    s.setup.hub.addSessions([session("test-next", recap.endedAt + 60_000, recap.endedAt + 25 * 60_000)]);
+    const next = await post("/api/sessions/test-next/setting", { setting: "casual" });
+    expect(next.body).toMatchObject({ id: "test-next", tag: { setting: "casual", source: "you" }, recapIds: [] });
+    expect((await get(`/api/recaps/${recap.id}`)).body.setting.setting).not.toBe("casual");
+    // the stats session Bee completes for the recap's own conversation
+    s.setup.hub.addSessions([session("test-same", recap.startedAt + 10_000, recap.endedAt)]);
+    const same = await post("/api/sessions/test-same/setting", { setting: "meeting" });
+    expect(same.body).toMatchObject({ id: "test-same", tag: { setting: "meeting", source: "you" }, recapIds: [recap.id] });
+    expect((await get(`/api/recaps/${recap.id}`)).body.setting).toMatchObject({ setting: "meeting", source: "you" });
+  });
 });
