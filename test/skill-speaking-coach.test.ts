@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { CUE_WINDOW_MIN, decide, eventKey, loadSent, run } from "../skills/speaking-coach/scripts/coach.mjs";
+import { CUE_WINDOW_MIN, cuedFor, decide, eventKey, loadSent, run } from "../skills/speaking-coach/scripts/coach.mjs";
 import { BEE_MEMORY_NOTE, type BeeMemory, type Brief, type CueResponse } from "../src/hub/contract.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -184,7 +184,8 @@ describe("the commands against a fake hub", () => {
     expect((await cli(f.url, ["heartbeat", "--dry-run"], state)).out).toContain("Would send a cue now (next meeting in 10 min).");
     expect(f.cues).toEqual([]);
   });
-  it("heartbeat: a refusal uses up the meeting's cue; a hub failure is tried again", async () => {
+  it("heartbeat: a meeting is cued only when a to-do was set for it; a refusal, a failed send or a hub failure is asked again", async () => {
+    const answer = (over: Partial<CueResponse>): CueResponse => ({ cue: { id: "cue_0", habit: "hedges", text: "[coach] x", alarmAt: T0 + 10_000, by: "skill:heartbeat" }, wrist: { channel: "bee-todo", status: "scheduled", todoId: "t1", error: null }, deduped: false, narration: "Cue set.", ...over });
     Object.assign(f, { cueStatus: 503, cueBody: { error: "wrist_down", message: "the wrist is down" } });
     expect((await cli(f.url, ["heartbeat"], state)).code).toBe(1);
     expect(loadSent(state, T0)).toEqual({});
@@ -192,9 +193,34 @@ describe("the commands against a fake hub", () => {
     const refused = await cli(f.url, ["heartbeat"], state);
     expect(refused.code).toBe(2);
     expect(refused.err).toContain("No cues during quiet hours");
-    expect(f.cues).toHaveLength(2);
+    expect(loadSent(state, T0)).toEqual({});
+    Object.assign(f, { cueStatus: 200, cueBody: answer({ wrist: { channel: "bee-todo", status: "failed", todoId: null, error: "bee todos create failed" }, cue: { ...answer({}).cue, alarmAt: null } }) });
+    expect((await cli(f.url, ["heartbeat"], state)).code).toBe(0);
+    expect(loadSent(state, T0)).toEqual({});
+    // deduped against the cue for an earlier meeting (its alarm 20 min before this one starts)
+    f.cueBody = answer({ deduped: true, cue: { ...answer({}).cue, alarmAt: T0 - 10 * 60_000 }, narration: "That cue went off 10 min ago, so I didn't send another." });
+    expect((await cli(f.url, ["heartbeat"], state)).code).toBe(0);
+    expect(loadSent(state, T0)).toEqual({});
+    expect(f.cues).toHaveLength(4);
+    // deduped against a cue already set for this meeting (its alarm in the 12 min before it starts)
+    f.cueBody = answer({ deduped: true, narration: "That cue is already set for 1:00 PM, so I didn't send another." });
+    expect((await cli(f.url, ["heartbeat"], state)).code).toBe(0);
+    expect(Object.keys(loadSent(state, T0))).toEqual([eventKey(f.brief.event!.startsAt)]);
     expect((await cli(f.url, ["heartbeat"], state)).out).toContain("already had its cue");
-    expect(f.cues).toHaveLength(2);
+    expect(f.cues).toHaveLength(5);
+  });
+  it("cuedFor: a cue sent now, or the same cue already set in the meeting's last 12 minutes", () => {
+    const at = T0 + 10 * 60_000; // the meeting starts
+    const ok = (body: Partial<CueResponse>, status = 200) => cuedFor({ status, body: { cue: { id: "c", habit: "hedges", text: "[coach] x", alarmAt: T0 + 10_000, by: "skill" }, wrist: { channel: "replay", status: "replay", todoId: null, error: null }, deduped: false, narration: "", ...body } }, at);
+    expect(ok({})).toBe(true);
+    expect(ok({ wrist: { channel: "bee-todo", status: "scheduled", todoId: "t", error: null } })).toBe(true);
+    expect(ok({ wrist: { channel: "bee-todo", status: "failed", todoId: null, error: "x" } })).toBe(false);
+    expect(ok({}, 409)).toBe(false);
+    for (const [alarmAt, set] of [[at - 12 * 60_000, true], [at, true], [T0 + 5 * 60_000, true], [at - 12 * 60_000 - 1, false], [at + 1, false], [null, false]] as const) {
+      expect(ok({ deduped: true, cue: { id: "c", habit: "hedges", text: "[coach] x", alarmAt, by: "skill" } }), String(alarmAt)).toBe(set);
+    }
+    expect(cuedFor({ status: 0, body: { error: "hub_unreachable" } }, at)).toBe(false);
+    expect(cuedFor(null, at)).toBe(false);
   });
   it("cue: posts the minutes, says when it was deduped, and checks --in", async () => {
     const r = await cli(f.url, ["cue", "--in", "5"]);

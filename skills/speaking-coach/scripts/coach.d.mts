@@ -23,6 +23,7 @@ export function briefLines(brief: unknown): string[];
 export function statusLines(coachNow: unknown): string[];
 export function goalLines(memory: unknown): string[];
 export function cueLines(response: unknown): string[];
+export function cuedFor(response: { status: number; body: unknown } | null, startsAt: number): boolean;
 export function defaultStatePath(env?: Record<string, string | undefined>): string;
 export function loadSent(path: string, now?: number): Record<string, number>;
 export function saveSent(path: string, sent: Record<string, number>): void;

@@ -6,7 +6,8 @@
 //   brief      GET  /api/brief         the next meeting (its time, never its title), the habit to watch, a warm-up line
 //   goal       GET  /api/coach/facts   the coach's goal fact in Bee, and Bee's fact and insight counts
 //   cue        POST /api/coach/cue     one if-then cue on the wrist (the hub picks the habit, caps and dedupes it)
-//   heartbeat  GET  /api/brief, then POST /api/coach/cue once, 8 to 12 min before the next meeting
+//   heartbeat  GET  /api/brief, then POST /api/coach/cue, 8 to 12 min before the next meeting, until
+//              a to-do is set for it
 //
 // Calendar titles never leave this script: no output line and no saved state carries one.
 import { createHash } from "node:crypto";
@@ -50,6 +51,20 @@ export function decide(brief, sent = {}, now = Date.now()) {
   if (minutes < CUE_WINDOW_MIN.from) return { action: "wait", reason: "too-late", key, minutes };
   if (minutes > CUE_WINDOW_MIN.to) return { action: "wait", reason: "too-early", key, minutes };
   return { action: "cue", reason: "in-window", key, minutes };
+}
+
+/**
+ * Whether a cue answer (`{status, body}` from POST /api/coach/cue) set a to-do for the meeting that
+ * starts at `startsAt`: a cue sent now, or the same cue already set (deduped) whose alarm goes off in
+ * that meeting's last CUE_WINDOW_MIN.to minutes before it starts. A refusal, a failed send, or a
+ * deduped cue for an earlier meeting leaves the meeting open.
+ */
+export function cuedFor(res, startsAt) {
+  const b = res && res.status === 200 && res.body && typeof res.body === "object" ? res.body : null;
+  if (!b?.cue || b.wrist?.status === "failed") return false;
+  if (!b.deduped) return true;
+  const at = b.cue.alarmAt;
+  return typeof at === "number" && Number.isFinite(startsAt) && at >= startsAt - CUE_WINDOW_MIN.to * 60_000 && at <= startsAt;
 }
 
 const WAIT_TEXT = {
@@ -216,9 +231,10 @@ const commands = {
       return 0;
     }
     const c = await call(io, "POST", "/api/coach/cue", { inMinutes: 0, by: "skill:heartbeat" });
-    // A definite answer (sent, deduped or refused) uses up this meeting's cue; a hub that is away
-    // or broke (status 0 or 5xx) is tried again on the next heartbeat while the window is open.
-    if (c.status > 0 && c.status < 500) saveSent(statePath, { ...sent, [d.key]: io.now() });
+    // The meeting has its cue only when a to-do was set for it. Anything else (a refusal, a failed
+    // send, a cue for an earlier meeting, a hub that is away) is asked again on the next heartbeat
+    // while the window is open.
+    if (cuedFor(c, Date.parse(r.body.event.startsAt))) saveSent(statePath, { ...sent, [d.key]: io.now() });
     if (failed(c)) return refusal(io, c, "cue");
     io.print([`Cue for the meeting in ${mins(d.minutes)}:`, ...cueLines(c.body)], { action: "cue", minutes: d.minutes, ...c.body });
     return 0;
