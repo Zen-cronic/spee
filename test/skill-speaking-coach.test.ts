@@ -259,4 +259,27 @@ describe("the commands against the demo hub", () => {
     expect(out).not.toContain("Dana");
     expect(out).not.toContain("Quarterly");
   });
+  // The cross-packet check with the live plugin's Bee memory and cue routes: skipped only while the
+  // hub has no such route (404 not_found); once it does, the skill must render its real answers.
+  it("goal and cue render the hub's real answers (skipped until the hub has the routes)", async (t) => {
+    const probe = await fetch(`${s.url}/api/coach/facts`);
+    const probeBody = (await probe.json()) as { error?: string };
+    if (probe.status === 404 && probeBody.error === "not_found") return t.skip();
+    let err = "";
+    const io = { out: (l: string) => void (out += `${l}\n`), err: (l: string) => void (err += `${l}\n`), env: {} };
+    expect(await run(["goal", "--hub", s.url], io)).toBe(0);
+    expect(out).toContain(BEE_MEMORY_NOTE);
+    expect(out).not.toContain("The hub sent no Bee memory.");
+    out = "";
+    const code = await run(["cue", "--hub", s.url], io);
+    if (code === 0) {
+      expect(out).not.toContain("The hub sent no cue.");
+      expect(out.split("\n")[0]!.length).toBeGreaterThan(0);
+    } else {
+      expect(code).toBe(2); // a refusal: its message, never a bare status
+      expect(err).toMatch(/^coach: /);
+      expect(err).not.toMatch(/HTTP \d{3}|no cue route/);
+    }
+    expect(`${out}${err}`).not.toContain("Dana");
+  });
 });
