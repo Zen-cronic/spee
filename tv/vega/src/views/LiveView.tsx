@@ -66,9 +66,9 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
         <Text style={styles.sentence} numberOfLines={3}>Ready when you are.</Text>
         <View style={[styles.band, styles.bandIdle]} testID="drill-idle">
           <Text style={[styles.status, { color: C.ink }]} numberOfLines={2}>{due > 0 ? `${due} line${due === 1 ? '' : 's'} to practise.` : 'Nothing due right now.'}</Text>
-          <Text style={styles.support} numberOfLines={2}>{d.summary ? sessionTally('Last time', d.summary) : 'Alexa gives you a line. Say it out loud, and Bee checks it.'}</Text>
+          <Text style={styles.support} numberOfLines={2}>{d.summary ? sessionTally('Last time', d.summary) : 'Say this to Alexa for a line, then say the line out loud. Bee checks it.'}</Text>
           <View style={[styles.cta, styles.ctaInBand]}>
-            <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
+            <Text style={styles.ctaText} numberOfLines={1}>“Alexa, ask Speech Coach to quiz me”</Text>
           </View>
         </View>
         <Tracker
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   support: { color: C.inkDim, fontSize: T.body, lineHeight: 40, marginTop: SP.s, fontFamily: F.family },
   supportSmall: { fontSize: T.small, lineHeight: 38 },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },
-  ctaInBand: { marginTop: SP.l, marginBottom: 0 },
+  ctaInBand: { marginTop: SP.l, marginBottom: 0, paddingHorizontal: SP.l },
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   tracker: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SP.xl },
   trackLine: { position: 'absolute', left: 18, right: 18, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },

@@ -34,7 +34,7 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
         <View style={{ flex: 1 }} />
         {due ? (
           <View style={styles.cta}>
-            <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
+            <Text style={styles.ctaText}>Say “Alexa, ask Speech Coach to quiz me”</Text>
           </View>
         ) : null}
         <View style={styles.tally}>
