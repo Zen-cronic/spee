@@ -6,7 +6,7 @@ import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAlexaPlugin, progressiveSender } from "../src/alexa/plugin.js";
-import { handleAlexa, SPEECH, type SkillDeps } from "../src/alexa/skill.js";
+import { handleAlexa, SPEECH, summaryLine, type SkillDeps } from "../src/alexa/skill.js";
 import { clip } from "../src/alexa/speech.js";
 import type { AlexaRequestEnvelope, SessionAttributes } from "../src/alexa/types.js";
 import { HubClient } from "../src/mcp/hubClient.js";
@@ -70,6 +70,14 @@ async function verdictReady(id: string, ms = 5000) {
   return false;
 }
 
+describe("the round's summary", () => {
+  it("names the round, not the day: a second round's tally is not today's", () => {
+    expect(summaryLine({ passed: 1, counted: 1, attempts: 1 })).toBe("That's the round: 1 of 1 lines passed, checked by Bee");
+    expect(summaryLine({ passed: 0, counted: 0, attempts: 0 })).toBe("That's the round");
+    expect(summaryLine({ passed: 0, counted: 0, attempts: 2 })).not.toMatch(/today/i);
+  });
+});
+
 describe("two-turn drill", () => {
   it("Launch -> Attempt (< 1 s) -> early HowDidIDo (progressive, < 7 s fake) -> verdict after the Bee replay -> next card", async () => {
     const f = fake();
@@ -128,7 +136,7 @@ describe("two-turn drill", () => {
     const v = await handleAlexa(env("how-did-i-do", { attrs: att.envelope.sessionAttributes }), r.deps);
     expect(Date.now() - t0).toBeLessThan(7000);
     expect(r.spoken).toEqual([SPEECH.checking]);
-    expect(text(v)).toMatch(/^Nice, Bee heard it\. (Next, say: ".+"|That's today's practice: \d+ of \d+ lines passed, checked by Bee\.)$/);
+    expect(text(v)).toMatch(/^Nice, Bee heard it\. (Next, say: ".+"|That's the round: \d+ of \d+ lines passed, checked by Bee\.)$/);
   });
 
   it("a fail names the rule Bee's line broke and asks again; HowDidIDo from the catch-all finds the attempt itself", async () => {

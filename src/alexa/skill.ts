@@ -216,6 +216,6 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
 }
 
 export function summaryLine(s: { passed: number; counted: number; attempts: number }): string {
-  if (!s.counted) return s.attempts ? "Bee didn't confirm any of those this time" : "That's today's practice";
-  return `That's today's practice: ${s.passed} of ${s.counted} lines passed, checked by Bee`;
+  if (!s.counted) return s.attempts ? "Bee didn't confirm any of those this time" : "That's the round";
+  return `That's the round: ${s.passed} of ${s.counted} lines passed, checked by Bee`;
 }
