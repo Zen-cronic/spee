@@ -4,8 +4,8 @@ Packet B of the coach hub (contract v2, [`docs/CONTRACT.md`](CONTRACT.md)). The 
 
 - the week's habit rates from Bee;
 - the pre-registered transfer result;
-- the drill in progress, from the phone's preview to Bee's verdict;
-- the live conversation, with its wrist nudges and their latency hops;
+- the drill in progress, from the phone's preview to Bee's verdict, and the round's tally when it ends;
+- the live conversation, with its wrist nudge, its hops (you said it, Bee, wrist alarm) and the nudges the coach held back;
 - the phone's practice meters, live.
 
 The phone page at `/p/<code>#k=…` is its microphone, with three modes (drill, practice and a mic check), and it shows your progress (the Progress tab).
@@ -14,20 +14,18 @@ Everything below runs on synthetic demo data unless the hub runs live. Every scr
 
 ## Screens
 
-The screenshots were captured on 2026-10-16 against `npm run hub -- --demo --fixture-v2 --pace 0.05`.
+The web TV screenshots were captured on 2026-10-20 at 1920×1080 against `npm run hub -- --demo --port 8795` (synthetic data, live coaching turned on with `POST /api/live/mode`, then `POST /api/demo/live` and `POST /api/demo/mirror`). `web-pair` is still the 2026-10-16 shot. The Vega ones are from 2026-10-16 on the Virtual Device, before the redesign.
 
-| Screen | Vega Virtual Device | Web TV | What it shows |
+| Screen | Web TV | Vega Virtual Device (10-16) | What it shows |
 |---|---|---|---|
-| Week | [vega-week](screens/vega-week.png) | [web-week](screens/web-week.png) | `GET /api/stats?range=week`. Habit bars per 100 words with 95% interval whiskers, word and session counts, drills today, due cards, and the transfer headline. |
-| Transfer | [vega-transfer](screens/vega-transfer.png) | [web-transfer](screens/web-transfer.png) | `GET /api/transfer`. Before and after bars with whiskers, DRILLED/CONTROL chips, verdict chips, the pre-registration date, "needs N words/period", and the unregistered habits. |
-| Live, with the drill | [vega-drill-graded](screens/vega-drill-graded.png) ([card](screens/vega-drill-card.png), [checking](screens/vega-drill-checking.png)) | [web-drill-graded](screens/web-drill-graded.png) | The drill pipeline: preview (provisional), checking with Bee, verified by Bee (in the Bee colour, `C.bee`, with speaker score and latency), graded from Bee, and the BEE OVERRULES beat. |
-| Live, the conversation | [vega-live](screens/vega-live.png) | [web-live](screens/web-live.png) | `live.window`: wpm, talk share, current and longest turn, the 2-minute counters against their nudge thresholds, and the last `nudge.sent` with its hop timeline (spoken, Bee tagged, rule fired, to-do set, Watch buzz). `nudge.skipped` reasons are listed too. |
-| Recap overlay | [vega-recap](screens/vega-recap.png) | [web-recap](screens/web-recap.png) | `recap.ready`: the headline, metrics against baseline, habit verdicts, the wearer's own moment with a rephrase, and nudges sent or held. |
-| Practice | [vega-practice-live](screens/vega-practice-live.png), [vega-practice-summary](screens/vega-practice-summary.png) | [web-practice-from-phone](screens/web-practice-from-phone.png), [web-practice-summary-from-phone](screens/web-practice-summary-from-phone.png) | `practice.meters` (room frames) and `practice.summary`: the volume band, a 5 s pitch trace, the range in semitones with the monotone flag, wpm, pauses, the live caption, and the take summary with its flags. |
-| Pair phone | [vega-pair](screens/vega-pair.png) | [web-pair](screens/web-pair.png) | A QR code of `welcome.joinUrl` (built from RN Views, no canvas) and the room code. |
-| Phone | | [drill](screens/phone-drill-graded.png), [practice](screens/phone-practice.png), [summary](screens/phone-practice-summary.png), [mic check](screens/phone-miccheck-result.png) | The phone page at a 390×844 viewport. |
-
-The `web-practice*-from-phone` shots are a real end-to-end run in Chrome with a fake microphone fed by a synthetic voice WAV. The audio went through the phone page, AudioWorklet, the prosody engine, the bridge, the hub relay and the TV. The `vega-practice*` shots are the fixture take from `POST /api/demo/mirror`.
+| Today | [web-week](screens/web-week.png) | [vega-week](screens/vega-week.png) | Today's practice (lines due, done today, what to say to Alexa), this week's rate per habit out of every 100 words (`GET /api/stats?range=week`), and the change since you started practising (`GET /api/transfer`). |
+| Progress | [web-transfer](screens/web-transfer.png) | [vega-transfer](screens/vega-transfer.png) | `GET /api/transfer`: the hub's claim as one sentence, then one card per pre-registered habit, its rate "before your first practice" → "since then" and the verdict pill. Before the first practice a practised habit says "To practise" (no pill) and the one you don't practise "Starts at your first practice", as on the phone's Progress tab. **Details** (Down, then OK): the plan (a pilot in two tiers, the rule for a change, the conversations counted per phase, "a pilot, not proof of cause"), the first signal, meeting captions, by setting, and **Bee memory** when the hub reports it (`GET /api/coach/facts`; hidden when off). |
+| Live, the drill | [web-drill-graded](screens/web-drill-graded.png) | [vega-drill-graded](screens/vega-drill-graded.png) ([card](screens/vega-drill-card.png), [checking](screens/vega-drill-checking.png)) | The line to say, one status sentence, and the tracker: You said it · Checked by Bee (Sky, `C.bee`) · Result. When Bee and the preview disagree, the verdict carries a "Bee's call" tag and says what Bee heard. When the session ends, **Round over**: "1 of 2 lines passed.", one segment per line, the last line's result, and how to start another round. |
+| Live, the conversation | [web-live](screens/web-live.png) | [vega-live](screens/vega-live.png) | `live.window`, each number with its window ("This conversation", "Last 2 minutes"; between conversations "Usually, this week"). With live coaching on, the **wrist nudge** (`nudge.sent`) is the moment: the rule, the wrist text, and its hops on a time axis, "You said it → Bee 5.9 s → wrist alarm 17.4 s" (the alarm time the hub set; it cannot see the Watch). Before a streak it says when it would nudge, from the hub's own thresholds. A held-back nudge (`nudge.skipped`) is one line, "Stayed quiet: cooldown between nudges · again in 2 min". The five hops in ms stay in debug. |
+| Recap overlay | [web-recap](screens/web-recap.png) | [vega-recap](screens/vega-recap.png) | `recap.ready`: the headline, pace and talk share, each habit against your usual, the wearer's own moment with a rephrase, and what reached the wrist ("1 wrist nudge, then stayed quiet once · recap set as a wrist alarm"). |
+| Practice | [web-practice-from-phone](screens/web-practice-from-phone.png), [web-practice-summary-from-phone](screens/web-practice-summary-from-phone.png) | [vega-practice-live](screens/vega-practice-live.png), [vega-practice-summary](screens/vega-practice-summary.png) | `practice.meters` (room frames) and `practice.summary`: pace, volume, pauses, the melody over the last 5 s with its range, the live caption, and the take summary. The web shots are the hub's demo take (`POST /api/demo/mirror`), metered by the phone's own prosody engine. |
+| Pair phone | [web-pair](screens/web-pair.png) | [vega-pair](screens/vega-pair.png) | A QR code of `welcome.joinUrl` (built from RN Views, no canvas) and the room code. |
+| Phone | [drill](screens/phone-drill-graded.png), [practice](screens/phone-practice.png), [summary](screens/phone-practice-summary.png), [mic check](screens/phone-miccheck-result.png) | | The phone page at a 390×844 viewport. |
 
 ## Run it
 
@@ -210,13 +208,13 @@ Desktop headless Chrome has no speech service, so in the automated run part 1 fa
 
 ## Checks
 
-| Check | Command | Result (2026-10-16) |
+| Check | Command | Result (2026-10-20) |
 |---|---|---|
-| DSP, reducer, plugin, phone helpers, sync, brand | `npx vitest run test/phone-*.test.ts test/mirror-*.test.ts test/tv-*.test.ts` | 47 tests in 6 files pass |
-| Mirror contract flows | `npm run contract:check` | mirror module 19/19; the whole check passes |
-| Web TV | `npm run tv:web:build`, `npm --prefix tv/web run typecheck` | builds; no type errors |
+| Format helpers, reducer, sync, brand, settings | `npx vitest run test/mirror-*.test.ts test/tv-*.test.ts` | the hop line, "Stayed quiet" for every skip reason, the plan, Bee memory, Round over and the early cards are covered; the whole `npm test` passes |
+| Mirror contract flows | `npm run contract:check` | the whole check passes |
+| Web TV | `npm run tv:web:build`, `npx tsc --noEmit -p tv/web` | builds; no type errors |
 | Phone page | `npm run web:phone:build`, `npx tsc --noEmit -p web/phone/tsconfig.json` | builds; no type errors |
-| Vega | `npm --prefix tv/vega test`, `npm --prefix tv/vega run typecheck`, `npm run tv:vega:build` | jest 5/5; no type errors; 3 vpkgs |
+| Vega | `npm run tv:sync` (no drift), `npm --prefix tv/vega test`, `npm --prefix tv/vega run typecheck`, `npm run tv:vega:build` | jest 7/7; no type errors; 3 vpkgs, `manifest validation found 0 errors` |
 
 ## Known limits
 
