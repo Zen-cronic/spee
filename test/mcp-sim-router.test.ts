@@ -24,6 +24,7 @@ describe("router", () => {
     ["next", open, "next_card", {}],
     ["stop", open, "end_drill", {}],
     ["did it transfer?", idle, "did_it_transfer", {}],
+    ["is it working?", idle, "did_it_transfer", {}],
     ["Turn on live coaching", idle, "live_coach", { enabled: true }],
     ["turn on live coaching for 30 minutes", idle, "live_coach", { enabled: true, minutes: 30 }],
     ["start live coaching for an hour", idle, "live_coach", { enabled: true, minutes: 60 }],
@@ -200,7 +201,7 @@ describe("dialog: a card someone else opened", () => {
     // the pass closes the lone card: no session to move on in
     const v = await d.handle("how did I do?");
     expect(v.calls).toEqual(["get_verdict", "next_card"]);
-    expect(v.speech).toBe('Bee heard it. That\'s a pass. Say "quiz me" for another card.');
+    expect(v.speech).toBe('Bee heard it. That\'s a pass. Say "quiz me" for another line.');
     expect(v.card).toBeNull();
     expect(h.calls).not.toContain("start_drill");
   });
@@ -210,7 +211,7 @@ describe("dialog: a card someone else opened", () => {
     await d.sync();
     h.close();
     const t = await d.handle("The dashboard loads slowly on Mondays.");
-    expect(t.speech).toBe('No card is open. Say "quiz me" to start a drill.');
+    expect(t.speech).toBe('No line is open. Say "quiz me" to start practising.');
     expect(t.card).toBeNull();
     expect(d.state.cardOpen).toBe(false);
   });

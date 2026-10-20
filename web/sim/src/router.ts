@@ -51,7 +51,7 @@ function fromIntent(intent: AlexaIntent, minutes: number | null, s: DrillState):
 // Tools the skill has no intent for: whole-utterance rules, first match wins.
 const SIM_RULES: { rule: string; re: RegExp; to: () => Routed }[] = [
   { rule: "quiz me", re: /^(open speech coach|start)$/, to: () => tool("start_drill", {}, "quiz me") },
-  { rule: "stats", re: /^(my )?(stats|habit stats|habits|show my habits|how many hedges|what are my habits)( this week)?$/, to: () => tool("habit_stats", { range: "week" }, "stats") },
+  { rule: "stats", re: /^(my )?(stats|habit stats|habits|show my habits|how many hedges|how many unsure words|what are my habits)( this week)?$/, to: () => tool("habit_stats", { range: "week" }, "stats") },
   { rule: "brief", re: /^((give me )?(a |my )?(pre meeting |meeting )?brief|warm me up|what's next on my calendar|prep me for my meeting)$/, to: () => tool("pre_meeting_brief", {}, "brief") },
   { rule: "recap", re: /^((give me )?(the |my )?(last )?recap|how did my last conversation go|recap my last conversation)$/, to: () => tool("last_recap", {}, "recap") },
   { rule: "status", re: /^(status|drill status|where am i|what's my card|what is my card|repeat the card|say the card again)$/, to: () => tool("drill_status", {}, "status") },
@@ -73,4 +73,4 @@ export function route(text: string, state: DrillState): Routed {
   return tool("submit_attempt", { text: said }, said === text.trim() ? "attempt" : "attempt (how did I do cut)");
 }
 
-export const HELP_TEXT = 'Say "quiz me", then say the sentence on the card, then ask "how did I do?". You can also ask "how am I doing?", "did it transfer?", or say "turn on live coaching".';
+export const HELP_TEXT = 'Say "quiz me", say the line out loud, then ask "how did I do?". You can also ask "how am I doing?", "is it working?", or say "turn on live coaching".';
