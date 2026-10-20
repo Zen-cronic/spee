@@ -12,7 +12,7 @@ import type { HubEvent } from "../src/hub/core.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
 import type { LiveEngine } from "../src/hub/live/engine.js";
 import { assertGoalText, BeeFacts, beePass, composeGoal, factsModeFor, GOAL_TEXT_RE, UPDATE_MIN_MS, type BeeFactsOptions } from "../src/hub/live/facts.js";
-import { parseFact, parseFactList, parseInsightCount } from "../src/hub/live/factsParse.js";
+import { INSPECT_CALLS, inspect, jsonShape, outputShape, parseFact, parseFactList, parseInsightCount } from "../src/hub/live/factsParse.js";
 import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type ExecFn } from "../src/hub/live/wrist.js";
 import type { PluginCtx } from "../src/hub/plugin.js";
@@ -387,6 +387,50 @@ describe("privacy", () => {
     expect(all).not.toContain("4417");
     expect(all).not.toContain("Jordan");
     for (const t of written) expect(GOAL_TEXT_RE.test(t)).toBe(true);
+  });
+});
+
+describe("the read-only spike (npx tsx src/hub/live/factsParse.ts inspect)", () => {
+  it("runs only list calls and prints shapes and counts, never a fact's or an insight's text", async () => {
+    const other = { id: 55, text: `Jordan said the ${PLANTED_OTHER_MARKER} passcode is 4417`, confirmed: false };
+    const bee = fakeBee({ others: [other, { ...other, id: 56, confirmed: true }] });
+    const lines: string[] = [];
+    const notice: ExecFn = async (f, a, o) => {
+      const r = await bee.exec(f, a, o);
+      return { stdout: `A new version of bee is available (${PLANTED_OTHER_MARKER}).\n${r.stdout}` };
+    };
+    expect(await inspect({ exec: notice, print: (l) => lines.push(l) })).toBe(0);
+    expect(bee.calls).toEqual(INSPECT_CALLS.map((c) => [...c]));
+    expect(bee.calls.every((c) => c[1] === "list")).toBe(true);
+    const out = lines.join("\n");
+    expect(out).not.toContain(PLANTED_OTHER_MARKER);
+    expect(out).not.toContain("Jordan");
+    expect(out).not.toContain("4417");
+    const [all, unconfirmed, insights] = lines.map((l) => JSON.parse(l));
+    expect(all).toMatchObject({ command: "bee facts list --limit 5 --json", ok: true, output: { json: true, lines: 2, shape: { facts: { array: 1, of: { id: "number", text: "string", confirmed: "boolean" } } } }, parsed: { count: 1, confirmed: 1 } });
+    expect(unconfirmed.parsed).toMatchObject({ count: 1, unconfirmed: 1 });
+    expect(insights).toMatchObject({ ok: true, parsed: { count: 2 } });
+    // a failed call says how it failed, not what it printed
+    const failing: ExecFn = async () => {
+      throw Object.assign(new Error(`Command failed: bee facts list\n${PLANTED_OTHER_MARKER}`), { code: 2 });
+    };
+    const flines: string[] = [];
+    expect(await inspect({ exec: failing, print: (l) => flines.push(l) })).toBe(1);
+    expect(flines.join("\n")).not.toContain(PLANTED_OTHER_MARKER);
+    expect(JSON.parse(flines[0]!)).toMatchObject({ ok: false, error: "exit 2" });
+  });
+  it("jsonShape keeps keys and types only; a key that may be data is not shown", () => {
+    expect(jsonShape({ facts: [{ id: 1, text: "secret", confirmed: true, tags: null }], next_cursor: "abc", "Jordan Lee": 1 })).toEqual({ facts: { array: 1, of: { id: "number", text: "string", confirmed: "boolean", tags: "null" } }, next_cursor: "string", "<key>": "1 key(s) that are not field names" });
+    expect(outputShape("Created.")).toEqual({ json: false, shape: null, lines: 1 });
+    expect(JSON.stringify(outputShape(`{"text":"${PLANTED_OTHER_MARKER}"}`))).not.toContain(PLANTED_OTHER_MARKER);
+  });
+  it("the hub logs only the shape of a create output it cannot read", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "landed-no-id" : null) });
+    const logs: { event: string; data?: Record<string, unknown> }[] = [];
+    const r = rig(bee, { logs });
+    pass(r.h);
+    await r.f.settle();
+    expect(logs.find((l) => l.event === "facts.create.unreadable")?.data).toEqual({ output: { json: false, shape: null, lines: 1 } });
   });
 });
 

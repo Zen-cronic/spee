@@ -24,7 +24,7 @@ import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
 import type { CoachHub, HubEvent } from "../core.js";
 import { HABIT_NAME, habitNameOf } from "../habitNames.js";
 import { maskOut } from "../mask.js";
-import { parseFact, parseFactList, parseInsightCount, sameFactText, type ParsedFact } from "./factsParse.js";
+import { outputShape, parseFact, parseFactList, parseInsightCount, sameFactText, type ParsedFact } from "./factsParse.js";
 import { defaultExec, errText, type ExecFn } from "./wrist.js";
 
 export const FACTS_CALL_TIMEOUT_MS = 10_000;
@@ -362,7 +362,9 @@ export class BeeFacts {
           out = "";
         }
         if (out) {
-          const f = parseFact(out) ?? (await this.findOwn(text));
+          const parsed = parseFact(out);
+          if (!parsed) this.log("facts.create.unreadable", { output: outputShape(out) }); // keys and types only
+          const f = parsed ?? (await this.findOwn(text));
           if (!f) {
             p.outcome = "landed";
             return this.fail("create printed no fact id and Bee does not list it yet; it is not created again");
@@ -454,7 +456,7 @@ export class BeeFacts {
       }
       const r = parse(out);
       if (!r) {
-        this.log("facts.counts.unreadable", { what: base[0] });
+        this.log("facts.counts.unreadable", { what: base[0], output: outputShape(out) });
         return null;
       }
       total += r.count;
