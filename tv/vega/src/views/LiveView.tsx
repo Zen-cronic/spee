@@ -16,7 +16,7 @@ import { C, F, R, SP, T } from '../theme';
 export function LiveView({ drill, live, partial, focus }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live' }) {
   return (
     <View style={styles.wrap} testID="view-live">
-      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet]}>
+      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet, !!drill.card && !live.window && styles.drillWide]}>
         <DrillPanel d={drill} partial={partial} />
       </View>
       <View style={styles.convo}>
@@ -40,7 +40,7 @@ function Tracker({ steps }: { steps: { label: string; state: StepState; bee?: bo
       {steps.map((s, i) => (
         <View key={s.label} style={[styles.step, { alignItems: i === 0 ? 'flex-start' : i === steps.length - 1 ? 'flex-end' : 'center' }]}>
           <Dot state={s.state} bee={s.bee} />
-          <Text style={[styles.stepLabel, s.state === 'todo' && { color: C.inkFaint }]}>{s.label}</Text>
+          <Text style={[styles.stepLabel, s.state === 'todo' && styles.stepTodo]}>{s.label}</Text>
         </View>
       ))}
     </View>
@@ -100,16 +100,15 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
       <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
       <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
         <View style={styles.bandHead}>
-          <Text style={[styles.status, { color: ink }]} numberOfLines={1}>{status}</Text>
+          <Text style={[styles.status, { color: ink }]} numberOfLines={2}>{status}</Text>
           {overrules ? (
             <View style={styles.beeTag}>
               <Text style={styles.beeTagText}>Bee overrules</Text>
             </View>
           ) : null}
         </View>
-        {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 3 : 2}>{support}</Text> : null}
+        {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 4 : 2}>{support}</Text> : null}
       </Animated.View>
-      <View style={{ flex: 1 }} />
       <Tracker
         steps={[
           { label: 'You said it', state: heard },
@@ -188,7 +187,7 @@ function ConversationPanel({ live }: { live: LiveSlice }) {
       </View>
       )}
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
-      <View style={{ flex: 1 }} />
+      {w ? <View style={{ flex: 1 }} /> : null}
       {nudge ? (
         <View style={styles.nudge} testID="nudge-card">
           <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge not delivered: ${RULE_LABEL[nudge.rule]}` : `Wrist nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
@@ -207,11 +206,12 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   drill: { flex: 1.15, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
   drillQuiet: { flex: 0.8 },
+  drillWide: { flex: 1.6 },
   convo: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   sentence: { color: C.ink, fontSize: 60, lineHeight: 72, fontWeight: '700', letterSpacing: -1, marginTop: SP.m, fontFamily: F.family },
-  band: { height: 224, marginTop: SP.xl, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.l, justifyContent: 'center' },
+  band: { flex: 1, minHeight: 224, marginTop: SP.xl, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.xl, justifyContent: 'center' },
   bandIdle: { backgroundColor: 'rgba(0,0,0,0.05)' },
   bandWait: { backgroundColor: 'rgba(187,174,247,0.35)' },
   bandPass: { backgroundColor: C.lime },
@@ -223,16 +223,17 @@ const styles = StyleSheet.create({
   listenDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.lavender, marginBottom: SP.l },
   listenTitle: { color: C.text, fontSize: T.h2, fontWeight: '700', textAlign: 'center', fontFamily: F.family },
   listenHint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.s, textAlign: 'center', maxWidth: 620, fontFamily: F.family },
-  status: { fontSize: 52, lineHeight: 62, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
-  support: { color: C.inkDim, fontSize: T.body, lineHeight: 38, marginTop: 4, fontFamily: F.family },
-  supportSmall: { fontSize: T.label, lineHeight: 32 },
+  status: { flexShrink: 1, fontSize: 56, lineHeight: 66, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  support: { color: C.inkDim, fontSize: T.body, lineHeight: 40, marginTop: SP.s, fontFamily: F.family },
+  supportSmall: { fontSize: T.small, lineHeight: 38 },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   tracker: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SP.xl },
   trackLine: { position: 'absolute', left: 18, right: 18, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
   step: {},
   dot: { width: 36, height: 36, borderRadius: 18, borderWidth: 3 },
-  stepLabel: { color: C.ink, fontSize: T.body, fontWeight: '600', marginTop: SP.s, fontFamily: F.family },
+  stepLabel: { color: C.ink, fontSize: T.body, fontWeight: '700', marginTop: SP.s, fontFamily: F.family },
+  stepTodo: { color: C.inkDim, fontWeight: '600' },
   debug: { color: C.inkDim, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
   debugDark: { color: C.faint, fontSize: 20, marginTop: SP.s, fontFamily: F.mono },
   convoTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },

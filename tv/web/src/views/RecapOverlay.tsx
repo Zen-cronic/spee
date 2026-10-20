@@ -46,10 +46,14 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
           </View>
           {recap.moment ? (
             <View style={styles.moment}>
-              <Text style={styles.momentKicker}>You said</Text>
-              <Text style={styles.said} numberOfLines={3}>{`“${recap.moment.text}”`}</Text>
-              <Text style={[styles.momentKicker, { marginTop: SP.l }]}>Try</Text>
-              <Text style={styles.rephrase} numberOfLines={3}>{`“${recap.moment.rephrase}”`}</Text>
+              <View>
+                <Text style={styles.momentKicker}>You said</Text>
+                <Text style={styles.said} numberOfLines={3}>{`“${recap.moment.text}”`}</Text>
+              </View>
+              <View style={styles.tryBlock}>
+                <Text style={styles.tryKicker}>Try</Text>
+                <Text style={styles.rephrase} numberOfLines={4}>{`“${recap.moment.rephrase}”`}</Text>
+              </View>
             </View>
           ) : null}
         </View>
@@ -85,10 +89,12 @@ const styles = StyleSheet.create({
   habitNum: { color: C.inkDim, fontSize: T.body, marginRight: SP.l, fontFamily: F.family },
   pill: { borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, width: 150, alignItems: 'center' },
   pillText: { fontSize: T.label, fontWeight: '700', fontFamily: F.family },
-  moment: { width: 600, alignSelf: 'stretch', backgroundColor: C.ink, borderRadius: R.m, padding: SP.xl },
+  moment: { width: 600, alignSelf: 'stretch', justifyContent: 'space-between', backgroundColor: C.ink, borderRadius: R.m, padding: SP.xl },
   momentKicker: { color: C.dim, fontSize: T.label, fontWeight: '600', fontFamily: F.family },
   said: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: 6, fontFamily: F.family },
-  rephrase: { color: C.lime, fontSize: T.title, lineHeight: 50, fontWeight: '700', marginTop: 6, fontFamily: F.family },
+  tryBlock: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l, marginTop: SP.l },
+  tryKicker: { color: C.lime, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
+  rephrase: { color: C.lime, fontSize: T.h2, lineHeight: 56, fontWeight: '700', letterSpacing: -0.5, marginTop: SP.xs, fontFamily: F.family },
   foot: { color: C.inkFaint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
   debug: { color: C.inkFaint, fontSize: 20, marginTop: SP.xs, fontFamily: F.mono },
 });
