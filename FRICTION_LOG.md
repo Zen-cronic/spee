@@ -27,6 +27,15 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 | FL-13 | Alexa on Fire TV | A speech-only skill response covers the app with a plain "Speech Coach" card | Medium | worked around (not yet seen on the TV) |
 | FL-14 | Alexa Skills Kit | "How did I do" lands in the catch-all slot, not its own intent | Medium | worked around |
 | FL-15 | Alexa Skills Kit | The 8 s response limit is shorter than Bee's line, so a drill takes two turns | Medium | worked around |
+| FL-16 | Vega SDK, Amazon devices agent skills | No app-level speech-to-text, and Amazon's agent skill pointed to an archived library | High | worked around; docs fix filed upstream (open) |
+| FL-17 | Vega media player | URL mode refuses http and a local-CA https URL with a bare MediaError 4 | High | worked around |
+| FL-18 | Vega media player | MSE says yes to `audio/mpeg` but never plays it; only fragmented MP4/AAC works | High | worked around |
+| FL-19 | Vega Virtual Device | WebSocket frames over about 1.4 KB are dropped on the VVD's NAT path | Medium | worked around |
+| FL-20 | Vega build, React Native for Vega | A custom Metro resolver ships core React Native, and the crash leaves no JS error | Medium | worked around |
+| FL-21 | Vega CLI | `run-app` says "Successfully launched" when the new build is not running | Medium | worked around |
+| FL-22 | Fire TV Stick, Vega CLI | Connecting a real stick: "No devices found", then "Connection refused" | Medium | worked around |
+| FL-23 | Vega manifest | The docs call `icon` required; the validator calls it optional | Low | open |
+| FL-24 | React Native for Vega | Text and animated styles render differently from react-native-web | Low | worked around |
 
 ---
 
@@ -267,3 +276,139 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Severity:** Medium
 - **Workaround used:** a two-turn drill: "Got it, checking with Bee. Ask me how you did in about 15 seconds." An early "how did I do?" sends a progressive response ("Checking with Bee.") and polls every 600 ms for at most 6.5 s ([`src/alexa/skill.ts`](src/alexa/skill.ts)). The progressive response has not yet run on a device. Time not recorded separately (it shaped the skill design).
 - **Actionable suggestion:** a documented asynchronous result pattern for custom skills (deliver one short spoken result into the open session within a bounded time), or a longer limit for a skill that declares it.
+
+## Fire TV and Vega
+
+### FL-16: Vega gives a third-party app no speech-to-text, and Amazon's devices agent skill pointed developers to an archived library with no Vega support (Vega SDK / Amazon devices agent skills)
+- **Date:** 2026-10-14 (the first Vega spike) to 2026-10-20 (docs fix filed)
+- **Task attempted:** let the user say a drill line to the TV app and have the TV show it.
+- **Steps taken:**
+  1. Looked for a speech API in Vega SDK 0.24 and its docs. The accepted Amazon staff answer in [forum topic 29064](https://community.amazondeveloper.com/t/speech-to-text-api-for-a-webview-app/29064) (2026-09-04): "VegaOS does not expose an app-level speech-to-text API like Android's SpeechRecognizer". The only platform speech-to-text is keyboard dictation into a focused `TextInput` (hold the Alexa button). WebView `getUserMedia` audio is "not yet supported" for third-party apps ([forum topic 28161](https://community.amazondeveloper.com/t/issues-with-microphone-access-for-jitsi-integration-on-vega-os/28161), 2026-07-24).
+  2. Read Amazon's devices agent skills, [`rn-tv-ui-best-practices/references/input-handling.md`](https://github.com/AmazonAppDev/devices-agent-skills/blob/main/skills/rn-tv-ui-best-practices/references/input-handling.md) in `AmazonAppDev/devices-agent-skills`, "Voice input". It called `react-native-voice` the common path. That repository is archived on GitHub and ships only iOS and Android native modules.
+- **Expected result:** a supported way to get the user's words into a Vega app, and agent guidance that names it.
+- **Actual result:** no app-level speech-to-text, and an agent following the skill would reach for a library that cannot work on Vega.
+- **Severity:** High
+- **Workaround used:** the phone is the microphone. The open-source tv-voice-bridge pairs a phone with the TV by QR code, carries the phone browser's speech recognition to the TV over a WebSocket, and carries the TV's replies back. It was built over 2026-10-14 to 2026-10-20 and is now a separate open-source project. A knock-on cost: phone browsers allow speech recognition only on https (Safari 26 hides it on an insecure page; Chrome reports `insecure-context`), so the phone page needs a tunnel or a LAN certificate.
+- **Actionable suggestion:** we filed the docs fix: https://github.com/AmazonAppDev/devices-agent-skills/pull/15 (open on 2026-10-20). It says `react-native-voice` is archived with no Vega support, and that Vega has no app-level speech-to-text API, so dictation goes through the system keyboard. Beyond that: one Vega page listing the voice-input options (dictation, Content Launcher, a companion device), and an app-level speech API or a sanctioned companion-device channel.
+
+### FL-17: The W3C media player in URL mode refuses `http://` and a local-CA `https://` URL, with only "MediaError 4" in JavaScript (Vega media player) (earlier Vega prototype)
+- **Date:** 2026-10-14 16:06–16:47 EDT, on the VVD (SDK 0.24.12112); not re-checked on the Vega OS 2.0 stick
+- **Task attempted:** play the TV's spoken reply, an mp3 generated by the hub on the developer's machine, with `AudioPlayer` from `@amazon-devices/react-native-w3cmedia` 2.3.2, as its README shows (`audioPlayer.src = url; play()`).
+- **Steps taken:**
+  1. `new AudioPlayer(); await initialize(); p.src = 'http://<hub>:<port>/api/tts/say_0001.mp3'; await p.play()`.
+  2. An `error` event 7 ms later, `p.error.code === 4` (`MEDIA_ERR_SRC_NOT_SUPPORTED`), an empty message, and no GET on the hub.
+  3. Served the same file over https with a local CA, through `vega device start-port-forwarding --port <port> --forward false`. `vega exec vda shell "curl https://127.0.0.1:<port>/api/health"` gave `000 ssl_verify=20` (200 with `-k`), and the player again gave MediaError 4.
+- **Expected result:** http plays (a LAN dev server), or the README and the error say "https required"; and a developer-mode way to trust a dev CA.
+- **Actual result (device log, verbatim):**
+  - http: `MEDIA_PLAYER:MediaPlayerUtils.cpp(113) isUriSchemeSecure Got an insecure protocol/scheme http, return error` / `DefaultMediaPlayer.cpp(2009) openMedia Invalid URI, return error` / `W3CMEDIA:[MSE_EME] set_src_uri: MPB Call failed with code: 50004.`
+  - local CA: `souphttpsrc ... error: Unacceptable TLS certificate (6)`.
+  - JavaScript gets only `MEDIA_ERR_SRC_NOT_SUPPORTED`. The w3cmedia README never mentions the scheme rule.
+  - Amazon staff wrote on [forum topic 27667](https://community.amazondeveloper.com/t/shaka-player-fails-with-unknown-error-on-http-video/27667) (2026-10-05) that cleartext http in URL mode was fixed in a September 2026 OS update. We have not checked that on the stick.
+- **Severity:** High (about 70 min across the three attempts)
+- **Workaround used:** first, a private S3 bucket and a presigned https URL per clip (tap → audio start 378 and 391 ms on the VVD), which made a LAN feature depend on the internet. Then, on 2026-10-19, plain http through Media Source Extensions as fragmented MP4/AAC (FL-18), with no certificate and no cloud.
+- **Actionable suggestion:** say "URL mode needs a publicly trusted https URL" in the w3cmedia README and the media player guide; put the reason in `MediaError.message` ("insecure scheme http", "untrusted certificate"); and allow http or a user CA for media in developer mode.
+
+### FL-18: Media Source Extensions say yes to `audio/mpeg` but never play raw MP3; only fragmented MP4/AAC works (Vega media player) (earlier Vega prototype, then this project)
+- **Date:** 2026-10-14 16:15 EDT (the failure, VVD) and 2026-10-19 (the working path, VVD)
+- **Task attempted:** work around FL-17 by fetching the clip over http in JavaScript and feeding it to the player through MSE (`AudioPlayer.srcObject = new MediaSource()`, `addSourceBuffer('audio/mpeg')`, `appendBuffer(bytes)`).
+- **Steps taken:**
+  1. `MediaSource.isTypeSupported('audio/mpeg', true)` returned `true`; the fetch took 18–24 ms; `appendBuffer` fired `updateend`.
+  2. `endOfStream()` right after `updateend`. Device log: `onMediaTypeFound mimeType = application/x-id3`, then `DemuxerImpl::end_of_stream: EndOfStream is called before initialization is completed.` / `Demuxer initialization failed. status: Type : DEMUXER_INVALID_STATE`, then MediaError 3.
+  3. Stripped the ID3v2 tag: typefind reported `audio/mpeg probability = 100`, but `loadedmetadata` never fired (waited 2.5 s).
+  4. `play()` before `endOfStream()`, then waited 4 s for `playing`: nothing, then MediaError 3.
+  5. The same for three files: espeak (22.05 kHz mono), ffmpeg 44.1 kHz stereo 128k with no ID3 or Xing header, and an Amazon Polly generative clip (24 kHz mono).
+  6. On 2026-10-19: transcoded the reply to fragmented MP4 with AAC and appended it the same way.
+- **Expected result:** raw MP3 through MSE plays, as in browsers and as `isTypeSupported` implies, or `isTypeSupported('audio/mpeg')` returns false.
+- **Actual result:**
+  - Raw MP3: the demuxer waits for data forever, and the element errors with `MEDIA_ERR_DECODE`.
+  - Fragmented MP4/AAC over plain http plays. On the VVD, with a scripted phone, 4 of 4 replies played to the end: speech end → reply audible 217–322 ms.
+  - Switching the same player back to an https URL afterwards: `srcObject = null` throws on Vega (the exception text was not recorded), unlike a browser, so the player now sets `src` directly. Checked with http, https, http, https, https, http in a row.
+  - The [media player page](https://developer.amazon.com/docs/vega/0.24/media-player.html) lists MSE only for HLS and DASH containers, and MP3 only under URL mode, which fits what we saw.
+- **Severity:** High (no client-only path in the first time box; the working path needed a transcoding step and a new player)
+- **Workaround used:** the hub transcodes each reply to fragmented MP4/AAC with ffmpeg, and the bridge's Vega player plays it through MSE and refuses raw MP3 over http with a clear message. 25 min on 2026-10-14 without a fix; the fMP4 path on 2026-10-19 was not timed.
+- **Actionable suggestion:** make `isTypeSupported('audio/mpeg')` truthful; list the audio-only containers MSE accepts; add an audio-only MSE sample; and let `srcObject = null` clear the stream, as the W3C model does.
+
+### FL-19: WebSocket frames over about 1.4 KB are dropped on the VVD's NAT path to the host (`10.0.2.2`); the reverse port forward loses nothing (Vega Virtual Device) (earlier Vega prototype)
+- **Date:** 2026-10-14 16:08 EDT; this project used the reverse forward from the start, so it was not re-checked
+- **Task attempted:** drive the TV app over a WebSocket from a hub on the host, at the emulator's host address `ws://10.0.2.2:<port>/ws`.
+- **Steps taken:**
+  1. Small messages (about 300 B) always arrived: 20 of 20.
+  2. A 4,071-character message (a bit over 4 KB on the wire) never arrived on the TV; a Node client in the same room got it.
+  3. An echo probe of set sizes: over `10.0.2.2` only 2,100 and 4,000 B arrived; 1,500, 3,000, 4,090, 4,100, 4,500, 8,000, 16,000 and 65,000 B were lost.
+  4. `vega device start-port-forwarding -d VirtualDevice --port <port> --forward false`, with the app on `ws://127.0.0.1:<port>/ws`, then the same sweep.
+- **Expected result:** a TCP stream delivers every WebSocket frame.
+- **Actual result:** over NAT, frames larger than about one TCP segment were lost unpredictably, with no `onerror` or `onclose` in JavaScript and no device log line. Over the reverse forward, 10 of 10 sizes up to 65 KB arrived, and phone tap → TV render measured 6–69 ms.
+- **Severity:** Medium (about 40 min to isolate)
+- **Workaround used:** the reverse port forward (`127.0.0.1` on the device), now the documented setup in [docs/tv.md](docs/tv.md). The bridge client also has a heartbeat, so a link that goes silent is dropped even when `onclose` never fires.
+- **Actionable suggestion:** investigate the VVD's user-mode networking for multi-segment WebSocket frames, and until then say on the VVD page "use `start-port-forwarding --forward false` for host services, not `10.0.2.2`".
+
+### FL-20: A custom Metro `resolveRequest` silently drops the Vega platform mapping, so a "successful" build ships core React Native, and the app aborts at launch with only "signal 6" in the log (Vega build / React Native for Vega) (earlier Vega prototype)
+- **Date:** 2026-10-14 16:00–16:01 EDT (observed once, not re-checked)
+- **Task attempted:** bundle a shared TypeScript package outside the app folder (TS-ESM imports like `./protocol.js`), which needs a custom Metro resolver.
+- **Steps taken:**
+  1. Added `resolver.resolveRequest` in `metro.config.js`: strip `.js` for files in the shared folder, else call `context.resolveRequest(...)`.
+  2. The template's `build:release` script printed `info build-vega completed` and `manifest validation found 0 errors`.
+  3. `vega run-app <app>_x86_64.vpkg <app id>.main -d VirtualDevice` printed `Successfully launched the app`, but the VVD showed the system Settings screen.
+  4. `vega device is-app-running` said `<app id>.main is not running`. `vega device start-log-stream` showed `acr_core_dump: Process '<app id>' (PID=…) crashed with signal 6 ... Fingerprint: JSThread_6_...`, and no JavaScript error text.
+  5. `vega exec vda -s emulator-5554 pull /var/lib/data/acr/tombstones/crash_….acr ./acr/` → `vda: error: failed to stat remote object '...acr': Permission denied`.
+  6. The template's `build:debug` script failed: `error Unable to resolve module ../../src/private/devsupport/rndevtools/ReactDevToolsSettingsManager from .../node_modules/react-native/Libraries/Core/setUpReactDevTools.js`.
+  7. The release sourcemap listed 408 modules from core `react-native` and 0 from `@amazon-devices/react-native-kepler`.
+- **Expected result:** the documented Metro extension point composes with Vega's platform resolution, or the build fails when the bundle has no Kepler runtime; and a JS crash logs its message.
+- **Actual result:** the custom resolver replaced the out-of-tree platform mapping (`react-native` → `@amazon-devices/react-native-kepler` on platform `kepler`). The release build succeeded with the wrong React Native, and the app aborted on its JS thread with no actionable message. Separately, on 2026-10-15 the app's JS context restarted once, 3 s into an audio clip, with nothing in any log (observed once; not reproduced in three later full runs).
+- **Severity:** Medium (about 40 min, including the crash diagnosis)
+- **Workaround used:** re-apply the mapping inside the custom resolver (`if (platform === 'kepler') moduleName = '@amazon-devices/react-native-kepler'`), plus `nodeModulesPaths` for files outside the app. Speaking Mirror avoids the problem: its Vega app uses the default Metro config, and its release sourcemap has 15 `@amazon-devices/react-native-kepler` modules and 0 core `react-native` modules ([docs/tv.md](docs/tv.md), "Bundle check").
+- **Actionable suggestion:** make `build-vega` assert that the bundle contains the Kepler runtime ("react-native resolved to core RN; a custom resolveRequest may override the Vega platform resolver"); document the composition pattern on the Metro and monorepo page; log an uncaught JS exception (message and first frames) before aborting; and let `vega device copy-logs` fetch the app's own crash reports on the VVD.
+
+### FL-21: `vega run-app` prints "Successfully launched" when the new build is not what is running, and `is-app-installed` says "not installed" for the package name (Vega CLI)
+- **Date:** 2026-10-15 12:04 EDT (VVD, earlier Vega prototype) and 2026-10-20 14:12–14:14 EDT (Fire TV Stick, this project); each observed once
+- **Task attempted:** install a new build and see it running, on the VVD and on a real stick.
+- **Steps taken:**
+  1. VVD, app already running: rebuilt, then `vega run-app <app>_x86_64.vpkg <app id>.main -d VirtualDevice` → `Successfully launched the app`. The old JavaScript kept running (the app rejoined the hub with the pairing code held in its old JS context), and `vega device is-app-running` said it was running.
+  2. Stick, just after its reboot into TCP/IP mode (FL-22): `npm run tv:vega:build`, then `vega run-app tv/vega/build/armv7-release/speakingmirror_armv7.vpkg com.beecoach.mirror.main -d <device>` → success, but the TV showed nothing.
+  3. Stick: `vega device is-app-installed -d <device> --appName com.beecoach.mirror` (the package name) answered not installed; with `com.beecoach.mirror.main` (the component name) it answered installed.
+- **Expected result:** `run-app` restarts an app whose package changed, and reports success only once the new build is running; app-state commands accept the package name, or say which name they expect.
+- **Actual result:** a silent stale UI on the VVD; a "launched" app that was not on screen on the stick (most likely launched while the stick was still settling after the reboot, then closed); and a false "not installed".
+- **Severity:** Medium (about 10 min on the VVD; about 1 min on the stick)
+- **Workaround used:** always `vega device terminate-app -d <device> --appName <app id>.main` before `run-app`. If the TV shows nothing: `vega device is-app-running …`, then `vega device launch-app -d <device> --appName com.beecoach.mirror.main` (the app was on screen a minute later, at 14:13). Always use the component name. All of it is in the stick checklist in [docs/tv.md](docs/tv.md).
+- **Actionable suggestion:** make `run-app` terminate a running instance when it installs a different vpkg (or add `--restart`), check that the app is running before printing success, and accept either name in `is-app-installed` and `is-app-running` (or answer "did you mean com.beecoach.mirror.main?").
+
+### FL-22: Connecting a real Fire TV Stick to the dev machine: "No devices found" over USB, then "Connection refused" over Wi-Fi until Connection Mode is TCP/IP (Fire TV Stick / Vega CLI)
+- **Date:** 2026-10-20 14:01–14:13 EDT (observed once, not re-checked)
+- **Task attempted:** install Speaking Mirror on a Fire TV Stick (Vega OS 2.0) in developer mode, plugged into a monitor's HDMI port and powered from a wall adapter.
+- **Steps taken:**
+  1. Connected a USB-C cable from the laptop to the monitor and ran `vega device list` → `No devices found`. `lsusb` showed no Lab126 device: the cable reached the monitor, not the stick.
+  2. The stick's only USB-C port is its power port, already used by the wall adapter, so there was no free port for data.
+  3. Switched to Wi-Fi: Settings → My Fire TV → About → Network gave the stick's address, and `ping` answered. `vega exec vda connect <stick IP>:5555` → `Connection refused`.
+  4. Settings → My Fire TV → Developer Options → **Connection Mode → TCP/IP**. The stick rebooted. `vda connect` answered on the second try, about 10 s after the reboot, and `vega exec vda devices` listed `<stick IP>:5555  device`.
+- **Expected result:** the developer-mode steps say that a stick connects either through its own power port (a data cable to the computer) or over TCP/IP, and the CLI errors point there.
+- **Actual result:** the answer is on [VDA over TCP/IP](https://developer.amazon.com/docs/vega/0.24/vda-over-tcpip) (re-checked 2026-10-20), but neither "No devices found" nor "Connection refused" points to it, and nothing says that the stick's single port is also its power port.
+- **Severity:** Medium (about 12 min, including the reboot)
+- **Workaround used:** Wi-Fi with Connection Mode TCP/IP, plus the reverse port forward (`vega device start-port-forwarding -d <device> --port 8791 --forward false`), which also works over Wi-Fi. The troubleshooting table in [docs/tv.md](docs/tv.md) has the details.
+- **Actionable suggestion:** when `vega device list` finds nothing, suggest TCP/IP mode and `vda connect`; when port 5555 refuses, say "Connection Mode may be USB: Developer Options → Connection Mode → TCP/IP"; and link the TCP/IP page from the developer-mode page, with a note on the stick's single USB-C port.
+
+### FL-23: The manifest docs call `[package] icon` required and describe only the Settings icon; the build's validator calls it optional, and our app shipped without one (Vega manifest)
+- **Date:** 2026-10-20 ~15:30 EDT (noticed); re-checked with a fresh build at 17:22 EDT
+- **Task attempted:** give the Speaking Mirror TV app its own launcher tile, using the new logo.
+- **Steps taken:**
+  1. [`tv/vega/manifest.toml`](tv/vega/manifest.toml) (from the earlier prototype's Vega shell) has no `icon` line. We first concluded the manifest had no icon slot.
+  2. Re-check: the [manifest `[package]` page](https://developer.amazon.com/docs/vega/0.24/manifest-package) says "icon (string, required): Image file to be used as the icon for the app within the Settings -> Applications -> Managed Installed Applications screen", a 512x512 PNG of at most 1 MB under `assets/image`.
+  3. `npm run tv:vega:build` with that manifest.
+- **Expected result:** the validator and the docs agree on whether `icon` is required, and the docs say which surfaces use it (the Settings screen, "Your Apps & Channels", the home row).
+- **Actual result:** the build prints `manifest validation found 0 errors`, then `manifest.toml:3:1 info: [package.icon] Icon is not defined in the manifest. System default will be used.`: an info line in a long build log. The doc names only the Settings screen. An Amazon reply on [forum topic 28787](https://community.amazondeveloper.com/t/vega-lat-users-cannot-see-the-app-after-it-has-been-installed-on-their-device/28787) says a wrongly sized icon can keep an app out of "Your Apps & Channels", so the icon matters more than the page suggests.
+- **Severity:** Low
+- **Workaround used:** none yet. The app runs with the system default icon; a 512 px tile of the logo is ready.
+- **Actionable suggestion:** make the validator and the docs agree (an error or a warning if `icon` is required; "optional, defaults to the system icon" if not), list every surface that uses it, and put an `icon` line and a placeholder PNG in the project templates.
+
+### FL-24: React Native for Vega renders text and animated styles differently from react-native-web, which broke views shared by the web TV and the Vega app (React Native for Vega) (earlier Vega prototype, then this project)
+- **Date:** 2026-10-15 12:01–12:08 EDT (VVD captures) and 2026-10-19 (this project)
+- **Task attempted:** run the same view code in the web TV (react-native-web) and the Vega app.
+- **Steps taken (what differed):**
+  1. A label `Text` with `letterSpacing: 3` nested inside a paragraph `Text`: on Vega the whole paragraph took the wide tracking; on the web only the label did.
+  2. A view whose style switched from a plain style to an `Animated` style (opacity and translate, `useNativeDriver: true`) in the same render that started the animation stayed invisible on Vega.
+  3. Very large heavy text (`fontSize: 200`, `fontWeight: '900'`) whose start sat on the safe-zone edge lost the left third of its first glyph on Vega; removing `letterSpacing: -6` did not fix it.
+  4. In Speaking Mirror (2026-10-19), negative letter spacing on light numerals drew a sliver on Vega.
+- **Expected result:** the same rendering as react-native-web, or a dev-build warning.
+- **Actual result:** the differences above, found only on device captures, not by jest or `tsc`.
+- **Severity:** Low (cosmetic, but on the most important numbers on the screen)
+- **Workaround used (about 35 min):** sibling `Text`s in a row instead of nesting; attach the animated style from the first render; side padding with a negative margin on big numerals, weight 800 instead of a synthetic 900, and no negative letter spacing on light numerals ([docs/tv.md](docs/tv.md), "Rendering").
+- **Actionable suggestion:** document nested-`Text` style inheritance and native-driver attach timing on Vega (or warn in dev builds), don't clip glyph ink at the layout box, and list which weights the system font ships.
