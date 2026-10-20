@@ -221,6 +221,23 @@ The live hub picks up finished conversations by itself. The weekly stats, the tr
 - **Logs.** Event names and ids only.
 - **Proof.** The story plants a colleague line (marker `zebra orchid`). `test/live-engine.test.ts`, `test/live-plugin.test.ts`, `scripts/checks/live.ts` and `npm run demo:replay` all assert that it never reaches an event, a response or a file.
 
+## Filming: masking private terms
+
+The hub can hide names on everything a person sees or hears, so a screen recording of the real product shows no colleague, client or company names. It is display-only: grading, stats and the files under `real/` keep the real words.
+
+1. List the names, one per line, in `coach/mask-terms.local.txt` (gitignored; lines starting with `#` are comments). The leak check's `coach/private-terms.local.txt` is masked too, so you only add what is not there already.
+2. Restart the hub (`npm run hub`). It reads both files at start. Check `curl -s localhost:8791/api/health`: `"masking": "on (N terms)"`. The hub never prints, logs or serves the terms themselves.
+3. Film. Each term is matched as a whole word, in any case, and a phrase ("Jordan Lee") across any spaces: "Acme" hides "ACME's" but not "Acmeville" (list that too if needed).
+
+What is masked, all in the hub's output path (`src/hub/mask.ts`):
+
+- **Screens** see `▒▒▒`: every JSON response (cards, attempts with the preview and Bee's text, recaps, coach narration, stats, the brief), the SSE stream, every WebSocket frame to the TV and phone (events, `hub.state`, relayed phone transcripts, practice captions) and the hub's home page.
+- **Speech** says "name": the Alexa skill's answers and progressive responses, and MCP tool text and results (the `/sim/` page reads them aloud).
+- **The Watch** sees `▒▒▒` in a recap to-do. `real/live/todos.json` records the to-do as sent, masked.
+- **Not masked:** ids, keys, codes and links (so surfaces still match cards and attempts), and every file the hub persists.
+
+Turn it off with `npm run hub -- --no-mask` or `HUB_MASK=0`; health then says `"masking": "off"`. With neither file present it is off.
+
 ## Demo
 
 - **`POST /api/demo/live {script}`** (demo hub only) replays a synthetic conversation for "Ada" through the same parser, verifier and engine as live events:
@@ -270,6 +287,7 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
 | `NUDGE_ALARM_LEAD_S` | 10 | alarm lead for nudge and recap to-dos |
 | `COACH_WRIST` | `bee-todo` (live), `replay` (demo or `--no-bee`) | `replay` = live dry run, no to-dos |
 | `COACH_RECAP_LLM` | unset | `1` = Claude Haiku recap phrasing in live mode (Bedrock, profile `hackathon-1`) |
+| `HUB_MASK` | on when a terms file exists | `0` = no display masking (same as `--no-mask`); see "Filming" above |
 | `COACH_INGEST` | on (live mode with the stream) | `off` = finished conversations are not ingested; run `npm run real` and restart as before |
 | `BEE_BIN`, `BEE_TZ`, `BEE_WEARER_PERSON_ID` | | as for the hub (`CONTRACT.md` "Live mode") |
 

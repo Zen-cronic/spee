@@ -80,6 +80,7 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
   - The endpoint refuses to report an unregistered habit as practised.
 - **Finished conversations are picked up automatically.** Once Bee marks a conversation complete, the running hub fetches it, keeps the wearer's lines through the same wearer filter and mislabel rules as `npm run real`, and refreshes the stats and the first signal. No rerun or restart is needed ([`docs/live.md`](docs/live.md)).
 - **Privacy.** Stream text stays in memory until Bee tags it as the wearer. Untagged and other-speaker lines are never sent to a surface or written to disk.
+- **Filming: list names to hide in `coach/mask-terms.local.txt`** (gitignored, one per line), then restart the hub. Screens show `▒▒▒` and Alexa and MCP say "name" for each one, and for every term in `coach/private-terms.local.txt`; grading and the saved files keep the real words. Health shows only `masking: on (N terms)` ([`docs/live.md`](docs/live.md), "Filming").
 - **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.3.tgz`.
 
 ## Privacy design
