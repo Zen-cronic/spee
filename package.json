@@ -33,6 +33,7 @@
     "web:sim:build": "vite build --config web/sim/vite.config.ts",
     "web:build": "npm run web:phone:build && npm run web:sim:build",
     "alexa:deploy": "tsx scripts/alexa-deploy.ts",
+    "alexa:apl:preview": "tsx scripts/apl-preview.ts",
     "wrist:probe": "tsx scripts/wrist-probe.ts",
     "demo:replay": "tsx scripts/demo-replay.ts",
     "check": "npm run typecheck && npm test && npm run contract:check && npm run leak-check"
