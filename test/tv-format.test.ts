@@ -1,7 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -152,6 +152,26 @@ describe("Since you started, on Today: a percent only for a decided change", () 
     expect(changeLabel(h("invalid", 1, 0.2))).toEqual({ text: "Not counted", pct: false });
     expect(changeLabel(h("dropped", 1, 0.998)).text).toBe("0%");
     expect(verdictWords(h("dropped", 2.47, 0.64))).toBe("Down 74%");
+  });
+});
+
+describe("Progress numbers: a dash, never 0.0, without enough speech", () => {
+  const period = (words: number, per100: number) => ({ words, per100 });
+  const h = (verdict: string, before: [number, number], after: [number, number]) => ({ verdict, before: period(...before), after: period(...after) }) as never;
+  it("an empty period, a habit not practised yet, or too few words shows no number", () => {
+    // what the stick showed: no speech since practising, and the hub's per100 of an empty period is 0
+    expect(transferRates(h("too little data", [1381, 2.46], [0, 0]), 400)).toEqual({ before: "2.5", after: null });
+    expect(transferRates(h("not drilled yet", [2601, 1.31], [0, 0]), 400)).toEqual({ before: "1.3", after: null });
+    // not practised yet: whatever the after period holds, there is no "now" for it
+    expect(transferRates(h("not drilled yet", [2601, 1.31], [900, 0.4]), 400).after).toBeNull();
+    // some speech, under the minimum: still a dash (0 of 180 words is not a real 0.0)
+    expect(transferRates(h("too little data", [1381, 2.1], [180, 0]), 400).after).toBeNull();
+    expect(periodRate(period(399, 0.5), 400)).toBeNull();
+    expect(periodRate(null, 400)).toBeNull();
+  });
+  it("a real 0.0 only when the period has the minimum words", () => {
+    expect(transferRates(h("dropped", [1381, 2.1], [1220, 0]), 400)).toEqual({ before: "2.1", after: "0.0" });
+    expect(periodRate(period(400, 0.57), 400)).toBe("0.6");
   });
 });
 

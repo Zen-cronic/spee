@@ -231,6 +231,21 @@ export function verdictWords(h: Pick<TransferHabit, 'verdict' | 'before' | 'afte
 }
 
 /**
+ * A transfer period's rate as Progress shows it, or null for a dash. A period is shown only when it
+ * has the hub's minimum words (`minWordsPerPeriod`): an empty period, a habit not practised yet, or
+ * a handful of words never reads as a real "0.0". The pill beside it says why (verdictWords).
+ */
+export function periodRate(p: Pick<TransferHabit['after'], 'words' | 'per100'> | null | undefined, minWords: number, started = true): string | null {
+  if (!started || !p || !(p.words > 0) || p.words < minWords) return null;
+  return fmt1(p.per100);
+}
+/** The before and now numbers of one habit card ("—" without enough speech, or before its first practice). */
+export function transferRates(h: Pick<TransferHabit, 'verdict' | 'before' | 'after'>, minWords: number): { before: string | null; after: string | null } {
+  const started = h.verdict !== 'not drilled yet';
+  return { before: periodRate(h.before, minWords), after: periodRate(h.after, minWords, started) };
+}
+
+/**
  * Home's change for one drilled habit: a signed percent only when the hub decided it dropped or
  * rose ("−74%", "+12%"); otherwise the same words as Progress. Never "−0%".
  */
@@ -370,6 +385,7 @@ export interface CaptionsLine {
   agree: string | null;
 }
 const CAPTION_STABLE = ['hedges', 'filler:like'];
+const dashed = (r: { before: string | null; after: string | null }) => ({ before: r.before ?? '—', after: r.after ?? '—' });
 export function captionsLine(all: TransferResponse | null | undefined, inst: InstrumentResponse | null | undefined): CaptionsLine | null {
   const m = all?.source === 'all' ? all.sources?.meeting : undefined;
   if (!all || !m || !(m.sessions > 0)) return null;
@@ -379,7 +395,7 @@ export function captionsLine(all: TransferResponse | null | undefined, inst: Ins
   const agreeOn = (k: string) => inst?.habits?.find((h) => h.habit === k)?.agree === true;
   const habits = all.habits
     .filter((h) => (h.role === 'drilled' ? CAPTION_STABLE.includes(h.habit) : true))
-    .map((h) => ({ habit: h.habit, title: habitTitle(h.habit, h.label), before: fmt1(h.before.per100), after: fmt1(h.after.per100), role: h.role, unchecked: h.role !== 'drilled' && !agreeOn(h.habit) }));
+    .map((h) => ({ habit: h.habit, title: habitTitle(h.habit, h.label), ...dashed(transferRates(h, all.minWordsPerPeriod)), role: h.role, unchecked: h.role !== 'drilled' && !agreeOn(h.habit) }));
   const n = inst?.pairs ?? 0;
   const meetings = `${n} meeting${n === 1 ? '' : 's'} both heard`;
   const agree =

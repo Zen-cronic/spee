@@ -90,9 +90,9 @@ describe("instrumentReport", () => {
 });
 
 describe("captionsLine (TV)", () => {
-  const habit = (h: string, role: "drilled" | "control", b: number, a: number) => ({ habit: h, label: h, role, before: { per100: b }, after: { per100: a } });
+  const habit = (h: string, role: "drilled" | "control", b: number, a: number, afterWords = 900) => ({ habit: h, label: h, role, verdict: "dropped", before: { per100: b, words: 900 }, after: { per100: a, words: afterWords } });
   const all = (meetings: number) =>
-    ({ source: "all", sources: { conversation: { sessions: 6, words: 1700, label: "", from: "2026-10-13" }, ...(meetings ? { meeting: { sessions: meetings, words: 900, label: "", from: "2026-09-22" } } : {}) }, habits: [habit("hedges", "drilled", 2.34, 0.51), habit("filler:like", "drilled", 3, 0.85), habit("restart", "control", 0.75, 0.85)] }) as unknown as TransferResponse;
+    ({ source: "all", minWordsPerPeriod: 400, sources: { conversation: { sessions: 6, words: 1700, label: "", from: "2026-10-13" }, ...(meetings ? { meeting: { sessions: meetings, words: 900, label: "", from: "2026-09-22" } } : {}) }, habits: [habit("hedges", "drilled", 2.34, 0.51), habit("filler:like", "drilled", 3, 0.85), habit("restart", "control", 0.75, 0.85)] }) as unknown as TransferResponse;
   const inst = (claim: InstrumentResponse["claim"], restartAgree: boolean | null = true) => ({ pairs: 1, claim, habits: [{ habit: "restart", agree: restartAgree }] }) as unknown as InstrumentResponse;
   it("hidden without a caption session or without source=all", () => {
     expect(captionsLine(all(0), inst("practised-agree"))).toBeNull();
@@ -109,6 +109,13 @@ describe("captionsLine (TV)", () => {
     ]);
     expect(l.agree).toBe("On 1 meeting both heard, captions and Bee gave similar numbers for unsure words and filler “like”");
     expect(JSON.stringify(l)).not.toMatch(/filler words|“um”|uh/i);
+  });
+  it("a period without the minimum words is a dash, never 0.0 (as on the cards)", () => {
+    const t = all(1);
+    t.habits[0] = habit("hedges", "drilled", 2.34, 0, 0) as never;
+    t.habits[1] = habit("filler:like", "drilled", 3, 0, 120) as never;
+    const l = captionsLine(t, null)!;
+    expect(l.habits.map((h) => [h.before, h.after])).toEqual([["2.3", "—"], ["3.0", "—"], ["0.8", "0.9"]]);
   });
   it("says similar numbers only when the instrument check finds it, too little data when so; an unchecked control is marked", () => {
     for (const c of ["practised-differ", "no-pairs"] as const) expect(captionsLine(all(1), inst(c))!.agree).toBeNull();

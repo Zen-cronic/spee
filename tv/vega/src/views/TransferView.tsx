@@ -4,7 +4,7 @@ import { BySettingLine } from '../components/BySetting';
 import { CaptionsLine } from '../components/CaptionsLine';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
-import { captionsLine, fmt1, fmtDate, fmtWords, habitTitle, transferTitle, verdictWords } from '../mirror/format';
+import { captionsLine, fmtDate, fmtWords, habitTitle, transferRates, transferTitle, verdictWords } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -32,10 +32,10 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
       <BySettingLine line={settings?.line} />
       <View style={[styles.cards, settings?.line ? styles.cardsTight : null]}>
         {drilled.map((x) => (
-          <HabitCard key={x.habit} h={x} />
+          <HabitCard key={x.habit} h={x} minWords={transfer.minWordsPerPeriod} />
         ))}
         {control.map((x) => (
-          <HabitCard key={x.habit} h={x} />
+          <HabitCard key={x.habit} h={x} minWords={transfer.minWordsPerPeriod} />
         ))}
       </View>
       <FirstSignalLines signals={transfer.firstSignal} />
@@ -46,7 +46,9 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
   );
 }
 
-function HabitCard({ h }: { h: TransferHabit }) {
+function HabitCard({ h, minWords }: { h: TransferHabit; minWords: number }) {
+  // a period without the minimum words is a dash, never "0.0"; the pill says why
+  const r = transferRates(h, minWords);
   const drilled = h.role === 'drilled';
   const good = h.verdict === 'dropped';
   const bad = h.verdict === 'rose';
@@ -57,12 +59,12 @@ function HabitCard({ h }: { h: TransferHabit }) {
       <View style={{ flex: 1 }} />
       <View style={styles.nums}>
         <View>
-          <Text style={[styles.before, { color: drilled ? C.inkFaint : C.faint }]}>{fmt1(h.before.per100)}</Text>
+          <Text style={[styles.before, { color: drilled ? C.inkFaint : C.faint }]}>{r.before ?? '–'}</Text>
           <Text style={[styles.numLabel, { color: drilled ? C.inkDim : C.dim }]}>before</Text>
         </View>
         <Text style={[styles.arrow, { color: drilled ? C.inkFaint : C.faint }]}>→</Text>
         <View>
-          <Text style={[styles.after, { color: drilled ? C.ink : C.text }]}>{fmt1(h.after.per100)}</Text>
+          <Text style={[styles.after, { color: drilled ? C.ink : C.text }]}>{r.after ?? '–'}</Text>
           <Text style={[styles.numLabel, { color: drilled ? C.inkDim : C.dim }]}>now, per 100 words</Text>
         </View>
       </View>
