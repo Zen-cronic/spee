@@ -91,15 +91,41 @@ describe("which habit a cue names", () => {
 });
 
 describe("dedupe, cap, quiet hours, opt-in", () => {
-  it("the same cue again within 30 min is deduped: the first cue back, no second to-do; also when sent at once", async () => {
+  it("a cue whose alarm is within 10 min of an earlier cue's alarm is deduped: the first cue back, no second to-do; also when sent at once", async () => {
+    expect(CUE_DEDUPE_MS).toBe(10 * 60_000);
     const r = rig();
     const [a, b] = await Promise.all([r.book.request({}), r.book.request({ inMinutes: 5 })]);
     expect((a.body as CueResponse).deduped).toBe(false);
     expect(b.body).toMatchObject({ deduped: true, cue: { id: (a.body as CueResponse).cue.id } });
     r.advance(CUE_DEDUPE_MS - 60_000);
     const c = await r.book.request({});
-    expect(c.body).toMatchObject({ deduped: true, cue: { id: (a.body as CueResponse).cue.id }, narration: expect.stringMatching(/already set/) });
+    // its alarm has gone off, so the narration never says it is "already set" for that time
+    expect(c.body).toMatchObject({ deduped: true, cue: { id: (a.body as CueResponse).cue.id }, narration: "That cue went off 9 min ago, so I didn't send another." });
     expect(r.creates()).toHaveLength(1);
+  });
+  it("back-to-back meetings at 14:00 and 14:30 each get their cue (the dedupe is on the alarm, not on when it was asked for)", async () => {
+    const r = rig({ at: Date.parse("2026-10-20T17:50:00Z") }); // 13:50 local, the heartbeat for 14:00
+    const a = (await r.book.request({ inMinutes: 0, by: "skill:heartbeat" })).body as CueResponse;
+    r.advance(Date.parse("2026-10-20T18:19:00Z") - r.now()); // 14:19, the heartbeat for 14:30
+    const b = (await r.book.request({ inMinutes: 0, by: "skill:heartbeat" })).body as CueResponse;
+    expect(a.deduped).toBe(false);
+    expect(b).toMatchObject({ deduped: false, wrist: { status: "scheduled" }, narration: expect.stringMatching(/^Cue set: your wrist alarm goes off at 2:19 PM\./) });
+    expect(b.cue.id).not.toBe(a.cue.id);
+    expect(r.creates()).toHaveLength(2);
+  });
+  it("a cue asked for hours ahead never dedupes one for an earlier meeting, and one asked for long ago dedupes a cue next to its alarm", async () => {
+    const r = rig({ at: Date.parse("2026-10-20T17:00:00Z") }); // 13:00 local
+    const call = (await r.book.request({ inMinutes: 120, by: "skill" })).body as CueResponse; // a 15:00 call
+    r.advance(15 * 60_000);
+    const meeting = (await r.book.request({ inMinutes: 0, by: "skill:heartbeat" })).body as CueResponse; // a 13:25 meeting
+    expect(meeting.deduped).toBe(false);
+    expect(r.creates()).toHaveLength(2);
+    const early = rig({ at: Date.parse("2026-10-20T16:00:00Z") }); // 12:00 local
+    const first = (await early.book.request({ inMinutes: 180 })).body as CueResponse; // alarm 15:00
+    early.advance(Date.parse("2026-10-20T18:55:00Z") - early.now()); // 14:55
+    expect((await early.book.request({})).body).toMatchObject({ deduped: true, cue: { id: first.cue.id }, narration: "That cue is already set for 3:00 PM, so I didn't send another." });
+    expect(early.creates()).toHaveLength(1);
+    expect(call.cue.alarmAt).toBe(Date.parse("2026-10-20T19:00:00Z"));
   });
   it("dedupe survives a restart (the ledger)", async () => {
     const r = rig();

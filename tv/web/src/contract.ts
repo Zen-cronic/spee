@@ -516,7 +516,7 @@ export interface CueRequest {
 export interface CueResponse {
   cue: { id: string; habit: "hedges" | "filler:like"; text: string; alarmAt: number | null; by: string };
   wrist: { channel: WristChannel; status: "scheduled" | "failed" | "replay"; todoId: string | null; error: string | null };
-  deduped: boolean; // true: the same cue was already sent recently; nothing new reached the wrist
+  deduped: boolean; // true: a cue for the same habit has its alarm within 10 min of this one's; nothing new reached the wrist
   narration: string;
 }
 

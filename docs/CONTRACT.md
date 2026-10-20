@@ -1059,7 +1059,7 @@ Live, after a pass (illustrative ids and counts):
 `CueRequest {inMinutes? (0-180, default 0), by?}` -> `200 CueResponse` (`src/hub/live/cue.ts`, [live.md](live.md) "Wrist cue"). One fixed line, at most `WRIST_TEXT_MAX` characters, through the wrist queue as a Bee to-do with an alarm `inMinutes` from now (never sooner than the lead). Opt-in: `COACH_CUES=1` in live mode; the demo hub always answers on the replay wrist.
 
 - `cue.habit` is a pre-registered drilled habit already practised (`CUE_HABITS`): never the control (`restart`), never an unpractised habit.
-- `deduped: true`: the same habit was cued in the last 30 min; the first cue comes back and nothing new reaches the wrist.
+- `deduped: true`: a cue for the same habit has its alarm within 10 min of this one's (the alarms are compared, not the request times); that cue comes back and nothing new reaches the wrist. Its narration says "already set for <time>" only while the alarm is still to come, else "went off N min ago".
 - `wrist.status: "failed"` (200): Bee did not take the to-do; it counts toward neither the dedupe nor the cap.
 - Errors: `400 bad_request`; `409 cues_off`; `409 no_practised_habit`; `409 quiet_hours` (the alarm falls between 22:00 and 08:00 local); `429 cue_cap` (3 a day); `503 wrist_down` (the wrist circuit is open).
 - The texts: `[coach] If asked for status: result first, no "I guess".` (`hedges`) and `[coach] If you need a second: pause, don't say "like".` (`filler:like`). Never a calendar title or a transcript line. The hub has no calendar timer: the coaching skill decides when.
@@ -1075,7 +1075,7 @@ Demo hub, `{"inMinutes": 10, "by": "skill"}`:
 }
 ```
 
-Then `{}` again within 30 min: the same `cue` and `wrist`, with `"deduped": true` and the narration "That cue is already set for 1:40 PM, so I didn't send another."
+Then `{}` at once (its alarm, the wrist lead from now, is within 10 min of 1:40 PM): the same `cue` and `wrist`, with `"deduped": true` and the narration "That cue is already set for 1:40 PM, so I didn't send another."
 
 Live, the wrist answer is `{"channel": "bee-todo", "status": "scheduled", "todoId": "<Bee to-do id>", "error": null}`, and the narration starts "Cue set: your wrist alarm goes off at ...".
 

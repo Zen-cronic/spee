@@ -8,8 +8,11 @@
 //     (a counted drill, so the transfer has its firstDrillAt). Never the control (restart): a cue
 //     about it would be practice and would spoil the check. Never an unpractised habit;
 //   - the habit cued is the practised one with the higher latest rate (ties: CUE_HABITS order);
-//   - dedupe: the same habit within CUE_DEDUPE_MS returns the cue already sent (deduped: true), and
-//     no second to-do; at most CUE_CAP_PER_DAY cues a local day; never for an alarm in quiet hours;
+//   - dedupe on the alarm: a cue for the same habit whose alarm is within CUE_DEDUPE_MS of an
+//     earlier cue's alarm is that cue again (deduped: true), and no second to-do. When it was asked
+//     for does not matter, so the cues for meetings 14 min or more apart (the skill cues 8 to 12 min
+//     before each) never meet;
+//   - at most CUE_CAP_PER_DAY cues a local day; never for an alarm in quiet hours;
 //   - the text is CUE_TEXT (rules.ts): never a calendar title, never a transcript line.
 // Ledger: <stateDir>/live/cues.json (ids, the fixed text, alarm times; live mode only).
 import { join } from "node:path";
@@ -22,7 +25,7 @@ import { clockTime, DEFAULT_POLICY, inQuietHours } from "./policy.js";
 import { CUE_TEXT, type CueHabit } from "./rules.js";
 import type { Wrist } from "./wrist.js";
 
-export const CUE_DEDUPE_MS = 30 * 60_000;
+export const CUE_DEDUPE_MS = 10 * 60_000; // two alarms closer than this are one cue
 export const CUE_CAP_PER_DAY = 3;
 export const CUE_MAX_MINUTES = 180;
 const KEEP_MS = 7 * 24 * 3600_000;
@@ -118,7 +121,13 @@ export class CueBook {
     const tz = this.o.hub.tz;
     const at = r.alarmAt != null ? clockTime(r.alarmAt, tz) : null;
     const line = r.text.replace(/^\[coach\] /, "");
-    if (deduped) return `That cue is already set${at ? ` for ${at}` : ""}, so I didn't send another.`;
+    if (deduped) {
+      // Never "already set for" an alarm that has gone off.
+      const now = this.now();
+      if (r.alarmAt != null && r.alarmAt > now) return `That cue is already set for ${at}, so I didn't send another.`;
+      const ago = r.alarmAt != null ? Math.round((now - r.alarmAt) / 60_000) : 0;
+      return `That cue went off ${ago >= 1 ? `${ago} min ago` : "just now"}, so I didn't send another.`;
+    }
     if (r.wrist.status === "failed") return "I couldn't put the cue on your wrist: Bee didn't take the to-do.";
     if (r.wrist.status === "replay") return `Demo cue, no Bee call: the wrist alarm would go off${at ? ` at ${at}` : ""}. ${line}`;
     return `Cue set: your wrist alarm goes off${at ? ` at ${at}` : ""}. ${line}`;
@@ -145,8 +154,10 @@ export class CueBook {
     if (inQuietHours(target ?? now, q, tz)) return this.err(409, "quiet_hours", `quiet hours (${String(q.startHour).padStart(2, "0")}:00 to ${String(q.endHour).padStart(2, "0")}:00): no cues`);
     const flying = this.inFlight.get(habit);
     if (flying) return this.ok(await flying, true);
-    const recent = [...this.cues].reverse().find((c) => c.habit === habit && sent(c) && now - c.at < (this.o.dedupeMs ?? CUE_DEDUPE_MS));
-    if (recent) return this.ok(recent, true);
+    // The alarm this cue would get (the wrist lead when it is for now), against each earlier alarm.
+    const alarm = target ?? now + this.o.wrist.status().leadMs;
+    const same = [...this.cues].reverse().find((c) => c.habit === habit && sent(c) && c.alarmAt != null && Math.abs(c.alarmAt - alarm) < (this.o.dedupeMs ?? CUE_DEDUPE_MS));
+    if (same) return this.ok(same, true);
     const today = localDate(now, tz);
     const cap = this.o.capPerDay ?? CUE_CAP_PER_DAY;
     if (this.cues.filter((c) => c.day === today && sent(c)).length >= cap) return this.err(429, "cue_cap", `${cap} cues today already (the cap is ${cap} a day)`);
