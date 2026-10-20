@@ -48,6 +48,12 @@
 // existed can only be dated by mtime: a person vouches for those with `--approve-predates`, which
 // records each file whose hits all predate the recording by mtime in leak-check-predates.txt
 // (sha256 + path). Only an approved, unchanged file has its mtime believed.
+// 11. The product's own voice: the coach speaks its prompts aloud and Bee can label that voice as
+//    another speaker, so its phrases equal the product's own copy. A tracked file whose remaining
+//    other-speaker hits are all inside the product's own string literals (scripts/leak-voice.ts) can
+//    be vouched for by a person with `--approve-product-voice`, which records the file's sha256 and
+//    the sha256 of each matched phrase (never the text) in leak-check-product-voice.txt. Only those
+//    phrases, in that exact file content, are then set aside; any edit flags the file again.
 // Exit code 1 when 1-3, 5, 6 (other-speaker), 8, 9 (audio, unreviewed images) or 10 find anything.
 import { execFileSync } from "node:child_process";
 import { createReadStream, existsSync, openSync, readFileSync, readSync, closeSync, statSync, writeFileSync } from "node:fs";
@@ -59,6 +65,7 @@ import { CliBeeSource, pickUtterances } from "../src/bee/source.js";
 import { parseTactiq, sameSpeaker, zonedToEpoch } from "../src/real/tactiq.js";
 import { discoverWearerLabels, isWearer, type WearerLabels } from "../src/real/wearer.js";
 import { hubStateFiles } from "./leak-state.js";
+import { classifyVoice, formatVoiceLedger, parseVoiceLedger, phraseHash, PRODUCT_SOURCE_RE, PRODUCT_VOICE, productPhrases, type VoiceEntry } from "./leak-voice.js";
 
 const fold = (s: string) =>
   s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -354,6 +361,14 @@ if (argv.includes("--approve-images")) {
 }
 const reviewed = ledger(REVIEWED_IMAGES);
 const approved = ledger(APPROVED_PREDATES);
+// The product's own phrases (point 11), and the files a person vouched for.
+const productSaid = productPhrases(
+  files.filter((f) => PRODUCT_SOURCE_RE.test(f) && committedAt.has(f) && statSync(f).size < 4 << 20).map((f) => ({ path: f, text: readFileSync(f, "utf8") })),
+  words,
+);
+const voiceLedger = parseVoiceLedger(existsSync(PRODUCT_VOICE) ? readFileSync(PRODUCT_VOICE, "utf8") : "");
+const voiceApprovable: VoiceEntry[] = [];
+let voiceSetAside = 0;
 const approvable: string[] = [];
 let unreviewed = 0;
 let largest = 0;
@@ -384,14 +399,23 @@ for (const f of files) {
     if (approved.has(key)) since = st.mtimeMs;
     else if (byMtime === 0 && byGit > 0) approvable.push(key);
   }
-  const otherHits = fresh(h.other, other, since);
-  const shortHits = fresh(h.short, otherShort, since);
-  const predates = h.other.size + h.short.size - otherHits - shortHits;
+  const freshOf = (set: Set<string>, occ: Map<string, Occ>) => [...set].filter((g) => earliest(occ.get(g)!) < since);
+  const freshOther = freshOf(h.other, other);
+  const freshShort = freshOf(h.short, otherShort);
+  const predates = h.other.size + h.short.size - freshOther.length - freshShort.length;
+  // The product's own voice (point 11): approved phrases in this exact content are set aside.
+  const voiceKey = `${sha256(f)}  ${f}`;
+  const voice = classifyVoice(voiceKey, [...freshOther, ...freshShort], voiceLedger, productSaid);
+  const setAside = new Set(voice.approved);
+  voiceSetAside += setAside.size;
+  const otherHits = freshOther.filter((g) => !setAside.has(g)).length;
+  const shortHits = freshShort.filter((g) => !setAside.has(g)).length;
+  if (voice.approvable.length && !voice.other.length && committedAt.has(f)) voiceApprovable.push({ sha: voiceKey.slice(0, 64), path: f, phrases: new Set([...voice.approved, ...voice.approvable].map(phraseHash)) });
   const [mineHits, addrHits, nameHits, principleHits, termHits] = [h.mine.size, h.street.size, h.name.size, h.principle.size, h.term.size];
   if (otherHits || shortHits || addrHits || h.jwt || nameHits || principleHits || termHits) bad++;
   if (otherHits || shortHits || mineHits || addrHits || h.jwt || nameHits || principleHits || termHits)
     console.log(
-      `  ${f}: other-speaker ${otherHits}, short other-speaker line ${shortHits}, wearer ${mineHits}, address ${addrHits}, token-like ${h.jwt}, colleague-name/title ${nameHits}, private-principles ${principleHits}, banned-term ${termHits}${predates ? ` (+${predates} other-speaker hit(s) in a file older than the recording: predates)` : ""}`,
+      `  ${f}: other-speaker ${otherHits}, short other-speaker line ${shortHits}, wearer ${mineHits}, address ${addrHits}, token-like ${h.jwt}, colleague-name/title ${nameHits}, private-principles ${principleHits}, banned-term ${termHits}${predates ? ` (+${predates} other-speaker hit(s) in a file older than the recording: predates)` : ""}${setAside.size ? ` (+${setAside.size} approved product-voice hit(s))` : ""}${voice.approvable.length && !voice.other.length && otherHits + shortHits ? " (every other-speaker hit is the product's own copy: see --approve-product-voice)" : ""}`,
     );
   else if (predates) console.log(`  ${f}: predates ${predates} (other-speaker hit(s) in a file dated before the recording by git or an approved mtime; not a leak)`);
 }
@@ -401,6 +425,12 @@ if (approvable.length && argv.includes("--approve-predates")) {
   writeFileSync(APPROVED_PREDATES, `# Files whose other-speaker hits all predate the recording by mtime, vouched for by a person (scripts/leak-check.ts --approve-predates).\n${[...approved, ...approvable].sort((a, b) => a.slice(66).localeCompare(b.slice(66))).join("\n")}\n`);
   console.log(`Recorded ${approvable.length} file(s) in ${APPROVED_PREDATES}; re-run the check to apply. Approve only files you know were not copied in with an old mtime.`);
 } else if (approvable.length) console.log(`${approvable.length} failing file(s) above predate the recording by mtime only (written before their first commit): if none was copied in with an old mtime, run with --approve-predates.`);
+if (voiceApprovable.length && argv.includes("--approve-product-voice")) {
+  const keep = [...voiceLedger.values()].filter((e) => !voiceApprovable.some((a) => a.path === e.path));
+  writeFileSync(PRODUCT_VOICE, formatVoiceLedger([...keep, ...voiceApprovable]));
+  console.log(`Recorded ${voiceApprovable.length} file(s) in ${PRODUCT_VOICE}; re-run the check to apply. Approve only after checking that each flagged phrase is the product's own spoken copy, not someone's words pasted into it.`);
+} else if (voiceApprovable.length) console.log(`${voiceApprovable.length} failing file(s) above have other-speaker hits that are all the product's own copy (Bee may have labelled the coach's voice as another speaker): after checking, run with --approve-product-voice.`);
+if (voiceSetAside) console.log(`Product voice: ${voiceSetAside} hit(s) set aside by ${PRODUCT_VOICE}.`);
 if (binaries.length) console.log(`Binary files not text-screened (archives, fonts): ${binaries.length}.`);
 console.log(`Largest committable file: ${largest} bytes (every size is screened).`);
 let stateWarn = 0;
