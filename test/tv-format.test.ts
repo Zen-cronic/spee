@@ -82,10 +82,30 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     // Both drilled habits dropped, but the control has too little data, rose, was drilled or dropped too.
     for (const claim of ["dropped-control-unclear", "dropped-control-dropped", "not-drilled-yet", "no-drop-yet", undefined] as const) {
       expect(transferWorking(claim)).toBe(false);
-      if (claim) expect(transferTitle({ claim, headline: 'hedges and "like" dropped in real speech after drilling; the control has too little data to compare' })).toBe("hedges and “like” dropped in real speech after drilling; the control has too little data to compare");
+      // never the "drilled habits dropped, the control didn't" line
+      if (claim) expect(transferTitle({ claim, headline: "x" }).rest).not.toBe("The one you didn’t, didn’t.");
     }
-    expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x" })).toBe("The habits you drilled dropped. The one you didn’t, didn’t.");
-    expect(transferTitle({ claim: "dropped-control-flat", headline: "hedges dropped in real speech after drilling; the undrilled control stayed flat" })).toBe("hedges dropped in real speech after drilling; the undrilled control stayed flat");
+    expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x" })).toEqual({ lead: "The habits you drilled dropped.", rest: "The one you didn’t, didn’t." });
+    const habits = [
+      { role: "drilled", verdict: "dropped", label: "hedges (I guess, I think, maybe, kind of...)" },
+      { role: "drilled", verdict: "invalid", label: '"like" as a filler' },
+      { role: "control", verdict: "dropped", label: "restarts" },
+    ] as never;
+    expect(transferTitle({ claim: "dropped-control-flat", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "The habit you never drilled stayed flat." });
+    expect(transferTitle({ claim: "dropped-control-dropped", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "So did the control, so it may not be the drill." });
+    expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits }).rest).toBe("The control needs more speech to compare.");
+    expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "No drilled habit has dropped yet.", rest: null });
+  });
+  it("each title line stays short enough for one line of the TV's big type", () => {
+    const habits = [
+      { role: "drilled", verdict: "dropped", label: "hedges (I guess, I think, maybe, kind of...)" },
+      { role: "drilled", verdict: "dropped", label: '"like" as a filler' },
+    ] as never;
+    for (const claim of ["all-dropped-control-flat", "dropped-control-flat", "dropped-control-dropped", "dropped-control-unclear", "not-drilled-yet", "no-drop-yet"] as const) {
+      const t = transferTitle({ claim, headline: "x", habits });
+      expect(t.lead.length).toBeLessThanOrEqual(40);
+      expect((t.rest ?? "").length).toBeLessThanOrEqual(48);
+    }
   });
 });
 

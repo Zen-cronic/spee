@@ -203,9 +203,38 @@ const WORKING: TransferClaim[] = ['all-dropped-control-flat', 'dropped-control-f
 /** True only when the hub's headline says a drilled habit dropped and the control stayed flat. */
 export const transferWorking = (claim: TransferClaim | null | undefined): boolean => !!claim && WORKING.includes(claim);
 
-/** Progress's title: the plain line only when every drilled habit dropped and the control stayed flat; else the hub's headline. */
-export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'>): string {
-  return t.claim === 'all-dropped-control-flat' ? 'The habits you drilled dropped. The one you didn’t, didn’t.' : curly(t.headline);
+/**
+ * Progress's title, worded from the hub's claim, as two short lines (each fits one line on the TV,
+ * so the big type never wraps a lone word). The habits named as dropped are the hub's own "dropped"
+ * verdicts; the hub's full headline is the fallback for a claim this screen does not know.
+ */
+export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & { habits?: Pick<TransferHabit, 'role' | 'verdict' | 'label'>[] }): { lead: string; rest: string | null } {
+  const names = (t.habits ?? []).filter((h) => h.role === 'drilled' && h.verdict === 'dropped').map((h) => shortHabit(h.label));
+  const dropped = names.length ? `${names.join(' and ')} dropped.` : 'A drilled habit dropped.';
+  switch (t.claim) {
+    case 'all-dropped-control-flat':
+      return { lead: 'The habits you drilled dropped.', rest: 'The one you didn’t, didn’t.' };
+    case 'dropped-control-flat':
+      return { lead: dropped, rest: 'The habit you never drilled stayed flat.' };
+    case 'dropped-control-dropped':
+      return { lead: dropped, rest: 'So did the control, so it may not be the drill.' };
+    case 'dropped-control-unclear':
+      return { lead: dropped, rest: 'The control needs more speech to compare.' };
+    case 'not-drilled-yet':
+      return { lead: 'Not drilled yet.', rest: 'Progress counts from your first drill.' };
+    case 'no-drop-yet':
+      return { lead: 'No drilled habit has dropped yet.', rest: null };
+    default:
+      return { lead: curly(t.headline), rest: null };
+  }
+}
+
+/** Home's word for the control: Flat, Down or Up for a decided result, else the same words as Progress. */
+export function controlWord(h: Pick<TransferHabit, 'verdict' | 'before' | 'after'>): { text: string; word: boolean } {
+  if (h.verdict === 'no change') return { text: 'Flat', word: false };
+  if (h.verdict === 'dropped') return { text: 'Down', word: false };
+  if (h.verdict === 'rose') return { text: 'Up', word: false };
+  return { text: verdictWords(h), word: true };
 }
 
 /** The first failed check of a grade, with the words behind it (from what was graded, never from a label). */

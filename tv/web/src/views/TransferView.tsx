@@ -20,7 +20,8 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
   return (
     <View style={styles.wrap} testID="view-transfer">
       <Text style={styles.kicker}>Since your first drill · real speech, from Bee</Text>
-      <Text style={styles.title} numberOfLines={2}>{title}</Text>
+      <Text style={styles.title} numberOfLines={1}>{title.lead}</Text>
+      {title.rest ? <Text style={[styles.title, styles.titleRest]} numberOfLines={1}>{title.rest}</Text> : null}
       <View style={styles.cards}>
         {drilled.map((x) => (
           <HabitCard key={x.habit} h={x} />
@@ -65,7 +66,8 @@ function HabitCard({ h }: { h: TransferHabit }) {
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
   kicker: { color: C.dim, fontSize: T.small, fontFamily: F.family },
-  title: { color: C.text, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.xs, maxWidth: 1600, fontFamily: F.family },
+  title: { color: C.text, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.xs, fontFamily: F.family },
+  titleRest: { color: C.dim, marginTop: 0 },
   cards: { flex: 1, flexDirection: 'row', marginTop: SP.xl },
   card: { flex: 1, borderRadius: R.l, paddingHorizontal: SP.xl, paddingVertical: SP.xl, marginRight: SP.l },
   paper: { backgroundColor: C.paper },
