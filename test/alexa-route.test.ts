@@ -33,6 +33,8 @@ describe("intent rescue from the catch-all slot", () => {
     ["turn live coaching off", "LiveCoachOffIntent"],
     ["stop live coaching", "LiveCoachOffIntent"],
     ["did it transfer", "DidItTransferIntent"],
+    ["is it working", "DidItTransferIntent"],
+    ["Is it working?", "DidItTransferIntent"],
     ["quiz me", "StartDrillIntent"],
   ])("%s -> %s", (said, want) => {
     const r = routeRequest(catchAll(said));
@@ -125,7 +127,7 @@ describe("speech", () => {
     const g = (rule: string, extra: Partial<GradeResult> = {}) =>
       ({ checks: [{ rule: "nonempty", ok: true, detail: "" }, { rule, ok: false, detail: "" }], habit: { kind: "hedge", label: "", hits: 1, found: ["i guess"] }, fillers: ["um"], missing: ["invoice", "retry"], required: [{ word: "job", ok: false }], ...extra }) as unknown as GradeResult;
     expect(failReason(g("habit"))).toBe('you still said "i guess"');
-    expect(failReason(g("fillers"))).toBe('Bee heard a filler, "um"');
+    expect(failReason(g("fillers"))).toBe('Bee heard a filler word, "um"');
     expect(failReason(g("content"))).toBe('some words were missing, like "invoice", "retry"');
     expect(failReason(g("required"))).toBe('you didn\'t say "job"');
   });

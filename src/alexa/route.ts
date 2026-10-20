@@ -69,7 +69,7 @@ const RULES: [AlexaIntent, RegExp][] = [
   ["HowAmIDoingIntent", /^(how am i doing|how'm i doing|how am i going|how is my speaking|how's my speaking|how am i doing today|how's it going with my speaking|coach me)$/],
   ["LiveCoachOffIntent", /^((turn|switch) off|stop|disable|pause|end) (the )?live coach(ing)?$|^(turn|switch) (the )?live coach(ing)? off$/],
   ["LiveCoachOnIntent", /^((turn|switch) on|start|enable|resume) (the )?live coach(ing)?( for .+)?$|^(turn|switch) (the )?live coach(ing)? on( for .+)?$/],
-  ["DidItTransferIntent", /^(did it transfer|is it transferring|did the drilling work|is the drilling working|did my habits drop|did it work)$/],
+  ["DidItTransferIntent", /^(did it transfer|is it transferring|did the drilling work|is the drilling working|did my habits drop|did it work|is it working|is the practice working|is practising working)$/],
   ["AMAZON.NextIntent", /^(next|next card|next one|skip|skip it|skip this one|skip that|another|another one|go on|move on)$/],
   ["AMAZON.StopIntent", /^(stop|cancel|quit|exit|end|end drill|end the drill|stop the drill|stop drilling|i'm done|im done|that's enough|that's all|goodbye|bye)$/],
   ["StartDrillIntent", /^(quiz me|drill me|start (a |the )?drill|start drilling|let's drill|let's practice|let's practise|give me a card)$/],

@@ -110,7 +110,7 @@ describe("two-turn drill", () => {
     const verdict = await handleAlexa(env("how-did-i-do", { attrs: how.envelope.sessionAttributes }), later.deps);
     expect(later.spoken).toEqual([]);
     const next = (await get("/api/session")).openCard;
-    expect(text(verdict)).toBe(`Bee heard it: a pass. Next, say: "${next.resay}"`);
+    expect(text(verdict)).toBe(`Nice, Bee heard it. Next, say: "${next.resay}"`);
     expect(verdict.hubCalls).toEqual(["GET /api/attempts/<id> 200", "POST /api/session/next 200"]);
     expect(verdict.envelope.sessionAttributes).toEqual({ cardId: next.id, drillSessionId: state.session.id }); // the drill id rides along every turn
     const graded = await get(`/api/attempts/${attemptId}`);
@@ -128,7 +128,7 @@ describe("two-turn drill", () => {
     const v = await handleAlexa(env("how-did-i-do", { attrs: att.envelope.sessionAttributes }), r.deps);
     expect(Date.now() - t0).toBeLessThan(7000);
     expect(r.spoken).toEqual([SPEECH.checking]);
-    expect(text(v)).toMatch(/^Bee heard it: a pass\. (Next, say: ".+"|That's the drill: \d+ of \d+ Bee-graded attempts passed\.)$/);
+    expect(text(v)).toMatch(/^Nice, Bee heard it\. (Next, say: ".+"|That's today's practice: \d+ of \d+ lines passed, checked by Bee\.)$/);
   });
 
   it("a fail names the rule Bee's line broke and asks again; HowDidIDo from the catch-all finds the attempt itself", async () => {
@@ -139,7 +139,7 @@ describe("two-turn drill", () => {
     expect(await verdictReady(att.envelope.sessionAttributes!.attemptId as string)).toBe(true);
     const v = await handleAlexa(env("how-did-i-do-in-catch-all", { attrs: {} }), fake().deps); // no attemptId: the session's last attempt
     expect(v.routed).toMatchObject({ intent: "HowDidIDoIntent", rescuedFrom: "AttemptIntent" });
-    expect(text(v)).toBe(`Not yet: Bee heard a filler, "um". Say it again: "${card.resay}"`);
+    expect(text(v)).toBe(`Not yet: Bee heard a filler word, "um". Say it again: "${card.resay}"`);
     expect(v.envelope.response.reprompt?.outputSpeech.text).toBe(`Say: "${card.resay}"`);
     expect(v.envelope.sessionAttributes).toEqual({ cardId: card.id });
   });

@@ -29,19 +29,19 @@ export const POLL_BUDGET_MS = 6500;
 export const POLL_EVERY_MS = 600;
 
 export const SPEECH = {
-  launchNoCard: "No cards are due right now. Ask me how you're doing, or say stop.",
+  launchNoCard: "You're all caught up: no lines to practise right now. Ask me how you're doing, or say stop.",
   checking: "Checking with Bee.",
   askHowDidIDo: "Ask me: how did I do?",
-  noAttempt: "There's no attempt to check yet. Say quiz me to start a drill.",
-  noCard: "No card is open. Say quiz me to start a drill.",
-  noDrill: "No drill is running. Say quiz me to start one.",
+  noAttempt: "There's nothing to check yet. Say quiz me to start practising.",
+  noCard: "There's no line to say right now. Say quiz me to start practising.",
+  noDrill: "You're not practising right now. Say quiz me to start.",
   hubDown: "The coach hub didn't answer. Try again in a moment.",
-  help: "I run speaking drills that Bee grades from your own voice. Say quiz me, how am I doing, or turn on live coaching.",
+  help: "I help you practise speaking, and Bee checks every line in your own voice. Say quiz me, how am I doing, or turn on live coaching.",
   helpReprompt: "Say quiz me, or how am I doing.",
   fallbackCard: "I didn't catch that. Say the sentence again, or ask how did I do.",
-  fallbackIdle: "Say quiz me to start a drill, or ask how am I doing.",
+  fallbackIdle: "Say quiz me to practise, or ask how am I doing.",
   bye: "Bye.",
-  infoReprompt: "Say quiz me to drill, or stop.",
+  infoReprompt: "Say quiz me to practise, or stop.",
 } as const;
 
 type Out = { text: string; reprompt?: string; end?: boolean; attrs: SessionAttributes };
@@ -108,7 +108,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       if (!id) return { text: SPEECH.noAttempt, reprompt: SPEECH.helpReprompt, attrs };
       let v = await track("GET /api/attempts/<id>", hub.verdict(id));
       if (!v.ok) {
-        if (v.status === 404) return { text: "I lost track of that attempt. Say the sentence again.", reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId") };
+        if (v.status === 404) return { text: "I lost track of that one. Say the line again.", reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId") };
         return hubDown();
       }
       if (!v.body.verdictReady) {
@@ -133,13 +133,13 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     async HowAmIDoingIntent() {
       const c = await track("GET /api/coach/now", hub.coachNow());
       if (!c.ok) return hubDown();
-      return info(clip(c.body.narration, 4), c.body.mode.enabled ? "Say quiz me to drill, or turn off live coaching." : "Say quiz me to drill, or turn on live coaching.");
+      return info(clip(c.body.narration, 4), c.body.mode.enabled ? "Say quiz me to practise, or turn off live coaching." : "Say quiz me to practise, or turn on live coaching.");
     },
     LiveCoachOnIntent: () => live(true),
     LiveCoachOffIntent: () => live(false),
     async DidItTransferIntent() {
       const t = await track("GET /api/transfer", hub.transfer());
-      if (!t.ok) return t.body.error === "no_prereg" ? info("There's no pre-registration yet, so there's no transfer result to report.", SPEECH.infoReprompt) : hubDown();
+      if (!t.ok) return t.body.error === "no_prereg" ? info("There's no before-and-after plan yet, so there's nothing to report.", SPEECH.infoReprompt) : hubDown();
       return info(clip(t.body.headline), SPEECH.infoReprompt);
     },
     async "AMAZON.NextIntent"() {
@@ -173,7 +173,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     const card = r.body.card;
     if (!card) return { text: SPEECH.launchNoCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId", "cardId", "drillSessionId") };
     return {
-      text: line([sayCard(kind === "launch" ? "Speech coach. Say this:" : "Here's your first card. Say:", card.resay)]),
+      text: line([sayCard(kind === "launch" ? "Speech coach. Say this:" : "Here's your first line. Say:", card.resay)]),
       reprompt: sayCard("Say:", card.resay),
       attrs: { ...without(attrs, "attemptId"), cardId: card.id, drillSessionId: r.body.session.id },
     };
@@ -199,12 +199,12 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     const a = v.attempt;
     if (v.status === "graded" && a.final?.pass) {
       const n = await track("POST /api/session/next", hub.nextCard());
-      if (n.ok && n.body.card) return { text: line(["Bee heard it: a pass", sayCard("Next, say:", n.body.card.resay)]), reprompt: sayCard("Say:", n.body.card.resay), attrs: { ...rest, cardId: n.body.card.id } };
-      if (n.ok && n.body.summary) return { text: line(["Bee heard it: a pass", summaryLine(n.body.summary)]), end: true, attrs: without(rest, "cardId") };
-      return { text: "Bee heard it: a pass.", reprompt: "Say quiz me for another card, or stop.", attrs: rest };
+      if (n.ok && n.body.card) return { text: line(["Nice, Bee heard it", sayCard("Next, say:", n.body.card.resay)]), reprompt: sayCard("Say:", n.body.card.resay), attrs: { ...rest, cardId: n.body.card.id } };
+      if (n.ok && n.body.summary) return { text: line(["Nice, Bee heard it", summaryLine(n.body.summary)]), end: true, attrs: without(rest, "cardId") };
+      return { text: "Nice, Bee heard it.", reprompt: "Say quiz me for another line, or stop.", attrs: rest };
     }
     const card = await openCard();
-    const again = card ? sayCard("Say it again:", card.resay) : "Say quiz me to try another card";
+    const again = card ? sayCard("Say it again:", card.resay) : "Say quiz me to try another line";
     const why = v.status === "graded" && a.final ? `Not yet: ${failReason(a.final.grade)}` : "Bee didn't confirm that one, so it doesn't count";
     return { text: line([why, again]), reprompt: card ? sayCard("Say:", card.resay) : SPEECH.helpReprompt, attrs: card ? { ...rest, cardId: card.id } : rest };
   }
@@ -216,6 +216,6 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
 }
 
 export function summaryLine(s: { passed: number; counted: number; attempts: number }): string {
-  if (!s.counted) return s.attempts ? "No attempt was confirmed by Bee this time" : "That's the drill";
-  return `That's the drill: ${s.passed} of ${s.counted} Bee-graded attempts passed`;
+  if (!s.counted) return s.attempts ? "Bee didn't confirm any of those this time" : "That's today's practice";
+  return `That's today's practice: ${s.passed} of ${s.counted} lines passed, checked by Bee`;
 }

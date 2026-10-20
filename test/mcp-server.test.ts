@@ -104,20 +104,20 @@ describe("MCP over Streamable HTTP (stateless)", () => {
       v = (await call("get_verdict", { attempt_id: id })).r;
     }
     expect(v.structuredContent).toMatchObject({ status: "graded", verdictReady: true, attempt: { counted: true, final: { source: "bee", pass: true } } });
-    expect(v.content[0]!.text).toBe("Bee heard it. That's a pass.");
+    expect(v.content[0]!.text).toBe("Nice, Bee heard it. That's a pass.");
     const next = await run("next_card");
     expect(next.structuredContent!.done).toBe(false);
     const end = await run("end_drill");
-    expect(end.content[0]!.text).toMatch(/^Drill ended: 1 of 1 Bee-graded attempts passed/);
+    expect(end.content[0]!.text).toMatch(/^Practice done: 1 of 1 lines passed, checked by Bee/);
     const how = await run("how_am_i_doing");
     expect(how.structuredContent!.basis).toBe("recap");
     expect(how.content[0]!.text).toBe(how.structuredContent!.narration);
     const stats = await run("habit_stats", { range: "week", source: "bee" });
-    expect(stats.content[0]!.text).toMatch(/^This week, over \d+ words: hedges [\d.]+/);
+    expect(stats.content[0]!.text).toMatch(/^This week, over \d+ words: unsure words [\d.]+/);
     const tr = await run("did_it_transfer");
     expect(tr.content[0]!.text).toBe(tr.structuredContent!.headline);
     const one = await run("did_it_transfer", { habit: "hedges" });
-    expect(one.content[0]!.text).toMatch(/^hedges .*: dropped \(drilled\)/);
+    expect(one.content[0]!.text).toMatch(/^Unsure words \(practised\): dropped, /);
     const brief = await run("pre_meeting_brief");
     expect(brief.content[0]!.text).toBe(brief.structuredContent!.nudge);
     const on = await run("live_coach", { enabled: true, minutes: 30 });

@@ -36,7 +36,7 @@
         {
           "name": "DidItTransferIntent",
           "slots": [],
-          "samples": ["did it transfer", "is the drilling working", "did my habits drop", "did the drilling work"]
+          "samples": ["did it transfer", "is the drilling working", "did my habits drop", "did the drilling work", "is it working", "is the practice working"]
         },
         { "name": "AMAZON.NextIntent", "samples": ["next card", "skip this one"] },
         { "name": "AMAZON.HelpIntent", "samples": [] },

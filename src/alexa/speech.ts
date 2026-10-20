@@ -2,7 +2,6 @@
 // at most 2 sentences; a hub narration passed through keeps the contract's own limit (CoachNow
 // narration is at most 4 sentences). Quoted card sentences count as part of the sentence quoting
 // them. Pure.
-import type { GradeResult } from "../hub/contract.js";
 
 export const MAX_SENTENCES = 2;
 
@@ -71,24 +70,5 @@ export function seconds(ms: number | null | undefined): string {
   return `${s} seconds`;
 }
 
-const q = (xs: string[]) => xs.map((x) => `"${x}"`).join(", ");
-// The first failing rule of a Bee grade, as one spoken clause.
-export function failReason(g: GradeResult): string {
-  const failed = g.checks.find((c) => !c.ok);
-  switch (failed?.rule) {
-    case "nonempty":
-      return "Bee heard nothing";
-    case "habit":
-      return g.habit.found.length ? `you still said ${q(g.habit.found.slice(0, 2))}` : `the habit was still there`;
-    case "fillers":
-      return g.fillers.length === 1 ? `Bee heard a filler, "${g.fillers[0]}"` : `Bee heard ${g.fillers.length} fillers, ${q(g.fillers.slice(0, 3))}`;
-    case "content":
-      return g.missing.length ? `some words were missing, like ${q(g.missing.slice(0, 3))}` : "too much of the sentence changed";
-    case "required": {
-      const miss = g.required.filter((r) => !r.ok).map((r) => r.word);
-      return miss.length ? `you didn't say ${q(miss.slice(0, 3))}` : "a key word was missing";
-    }
-    default:
-      return "it didn't match the card";
-  }
-}
+// The first failing rule of a Bee grade, as one spoken clause (shared with the hub narration).
+export { failReason } from "../hub/failReason.js";
