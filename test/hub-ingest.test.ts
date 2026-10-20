@@ -504,6 +504,26 @@ describe("live ingest: privacy", () => {
     expect(everything).not.toContain(SECRET);
   });
 
+  it("a line Bee labels as anyone but the profile-named wearer is never kept, a named colleague or the product's own voice", async () => {
+    const r = rig();
+    const c = conversation(200, T_DRILL + 3600_000, { other: [] });
+    // the coach's own spoken prompt, picked up by the watch and labelled as another speaker, and an
+    // enrolled colleague with a name of their own
+    const PROMPT = "You can also ask how am I doing.";
+    const theirs: [string, string][] = [["Unknown", PROMPT], ["Sam Lee", `${SECRET}, says Sam.`], ["Sam", `${SECRET} from a first name only.`]];
+    const base = c.transcriptions[0]!.utterances;
+    theirs.forEach(([speaker, text], i) => base.push({ ...base[0]!, id: 200_900 + i, speaker, text, spoken_at: c.start_time + 500_000 + i * 1000 }));
+    r.bee.add(c);
+    r.hub.ingestBee(r.ended(200, "COMPLETED"));
+    await r.ingest.tick();
+    const stored = JSON.parse(readFileSync(join(r.dir, LIVE_SESSIONS_FILE), "utf8"));
+    const keys = new Set(base.filter((u) => u.speaker === "Ada").map((u) => `u:${u.id}`));
+    expect(stored.lines.length).toBe(keys.size);
+    expect(stored.lines.every((l: { key: string }) => keys.has(l.key))).toBe(true);
+    const text = JSON.stringify([stored, r.hub.sessions]);
+    expect(text).not.toContain(PROMPT);
+    expect(text).not.toContain(SECRET);
+  });
 });
 
 describe("live ingest: wired into the live hub (liveSetup, fake bee stream and CLI)", () => {
