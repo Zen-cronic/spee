@@ -27,7 +27,7 @@ beforeAll(async () => {
   };
   let base = "";
   const plugins = createPlugins().map((p) => (p.name === "mcp" ? createMcpPlugin({ hub: new HubClient(() => base, { fetch: recording }) }) : p));
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.02, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: MCP, publicBaseUrl: null });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.02, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: MCP, publicBaseUrl: null });
   base = s.url;
   client = new Client({ name: "mcp-test", version: "0.0.0" });
   await client.connect(new StreamableHTTPClientTransport(new URL(`${s.url}/mcp`)));

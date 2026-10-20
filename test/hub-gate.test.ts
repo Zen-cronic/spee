@@ -19,7 +19,7 @@ const PUBLIC = "abc123.ngrok-free.app";
 let s: HubServer;
 
 beforeAll(async () => {
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: null });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: null });
 });
 afterAll(async () => s.close());
 
@@ -180,7 +180,7 @@ describe("gate: the hub server", () => {
 
 describe("joinUrl", () => {
   it("uses PUBLIC_BASE_URL when set and appends #k=<PAIR_TOKEN>", async () => {
-    const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
+    const t = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
     try {
       const w = await wsOutcome(t.port, "");
       expect(w.welcome.joinUrl).toBe(`https://bee-coach.example.app/p/${w.welcome.code}#k=${PAIR}`);
@@ -196,7 +196,7 @@ describe("a declared tunnel (review H2)", () => {
     expect(isPublicRequest(local)).toBe(false);
     expect(mustAuthenticate(local)).toBe(false);
     expect(mustAuthenticate(local, { tunnel: true })).toBe(true);
-    const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
+    const t = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app/" });
     try {
       const init = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "t", version: "0" } } });
       const hdr = { host: `localhost:${t.port}`, "content-type": "application/json", accept: "application/json, text/event-stream" };
@@ -212,7 +212,7 @@ describe("a declared tunnel (review H2)", () => {
     const lines: string[] = [];
     const spy = vi.spyOn(console, "log").mockImplementation((l: unknown) => void lines.push(String(l)));
     try {
-      const t = await startHubServer({ port: 0, host: "127.0.0.1", setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app" });
+      const t = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app" });
       await t.close();
       const warn = lines.find((l) => l.startsWith("hub: warning: PUBLIC_BASE_URL"));
       expect(warn).toContain(`ngrok http ${t.port}`);

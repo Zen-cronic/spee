@@ -26,7 +26,7 @@ beforeAll(async () => {
   delete process.env.PAIR_TOKEN;
   delete process.env.MCP_TOKEN;
   stateDir = mkdtempSync(join(tmpdir(), "hub-"));
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir }) });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir }) });
 });
 afterAll(async () => {
   await s.close();

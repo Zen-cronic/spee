@@ -8,7 +8,7 @@ import { demoSetup } from "../src/hub/setup.js";
 
 let s: HubServer;
 beforeAll(async () => {
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null, roomGraceMs: 100 });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null, roomGraceMs: 100 });
 });
 afterAll(async () => s.close());
 

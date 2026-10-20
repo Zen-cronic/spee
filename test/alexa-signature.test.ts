@@ -80,7 +80,7 @@ describe.skipIf(!hasOpenssl)("POST /alexa with the signature check on", () => {
   let s: HubServer;
   beforeAll(async () => {
     const plugins = createPlugins().map((p) => (p.name === "alexa" ? createAlexaPlugin({ skillId: SKILL, verifySignature: verifier() }) : p));
-    s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
+    s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
   });
   afterAll(async () => s?.close());
   const help = () => {

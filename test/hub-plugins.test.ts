@@ -93,7 +93,7 @@ describe("hub server with the landed plugins (and a probe plugin)", () => {
     onApp: (_room, msg) => (msg.topic === "probe.ping" ? { name: "probe.pong", ok: true, payload: { got: msg.payload } } : undefined),
   };
   beforeAll(async () => {
-    s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins: [...createPlugins(), probe], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins: [...createPlugins(), probe], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
   });
   afterAll(async () => s.close());
 
@@ -232,7 +232,7 @@ describe("fixture mode (--demo --fixture-v2)", () => {
   let s: HubServer;
   const fx = (f: string) => JSON.parse(readFileSync(`fixtures/contract-v2/${f}`, "utf8"));
   beforeAll(async () => {
-    s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.001, stateDir: null }), fixtureV2: true, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.001, stateDir: null }), fixtureV2: true, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
   });
   afterAll(async () => s.close());
   it("serves every fixture file the examples define", () => {
@@ -240,7 +240,7 @@ describe("fixture mode (--demo --fixture-v2)", () => {
   });
   it("needs demo mode", async () => {
     const setup = demoSetup({ pace: 0.01, stateDir: null });
-    await expect(startHubServer({ port: 0, quiet: true, setup: { ...setup, demo: null }, fixtureV2: true })).rejects.toThrow(/--demo/);
+    await expect(startHubServer({ maskTerms: [], port: 0, quiet: true, setup: { ...setup, demo: null }, fixtureV2: true })).rejects.toThrow(/--demo/);
     setup.stop();
   });
   it("answers the live routes from fixtures/contract-v2/", async () => {

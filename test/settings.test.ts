@@ -222,7 +222,7 @@ describe("over HTTP (demo hub, synthetic)", () => {
   };
   beforeAll(async () => {
     dir = mkdtempSync(join(tmpdir(), "settings-"));
-    s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: dir }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: dir }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
   });
   afterAll(async () => s.close());
 

@@ -58,8 +58,10 @@ export interface HubServerOptions {
   trustLan?: boolean; // trust LAN devices like loopback (default: env HUB_TRUST_LAN=1, else false)
   allowedOrigins?: string[]; // extra browser origins (default: env HUB_ALLOWED_ORIGINS, comma-separated)
   roomGraceMs?: number; // a room with no screen is closed after this (default 60 s; tests)
-  // Private terms to mask on screens and in speech (mask.ts). Default: loaded from maskDir
-  // (coach/private-terms.local.txt and coach/mask-terms.local.txt); [] or env HUB_MASK=0 turns it off.
+  // Private terms to mask on screens and in speech (mask.ts), or a dir to load them from. Default:
+  // none (masking off). Only the CLI entry below loads coach/private-terms.local.txt and
+  // coach/mask-terms.local.txt (off with --no-mask or env HUB_MASK=0), so a test never runs with
+  // whatever terms the machine it runs on happens to hold.
   maskTerms?: string[];
   maskDir?: string;
 }
@@ -125,8 +127,8 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   const print = (line: string) => {
     if (!opts.quiet) console.log(line);
   };
-  // Masking: output-only (mask.ts). The terms are loaded here and never logged; the log says only on/off and a count.
-  setMaskTerms(opts.maskTerms ?? (process.env.HUB_MASK === "0" ? [] : loadMaskTerms(opts.maskDir ?? join(REPO_ROOT, "coach"))));
+  // Masking: output-only (mask.ts). The terms are set here and never logged; the log says only on/off and a count.
+  setMaskTerms(opts.maskTerms ?? (opts.maskDir ? loadMaskTerms(opts.maskDir) : []));
   log("hub.masking", { masking: maskStatus() });
   const tokens = resolveTokens({ PAIR_TOKEN: opts.pairToken ?? process.env.PAIR_TOKEN, MCP_TOKEN: opts.mcpToken ?? process.env.MCP_TOKEN }, print, setup.stateDir ? join(setup.stateDir, "tokens.json") : null, { rotate: !!opts.rotateTokens });
   const publicBaseUrl = ((opts.publicBaseUrl === undefined ? process.env.PUBLIC_BASE_URL : opts.publicBaseUrl) ?? "").trim().replace(/\/+$/, "") || null;
@@ -608,7 +610,8 @@ if (process.argv[1] && /server\.(ts|js)$/.test(process.argv[1])) {
     fixtureV2: args.includes("--fixture-v2"),
     trustLan: args.includes("--lan") ? true : undefined,
     rotateTokens: args.includes("--rotate-tokens"),
-    maskTerms: args.includes("--no-mask") ? [] : undefined,
+    // The operator's private terms, from the gitignored coach/*.local.txt (CLI only; see maskTerms).
+    maskTerms: args.includes("--no-mask") || process.env.HUB_MASK === "0" ? [] : loadMaskTerms(join(REPO_ROOT, "coach")),
   }).catch((err) => {
     console.error(`hub: ${(err as Error).message}`);
     killChildren("SIGKILL");

@@ -19,7 +19,7 @@ const EVIL = "https://evil.example";
 let s: HubServer;
 
 beforeAll(async () => {
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app", allowedOrigins: [] });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: PAIR, mcpToken: MCP, publicBaseUrl: "https://bee-coach.example.app", allowedOrigins: [] });
 });
 afterAll(async () => s.close());
 

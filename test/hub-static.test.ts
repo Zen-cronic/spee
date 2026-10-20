@@ -27,7 +27,7 @@ beforeAll(async () => {
     { prefix: "/sim/", dir: "sim-not-built", build: "npm run web:sim:build", public: true },
   ];
   const plugins = createPlugins().map((p) => (p.name === "static" ? createStaticPlugin({ mounts, root }) : p));
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
 });
 afterAll(async () => s.close());
 

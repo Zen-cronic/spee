@@ -33,7 +33,7 @@ const get = (p: string) => fetch(s.url + p).then((r) => r.json() as Promise<any>
 
 beforeAll(async () => {
   const plugins = createPlugins().map((p) => (p.name === "alexa" ? createAlexaPlugin({ skillId: SKILL }) : p));
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
   hub = new HubClient(s.url);
 });
 afterAll(async () => s.close());

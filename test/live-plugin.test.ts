@@ -29,7 +29,7 @@ const waitFor = async (pred: (e: HubEvent) => boolean, ms = 10_000) => {
 };
 
 beforeAll(async () => {
-  s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+  s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
   s.setup.hub.on("event", (e: HubEvent) => events.push(e));
 });
 afterAll(async () => s.close());
@@ -83,7 +83,7 @@ describe("live routes (demo hub)", () => {
 describe("live routes outside demo mode", () => {
   it("POST /api/demo/live answers 400 demo_only", async () => {
     const setup = demoSetup({ pace: 0.01, stateDir: null });
-    const t = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: { ...setup, demo: null }, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    const t = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: { ...setup, demo: null }, pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
     try {
       const r = await raw(t.port, "/api/demo/live", { method: "POST", body: "{}" });
       expect(r.status).toBe(400);

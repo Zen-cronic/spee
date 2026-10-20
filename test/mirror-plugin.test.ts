@@ -73,7 +73,7 @@ describe("mirror plugin on a demo hub", () => {
     return { status: r.status, body: await r.json() };
   };
   beforeAll(async () => {
-    s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins: [createMirrorPlugin({ demoTakeMs: 1500 })], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.01, stateDir: null }), plugins: [createMirrorPlugin({ demoTakeMs: 1500 })], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
     feed = sse(`${s.url}/api/events`);
     tv = client(s.port, "screen", "tv-mirror", undefined, "tv");
     code = (await tv.welcome).code;
@@ -191,7 +191,7 @@ describe("mirror plugin on a demo hub", () => {
 describe("mirror plugin outside demo mode", () => {
   it("POST /api/demo/mirror answers 400 demo_only", async () => {
     const setup = demoSetup({ pace: 0.01, stateDir: null });
-    const s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: { ...setup, demo: null }, plugins: [createMirrorPlugin()], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
+    const s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: { ...setup, demo: null }, plugins: [createMirrorPlugin()], pairToken: "p".repeat(20), mcpToken: "m".repeat(20) });
     const r = await fetch(`${s.url}/api/demo/mirror`, { method: "POST", body: "{}" });
     expect(r.status).toBe(400);
     expect((await r.json()).error).toBe("demo_only");

@@ -255,7 +255,7 @@ What is masked, all in the hub's output path (`src/hub/mask.ts`):
 - **The Watch** sees `▒▒▒` in a recap to-do. `real/live/todos.json` records the to-do as sent, masked.
 - **Not masked:** ids, keys, codes and links (so surfaces still match cards and attempts), and every file the hub persists.
 
-Turn it off with `npm run hub -- --no-mask` or `HUB_MASK=0`; health then says `"masking": "off"`. With neither file present it is off.
+Turn it off with `npm run hub -- --no-mask` or `HUB_MASK=0`; health then says `"masking": "off"`. With neither file present it is off. Only the hub command reads the two files: a hub started from code (`startHubServer`, as the tests do) masks only the terms it is given, and none by default.
 
 ## Demo
 
