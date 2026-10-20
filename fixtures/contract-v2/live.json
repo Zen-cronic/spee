@@ -124,7 +124,7 @@
     "id": "ndg_demo_0001",
     "conversationId": "demo-0000-4000-8000-000000000101",
     "rule": "hedge-streak",
-    "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+    "text": "[coach] 5 unsure words in 2 minutes. Say it plainly.",
     "evidence": {
       "rule": "hedge-streak",
       "value": 5,
@@ -161,7 +161,7 @@
       "id": "ndg_demo_0001",
       "conversationId": "demo-0000-4000-8000-000000000101",
       "rule": "hedge-streak",
-      "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+      "text": "[coach] 5 unsure words in 2 minutes. Say it plainly.",
       "evidence": {
         "rule": "hedge-streak",
         "value": 5,

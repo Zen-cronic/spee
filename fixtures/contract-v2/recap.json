@@ -21,7 +21,7 @@
     "habits": [
       {
         "key": "hedges",
-        "label": "hedges (I guess, I think, maybe, kind of...)",
+        "label": "unsure words (I guess, I think, maybe, kind of...)",
         "count": 11,
         "per100": 2.12,
         "baselinePer100": 1.43,
@@ -29,7 +29,7 @@
       },
       {
         "key": "filler:like",
-        "label": "\"like\" as a filler",
+        "label": "filler \"like\"",
         "count": 6,
         "per100": 1.15,
         "baselinePer100": 1.79,
@@ -45,7 +45,7 @@
       },
       {
         "key": "restart",
-        "label": "restarts (the the, I I)",
+        "label": "starting over (the the, I I)",
         "count": 3,
         "per100": 0.58,
         "baselinePer100": 0.86,
@@ -53,15 +53,15 @@
       }
     ]
   },
-  "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+  "headline": "Unsure words ran high: 2.1 per 100 words against your usual 1.4. Filler \"like\" was down.",
   "moment": {
     "text": "I guess we could maybe ship the export on Friday.",
     "at": 1792517601000,
     "habit": "hedges",
     "rephrase": "We could ship the export on Friday."
   },
-  "narration": "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
-  "wristText": "[coach] Recap: hedges high, pace steady",
+  "narration": "That conversation ran about 7 minutes. You used 11 unsure words, 2.1 out of every 100 words you said against your usual 1.4, and your pace held at 138 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
+  "wristText": "[coach] Recap: more unsure words than usual, pace steady",
   "phrasing": "template",
   "nudges": {
     "sent": 1,

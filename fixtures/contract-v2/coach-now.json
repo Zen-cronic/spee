@@ -3,7 +3,7 @@
   "synthetic": true,
   "generatedAt": 1792517913000,
   "basis": "recap",
-  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2.6 to 0.8 and \"like\" from 3.2 to 0.8 per 100 words. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  "narration": "Your last conversation ran high on unsure words: 11, or 2.1 out of every 100 words you said, against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler \"like\" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.4 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.",
   "mode": {
     "rules": {
       "hedge-streak": true,
@@ -35,7 +35,7 @@
   "lastRecap": {
     "id": "rcp_demo_0001",
     "endedAt": 1792517868000,
-    "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down."
+    "headline": "Unsure words ran high: 2.1 per 100 words against your usual 1.4. Filler \"like\" was down."
   },
   "week": {
     "words": 1400,
@@ -44,7 +44,7 @@
     "vaguePer100": 0.64,
     "topHabit": {
       "key": "hedges",
-      "label": "hedging",
+      "label": "unsure words",
       "per100": 1.43
     }
   },
@@ -52,5 +52,5 @@
     "dueNow": 2,
     "nextCardId": "demo:hedge-i-guess"
   },
-  "transferHeadline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat"
+  "transferHeadline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same"
 }

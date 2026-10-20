@@ -93,7 +93,7 @@ export const window6 = win(318, { lines: 26, words: 520, talkS: 226, wpm: 138, o
 
 // Nudges
 
-const spokenAt = C0 + sec(144.1); // the line that made it 5 hedges in 2 minutes ended here
+const spokenAt = C0 + sec(144.1); // the line that made it 5 unsure words (hedges) in 2 minutes ended here
 const beeAt = spokenAt + 5900; // Bee's wearer tag arrived (new-utterance +5.4 s, tag +0.5 s)
 const detectedAt = beeAt + 40;
 const todoAt = detectedAt + 1450; // `bee todos create` returned
@@ -102,7 +102,7 @@ export const nudge: Nudge = {
   id: "ndg_demo_0001",
   conversationId: CONV,
   rule: "hedge-streak",
-  text: "[coach] 5 hedges in 2 min. Say it plainly.",
+  text: "[coach] 5 unsure words in 2 minutes. Say it plainly.",
   evidence: { ...rule("hedge-streak", 5, 4.72, "count"), windowMs: 120_000, expected: 2.36 },
   hops: { spokenAt, beeAt, detectedAt, todoAt, alarmAt },
   latencyMs: { bee: beeAt - spokenAt, detect: detectedAt - beeAt, todo: todoAt - detectedAt, total: alarmAt - spokenAt },
@@ -150,16 +150,16 @@ export const recap: Recap = {
     longestMonologueMs: 74_000,
     pauses: { count: 19, longestMs: 3100 },
     habits: [
-      { key: "hedges", label: "hedges (I guess, I think, maybe, kind of...)", count: 11, per100: 2.12, baselinePer100: 1.43, verdict: "worse" },
-      { key: "filler:like", label: "\"like\" as a filler", count: 6, per100: 1.15, baselinePer100: 1.79, verdict: "better" },
+      { key: "hedges", label: "unsure words (I guess, I think, maybe, kind of...)", count: 11, per100: 2.12, baselinePer100: 1.43, verdict: "worse" },
+      { key: "filler:like", label: "filler \"like\"", count: 6, per100: 1.15, baselinePer100: 1.79, verdict: "better" },
       { key: "vague", label: "vague answers", count: 1, per100: 0.19, baselinePer100: 0.64, verdict: "better" },
-      { key: "restart", label: "restarts (the the, I I)", count: 3, per100: 0.58, baselinePer100: 0.86, verdict: "typical" },
+      { key: "restart", label: "starting over (the the, I I)", count: 3, per100: 0.58, baselinePer100: 0.86, verdict: "typical" },
     ],
   },
-  headline: "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+  headline: "Unsure words ran high: 2.1 per 100 words against your usual 1.4. Filler \"like\" was down.",
   moment: { text: "I guess we could maybe ship the export on Friday.", at: C0 + sec(141), habit: "hedges", rephrase: "We could ship the export on Friday." },
-  narration: "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
-  wristText: "[coach] Recap: hedges high, pace steady",
+  narration: "That conversation ran about 7 minutes. You used 11 unsure words, 2.1 out of every 100 words you said against your usual 1.4, and your pace held at 138 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
+  wristText: "[coach] Recap: more unsure words than usual, pace steady",
   phrasing: "template",
   nudges: { sent: 1, skipped: 1 },
   delivery: { wrist: "replay", todoId: null },
@@ -189,13 +189,13 @@ export const coachNow: CoachNow = {
   synthetic: true,
   generatedAt: ENDED_AT + sec(45),
   basis: "recap",
-  narration: 'Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2.6 to 0.8 and "like" from 3.2 to 0.8 per 100 words. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.',
+  narration: 'Your last conversation ran high on unsure words: 11, or 2.1 out of every 100 words you said, against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler "like" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.4 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.',
   mode: modeOnAfterNudge,
   live: null,
   lastRecap: { id: recap.id, endedAt: recap.endedAt, headline: recap.headline },
-  week: { words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, vaguePer100: 0.64, topHabit: { key: "hedges", label: "hedging", per100: 1.43 } },
+  week: { words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, vaguePer100: 0.64, topHabit: { key: "hedges", label: "unsure words", per100: 1.43 } },
   drills: { dueNow: 2, nextCardId: "demo:hedge-i-guess" },
-  transferHeadline: "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat",
+  transferHeadline: "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same",
 };
 
 // POST /api/demo/live and the events it produces (pace 1; atMs after the call)
@@ -296,7 +296,7 @@ export const alexaHowAmIDoing = {
     session: { new: false, sessionId: "amzn1.echo-api.session.00000000-demo", application: { applicationId: "amzn1.ask.skill.00000000-0000-0000-0000-000000000000" }, attributes: {}, user: { userId: "amzn1.ask.account.DEMO" } },
     request: { type: "IntentRequest", requestId: "amzn1.echo-api.request.00000000-demo", timestamp: new Date(ENDED_AT + sec(45)).toISOString(), locale: "en-CA", intent: { name: "HowAmIDoingIntent", confirmationStatus: "NONE" } },
   },
-  response: { version: "1.0", sessionAttributes: {}, response: { outputSpeech: { type: "PlainText", text: coachNow.narration }, reprompt: { outputSpeech: { type: "PlainText", text: "Say quiz me to drill, or turn off live coaching." } }, shouldEndSession: false } },
+  response: { version: "1.0", sessionAttributes: {}, response: { outputSpeech: { type: "PlainText", text: coachNow.narration }, reprompt: { outputSpeech: { type: "PlainText", text: "Say quiz me to practise, or turn off live coaching." } }, shouldEndSession: false } },
 };
 
 export const mcpTools = { note: "The MCP tools at /mcp (stateless Streamable HTTP). Each result is content [{type:'text', text: narration}] plus structuredContent (the route's JSON); isError when the route answers >= 400.", contractVersion: CONTRACT_VERSION, tools: MCP_TOOLS };

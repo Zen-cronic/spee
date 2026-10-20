@@ -100,7 +100,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
     const running = !!(await ctx.get("/api/session")).body.session; // next_card ends the session when nothing is due
     const end = await call("end_drill");
     const ended = running ? await waitList(() => ctx.sse.slice(sseAt), (e) => e.topic === "session.ended") : true;
-    ctx.check(!end.isError && /^Drill ended: /.test(text(end)) && !!end.structuredContent?.summary && !!ended, `end_drill -> a summary narration${running ? " and session.ended" : " (the session had already ended)"}`);
+    ctx.check(!end.isError && /^(Practice done: |You.re not practising right now)/.test(text(end)) && !!end.structuredContent?.summary && !!ended, `end_drill -> a summary narration${running ? " and session.ended" : " (the session had already ended)"}`);
 
     // v2 tools (need packet A outside fixture mode)
     const how = await call("how_am_i_doing");

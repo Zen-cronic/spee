@@ -338,7 +338,7 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
     "verdict": "no change", "...": "..." }
  ],
  "unregistered": [ { "habit": "vague", "drills": 3, "note": "drilled but not pre-registered: not reported as a transfer result" } ],
- "headline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat",
+ "headline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same",
  "claim": "all-dropped-control-flat",
  "firstSignal": [
   { "habit": "hedges", "label": "hedges (I guess, I think, maybe, kind of...)", "firstDrillAt": 1792080600000, "status": "measured",
@@ -523,7 +523,7 @@ Possible unverified reasons:
 { "topic": "stats.updated", "payload": { "seq": 6, "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
   "practiceToday": { "attempts": 1, "counted": 1, "passed": 1, "unverified": 0, "beeOverrules": 0 },
   "weekPer100": { "words": 1400, "hedges": 1.43, "vague": 0.64, "fillers": 2.43, "restarts": 0.86 },
-  "transferHeadline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat",
+  "transferHeadline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same",
   "deck": { "...": "DeckSummary" } } }
 ```
 
@@ -648,7 +648,7 @@ The examples below are **hand-written synthetic payloads** for the invented demo
    - `Recap.moment.text` (at most 12 words) and its `rephrase`;
    - `PracticeMeters.caption`, the interim words of the person practising. It is room-scoped, sent only to that room's screens, and never persisted.
 
-   `LiveWindow`, `Nudge`, `NudgeSkipped`, `ConversationEnded`, `LiveState` and `CoachNow` carry **no** transcript text. Nudge and wrist text is generated from the rule (`"[coach] 5 hedges in 2 min. ..."`, at most 60 characters) and never quotes a transcript.
+   `LiveWindow`, `Nudge`, `NudgeSkipped`, `ConversationEnded`, `LiveState` and `CoachNow` carry **no** transcript text. Nudge and wrist text is generated from the rule (`"[coach] 5 unsure words in 2 minutes. ..."`, at most 60 characters) and never quotes a transcript.
 2. **Other speakers are counted only.** They appear as `others.lines`, `others.words`, `otherLines` and `talkShare`. Their text is never stored, served, logged, put in a fixture or sent to a model. The live engine keeps the v1 rule: stream text stays in memory until Bee tags it as the wearer (score at least 0.5), and anything else is forgotten after 3 minutes.
 3. **The coaching principles are never served.** `coach/principles.local.md` (the operator's own notes, gitignored) is read at runtime by packet A only, to set thresholds and to phrase optional model recaps.
    - Its text never appears in a response, an event, a log, a fixture, a commit or a model output. A model phrasing that shares a 5-word shingle with it is rejected, and the template phrasing is used instead.
@@ -860,7 +860,7 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
     "habits": [
       {
         "key": "hedges",
-        "label": "hedges (I guess, I think, maybe, kind of...)",
+        "label": "unsure words (I guess, I think, maybe, kind of...)",
         "count": 11,
         "per100": 2.12,
         "baselinePer100": 1.43,
@@ -868,7 +868,7 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
       },
       {
         "key": "filler:like",
-        "label": "\"like\" as a filler",
+        "label": "filler \"like\"",
         "count": 6,
         "per100": 1.15,
         "baselinePer100": 1.79,
@@ -884,7 +884,7 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
       },
       {
         "key": "restart",
-        "label": "restarts (the the, I I)",
+        "label": "starting over (the the, I I)",
         "count": 3,
         "per100": 0.58,
         "baselinePer100": 0.86,
@@ -892,15 +892,15 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
       }
     ]
   },
-  "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down.",
+  "headline": "Unsure words ran high: 2.1 per 100 words against your usual 1.4. Filler \"like\" was down.",
   "moment": {
     "text": "I guess we could maybe ship the export on Friday.",
     "at": 1792517601000,
     "habit": "hedges",
     "rephrase": "We could ship the export on Friday."
   },
-  "narration": "That conversation ran about 7 minutes. You hedged 11 times, 2.1 per 100 words against your usual 1.4, and your pace held at 138 words a minute. Try it without the hedges: \"We could ship the export on Friday.\"",
-  "wristText": "[coach] Recap: hedges high, pace steady",
+  "narration": "That conversation ran about 7 minutes. You used 11 unsure words, 2.1 out of every 100 words you said against your usual 1.4, and your pace held at 138 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
+  "wristText": "[coach] Recap: more unsure words than usual, pace steady",
   "phrasing": "template",
   "nudges": {
     "sent": 1,
@@ -925,7 +925,7 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
   "synthetic": true,
   "generatedAt": 1792517913000,
   "basis": "recap",
-  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2.6 to 0.8 and \"like\" from 3.2 to 0.8 per 100 words. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  "narration": "Your last conversation ran high on unsure words: 11, or 2.1 out of every 100 words you said, against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler \"like\" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.4 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.",
   "mode": {
     "rules": {
       "hedge-streak": true,
@@ -957,7 +957,7 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
   "lastRecap": {
     "id": "rcp_demo_0001",
     "endedAt": 1792517868000,
-    "headline": "Hedges ran high: 2.1 per 100 words against your usual 1.4. \"Like\" was down."
+    "headline": "Unsure words ran high: 2.1 per 100 words against your usual 1.4. Filler \"like\" was down."
   },
   "week": {
     "words": 1400,
@@ -966,7 +966,7 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
     "vaguePer100": 0.64,
     "topHabit": {
       "key": "hedges",
-      "label": "hedging",
+      "label": "unsure words",
       "per100": 1.43
     }
   },
@@ -974,7 +974,7 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
     "dueNow": 2,
     "nextCardId": "demo:hedge-i-guess"
   },
-  "transferHeadline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat"
+  "transferHeadline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same"
 }
 ```
 <!-- /fixture -->
@@ -1197,7 +1197,7 @@ The hops come in this order (`NUDGE_HOP_ORDER`):
     "id": "ndg_demo_0001",
     "conversationId": "demo-0000-4000-8000-000000000101",
     "rule": "hedge-streak",
-    "text": "[coach] 5 hedges in 2 min. Say it plainly.",
+    "text": "[coach] 5 unsure words in 2 minutes. Say it plainly.",
     "evidence": {
       "rule": "hedge-streak",
       "value": 5,

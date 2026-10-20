@@ -55,7 +55,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c(!!started && started.payload.replay === true, "conversation.started (replay)");
   const n = sent?.payload.nudge;
   c(n?.rule === "hedge-streak" && n.evidence?.over === true && n.evidence.value >= n.evidence.threshold, "hedge streak -> nudge.sent (rule hedge-streak, evidence over threshold)");
-  c(typeof n?.text === "string" && n.text.startsWith("[coach] ") && n.text.length <= WRIST_TEXT_MAX && /^\[coach\] \d+ hedges in 2 min\. Say it plainly\.$/.test(n.text), "nudge text is generated, <= 60 chars, never transcript text");
+  c(typeof n?.text === "string" && n.text.startsWith("[coach] ") && n.text.length <= WRIST_TEXT_MAX && /^\[coach\] \d+ unsure words in 2 minutes\. Say it plainly\.$/.test(n.text), "nudge text is generated, <= 60 chars, never transcript text");
   const hops = n ? NUDGE_HOP_ORDER.map((k) => n.hops[k] as number) : [];
   c(n && hops.every((x) => typeof x === "number") && hops.every((x, i) => i === 0 || x >= hops[i - 1]!), "nudge hops spokenAt <= beeAt <= detectedAt <= todoAt <= alarmAt");
   c(n && n.latencyMs.bee === n.hops.beeAt - n.hops.spokenAt && n.latencyMs.detect === n.hops.detectedAt - n.hops.beeAt && n.latencyMs.todo === n.hops.todoAt - n.hops.detectedAt && n.latencyMs.total === n.hops.alarmAt - n.hops.spokenAt, "latencyMs are the hop differences");
@@ -67,7 +67,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c(!!sent && !!skipped && !!ended && !!ready && seqOf(sent) < seqOf(skipped) && seqOf(skipped) < seqOf(ended) && seqOf(ended) < seqOf(ready), "order: nudge.sent < nudge.skipped < conversation.ended < recap.ready");
   c(recap?.phrasing === "template" && recap.nudges?.sent === 1 && recap.nudges.skipped >= 1 && recap.delivery?.wrist === "replay" && recap.synthetic === true, "recap.ready: template phrasing, nudges counted, replay delivery");
   c(recap?.moment && recap.moment.text.split(/\s+/).length <= RECAP_MOMENT_MAX_WORDS && recap.moment.rephrase && recap.wristText.startsWith("[coach] ") && recap.wristText.length <= WRIST_TEXT_MAX, "recap moment <= 12 wearer words with a rephrase; wrist text <= 60");
-  c(recap?.metrics?.habits?.find((h: any) => h.key === "hedges")?.verdict === "worse" && /^Hedges ran high/.test(recap.headline), "recap: hedges ran high against the baseline");
+  c(recap?.metrics?.habits?.find((h: any) => h.key === "hedges")?.verdict === "worse" && /^Unsure words ran high/.test(recap.headline), "recap: hedges ran high against the baseline");
 
   // live.window throttle and privacy
   const wins = ctx.tv.events.filter((e) => e.topic === "live.window" && e.payload.window?.conversationId === id);
@@ -85,7 +85,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c((await ctx.get("/api/recaps/rcp_nope")).body?.error === "unknown_recap", "GET /api/recaps/<unknown> -> 404 unknown_recap");
   const now = await ctx.get("/api/coach/now", "GET /api/coach/now (after the story)");
   const sentences = String(now.body.narration ?? "").split(/(?<=\.)\s+/).filter(Boolean);
-  c(now.body.basis === "recap" && now.body.lastRecap?.id === recap?.id && now.body.mode?.enabled === true && sentences.length <= 4 && /^Your last conversation ran high on hedges/.test(now.body.narration) && / First signal, from one conversation and not proof: /.test(now.body.narration), "GET /api/coach/now reflects the recap, with the first signal (<= 4 sentences)");
+  c(now.body.basis === "recap" && now.body.lastRecap?.id === recap?.id && now.body.mode?.enabled === true && sentences.length <= 4 && /^Your last conversation ran high on unsure words/.test(now.body.narration) && / First signal, from one conversation and not proof: /.test(now.body.narration), "GET /api/coach/now reflects the recap, with the first signal (<= 4 sentences)");
   c(JSON.stringify((await ctx.get("/api/coach/now")).body.narration) === JSON.stringify(now.body.narration), "coachNow is deterministic");
   const live1 = await ctx.get("/api/live", "GET /api/live (after the story)");
   c(live1.body.lastRecapId === recap?.id && live1.body.lastNudge?.id === n?.id && live1.body.recentSkips?.[0]?.reason === "cooldown" && live1.body.mode?.sent?.lastHour >= 1, "GET /api/live: last nudge, skips and recap");

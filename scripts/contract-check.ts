@@ -273,7 +273,7 @@ check(one.body.sessions.length === 1, "stats range=session:<id>");
 const tr = await get("/api/transfer", "GET /api/transfer");
 const v = (k: string) => tr.body.habits.find((h: any) => h.habit === k)?.verdict;
 check(tr.body.synthetic === true && v("hedges") === "dropped" && v("filler:like") === "dropped" && v("restart") === "no change", "transfer: drilled hedges and like dropped, control restarts no change (synthetic)");
-check(tr.body.claim === "all-dropped-control-flat" && /control stayed flat/.test(tr.body.headline), "transfer: claim all-dropped-control-flat, as the headline says (synthetic)");
+check(tr.body.claim === "all-dropped-control-flat" && /the one you didn't practise stayed the same/.test(tr.body.headline), "transfer: claim all-dropped-control-flat, as the headline says (synthetic)");
 check(tr.body.unregistered.some((u: any) => u.habit === "vague"), "transfer refuses unregistered drilled habits (vague listed, not reported as drilled)");
 const fsig = (tr.body.firstSignal ?? []) as any[];
 check(JSON.stringify(fsig.map((f) => [f.habit, f.status])) === JSON.stringify([["hedges", "measured"], ["filler:like", "measured"]]) && fsig.every((f) => f.minWords === FIRST_SIGNAL_MIN_WORDS && f.before.words >= f.minWords && f.after.words >= f.minWords && f.after.startMs >= f.firstDrillAt && f.before.startMs < f.firstDrillAt && /not proof/.test(f.note)), "transfer: firstSignal per drilled habit, the conversation before vs the next after its first drill, labelled not proof (synthetic)");

@@ -84,7 +84,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const early = await ctx.get(`/api/attempts/${attemptId}`);
   ctx.check(early.body?.verdictReady === false && early.body?.attempt?.provisional?.source === "alexa", "right after the attempt the verdict is not ready (Alexa's text is provisional)");
   const how = await alexa(envelope("how-did-i-do", { attrs: att.attrs }));
-  ctx.check(how.status === 200 && how.ms < 7000 && /^Bee heard it: a pass\./.test(how.speech), `early HowDidIDo waited for Bee and spoke the verdict in ${how.ms} ms (< 7 s): "${how.speech.slice(0, 40)}..."`);
+  ctx.check(how.status === 200 && how.ms < 7000 && /^Nice, Bee heard it\./.test(how.speech), `early HowDidIDo waited for Bee and spoke the verdict in ${how.ms} ms (< 7 s): "${how.speech.slice(0, 40)}..."`);
   const verified = await tvFrom(tvAt, (e) => e.topic === "attempt.verified" && e.payload.attemptId === attemptId);
   const graded = await tvFrom(tvAt, (e) => e.topic === "attempt.graded" && e.payload.attempt?.id === attemptId);
   ctx.check(verified?.payload.status === "verified" && graded?.payload.attempt.counted === true && graded.payload.attempt.provisional.source === "alexa" && !!graded.payload.attempt.bee.extraText, "the TV saw attempt.verified then attempt.graded (Bee's merged line, extra sentence cut)");
@@ -97,7 +97,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
     const a2 = await alexa(envelope("attempt", { attrs: how.attrs, slot: next.resay }));
     await ctx.sleep(400);
     const rescued = await alexa(envelope("how-did-i-do-in-catch-all", { attrs: a2.attrs }));
-    ctx.check(rescued.speech === `Not yet: Bee heard a filler, "um". Say it again: "${next.resay}"` && rescued.body?.response?.shouldEndSession === false, `"how did I do" said into the catch-all slot is rescued; Bee overrules Alexa's clean transcript: "${rescued.speech.slice(0, 44)}..."`);
+    ctx.check(rescued.speech === `Not yet: Bee heard a filler word, "um". Say it again: "${next.resay}"` && rescued.body?.response?.shouldEndSession === false, `"how did I do" said into the catch-all slot is rescued; Bee overrules Alexa's clean transcript: "${rescued.speech.slice(0, 44)}..."`);
   } else notes.push("only one card was due: the catch-all rescue was not exercised");
   const sseAt = ctx.sse.length;
   const running = !!(await ctx.get("/api/session")).body.session;
