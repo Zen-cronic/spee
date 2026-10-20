@@ -37,6 +37,10 @@ describe("what counts as the product's own copy", () => {
     // demo data is never evidence for another file either (isCopyEvidence filters it before copyPhrasesByOrigin)
     expect(isCopyEvidence("src/hub/demoData.ts")).toBe(false);
   });
+  it("the synthetic Bee world (invented other-speaker lines) is never the product's voice; the dialog simulator is", () => {
+    expect(["src/sim/templates.ts", "src/sim/world.ts", "src/sim/x/y.ts"].some(isCopyEvidence)).toBe(false);
+    expect(["web/sim/src/router.ts", "web/sim/index.html"].every(isCopyEvidence)).toBe(true);
+  });
   it("another copy file's literal, or this file's literals from before the recording, is evidence", () => {
     const copy = copyPhrasesByOrigin([{ path: "src/alexa/skill.ts", text: SKILL }], words);
     expect(productVoice("src/hub/live/engine.ts", copy, () => null)("you can also ask how")).toBe(true);

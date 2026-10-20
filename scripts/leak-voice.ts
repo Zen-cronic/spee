@@ -14,9 +14,10 @@
 //   - it is in a string literal of the same file as it was committed BEFORE the recording started
 //     (git history: words that existed before a conversation cannot be from it), or
 //   - it is in a string literal of another file of the product's spoken and shown copy
-//     (PRODUCT_COPY_RE: the Alexa skill, the simulator, MCP tool text, recap and narration
-//     templates, the TV), never a data or fixture file (NOT_EVIDENCE_RE: demo data, demo scripts,
-//     contract examples, fixtures), and never the file's own synced copy (tv/web and tv/vega).
+//     (PRODUCT_COPY_RE: the Alexa skill, the coach's dialog simulator in web/sim, MCP tool text,
+//     recap and narration templates, the TV), never a data or fixture file (NOT_EVIDENCE_RE: demo
+//     data, demo scripts, contract examples, fixtures, and the synthetic Bee world in src/sim with
+//     its invented other-speaker lines), and never the file's own synced copy (tv/web and tv/vega).
 import { createHash } from "node:crypto";
 
 export const PRODUCT_VOICE = "leak-check-product-voice.txt";
@@ -39,8 +40,8 @@ export function literalTexts(source: string, html = false): string[] {
 
 // The product's spoken and shown copy, and the files that are never evidence (synthetic data that
 // may hold invented other-speaker lines, and fixtures).
-export const PRODUCT_COPY_RE = /^(src\/alexa\/|alexa\/skill-package\/|web\/sim\/|src\/sim\/|src\/mcp\/|src\/hub\/(core|habitNames|failReason|brief|mirror|home)\.ts$|src\/hub\/live\/(recap|engine|rules|policy|wrist|plugin)\.ts$|tv\/web\/src\/|tv\/vega\/src\/)/;
-export const NOT_EVIDENCE_RE = /(^|\/)fixtures?\/|^src\/hub\/(demoData|contractExamples|fixtureV2)\.ts$|^src\/hub\/live\/demoScripts\.ts$|\.test\.tsx?$/;
+export const PRODUCT_COPY_RE = /^(src\/alexa\/|alexa\/skill-package\/|web\/sim\/|src\/mcp\/|src\/hub\/(core|habitNames|failReason|brief|mirror|home)\.ts$|src\/hub\/live\/(recap|engine|rules|policy|wrist|plugin)\.ts$|tv\/web\/src\/|tv\/vega\/src\/)/;
+export const NOT_EVIDENCE_RE = /(^|\/)fixtures?\/|^src\/sim\/|^src\/hub\/(demoData|contractExamples|fixtureV2)\.ts$|^src\/hub\/live\/demoScripts\.ts$|\.test\.tsx?$/;
 // One origin for a file and its synced copies (scripts/tv-sync.ts): tv/vega/src/x is tv/web/src/x,
 // and both apps' contract.ts are src/hub/contract.ts.
 export function voiceOrigin(path: string): string {
