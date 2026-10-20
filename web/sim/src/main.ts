@@ -27,7 +27,7 @@ function token(): string | null {
   const saved = sessionStorage.getItem(TOKEN_KEY);
   if (saved) return saved;
   if (onLan) return null;
-  const asked = prompt("MCP token (the hub prints MCP_TOKEN at startup)")?.trim();
+  const asked = prompt("MCP token (your MCP_TOKEN, or the one in the hub's tokens.json; the hub prints only its last 4 characters)")?.trim();
   if (asked) sessionStorage.setItem(TOKEN_KEY, asked);
   return asked || null;
 }
