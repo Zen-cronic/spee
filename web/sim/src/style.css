@@ -1,5 +1,5 @@
 /* Alexa+ simulator: a light warm sibling of the TV mirror. Lime is the action and the pass;
-   lavender only means "checked by Bee". */
+   --bee only means "checked by Bee" (the TV's C.bee). */
 :root {
   --bg: #efeee9;
   --card: #fbfaf6;
@@ -13,8 +13,9 @@
   --on-dark-dim: #abaaa2;
   --lime: #d7f26a;
   --lime-ink: #1a2006;
-  --lavender: #bbaef7;
-  --lavender-ink: #1d1640;
+  --bee: #8ccfff; /* on dark (the event log) */
+  --bee-ink: #0c2233;
+  --bee-on-light: #1a6aab; /* a bee mark on the light page */
   --ok: #5cae4f;
   --err: #d0573f;
   --warn: #c9a13a;
@@ -187,7 +188,7 @@ h1 {
   color: #f2876e;
 }
 .log li.ev .h {
-  color: var(--lavender);
+  color: var(--bee);
 }
 .log pre {
   margin: 4px 0 2px;
@@ -253,7 +254,7 @@ main {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--lavender);
+  background: var(--bee-on-light);
   margin-right: 8px;
   vertical-align: 1px;
 }
