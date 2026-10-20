@@ -107,6 +107,9 @@ export function paceWord(wpm: number | null, base: number | null): "steady" | "f
 export interface RecapSlots {
   values: Record<string, string>;
   template: { headline: string; narration: string; wristText: string };
+  // The setting's words after each usual ("in meetings"): a phrasing keeps them as they are, so a
+  // served recap can re-word them when the wearer sets another setting (settings.ts rewordRecapSetting).
+  usualWhere?: string;
 }
 // Slot-name stems per habit: {hedges_count}, {like_rate}, {vague_usual}, {restarts_count}.
 export const SLOT_HABIT: Record<RecapKey, string> = { hedges: "hedges", "filler:like": "like", vague: "vague", restart: "restarts" };
@@ -176,7 +179,7 @@ export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots }
   const fill = (t: string) => fillSlots(t, values);
   const narration = fill(narrationT);
   const wristText = clipWrist(fill(wristT));
-  const slots: RecapSlots = { values, template: { headline, narration: narrationT, wristText: wristT } };
+  const slots: RecapSlots = { values, template: { headline, narration: narrationT, wristText: wristT }, ...(i.usualWhere ? { usualWhere: i.usualWhere } : {}) };
   headline = fill(headline);
 
   const recap: Recap = {

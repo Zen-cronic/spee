@@ -16,7 +16,7 @@
 // Bedrock when COACH_RECAP_LLM=1 in live mode. See docs/live.md.
 import { join } from "node:path";
 import { NUDGE_RULES, type DemoLiveResponse, type DemoLiveScript, type LiveModeRequest, type NudgeRule, type Recap, type SettingResponse } from "../contract.js";
-import { isSetting, SettingsBook } from "../settings.js";
+import { isSetting, rewordRecapSetting, SettingsBook } from "../settings.js";
 import { parseSource } from "../stats.js";
 import type { HubPlugin, PluginCtx } from "../plugin.js";
 import { matchRoute } from "../plugin.js";
@@ -67,7 +67,8 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
   // A recap as served: its setting is the wearer's choice when there is one.
   // A recap made before settings existed gets the automatic tag (others heard: talk share under 1).
   const recapTag = (b: SettingsBook, r: Recap) => b.tagRecap(r) ?? b.tagConversation({ conversationId: r.conversationId, startedAt: r.startedAt, endedAt: r.endedAt, otherLines: r.metrics.talkShare != null && r.metrics.talkShare < 1 ? 1 : 0 });
-  const served = (r: Recap): Recap => (book ? { ...r, setting: recapTag(book, r) } : r);
+  // Its headline and narration say where their usual came from when the wearer chose another setting.
+  const served = (r: Recap): Recap => (book ? rewordRecapSetting({ ...r, setting: recapTag(book, r) }) : r);
   let wrist: Wrist | null = null;
 
   const pickWrist = (ctx: PluginCtx): Wrist => {

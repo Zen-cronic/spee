@@ -20,7 +20,7 @@ import type { CoachHub } from "../core.js";
 import { localDate } from "../../real/deck.js";
 import { habitNameOf, PER_100_GLOSS } from "../habitNames.js";
 import { firstSignalSentence } from "../stats.js";
-import { SETTING_NOUN, SETTING_WHERE, type LiveConversation, type SettingBaseline } from "../settings.js";
+import { rewordRecapSetting, SETTING_NOUN, SETTING_WHERE, usualWhereNow, type LiveConversation, type SettingBaseline } from "../settings.js";
 import type { ConversationSetting, SettingTag } from "../contract.js";
 import { computeBaseline, type Baseline } from "./baseline.js";
 import { clockTime, LivePolicy, modeNarration } from "./policy.js";
@@ -478,8 +478,13 @@ export class LiveEngine {
       // The setting, when the recap has one: "Your last conversation, a meeting, ran high on ...",
       // and "against your usual 1.6 in meetings" when the usual was that setting's.
       // Said once: "against your usual 1.6 in meetings" names it, so the apposition is left out then.
-      const where = lastToday.metrics.baselineSetting ? ` ${SETTING_WHERE[lastToday.metrics.baselineSetting]}` : "";
-      const tag = where ? null : (this.o.settings?.tagRecap(lastToday) ?? null);
+      // When the wearer has since chosen another setting, the usual is still the first one's: "your
+      // last conversation, a casual chat, ... against your usual 1.6 from meetings".
+      const now = this.o.settings?.tagRecap(lastToday) ?? null;
+      const bs = lastToday.metrics.baselineSetting;
+      const corrected = !!bs && !!now && now.setting !== bs;
+      const where = usualWhereNow(bs, now?.setting);
+      const tag = where && !corrected ? null : now;
       const lc = tag ? `last conversation, ${SETTING_NOUN[tag.setting]},` : "last conversation";
       lead = worst
         ? `Your ${lc} ran high on ${habitNameOf(worst.key)}: ${worst.count}, or ${f1(worst.per100)} ${PER_100_GLOSS}, against your usual ${f1(worst.baselinePer100 ?? 0)}${where}.`
@@ -489,7 +494,7 @@ export class LiveEngine {
           ? `In your ${lc} you used unsure words less than usual: ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}${where}.`
           : hd && hd.baselinePer100 != null
           ? `Your ${lc} looked typical: unsure words at ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}${where}.`
-          : `Here's your ${tag ? `last conversation, ${SETTING_NOUN[tag.setting]}` : "last conversation"}: ${lastToday.headline}`;
+          : `Here's your ${tag ? `last conversation, ${SETTING_NOUN[tag.setting]}` : "last conversation"}: ${rewordRecapSetting({ ...lastToday, setting: now }).headline}`;
     } else {
       basis = "week";
       lead = top ? `This week, the habit to work on is ${habitNameOf(top.key)}: ${f1(top.per100)} ${PER_100_GLOSS}.` : "Bee hasn't heard enough of you this week to pick a habit yet.";
@@ -508,7 +513,7 @@ export class LiveEngine {
       narration: [lead, signal, week, modeLine].filter(Boolean).join(" "),
       mode,
       live,
-      lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: lastToday.headline, ...(this.o.settings ? { setting: this.o.settings.tagRecap(lastToday)?.setting ?? null } : {}) } : null,
+      lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: this.o.settings ? rewordRecapSetting({ ...lastToday, setting: this.o.settings.tagRecap(lastToday) }).headline : lastToday.headline, ...(this.o.settings ? { setting: this.o.settings.tagRecap(lastToday)?.setting ?? null } : {}) } : null,
       week: { words: h.words, hedgesPer100: h.hedges.per100, likesPer100: per100(h.fillers.breakdown.like ?? 0), vaguePer100: h.vague.per100, topHabit: top ? { key: top.key, label: habitNameOf(top.key), per100: top.per100 } : null },
       drills: { dueNow: due, nextCardId: next?.id ?? null },
       transferHeadline: t?.headline ?? null,

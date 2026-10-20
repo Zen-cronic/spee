@@ -282,8 +282,19 @@ describe("over HTTP (demo hub, synthetic)", () => {
     expect(recap.headline).toMatch(/at work\./);
     const r = await post(`/api/sessions/${recap.conversationId}/setting`, { setting: "casual" });
     expect(r.body).toMatchObject({ id: recap.conversationId, tag: { setting: "casual", source: "you" }, recapIds: [recap.id] });
-    expect((await get(`/api/recaps/${recap.id}`)).body.setting).toMatchObject({ setting: "casual", source: "you" });
+    const served = (await get(`/api/recaps/${recap.id}`)).body;
+    expect(served.setting).toMatchObject({ setting: "casual", source: "you" });
+    // its usual is still work talk's: said as where it came from, not as this conversation's setting
+    expect(served.headline).not.toMatch(/at work/);
+    expect(served.headline).toMatch(/from work talk\./);
+    expect(served.narration).not.toMatch(/at work/);
     const now = (await get("/api/coach/now")).body;
     expect(now.lastRecap.setting).toBe("casual");
+    expect(now.narration).not.toMatch(/at work/);
+    expect(now.narration).toMatch(/a casual chat/);
+    expect(now.narration).toMatch(/from work talk/);
+    // set back to work talk: worded as first written
+    await post(`/api/sessions/${recap.conversationId}/setting`, { setting: "work" });
+    expect((await get(`/api/recaps/${recap.id}`)).body.headline).toBe(recap.headline);
   });
 });

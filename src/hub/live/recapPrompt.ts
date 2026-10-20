@@ -47,7 +47,7 @@ export function recapPrompt(recap: Recap, slots: RecapSlots, principles: Princip
     "You reword a short recap of one conversation for a personal speaking coach.",
     "The wearer reads it on a watch and hears it from a voice assistant. Be warm, direct and brief.",
     "Use only the facts given. Never write a number, in digits or in words (one, once, twice, half...): write the slot instead, in braces, exactly as named in `slots`, e.g. {hedges_rate}. The only number you may write is the unit \"per 100 words\" (or \"out of every 100 words\").",
-    "Keep every slot the template uses. Each sentence with a slot names what it is about: a habit's slots with that habit (unsure words, \"like\", vague answers, starting over), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
+    "Keep every slot the template uses, and keep the setting's words after a usual (\"in meetings\", \"at work\", \"in casual talk\") exactly as the template has them. Each sentence with a slot names what it is about: a habit's slots with that habit (unsure words, \"like\", vague answers, starting over), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
     "Do not invent quotes: quote only the given moment or its rephrase, word for word.",
     "Follow these coaching principles, but never quote or closely paraphrase them:",
     "<principles>",
@@ -177,6 +177,9 @@ export function acceptPhrasing(out: unknown, recap: Recap, slots: RecapSlots, pr
     if ((bare.toLowerCase().match(/\p{L}+/gu) ?? []).some((w) => NUMBER_WORDS.has(w))) return null;
     if (!slotsOnTheirFacts(unquoted(t, allowed))) return null;
   }
+  // The setting's words are kept word for word where the template has them (see RecapSlots.usualWhere).
+  const where = slots.usualWhere?.toLowerCase();
+  if (where && (["headline", "narration"] as const).some((k) => slots.template[k].toLowerCase().includes(where) && !raw[k].toLowerCase().includes(where))) return null;
   const said = new Set([...slotsIn(raw.headline), ...slotsIn(raw.narration)]);
   if ([...slotsIn(slots.template.headline), ...slotsIn(slots.template.narration)].some((n) => !said.has(n))) return null;
   const headline = fillSlots(raw.headline, slots.values);

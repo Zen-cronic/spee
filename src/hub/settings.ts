@@ -31,6 +31,25 @@ export type { ConversationSetting, SettingTag };
 export const SETTING_WHERE: Record<ConversationSetting, string> = { meeting: "in meetings", work: "at work", casual: "in casual talk" };
 // The setting as a noun phrase: "Your last conversation, a meeting, ran high on ...".
 export const SETTING_NOUN: Record<ConversationSetting, string> = { meeting: "a meeting", work: "at work", casual: "a casual chat" };
+// Where a recap's usual came from once the wearer set its conversation to another setting: the number
+// is still that setting's, so "against your usual 1.6 in meetings" becomes "... 1.6 from meetings".
+export const SETTING_FROM: Record<ConversationSetting, string> = { meeting: "from meetings", work: "from work talk", casual: "from casual talk" };
+
+/** The words after a recap's usual now: its setting's, or where it came from when the wearer chose another. */
+export function usualWhereNow(baselineSetting: ConversationSetting | null | undefined, now: ConversationSetting | null | undefined): string {
+  if (!baselineSetting) return "";
+  return ` ${now && now !== baselineSetting ? SETTING_FROM[baselineSetting] : SETTING_WHERE[baselineSetting]}`;
+}
+
+/** A recap as served with its current setting: its "usual in <setting>" re-worded when the wearer set another one. */
+export function rewordRecapSetting<R extends { headline: string; narration: string; setting?: SettingTag | null; metrics: { baselineSetting?: ConversationSetting | null } }>(r: R): R {
+  const bs = r.metrics.baselineSetting;
+  const now = r.setting?.setting;
+  if (!bs || !now || now === bs) return r;
+  const from = SETTING_WHERE[bs];
+  const re = new RegExp(`\\b${from}\\b`, "gi");
+  return { ...r, headline: r.headline.replace(re, SETTING_FROM[bs]), narration: r.narration.replace(re, SETTING_FROM[bs]) };
+}
 // The words a setting needs before its rates are shown or used as a recap's usual (the baseline's minimum).
 export const SETTING_MIN_WORDS = 400;
 export const SETTINGS_FILE = join("live", "settings.json");

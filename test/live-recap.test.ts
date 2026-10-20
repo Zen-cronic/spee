@@ -240,6 +240,12 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
     expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in casual talk.", "In casual talk it ran about {minutes} minutes.")).toBeNull(); // the only "talk" is the setting's
     expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in casual talk.", "The talk ran about {minutes} minutes.")).not.toBeNull();
   });
+  it("a phrasing keeps the setting's words after a usual, so a served recap can re-word them", () => {
+    const one: RecapSlots = { values: { hedges_rate: "1.5", hedges_usual: "1.4", minutes: "4", hedges_count: "3", like_count: "0", vague_count: "0", restarts_count: "0" }, template: { headline: "Unsure words at {hedges_rate} per 100 words, against your usual {hedges_usual} in meetings.", narration: "That conversation ran about {minutes} minutes.", wristText: "[coach] Recap" }, usualWhere: "in meetings" };
+    const h = (headline: string) => acceptPhrasing({ headline, narration: one.template.narration, wristText: one.template.wristText }, { moment: null } as never, one, principles);
+    expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in meetings.")).not.toBeNull();
+    expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} for calls.")).toBeNull();
+  });
   it("the template is an accepted phrasing in every branch: worse, clean, better, typical, long turn, no baseline", () => {
     const window = (said: string[]) => {
       const w = new ConversationWindow("c", T0, true);
