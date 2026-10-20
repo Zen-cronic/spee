@@ -54,7 +54,7 @@ describe("live routes (demo hub)", () => {
     expect(on.status).toBe(200);
     expect(on.body.mode).toMatchObject({ enabled: true, by: "alexa", reason: "on" });
     expect(on.body.mode.expiresAt - on.body.mode.since).toBe(3_600_000);
-    expect(on.body.narration).toBe("Live coaching is on for 60 minutes. I'll tap your wrist if a habit keeps coming up.");
+    expect(on.body.narration).toBe("Live coaching is on for 60 minutes. I'll set a reminder on your wrist if a habit keeps coming up.");
     expect(events.at(-1)).toMatchObject({ topic: "live.mode", payload: { mode: { enabled: true } } });
   });
   it("POST /api/demo/live: bad script 400; story 202, then the events and the recap", async () => {

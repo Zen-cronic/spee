@@ -191,7 +191,7 @@ export class LivePolicy {
 export function modeNarration(m: LiveMode, tz?: string): string {
   if (m.enabled) {
     const mins = m.expiresAt != null && m.since != null ? Math.round((m.expiresAt - m.since) / 60_000) : MODE_DEFAULT_MINUTES;
-    return `Live coaching is on for ${mins} minutes. I'll tap your wrist if a habit keeps coming up.`;
+    return `Live coaching is on for ${mins} minutes. I'll set a reminder on your wrist if a habit keeps coming up.`;
   }
   if (m.reason === "expired") return "Live coaching switched itself off when its time ran out.";
   if (m.reason === "wrist-down") return "Live coaching switched itself off because Bee couldn't reach your wrist.";

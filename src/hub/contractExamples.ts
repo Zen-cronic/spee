@@ -54,7 +54,7 @@ export const modeOn: LiveMode = { ...modeBase, enabled: true, since: MODE_ON_AT,
 const modeOnAfterNudge: LiveMode = { ...modeOn, sent: { lastHour: 1, today: 1 } };
 export const modeOff: LiveMode = { ...modeBase, enabled: false, since: null, expiresAt: null, changedAt: E + sec(1200), by: "alexa", reason: "off", sent: { lastHour: 1, today: 1 } };
 
-export const liveModeOn: LiveModeResponse = { mode: modeOn, narration: "Live coaching is on for 60 minutes. I'll tap your wrist if a habit streaks." };
+export const liveModeOn: LiveModeResponse = { mode: modeOn, narration: "Live coaching is on for 60 minutes. I'll set a reminder on your wrist if a habit keeps coming up." };
 export const liveModeOff: LiveModeResponse = { mode: modeOff, narration: "Live coaching is off. I'll still recap your conversations." };
 
 // The live window

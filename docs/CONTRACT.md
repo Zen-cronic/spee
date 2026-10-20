@@ -844,7 +844,7 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
       "today": 0
     }
   },
-  "narration": "Live coaching is on for 60 minutes. I'll tap your wrist if a habit streaks."
+  "narration": "Live coaching is on for 60 minutes. I'll set a reminder on your wrist if a habit keeps coming up."
 }
 ```
 <!-- /fixture -->
