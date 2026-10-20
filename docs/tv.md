@@ -72,27 +72,44 @@ vega run-app tv/vega/build/x86_64-release/speakingmirror_x86_64.vpkg com.beecoac
 
 ### Real Fire TV stick
 
-Not yet run on hardware (see the status below). The steps:
+First run on hardware 2026-10-20 (Fire TV Stick, `armv7l`, Vega OS 2.0 "TV Ship/63"), connected over Wi-Fi. The steps:
 
 1. **Developer mode (once; a browser sign-in, so the operator does it).**
    - On the stick: Settings → My Fire TV → About, highlight the device name and press the centre button 7 times.
    - Settings → My Fire TV → Developer Options → Developer Mode → Continue. A 6-digit code appears; it expires in 5 minutes.
    - On the dev machine: `vega devmode login` (signs in with the Amazon developer account), then `vega devmode enable-device --code <code>`. The stick reboots.
-2. **Connect over USB.** A USB-C *data* cable (a charge-only cable shows nothing). Then `vega device list` for the serial, `vega device info` for the architecture (`aarch64` or `armv7`), and `vega exec vda shell cat /etc/os-release` for the OS version (the manifest needs 1.2 or later; current sticks ship Vega 2.0).
-3. **Run over USB with the reverse forward.** The app keeps dialling `127.0.0.1:8791`, the hub sees it as local, and no `--lan` is needed:
+2. **Connect the stick to the dev machine.** The stick has one USB-C port, and it is the power port, so there are two ways:
+   - **Wi-Fi (used here; the stick stays on wall power and HDMI).**
+     1. Settings → My Fire TV → About → Network: note the stick's IP address. The stick and the dev machine must be on the same Wi-Fi, and `ping <stick IP>` must answer.
+     2. Settings → My Fire TV → Developer Options → **Connection Mode → TCP/IP**. The stick reboots.
+     3. `vega exec vda connect <stick IP>:5555`, then `vega exec vda devices` lists `<stick IP>:5555  device`. Use `<stick IP>:5555` wherever a step below says `-d <device>`.
+   - **USB.** Move the stick's USB-C power cable from the wall adapter to the dev machine (a data-capable cable, no hub, not through a monitor). The cable then carries power and data; a weak laptop port can make the stick reboot in a loop. `vega device list` gives the serial.
+   - Either way, `vega device info -d <device>` gives the architecture (`aarch64` or `armv7l`) and `vega exec vda -s <device> shell cat /etc/os-release` the OS version (the manifest needs 1.2 or later).
+3. **Run the app with the reverse forward.** The app dials `127.0.0.1:8791`; the reverse forward also works over Wi-Fi, so the hub sees the stick as local and no `--lan` is needed:
 
    ```bash
    npm run tv:vega:build
    npm run hub -- --demo                # or `npm run hub` for live Bee
-   vega device start-port-forwarding -d <serial> --port 8791 --forward false
-   vega device terminate-app -d <serial> --appName com.beecoach.mirror.main
-   vega run-app tv/vega/build/<arch>-release/speakingmirror_<arch>.vpkg com.beecoach.mirror.main -d <serial>
+   vega device start-port-forwarding -d <device> --port 8791 --forward false
+   vega device terminate-app -d <device> --appName com.beecoach.mirror.main
+   vega run-app tv/vega/build/<arch>-release/speakingmirror_<arch>.vpkg com.beecoach.mirror.main -d <device>
    ```
 
+   On this stick `<arch>` is `armv7` (`speakingmirror_armv7.vpkg`).
 4. **Pair the phone and check.** Scan the TV's QR with the phone on the same Wi-Fi (the QR carries `#k=`, so a LAN phone gets in without `--lan`). Run one drill (provisional → checking with Bee → graded) and one practice take (meters move), then Right/OK across the tabs and Back to exit. If the phone cannot connect, restart the hub with `--lan` (home Wi-Fi only).
-5. **Cable-free (later).** `vega exec vda tcpip 5555` and `vega exec vda connect <stick IP>:5555`; set the hub address with `npm --prefix tv/vega run hub -- <LAN IP>:8791`, rebuild and reinstall, and start the hub with `npm run hub -- --lan`.
 
-**Status on 2026-10-16 (EDT).** The build succeeded: three vpkgs of about 276 kB each, and `manifest validation found 0 errors`. On the VVD the app installed and launched, joined the hub over the reverse forward, fetched stats and transfer over HTTP, and rendered every screen in the table above. Remote navigation worked (Right and OK moved between the tabs). The live story, the recap overlay and a practice take all switched screens by themselves. A real stick has not been tried yet. That needs `vega devmode`, which is the operator's browser login.
+**Troubleshooting (seen on the first run).**
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `vega device list` → "No devices found" with a USB-C cable plugged in | The cable linked the monitor to the laptop, not the stick; `lsusb` showed no Lab126 device | Use Wi-Fi (step 2), or the stick's own USB-C port straight to the laptop |
+| `vda connect <IP>:5555` → "Connection refused" while `ping` answers | The stick was in USB connection mode, so nothing listened on 5555 | Developer Options → Connection Mode → TCP/IP; it reboots; connect again (it answered on the second try, about 10 s after the reboot) |
+| `vda connect` times out | Different networks, or the Wi-Fi blocks device-to-device traffic | Same Wi-Fi for both; a phone hotspot works as a fallback |
+| `lsusb` shows Lab126 but `vda devices` is empty (USB) | Linux USB permissions | Add the udev rule for vendor `1949` (Amazon's VDA troubleshooting page), be in `plugdev`, restart VDA |
+| The stick stops responding in TCP/IP mode | Known Vega issue | Developer Options → Connection Mode → USB, then `vega exec vda usb` |
+| The address changes after a router restart | DHCP | Reserve the stick's IP for its Wi-Fi MAC in the router |
+
+**Status.** 2026-10-16: built (three vpkgs of about 276 kB, `manifest validation found 0 errors`) and verified on the VVD: it joined the hub over the reverse forward, fetched stats and transfer, rendered every screen, and remote navigation worked. 2026-10-20: installed and launched on a real stick over Wi-Fi against the live hub.
 
 ## How it is built
 
