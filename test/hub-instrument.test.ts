@@ -15,12 +15,12 @@ const SAY = "The export finished and I guess the totals match, like, the ledger 
 const many = (s: string, n: number) => new Array(n).fill(s);
 
 describe("instrumentReport", () => {
-  it("no pairs, then too little data, then agreement on the practised habits and a difference on um/uh", () => {
+  it("no pairs, then too little data, then similar numbers on the practised habits and a difference on um/uh", () => {
     expect(instrumentReport([session("b", "conversation", T, many(SAY, 20))], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true }).claim).toBe("no-pairs");
     const short = instrumentReport([session("m", "meeting", T, [SAY]), session("b", "conversation", T + 60_000, [SAY])], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
     expect(short.claim).toBe("too-little-data");
     expect(short.habits.every((h) => h.agree === null)).toBe(true);
-    const cap = many(SAY, 20);
+    const cap = many(SAY, 60); // 1,020 words, 60 of each practised habit
     const bee = cap.map((t, i) => (i % 2 ? `Um, ${t}` : t));
     const r = instrumentReport([session("meet-1", "meeting", T, cap), session("bee-1", "conversation", T + 120_000, bee), session("bee-far", "conversation", T + 5 * 3600_000, many("Unrelated words here.", 30))], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
     expect(r.pairs).toBe(1);
@@ -31,6 +31,8 @@ describe("instrumentReport", () => {
     expect(h.hedges!.agree).toBe(true);
     expect(h["filler:like"]!.agree).toBe(true);
     expect(h["um-uh"]!.agree).toBe(false);
+    expect(h.hedges!.captions).toMatchObject({ count: 60 });
+    expect(h.hedges!.captions.ci95[0]).toBeLessThan(h.hedges!.captionsPer100);
     expect(h["um-uh"]!.beePer100).toBeGreaterThan(h["um-uh"]!.captionsPer100);
     // aggregates only: no line text and no session id leaves the report
     const out = JSON.stringify(r);
@@ -47,6 +49,23 @@ describe("instrumentReport", () => {
     expect(r.note).not.toMatch(/start time only/);
     const weak = instrumentReport([session("m", "meeting", T, many(SAY, 20)), session("b", "conversation", T + 60_000, many(SAY, 20))], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
     expect(weak.note).toMatch(/1 of the 1 matched by start time only, a weaker match/);
+  });
+  it("one short meeting is too little to compare, though the point rates match (11 against 11 unsure words)", () => {
+    const line = "The export finished and I guess the totals match the ledger we keep for the whole team today and tomorrow and next week too, right on time and on budget again, okay.";
+    const plain = "The export finished and the totals match the ledger we keep for the whole team today and tomorrow and next week too, right on time and on budget again, okay then.";
+    const texts = [...many(line, 11), ...many(plain, 9)];
+    const r = instrumentReport([session("m", "meeting", T, texts), session("b", "conversation", T + 60_000, texts)], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: false });
+    expect(r.words.captions).toBeGreaterThan(INSTRUMENT_MIN_WORDS);
+    expect(r.words.captions).toBeLessThan(1000);
+    expect(r.habits.find((h) => h.habit === "hedges")).toMatchObject({ captions: { count: 11 }, bee: { count: 11 }, agree: null });
+    expect(r.claim).toBe("too-little-data");
+  });
+  it("captions copied from Bee's own lines (the synthetic demo) are never compared", () => {
+    const cap = { ...session("meet-1", "meeting", T, many(SAY, 60)), copyOf: "bee-1" };
+    const r = instrumentReport([cap, session("bee-1", "conversation", T + 120_000, many(SAY, 60))], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
+    expect(r.habits.every((h) => h.agree === null)).toBe(true);
+    expect(r.claim).toBe("too-little-data");
+    expect(r.note).toMatch(/copied from Bee's own lines/);
   });
   it("tolerance: an absolute floor for small rates and a share of the higher rate", () => {
     expect(ratesAgree(1.62, 1.57)).toBe(true);
@@ -80,11 +99,12 @@ describe("captionsLine (TV)", () => {
       ["Filler “like”", "3.0", "0.9", false],
       ["Starting over", "0.8", "0.9", false],
     ]);
-    expect(l.agree).toBe("Captions and Bee agree on unsure words and filler “like” (1 meeting both heard)");
+    expect(l.agree).toBe("On 1 meeting both heard, captions and Bee gave similar numbers for unsure words and filler “like”");
     expect(JSON.stringify(l)).not.toMatch(/filler words|“um”|uh/i);
   });
-  it("says agreement only when the instrument check finds it; an unchecked control is marked", () => {
-    for (const c of ["practised-differ", "too-little-data", "no-pairs"] as const) expect(captionsLine(all(1), inst(c))!.agree).toBeNull();
+  it("says similar numbers only when the instrument check finds it, too little data when so; an unchecked control is marked", () => {
+    for (const c of ["practised-differ", "no-pairs"] as const) expect(captionsLine(all(1), inst(c))!.agree).toBeNull();
+    expect(captionsLine(all(1), inst("too-little-data"))!.agree).toBe("Captions and Bee: too little data to compare yet (1 meeting both heard)");
     expect(captionsLine(all(1), null)!.agree).toBeNull();
     expect(captionsLine(all(1), inst("practised-agree", null))!.habits.find((h) => h.habit === "restart")!.unchecked).toBe(true);
     expect(captionsLine(all(1), null)!.label).toBe("1 captioned meeting since Sep 22 · not the pre-registered check");
@@ -99,7 +119,8 @@ describe("GET /api/instrument on the demo hub", () => {
   afterAll(async () => s.close());
   it("pairs the synthetic stand-up's captions with its Bee conversation, aggregates only; the Bee-only transfer is unchanged", async () => {
     const r = (await (await fetch(`${s.url}/api/instrument`)).json()) as InstrumentResponse;
-    expect(r).toMatchObject({ synthetic: true, pairs: 1, from: "2026-10-13", claim: "practised-agree" });
+    // the demo's captions are copies of Bee's lines: never shown as agreeing
+    expect(r).toMatchObject({ synthetic: true, pairs: 1, from: "2026-10-13", claim: "too-little-data" });
     expect(r.dataLabel).toMatch(/SYNTHETIC/);
     expect(JSON.stringify(r)).not.toMatch(/demo-(bee|meet)-/);
     const bee = (await (await fetch(`${s.url}/api/transfer`)).json()) as TransferResponse;

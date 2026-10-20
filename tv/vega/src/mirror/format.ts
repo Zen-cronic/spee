@@ -360,8 +360,9 @@ export function firstSignalText(f: SignalIn): { text: string; measured: boolean 
  * (`/api/transfer?source=all`), never the pre-registered result. Null without a caption session.
  * Only the habits captions are shown to transcribe like Bee are listed: the practised ones (unsure
  * words, filler "like") and the one you didn't practise; filler words and "um"/"uh" are left out,
- * because captions miss some of them. `agree` is said only when the hub's instrument check finds the
- * practised habits within its tolerance on meetings both heard; otherwise it is null and not shown.
+ * because captions miss some of them. `agree` says captions and Bee gave similar numbers only when the
+ * hub's instrument check finds it on the practised habits (enough of each, overlapping intervals);
+ * with too little data it says so; when they differ, or with no meeting both heard, it is null.
  */
 export interface CaptionsLine {
   label: string;
@@ -380,7 +381,13 @@ export function captionsLine(all: TransferResponse | null | undefined, inst: Ins
     .filter((h) => (h.role === 'drilled' ? CAPTION_STABLE.includes(h.habit) : true))
     .map((h) => ({ habit: h.habit, title: habitTitle(h.habit, h.label), before: fmt1(h.before.per100), after: fmt1(h.after.per100), role: h.role, unchecked: h.role !== 'drilled' && !agreeOn(h.habit) }));
   const n = inst?.pairs ?? 0;
-  const agree = inst?.claim === 'practised-agree' ? curly(`Captions and Bee agree on unsure words and filler "like" (${n} meeting${n === 1 ? '' : 's'} both heard)`) : null;
+  const meetings = `${n} meeting${n === 1 ? '' : 's'} both heard`;
+  const agree =
+    inst?.claim === 'practised-agree'
+      ? curly(`On ${meetings}, captions and Bee gave similar numbers for unsure words and filler "like"`)
+      : inst?.claim === 'too-little-data' && n > 0
+        ? `Captions and Bee: too little data to compare yet (${meetings})`
+        : null;
   return { label, habits, agree };
 }
 

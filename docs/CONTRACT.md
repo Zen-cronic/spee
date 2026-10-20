@@ -142,7 +142,7 @@ Habit keys are used by stats, transfer and the pre-registration file:
 | `POST /api/card/open` `{cardId?, by?}` | any | opens a card outside a session (practice; a card that is not due changes no box on a pass) |
 | `GET /api/stats?range=today\|week\|all\|session:<id>\|meeting:<id>&source=bee\|all` | TV | habit rates per 100 words with 95% intervals, practice counts (`null` for a `session:` or `meeting:` range, which is echoed back as asked), drilled-vs-next-session glance |
 | `GET /api/transfer?source=bee\|all&habit=<key>?` | TV, Alexa | the transfer result: drilled vs the pre-registered control |
-| `GET /api/instrument` | TV | Bee vs meeting captions on the meetings both heard: pooled rates per habit and whether they agree (aggregates only) |
+| `GET /api/instrument` | TV | Bee vs meeting captions on the meetings both heard: pooled counts, rates and 95% intervals per habit, and whether they gave similar numbers (aggregates only) |
 | `GET /api/brief` | Alexa, TV | pre-meeting nudge: next calendar event (Bee today brief), top habit, one warm-up card |
 | `GET /api/events` | Alexa simulator, TV web | Server-Sent Events: the same events as the WebSocket |
 | `GET /api/events/recent` | debugging | the last 50 events |
@@ -391,7 +391,7 @@ A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) 
 
 **Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("2 captioned meetings since Oct 14"). A meeting that Bee also heard (paired by `pairMeetings`) is counted once in every `source=all` view: from Bee when Bee heard most of it (Bee's wearer words at least half the captions' words, or Bee's lines spanning at least 70% of the meeting), so its caption session is left out; otherwise from the captions, with Bee's lines inside the meeting left out (`meetingDedup`).
 
-**Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee agree only when `GET /api/instrument` has `claim: "practised-agree"`.
+**Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee gave similar numbers only when `GET /api/instrument` has `claim: "practised-agree"` (too little data to compare with `too-little-data`).
 
 ### `GET /api/instrument` (Bee vs captions; aggregates only)
 
@@ -399,20 +399,21 @@ Each meeting caption session is paired with every Bee conversation that overlaps
 
 ```json
 { "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)", "synthetic": true, "generatedAt": "2026-10-20T17:36:28.459Z",
-  "pairs": 1, "from": "2026-10-13", "to": "2026-10-13", "words": { "captions": 314, "bee": 316 }, "minWords": 200,
+  "pairs": 1, "from": "2026-10-13", "to": "2026-10-13", "words": { "captions": 314, "bee": 316 }, "minWords": 200, "minCount": 20, "enoughWords": 1000,
   "tolerance": { "per100": 0.3, "relative": 0.15 },
   "habits": [
-   { "habit": "hedges", "captionsPer100": 2.55, "beePer100": 2.53, "agree": true },
-   { "habit": "filler:like", "captionsPer100": 2.87, "beePer100": 2.85, "agree": true },
-   { "habit": "restart", "captionsPer100": 0.64, "beePer100": 0.63, "agree": true },
-   { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.63, "agree": false },
-   { "habit": "fillers", "captionsPer100": 2.87, "beePer100": 3.48, "agree": false } ],
-  "claim": "practised-agree",
-  "note": "the same meetings heard by Bee and by the meeting's captions, Bee's lines cut to each meeting's time, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only." }
+   { "habit": "hedges", "captionsPer100": 2.55, "beePer100": 2.53, "captions": { "count": 8, "ci95": [1.1, 5.02] }, "bee": { "count": 8, "ci95": [1.09, 4.99] }, "agree": null },
+   { "habit": "filler:like", "captionsPer100": 2.87, "beePer100": 2.85, "captions": { "count": 9, "ci95": [1.31, 5.44] }, "bee": { "count": 9, "ci95": [1.3, 5.41] }, "agree": null },
+   { "habit": "restart", "captionsPer100": 0.64, "beePer100": 0.63, "captions": { "count": 2, "ci95": [0.07, 2.3] }, "bee": { "count": 2, "ci95": [0.07, 2.29] }, "agree": null },
+   { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.63, "captions": { "count": 0, "ci95": [0, 1.17] }, "bee": { "count": 2, "ci95": [0.07, 2.29] }, "agree": null },
+   { "habit": "fillers", "captionsPer100": 2.87, "beePer100": 3.48, "captions": { "count": 9, "ci95": [1.31, 5.44] }, "bee": { "count": 11, "ci95": [1.74, 6.23] }, "agree": null } ],
+  "claim": "too-little-data",
+  "note": "the same meetings heard by Bee and by the meeting's captions, Bee's lines cut to each meeting's time, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only. 1 of the 1 have synthetic captions copied from Bee's own lines, so the two are not compared." }
 ```
 
-- `agree`: the two rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. It is `null` until the pairs have `minWords` words on each side.
-- `claim`: `practised-agree` (unsure words and filler "like" both agree), `practised-differ`, `too-little-data` or `no-pairs`. Only `practised-agree` lets a screen say captions and Bee agree.
+- `captions` and `bee` (additive): each side's count of the habit and its 95% interval per 100 words (Poisson, Byar).
+- `agree`: `null` (not compared) until both sides have at least `minCount` of the habit or `enoughWords` words (and `minWords` at the least). Then `true` only when the two intervals overlap and the rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. Captions copied from Bee's own lines (the synthetic demo) are never compared.
+- `claim`: `practised-agree` (unsure words and filler "like" both agree), `practised-differ`, `too-little-data` (either practised habit not compared) or `no-pairs`. Only `practised-agree` lets a screen say captions and Bee gave similar numbers; with `too-little-data` the TV says there is too little data to compare.
 
 ### `GET /api/brief`
 

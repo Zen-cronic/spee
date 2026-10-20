@@ -180,7 +180,7 @@ export function buildSessions(): StatSession[] {
     }
     // A conversation ends about 20 s per sentence after it starts (the instrument check's overlap).
     const endMs = p.kind === "conversation" ? startMs + text.length * 20_000 : undefined;
-    return { id: p.id, kind: p.kind, startMs, ...(endMs ? { endMs } : {}), lines, timeline, synthetic: true, ...(p.speakers ? { speakers: p.speakers } : {}) };
+    return { id: p.id, kind: p.kind, startMs, ...(endMs ? { endMs } : {}), lines, timeline, synthetic: true, ...(p.speakers ? { speakers: p.speakers } : {}), ...(p.captionsOf ? { copyOf: p.captionsOf } : {}) };
   }).sort((a, b) => a.startMs - b.startMs);
 }
 

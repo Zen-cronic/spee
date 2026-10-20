@@ -38,8 +38,8 @@ Counts and 95% intervals behind two of those rows (one meeting):
 
 ## On the TV and in the hub
 
-- `GET /api/instrument` runs the same pairing over the sessions the hub has loaded and returns aggregates only: pooled rates per habit, whether the two transcribers agree within a small tolerance, and a claim (`docs/CONTRACT.md`). Its note says how many pairs were matched by start time only.
-- Progress shows, under the Bee-only cards, a secondary "Including meeting captions" line: the same before and after from `GET /api/transfer?source=all`, for the practised habits and the one you didn't practise, with the number of captioned meetings it counts and the earliest date (a meeting Bee also heard counts as Bee's, not as a captioned meeting). It says "not the pre-registered check", leaves filler words out, and says that captions and Bee agree only when `/api/instrument` finds the practised habits within tolerance.
+- `GET /api/instrument` runs the same pairing over the sessions the hub has loaded and returns aggregates only: pooled counts, rates and 95% intervals per habit, whether the two transcribers gave similar numbers (only with at least 20 of the habit or 1,000 words on each side, overlapping intervals and a small tolerance; one short meeting is "too little data to compare"), and a claim (`docs/CONTRACT.md`). Its note says how many pairs were matched by start time only.
+- Progress shows, under the Bee-only cards, a secondary "Including meeting captions" line: the same before and after from `GET /api/transfer?source=all`, for the practised habits and the one you didn't practise, with the number of captioned meetings it counts and the earliest date (a meeting Bee also heard counts as Bee's, not as a captioned meeting). It says "not the pre-registered check", leaves filler words out, and says that captions and Bee gave similar numbers only when `/api/instrument` finds it on the practised habits; otherwise it says there is too little data to compare.
 
 ## Run it
 

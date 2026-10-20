@@ -6,8 +6,9 @@ import { C, F, SP, T } from '../theme';
 /**
  * Progress's secondary strip: the same before/after with meeting captions included, labelled as not
  * the pre-registered check (which stays Bee only, in the cards above). Hidden without a caption
- * session. The agreement line shows only when the hub's instrument check says captions and Bee
- * agree on the practised habits. Siblings, never nested Text (Vega tracking).
+ * session. The comparison line says captions and Bee gave similar numbers only when the hub's
+ * instrument check finds it on the practised habits, and says when there is too little data to
+ * compare. Siblings, never nested Text (Vega tracking).
  */
 export function CaptionsLine({ all, instrument }: { all: TransferResponse | null; instrument: InstrumentResponse | null }) {
   const line = captionsLine(all, instrument);

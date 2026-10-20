@@ -883,7 +883,8 @@
      }
     ]
    },
-   "synthetic": true
+   "synthetic": true,
+   "copyOf": "demo-bee-1013"
   },
   {
    "id": "demo-bee-1014",

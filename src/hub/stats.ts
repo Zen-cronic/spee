@@ -35,6 +35,7 @@ export interface StatSession {
   lines: StatLine[];
   timeline?: MeetingTimeline;
   synthetic?: boolean;
+  copyOf?: string; // a synthetic caption session made from this Bee session's lines (demoData.ts)
   // Distinct speakers heard, the wearer included: a count from the session's counts (SessionStats
   // `speakers`, else 2 when it has lines that are not the wearer's), never anyone's words.
   // Undefined when unknown. Used only to guess the conversation's setting (src/hub/settings.ts).
