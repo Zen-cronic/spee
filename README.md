@@ -6,6 +6,7 @@ Bee hears you use four unsure words ("I guess", "maybe", "kind of") in two minut
 
 - **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins. Bee's live wearer tag named the wearer on 8 of 9 lines when we measured it on 2026-10-16 (FL-8 in `FRICTION_LOG.md`), so the coach does not guess who spoke.
 - **Fixed word lists count the habits; deterministic code grades and decides.** A model only drafts vague-answer practice lines and, when you turn it on, rewords a recap. Unsure words ("I guess", "maybe", "kind of") and the filler "like" are the hero habits: the two you practise, pre-registered in `prereg/transfer.json` (keys `hedges` and `filler:like`). Vague answers and the other filler words ("um", "uh", "you know") are tracked too, and repeating words, like "the the" (key `restart`), is the one habit you don't practise, kept for comparison.
+- **An Agent Skill for on-wrist coaching.** `skills/speaking-coach/SKILL.md` lets an agent ask how your speaking is going, warm you up before a meeting, show your goal in Bee, and send one if-then cue to your wrist 8 to 12 minutes before a meeting, through the hub's capped wrist queue (`node skills/speaking-coach/scripts/coach.mjs heartbeat`).
 - **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator; Speaking Mirror's Alexa skill is called Speech Coach), Fire TV (a Vega app) and a phone page (drills and practice meters).
 
 ## Start here (no accounts, no keys, about 2 minutes)
@@ -118,6 +119,7 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
 - `web/phone/`: the phone page. `web/sim/`: the Alexa+ simulator (a browser MCP client).
 - `docs/`: the hub contract (`docs/CONTRACT.md`), `tv.md`, `alexa.md`, `live.md`, and [`poc.md`](docs/poc.md) (the proof of concept this grew from).
 - `FACTS.md`: the claims ledger that `test/claims.test.ts` checks.
+- `skills/speaking-coach/`: the Agent Skill (`skills/speaking-coach/SKILL.md` and its one script, `skills/speaking-coach/scripts/coach.mjs`).
 - `fixtures/demo/`: synthetic demo fixtures. `prereg/transfer.json`: the transfer pre-registration. `coach/principles.template.md`: the generic coaching principles.
 - `scripts/`: the hub tools (`contract-check.ts`, `demo-replay.ts`, `hub-cards.ts`, `wrist-probe.ts`, `alexa-deploy.ts`, `tv-sync.ts`, `leak-check.ts`) and the PoC tools (see `docs/poc.md`).
 - `src/bee/`, `src/analyze/`, `src/coach/`, `src/sim/`, `src/eval/`, `src/report/`, `src/real/`: the proof-of-concept pipeline (see `docs/poc.md`).
