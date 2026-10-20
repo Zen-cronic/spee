@@ -117,10 +117,10 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
       const recap = await sseFrom(sseAt, (e) => e.topic === "recap.ready", 30_000);
       const now = await ctx.get("/api/coach/now");
       const h = await alexa(envelope("how-am-i-doing"));
-      ctx.check(!!recap && now.body.lastRecap?.id === recap.payload.recap.id && h.speech === clip(now.body.narration, 3), "HowAmIDoing speaks /api/coach/now, which reflects the demo conversation's recap (plan item 3)");
+      ctx.check(!!recap && now.body.lastRecap?.id === recap.payload.recap.id && h.speech === clip(now.body.narration, 4), "HowAmIDoing speaks /api/coach/now, which reflects the demo conversation's recap (plan item 3)");
     } else {
       const h = await alexa(envelope("how-am-i-doing"));
-      ctx.check(h.speech === clip(coach.body.narration, 3), "HowAmIDoing speaks GET /api/coach/now");
+      ctx.check(h.speech === clip(coach.body.narration, 4), "HowAmIDoing speaks GET /api/coach/now");
       notes.push(`POST /api/demo/live answered ${demo.status}: the recap half of plan item 3 is waiting`);
     }
     const sseMode = ctx.sse.length;

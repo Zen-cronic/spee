@@ -916,7 +916,7 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
 
 ### `GET /api/coach/now` (Alexa: "how am I doing?"; MCP `how_am_i_doing`)
 
-The narration is deterministic, with at most 3 sentences. It leads with the live conversation (`basis: "live"`), else the last recap of the day (`"recap"`), else the week (`"week"`). It then adds the week's top habit, due drills and the live-mode status.
+The narration is deterministic, with at most 4 sentences. It leads with the live conversation (`basis: "live"`), else the last recap of the day (`"recap"`), else the week (`"week"`). Then, only when a drilled habit has a next conversation since its first drill, one sentence with the first signal (`GET /api/transfer` `firstSignal`; "too short to compare" instead of a number when a side has under 100 words). It then adds the week's top habit, due drills and the live-mode status.
 
 <!-- fixture: coach-now.json -->
 ```json
@@ -925,7 +925,7 @@ The narration is deterministic, with at most 3 sentences. It leads with the live
   "synthetic": true,
   "generatedAt": 1792517913000,
   "basis": "recap",
-  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  "narration": "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2.6 to 0.8 and \"like\" from 3.2 to 0.8 per 100 words. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
   "mode": {
     "rules": {
       "hedge-streak": true,

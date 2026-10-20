@@ -1,6 +1,6 @@
 // Speech helpers (packet C): short, deterministic, SSML-safe lines. Everything the skill composes is
 // at most 2 sentences; a hub narration passed through keeps the contract's own limit (CoachNow
-// narration is at most 3 sentences). Quoted card sentences count as part of the sentence quoting
+// narration is at most 4 sentences). Quoted card sentences count as part of the sentence quoting
 // them. Pure.
 import type { GradeResult } from "../hub/contract.js";
 

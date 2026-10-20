@@ -18,6 +18,7 @@ import type { BeeConversationEvent, BeeLine } from "../bee.js";
 import type { CoachNow, ConversationEnded, LiveModeRequest, LiveModeResponse, LiveState, Nudge, NudgeSkipped, Recap, SequencedTopic } from "../contract.js";
 import type { CoachHub } from "../core.js";
 import { localDate } from "../../real/deck.js";
+import { firstSignalSentence } from "../stats.js";
 import { computeBaseline, type Baseline } from "./baseline.js";
 import { clockTime, LivePolicy, modeNarration } from "./policy.js";
 import type { Principles } from "./principles.js";
@@ -463,12 +464,14 @@ export class LiveEngine {
     const week = basis === "week" ? `${drills[0]!.toUpperCase()}${drills.slice(1)}.` : top ? `This week you are at ${f1(top.per100)} ${NOUN[top.key]} per 100 words, and ${drills}.` : `${drills[0]!.toUpperCase()}${drills.slice(1)}.`;
     const modeLine = mode.enabled && mode.expiresAt != null ? `Live coaching is on until ${clockTime(mode.expiresAt, tz)}.` : "Live coaching is off.";
     const t = hub.transfer();
+    // one sentence for the first signal (the next conversation after a drill), when there is one
+    const signal = t ? firstSignalSentence(t.firstSignal) : null;
     return {
       dataLabel: hub.dataLabel,
       synthetic: this.o.demo,
       generatedAt: now,
       basis,
-      narration: [lead, week, modeLine].join(" "),
+      narration: [lead, signal, week, modeLine].filter(Boolean).join(" "),
       mode,
       live,
       lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: lastToday.headline } : null,

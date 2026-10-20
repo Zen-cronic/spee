@@ -94,8 +94,9 @@ describe("the story (live coaching on)", () => {
     const now = engine.coachNow();
     expect(now.basis).toBe("recap");
     expect(now.lastRecap).toEqual({ id: recap.id, endedAt: recap.endedAt, headline: recap.headline });
-    expect(now.narration).toMatch(/^Your last conversation ran high on hedges: \d+, or \d\.\d per 100 words against your usual 1\.4\. This week you are at 1\.4 hedges per 100 words, and \d drills are due\. Live coaching is on until 2:30 PM\.$/);
-    expect(now.narration.split(/(?<=\.)\s+/).length).toBe(3);
+    // the demo's drilled habits have a next conversation: one first-signal sentence, labelled as not proof
+    expect(now.narration).toMatch(/^Your last conversation ran high on hedges: \d+, or \d\.\d per 100 words against your usual 1\.4\. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2\.6 to 0\.8 and "like" from 3\.2 to 0\.8 per 100 words\. This week you are at 1\.4 hedges per 100 words, and \d drills are due\. Live coaching is on until 2:30 PM\.$/);
+    expect(now.narration.split(/(?<=\.)\s+/).length).toBe(4);
     expect(engine.coachNow().narration).toBe(now.narration); // deterministic
   });
   it("the planted other-speaker line never reaches an event, a recap or a file", async () => {

@@ -189,7 +189,7 @@ export const coachNow: CoachNow = {
   synthetic: true,
   generatedAt: ENDED_AT + sec(45),
   basis: "recap",
-  narration: "Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.",
+  narration: 'Your last conversation ran high on hedges: 11, or 2.1 per 100 words against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2.6 to 0.8 and "like" from 3.2 to 0.8 per 100 words. This week you are at 1.4 hedges per 100 words, and 2 drills are due. Live coaching is on until 2:30 PM.',
   mode: modeOnAfterNudge,
   live: null,
   lastRecap: { id: recap.id, endedAt: recap.endedAt, headline: recap.headline },

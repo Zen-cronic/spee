@@ -133,7 +133,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     async HowAmIDoingIntent() {
       const c = await track("GET /api/coach/now", hub.coachNow());
       if (!c.ok) return hubDown();
-      return info(clip(c.body.narration, 3), c.body.mode.enabled ? "Say quiz me to drill, or turn off live coaching." : "Say quiz me to drill, or turn on live coaching.");
+      return info(clip(c.body.narration, 4), c.body.mode.enabled ? "Say quiz me to drill, or turn off live coaching." : "Say quiz me to drill, or turn on live coaching.");
     },
     LiveCoachOnIntent: () => live(true),
     LiveCoachOffIntent: () => live(false),

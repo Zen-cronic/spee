@@ -85,7 +85,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c((await ctx.get("/api/recaps/rcp_nope")).body?.error === "unknown_recap", "GET /api/recaps/<unknown> -> 404 unknown_recap");
   const now = await ctx.get("/api/coach/now", "GET /api/coach/now (after the story)");
   const sentences = String(now.body.narration ?? "").split(/(?<=\.)\s+/).filter(Boolean);
-  c(now.body.basis === "recap" && now.body.lastRecap?.id === recap?.id && now.body.mode?.enabled === true && sentences.length <= 3 && /^Your last conversation ran high on hedges/.test(now.body.narration), "GET /api/coach/now reflects the recap (<= 3 sentences)");
+  c(now.body.basis === "recap" && now.body.lastRecap?.id === recap?.id && now.body.mode?.enabled === true && sentences.length <= 4 && /^Your last conversation ran high on hedges/.test(now.body.narration) && / First signal, from one conversation and not proof: /.test(now.body.narration), "GET /api/coach/now reflects the recap, with the first signal (<= 4 sentences)");
   c(JSON.stringify((await ctx.get("/api/coach/now")).body.narration) === JSON.stringify(now.body.narration), "coachNow is deterministic");
   const live1 = await ctx.get("/api/live", "GET /api/live (after the story)");
   c(live1.body.lastRecapId === recap?.id && live1.body.lastNudge?.id === n?.id && live1.body.recentSkips?.[0]?.reason === "cooldown" && live1.body.mode?.sent?.lastHour >= 1, "GET /api/live: last nudge, skips and recap");

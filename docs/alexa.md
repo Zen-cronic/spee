@@ -41,7 +41,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 | `StartDrillIntent` ("quiz me") | `POST /api/session/start` | `Here's your first card. Say: "<card>"` | open |
 | `AttemptIntent` (catch-all `{attempt}`) | `POST /api/attempt {source:"alexa", text}` (202 at once) | "Got it, checking with Bee. Ask me how you did in about 15 seconds." | open, `attemptId` kept |
 | `HowDidIDoIntent` | `GET /api/attempts/<id>`. If not ready: a progressive response ("Checking with Bee.") and polling every 600 ms for at most 6.5 s. Pass: then `POST /api/session/next` | pass: `Bee heard it: a pass. Next, say: "<card>"`; fail: `Not yet: Bee heard a filler, "um". Say it again: "<card>"`; not confirmed: "Bee didn't confirm that one, so it doesn't count..."; still waiting: "Bee hasn't sent that line yet. Ask me again in a few seconds." | open (ends when the drill is done) |
-| `HowAmIDoingIntent` | `GET /api/coach/now` | the `narration` (up to 3 sentences, the contract's `CoachNow` limit) | one-shot ends, else open |
+| `HowAmIDoingIntent` | `GET /api/coach/now` | the `narration` (up to 4 sentences, the contract's `CoachNow` limit) | one-shot ends, else open |
 | `LiveCoachOnIntent` (`{minutes}` optional), `LiveCoachOffIntent` | `POST /api/live/mode {enabled, minutes?, by:"alexa"}` | the `narration` | one-shot ends, else open |
 | `DidItTransferIntent` | `GET /api/transfer` | the `headline` (2 sentences at most) | one-shot ends, else open |
 | `AMAZON.NextIntent` | `POST /api/session/next` | `Next, say: "<card>"`, or the drill summary | open; ends when done |

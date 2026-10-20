@@ -162,11 +162,12 @@ Notes on how the rules are computed:
 
 ## "How am I doing?" (`GET /api/coach/now`)
 
-Deterministic, at most 3 sentences:
+Deterministic, at most 4 sentences:
 
 1. **The lead.** The live conversation (`basis: "live"`, from 20 wearer words). Otherwise today's last recap (`"recap"`), which leads with the habit that ran high or a long turn. Otherwise the week (`"week"`).
-2. **The week.** The top habit's rate (hedges or vague answers when they have at least 3 occurrences, otherwise fillers or restarts) and the number of due drills.
-3. **Live mode.** `Live coaching is on until 2:30 PM.` or `Live coaching is off.`
+2. **The first signal**, only when a drilled habit has a next conversation since its first drill: `First signal, from one conversation and not proof: in your next conversation after drilling, "like" went from 5.4 to 2.1 per 100 words.` With under 100 words on a side it says the conversation was too short to compare, never a number.
+3. **The week.** The top habit's rate (hedges or vague answers when they have at least 3 occurrences, otherwise fillers or restarts) and the number of due drills.
+4. **Live mode.** `Live coaching is on until 2:30 PM.` or `Live coaching is off.`
 
 ## Coaching principles
 

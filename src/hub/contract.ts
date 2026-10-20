@@ -578,7 +578,7 @@ export interface RecapList extends Labelled {
 export interface CoachNow extends Labelled {
   generatedAt: number;
   basis: "live" | "recap" | "week"; // what the narration leads with
-  narration: string; // TTS-ready, <= 3 sentences
+  narration: string; // TTS-ready, <= 4 sentences: the lead, the first signal (only when there is one), the week, live coaching
   mode: LiveMode;
   live: LiveWindow | null;
   lastRecap: { id: string; endedAt: number; headline: string } | null;
