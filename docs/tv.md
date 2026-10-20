@@ -107,7 +107,7 @@ First run on hardware 2026-10-20 (Fire TV Stick, `armv7l`, Vega OS 2.0 "TV Ship/
 | `vda connect` times out | Different networks, or the Wi-Fi blocks device-to-device traffic | Same Wi-Fi for both; a phone hotspot works as a fallback |
 | `lsusb` shows Lab126 but `vda devices` is empty (USB) | Linux USB permissions | Add the udev rule for vendor `1949` (Amazon's VDA troubleshooting page), be in `plugdev`, restart VDA |
 | The stick stops responding in TCP/IP mode | Known Vega issue | Developer Options → Connection Mode → USB, then `vega exec vda usb` |
-| The address changes after a router restart | DHCP | Reserve the stick's IP for its Wi-Fi MAC in the router |
+| The address changes after a router restart | DHCP | Reserve the IP for the stick's Wi-Fi MAC in the router if you can; otherwise read the new IP on About → Network (or `ip neigh` after a ping sweep, matching the MAC) and reconnect |
 
 **Status.** 2026-10-16: built (three vpkgs of about 276 kB, `manifest validation found 0 errors`) and verified on the VVD: it joined the hub over the reverse forward, fetched stats and transfer, rendered every screen, and remote navigation worked. 2026-10-20: installed and launched on a real stick over Wi-Fi against the live hub.
 
