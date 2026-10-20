@@ -219,6 +219,19 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
     expect(n('"Like" was down: {like_usual} per 100 words against your usual {like_rate}.')).toBeNull();
     expect(n('"Like" was down to {like_rate} per 100 words from {like_usual}.')).toBeNull(); // the usual not marked as usual
   });
+  it("two subjects merged into one sentence cannot trade their slots", () => {
+    const { recap, slots } = longTurn();
+    const n = (narration: string) => acceptPhrasing({ headline: slots.template.headline, narration, wristText: slots.template.wristText }, recap, slots, principles);
+    const tail = " Check in before the {check_in_seconds}-second mark.";
+    expect(n(`The conversation ran about {minutes} minutes and your longest turn ran {longest_turn_min} minutes at {wpm} words a minute.${tail}`)).not.toBeNull();
+    expect(n(`The conversation ran about {longest_turn_min} minutes and your longest turn ran {minutes} minutes at {wpm} words a minute.${tail}`)).toBeNull();
+    expect(n(`Your longest turn ran {minutes} minutes in a conversation of {longest_turn_min} minutes, at {wpm} words a minute.${tail}`)).toBeNull();
+    // two habits' rates in one sentence that names both
+    const two: RecapSlots = { values: { hedges_rate: "1.5", like_rate: "0.8", hedges_usual: "1.4", like_usual: "2.1", minutes: "4", hedges_count: "3", like_count: "1", vague_count: "0", restarts_count: "0" }, template: { headline: "Unsure words at {hedges_rate} per 100 words, usually {hedges_usual}.", narration: 'That conversation ran about {minutes} minutes. "Like" came to {like_rate} per 100 words, usually {like_usual}.', wristText: "[coach] Recap: a typical chat" } };
+    const h = (headline: string) => acceptPhrasing({ headline, narration: two.template.narration, wristText: two.template.wristText }, { moment: null } as never, two, principles);
+    expect(h('Unsure words were at {hedges_rate} (usually {hedges_usual}) and "like" at {like_rate} (usually {like_usual}).')).not.toBeNull();
+    expect(h('Unsure words were at {like_rate} (usually {like_usual}) and "like" at {hedges_rate} (usually {hedges_usual}).')).toBeNull();
+  });
   it("the template is an accepted phrasing in every branch: worse, clean, better, typical, long turn, no baseline", () => {
     const window = (said: string[]) => {
       const w = new ConversationWindow("c", T0, true);

@@ -5,8 +5,8 @@
 // ({hedges_rate}, {minutes}, {longest_turn_min}) from the list it is given, and code fills in the
 // values. acceptPhrasing refuses a digit or a number word outside the slots, an unknown slot, a
 // slot the template states that the phrasing dropped, a slot in a sentence that does not name its
-// subject (a habit's slots name the habit, {longest_turn_min} says "turn"), and a usual value that
-// is not the one "usual" points at. It runs off the request path, one call at a time, with a 6 s
+// subject (a habit's slots name the habit, {longest_turn_min} says "turn") or in a clause about
+// another subject, and a usual value that is not the one "usual" points at. It runs off the request path, one call at a time, with a 6 s
 // timeout; on any failure or failed check the template phrasing stays. Model: Claude Haiku 4.5
 // on Bedrock (profile hackathon-1, via src/llm/bedrock.ts callTool). Tests inject a fake.
 //
@@ -72,22 +72,65 @@ const SLOT_RE = /\{([a-z_]+)\}/g;
 const UNIT = /\bper 100 words?\b|\bout of every 100 words\b/gi;
 export const slotsIn = (t: string) => [...t.matchAll(SLOT_RE)].map((m) => m[1]!);
 
-// What a sentence must name for each slot in it.
+// What a sentence must name for each slot in it, by family: a habit's slots, the longest turn, the
+// conversation's minutes and the pace. `words` and `check_in_seconds` name a generic subject and are
+// checked against the whole sentence only.
 const HABIT_SUBJECT: Record<string, RegExp> = { hedges: /hedg|\bunsure\b/i, like: /\blikes?\b/i, vague: /\bvague/i, restarts: /\brestart|\bstart(?:ed|ing|s)? over\b/i };
-function subjectOf(slot: string): RegExp | null {
+const FAMILY_SUBJECT: Record<string, RegExp> = {
+  ...HABIT_SUBJECT,
+  longest_turn_min: /\bturns?\b/i,
+  minutes: /\b(conversation|talk|chat)\b/i,
+  wpm: /\bwords? (a|per) minute\b|\bpace\b|\bwpm\b/i,
+};
+const familyOf = (slot: string): string | null => {
   const m = /^(\w+?)_(count|rate|usual)$/.exec(slot);
-  if (m && HABIT_SUBJECT[m[1]!]) return HABIT_SUBJECT[m[1]!]!;
-  if (slot === "longest_turn_min") return /\bturns?\b/i;
-  if (slot === "minutes") return /\b(conversation|talk|chat)\b/i;
-  if (slot === "wpm" || slot === "usual_wpm") return /\bwords? (a|per) minute\b|\bpace\b|\bwpm\b/i;
+  if (m && HABIT_SUBJECT[m[1]!]) return m[1]!;
+  if (slot === "usual_wpm") return "wpm";
+  return slot in FAMILY_SUBJECT ? slot : null;
+};
+function subjectOf(slot: string): RegExp | null {
+  const f = familyOf(slot);
+  if (f) return FAMILY_SUBJECT[f]!;
   if (slot === "words") return /\bwords?\b/i;
   if (slot === "check_in_seconds") return /\bsecond/i;
   return null;
 }
 const isUsual = (slot: string) => slot.endsWith("_usual") || slot === "usual_wpm";
 
-// Each sentence: every slot's subject is named, and each "usual" word points at its nearest slot
-// (a tie goes to the later one), which must be a usual slot; every usual slot is pointed at.
+// Every subject named in `text`, by family and position.
+function subjectsIn(text: string, offset: number): { family: string; at: number }[] {
+  const out: { family: string; at: number }[] = [];
+  for (const [family, re] of Object.entries(FAMILY_SUBJECT)) for (const m of text.matchAll(new RegExp(re.source, "gi"))) out.push({ family, at: offset + m.index! });
+  return out.sort((a, b) => a.at - b.at);
+}
+
+// A slot belongs to the subject of its own clause: the nearest one named in that clause (a tie goes
+// to the earlier one), else the last one named before the clause in the sentence. So two sentences
+// merged into one cannot trade their slots ("The conversation ran {longest_turn_min} minutes and your
+// longest turn ran {minutes}" is refused), while a clause that names nothing ("..., against your
+// usual {hedges_usual}") keeps the subject before it.
+const CLAUSE_BREAK = /[,;:()]|\s(?:and|but|while|with|whereas)\s/gi;
+function slotsInTheirClauses(sentence: string): boolean {
+  const bare = sentence.replace(SLOT_RE, (m) => " ".repeat(m.length)); // positions kept, slots unnamed
+  const breaks = [0, ...[...bare.matchAll(CLAUSE_BREAK)].map((m) => m.index! + m[0].length), bare.length];
+  for (const m of sentence.matchAll(SLOT_RE)) {
+    const family = familyOf(m[1]!);
+    if (!family) continue;
+    const at = m.index!;
+    const from = Math.max(...breaks.filter((b) => b <= at));
+    const to = Math.min(...breaks.filter((b) => b > at));
+    const inClause = subjectsIn(bare.slice(from, to), from);
+    let owner: string | undefined;
+    if (inClause.length) owner = inClause.reduce((best, x) => (Math.abs(x.at - at) < Math.abs(best.at - at) ? x : best)).family;
+    else owner = subjectsIn(bare.slice(0, from), 0).at(-1)?.family;
+    if (owner !== family) return false;
+  }
+  return true;
+}
+
+// Each sentence: every slot's subject is named, each slot sits in a clause about its own subject
+// (slotsInTheirClauses), and each "usual" word points at its nearest slot (a tie goes to the later
+// one), which must be a usual slot; every usual slot is pointed at.
 function slotsOnTheirFacts(text: string): boolean {
   for (const sentence of text.split(/(?<=[.!?])\s+/)) {
     const toks = [...sentence.matchAll(/\{[a-z_]+\}|\p{L}+/gu)].map((m) => m[0]);
@@ -96,6 +139,7 @@ function slotsOnTheirFacts(text: string): boolean {
       const re = subjectOf(toks[i]!.slice(1, -1));
       if (!re || !re.test(sentence.replace(SLOT_RE, " "))) return false;
     }
+    if (!slotsInTheirClauses(sentence)) return false;
     const marked = new Set<number>();
     toks.forEach((t, i) => {
       if (!/^(usual|usually|normally|typically)$/i.test(t) || !slotAt.length) return;
