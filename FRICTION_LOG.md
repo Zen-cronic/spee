@@ -20,6 +20,9 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 | FL-6 | Bee API | Stopping a recording doesn't end the conversation, and offsets restart | Medium | worked around |
 | FL-7 | Bee Apple Watch app | The only Watch voice-note path goes through Siri | Medium | worked around |
 | FL-8 | Bee docs, API | The live stream carries undocumented timestamps and a wearer-tag event | Low | worked around (doc unchanged on 2026-10-20) |
+| FL-9 | Bee transcription, API | Transcripts carry no confidence and take no custom vocabulary | Medium | worked around |
+| FL-10 | Bee to-dos, Apple Watch | A to-do alarm reaches the Watch only while Bee records and the iPhone is locked | Medium | worked around |
+| FL-11 | Bee CLI | The facts and insights JSON is untyped and undocumented | Low | worked around |
 
 ---
 
@@ -161,3 +164,51 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Severity:** Low (a positive surprise, but undocumented)
 - **Workaround used:** read the extra fields defensively, and poll the conversation as a fallback, because the stream is at-most-once. No extra time.
 - **Actionable suggestion:** document the `tagged-utterance` event and the timestamp fields, what `speaker_score` means, and when a tag may never arrive. Publish the typical latency.
+
+### FL-9: Bee transcripts carry no confidence and take no custom vocabulary, so misheard words become fake speaking "errors" (Bee transcription / API)
+- **Date:** 2026-10-15 ~12:45 EDT (the first real-data run) and 2026-10-16 14:36 EDT (the live stream)
+- **Task attempted:** turn the wearer's real recurring speech errors into drill lines, from four real Watch conversations (about 2,000 words of the wearer's speech).
+- **Steps taken:**
+  1. The real-data pipeline (`npm run real`) fetched the conversations with `bee conversations get <id> --json` and asked a model for candidate errors in the wearer's lines.
+  2. Looked in the payload for a way to tell a real error from a misrecognition. The utterance fields are `text`, `speaker`, `start`, `end` and `spoken_at` (plus `id` and `sample_id` on the stream).
+  3. Watched the live stream (FL-8) while saying known phrases.
+- **Expected result:** a per-word or per-utterance confidence (or alternatives), or a way to give Bee the words it keeps mishearing (names of people, products and tools).
+- **Actual result:**
+  - No confidence field anywhere. `speaker_score` (FL-8) rates the speaker, not the words.
+  - Of 34 candidate items, 19 (56%) quoted a likely misrecognition. Without a guard they would have been drilled as if the wearer had said them; on an earlier real stand-up, misheard tool names had already leaked into the coaching.
+  - Live: "drill card" came back as "drill car".
+- **Severity:** Medium
+- **Workaround used:** a model "ASR guard" that quarantines items quoting a suspected mishearing, then a second model check (precision on the kept items went from 40% to 75%, 15 items to 8), a deterministic glossary of known misheard terms, and fuzzy matching when grading a spoken line ([`src/hub/fuzzy.ts`](src/hub/fuzzy.ts)). Time not recorded separately (part of the 2026-10-15 rebuild).
+- **Actionable suggestion:** add a per-word confidence to `conversations get` and to `new-utterance`, and a per-account custom vocabulary (settable from the CLI) that the recognizer is biased toward.
+
+### FL-10: A Bee to-do alarm reaches the Apple Watch only while Bee is recording and the iPhone is locked; otherwise it lands on the iPhone (Bee to-dos / Apple Watch)
+- **Date:** 2026-10-16 14:55–16:24 EDT (four runs); CLI docs re-checked 2026-10-20
+- **Task attempted:** put a short coaching cue on the wrist during a conversation, using a Bee to-do with an alarm.
+- **Steps taken:**
+  1. `bee todos create --text "<cue>" --alarm-at <iso, 2 min ahead> --json` with the iPhone in use: the alarm showed on the iPhone only, with the full text.
+  2. The same with the iPhone locked: it reached the Watch.
+  3. Probe to-dos with alarm leads of 5, 10, 20 and 30 s, iPhone locked, Bee **not** recording: every alarm fired on time, on the iPhone; none reached the Watch.
+  4. Leads of 10 and 30 s, iPhone locked and out of sight, Bee recording: both reached the Watch.
+  5. `bee todos complete <id>`: the tick showed in the Bee iPhone app. Every test to-do was deleted afterwards.
+- **Expected result:** the docs say where a to-do alarm is delivered, and a developer can target the Watch.
+- **Actual result:** alarms fire on time with as little as a 5–10 s lead, but reach the Watch only while the iPhone is locked **and** Bee is recording. Nothing in the docs says so: https://docs.bee.computer/docs/cli documents `--alarm-at` only.
+- **Severity:** Medium
+- **Workaround used (about 15 min of probes):** live nudges fire only during a Bee recording, with a 10 s lead; the demo locks the phone before the wrist beat; recaps, sent after a recording stops, say "wrist or phone". `npm run wrist:probe` repeats the lead probe.
+- **Actionable suggestion:** document where alarms are delivered and when; add a delivery target (Watch, phone or both) to `todos create`; and report delivery in the `todo-updated` event.
+
+### FL-11: The facts and insights JSON is untyped in the CLI and undocumented (Bee CLI)
+- **Date:** 2026-10-20 17:01–17:10 EDT; docs re-checked the same day
+- **Task attempted:** keep one coaching-goal fact in Bee's memory, and read how many facts and insights Bee has.
+- **Steps taken:**
+  1. Read `@beeai/cli` 0.8.0: the facts and insights calls are typed `unknown`.
+  2. Read https://docs.bee.computer/docs/cli: the facts section shows only Markdown example output (`# Fact 9001`, `- confirmed: false`, `- next_cursor: v1-…`), no JSON.
+  3. Wrote tolerant readers, then a read-only spike, `npx tsx src/hub/live/factsParse.ts inspect`. It runs `bee facts list --limit 5 --json`, the same with `--unconfirmed`, and `bee insights list --limit 5 --json`, and prints only each output's shape, never a fact's text.
+- **Expected result:** a documented JSON shape (or TypeScript types) for every `--json` output.
+- **Actual result:** the real shape, found only by the spike:
+  - `bee facts list --json` → `{facts: [{id: number, text: string, tags: string[], created_at: number, confirmed: boolean}], next_cursor: string | null, timezone: string}`;
+  - `bee insights list --json` → `{insights: [...], next_cursor, timezone}`.
+  - The readers parsed facts 5/5, unconfirmed 4/4 and insights 5/5.
+  - Separately, no doc says whether Bee's chat, Daily Insights or the Alexa+ integration read a fact a developer writes.
+- **Severity:** Low
+- **Workaround used:** readers that accept the likely shapes ([`src/hub/live/factsParse.ts`](src/hub/live/factsParse.ts)), confirmed by the spike. The spike ran in seconds; the readers were part of the feature build (not timed).
+- **Actionable suggestion:** publish a JSON example and a schema (or ship TypeScript types in `@beeai/cli`) for every `--json` command, and say which Bee surfaces read developer-written facts.
