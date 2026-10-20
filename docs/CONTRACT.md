@@ -783,6 +783,8 @@ A plugin that throws gets `500 {"error":"plugin_error"}`.
 | `GET /api/recaps?limit=10` | A (`live`) | `limit` 1-50 | `200 RecapList {dataLabel, synthetic, recaps[]}` (newest first) | |
 | `GET /api/recaps/<id>` | A (`live`) | | `200 Recap` | `404 unknown_recap` |
 | `GET /api/coach/now` | A (`live`) | | `200 CoachNow` | |
+| `GET /api/coach/facts` | W (`live`) | | `200 BeeMemory {dataLabel, synthetic, enabled, status, goal, insights, facts, note}`; `status: "off"` (the default) makes no Bee call | |
+| `POST /api/coach/cue` | W (`live`) | `CueRequest {inMinutes? (0-180, default 0), by?}` | `200 CueResponse {cue, wrist, deduped, narration}` | `400 bad_request`, `409 cues_off`, `409 no_practised_habit`, `409 quiet_hours`, `429 cue_cap`, `503 wrist_down` |
 | `GET /api/settings?source=bee` | A (`live`) | `source` bee (default) or all | `200 SettingsResponse` (conversation settings; a secondary view) | `400 bad_source` |
 | `POST /api/sessions/<id>/setting` | A (`live`) | `SettingRequest {setting: "meeting" \| "work" \| "casual" \| null}`; `<id>` a stats session id, a recap's `conversationId` or a recap id | `200 SettingResponse {id, tag, recapIds}`, then `stats.updated` | `400 bad_request`, `404 unknown_session` |
 | `POST /api/demo/live` | A (`live`) | `DemoLiveRequest {script?: "story" \| "monologue" \| "short"}` | `202 DemoLiveResponse` | `400 demo_only`, `400 bad_request` |
@@ -791,7 +793,7 @@ A plugin that throws gets `500 {"error":"plugin_error"}`.
 | `POST /mcp` (`GET`/`DELETE` answer 405) | C (`mcp`) | MCP JSON-RPC over Streamable HTTP, stateless | JSON-RPC result | JSON-RPC errors; tool errors as `isError: true` |
 | `GET /tv/*`, `/p/*`, `/sim/*` | lead (`static`) | | the built files; paths without an extension fall back to `index.html` | `404 not_built` (with the build command), `404 not_found`, `400 bad_path`, `405 method_not_allowed` |
 
-New error codes: `not_implemented` (501), `forbidden` (403), `unknown_recap` (404), `unknown_session` (404), `not_built` (404), `bad_path` (400), `method_not_allowed` (405), `plugin_error` (500), `alexa_rejected` (400).
+New error codes: `not_implemented` (501), `forbidden` (403), `unknown_recap` (404), `unknown_session` (404), `not_built` (404), `bad_path` (400), `method_not_allowed` (405), `plugin_error` (500), `alexa_rejected` (400), `cues_off` (409), `no_practised_habit` (409), `quiet_hours` (409), `cue_cap` (429), `wrist_down` (503).
 
 **Live mode policy** (frozen numbers; packet A implements them):
 

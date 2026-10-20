@@ -491,6 +491,35 @@ export interface Brief {
   nudge: string;
 }
 
+// Bee memory: the coach's one goal fact in Bee, and Bee's insight and fact counts (src/hub/live/facts.ts).
+// Opt-in (COACH_FACTS=1, live mode only); "off" makes no Bee call. "demo" is synthetic. The goal text
+// is template text only: never transcript text, never another speaker. Counts only for insights and
+// facts, never their text.
+export const BEE_MEMORY_NOTE = "Bee's chat and Alexa+ may not read coach-written facts." as const;
+// GET /api/coach/facts
+export interface BeeMemory extends Labelled {
+  enabled: boolean;
+  status: "off" | "demo" | "pending" | "synced" | "failed";
+  goal: { factId: string | null; text: string; confirmed: boolean; updatedAt: number | null } | null;
+  insights: { count: number; readAt: number } | null;
+  facts: { count: number; readAt: number } | null;
+  note: string; // always BEE_MEMORY_NOTE
+}
+// The habits a wrist cue may name: the pre-registered drilled habits, once practised. Never the
+// control (restart), never an unpractised habit.
+export const CUE_HABITS = ["hedges", "filler:like"] as const;
+// POST /api/coach/cue: one if-then cue (<= WRIST_TEXT_MAX chars) through the wrist queue (src/hub/live/cue.ts).
+export interface CueRequest {
+  inMinutes?: number; // the alarm this many minutes from now (default 0: the wrist lead)
+  by?: string;
+}
+export interface CueResponse {
+  cue: { id: string; habit: "hedges" | "filler:like"; text: string; alarmAt: number | null; by: string };
+  wrist: { channel: WristChannel; status: "scheduled" | "failed" | "replay"; todoId: string | null; error: string | null };
+  deduped: boolean; // true: the same cue was already sent recently; nothing new reached the wrist
+  narration: string;
+}
+
 // v2: live coaching (packet A, src/hub/live/**)
 
 // The rules that can nudge. fast-rate is off by default.
