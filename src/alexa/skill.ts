@@ -1,9 +1,9 @@
-// The Alexa skill handler (packet C): a pure function of the request envelope and its dependencies
+// The Alexa skill handler: a pure function of the request envelope and its dependencies
 // (the loopback hub client, a clock, a sleep, the progressive-response sender). Every intent maps
 // onto a contract route; nothing here calls a model, and nothing here persists transcript text.
 //
-// Drills take two turns because Alexa must answer within 8 s and Bee's wearer-tagged line lands 5
-// to 20 s after speech (docs/CONTRACT.md, "Two-turn voice drill"):
+// Drills take two turns: a drill line can take up to about 20 s, because Bee may merge it with the
+// next words, and Alexa must answer within 8 s (FACTS.md, L2; docs/CONTRACT.md, "Two-turn voice drill"):
 //   turn 1  AttemptIntent   POST /api/attempt {source:"alexa"} -> 202 pending_bee; "checking with Bee"
 //   turn 2  HowDidIDoIntent GET /api/attempts/<id>; not ready -> progressive response, poll <= 6.5 s
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.

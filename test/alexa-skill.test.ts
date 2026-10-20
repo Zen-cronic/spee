@@ -1,4 +1,4 @@
-// The Alexa skill against an in-process demo hub in fixture mode (packet C): the two-turn drill
+// The Alexa skill against an in-process demo hub in fixture mode: the two-turn drill
 // (Launch -> Attempt answered < 1 s -> early HowDidIDo with a progressive response, < 7 s on a fake
 // clock -> the verdict after the Bee replay), the fail and unverified verdicts, every other intent,
 // and POST /alexa over HTTP (skill id and timestamp rejected, gate).

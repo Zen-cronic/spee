@@ -1,4 +1,4 @@
-// Intent routing (packet C). The interaction model has a catch-all AttemptIntent ("{attempt}") so
+// Intent routing. The interaction model has a catch-all AttemptIntent ("{attempt}") so
 // Alexa hands over the user's drill sentence verbatim. On a real device (2026-10-16) the catch-all
 // also swallowed "how did I do", so commands said inside it are rescued here by whole-utterance
 // match: a drill sentence that merely contains "next" or "stop" stays an attempt. Pure, and shared

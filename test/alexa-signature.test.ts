@@ -1,4 +1,4 @@
-// Alexa request signature verification (packet C stretch, src/alexa/signature.ts), with a throwaway
+// Alexa request signature verification (src/alexa/signature.ts), with a throwaway
 // CA and an echo-api.amazon.com leaf made by the openssl CLI, plus the plugin wiring (public
 // requests only). Skipped when openssl is not installed.
 import { execFileSync } from "node:child_process";

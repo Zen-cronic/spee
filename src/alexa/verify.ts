@@ -1,7 +1,7 @@
-// Alexa request checks (packet C). Every POST /alexa must name this skill's application id and carry
-// a timestamp within 150 s of the hub's wall clock (Alexa's replay window). A rejected request gets
-// 400 alexa_rejected. Full certificate-chain signature verification is a stretch item
-// (docs/alexa.md); the gate already limits what a public request can reach.
+// Alexa request checks. Every POST /alexa must name this skill's application id and carry a
+// timestamp within 150 s of the hub's wall clock (Alexa's replay window). A rejected request gets
+// 400 alexa_rejected. A public request is first checked for Amazon's signature (./signature.ts, on
+// by default), and the gate already limits what a public request can reach.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "../hub/static.js";

@@ -1,4 +1,4 @@
-// Alexa routing, request checks and speech helpers (packet C): the catch-all rescue, the skill id
+// Alexa routing, request checks and speech helpers: the catch-all rescue, the skill id
 // and timestamp window, and the 2-sentence SSML-safe speech.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";

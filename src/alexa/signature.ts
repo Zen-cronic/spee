@@ -1,4 +1,5 @@
-// Alexa request signature verification (packet C, stretch; opt-in with ALEXA_VERIFY_SIGNATURE=1).
+// Alexa request signature verification. On by default for every public request (through the tunnel);
+// ALEXA_VERIFY_SIGNATURE=0 turns it off, for local fixture runs only (src/alexa/plugin.ts).
 // Implements Amazon's checks for a custom skill hosted as a web service:
 //   1. SignatureCertChainUrl: https, host s3.amazonaws.com, path under /echo.api/, port 443 if given
 //   2. the PEM chain it points to: the leaf is valid now and names echo-api.amazon.com, every cert is

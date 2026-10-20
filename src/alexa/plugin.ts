@@ -1,4 +1,4 @@
-// Alexa plugin (packet C): POST /alexa, the custom skill endpoint. A PUBLIC request (through the
+// Alexa plugin: POST /alexa, the custom skill endpoint. A PUBLIC request (through the
 // tunnel) must carry Amazon's request signature (./signature.ts), on by default; set
 // ALEXA_VERIFY_SIGNATURE=0 to turn that off for local fixture runs only. Loopback and LAN requests are
 // never signature-checked. The skill id and timestamp are then checked (./verify.ts; 400
