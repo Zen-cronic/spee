@@ -1,7 +1,8 @@
 // Pure helpers for the phone page: the join URL, practice-take frames and the take summary in the
 // contract's shapes (src/hub/contract.ts). No DOM, so test/phone-take.test.ts can run them against
 // the hub's own sanitizer.
-import { WS_PROTOCOL, WS_TOKEN_PREFIX, type CardView, type PracticeMeters, type PracticeSummary, type SessionSummary } from "../../../src/hub/contract.js";
+import { WS_PROTOCOL, WS_TOKEN_PREFIX, type CardView, type GradeResult, type PracticeMeters, type PracticeSummary, type SessionSummary } from "../../../src/hub/contract.js";
+import { gradeFailure, plainReason } from "../../../tv/web/src/mirror/format.js";
 import type { MeterCore, SummaryCore } from "./prosody.js";
 
 export interface Join {
@@ -99,3 +100,12 @@ export function sessionOverLine(s: Partial<SessionSummary> | null | undefined): 
 
 // The dictation language for a drill card: French cards in French, everything else in US English.
 export const speechLang = (card: Pick<CardView, "lang"> | null | undefined): string => (card?.lang === "fr" ? "fr-FR" : "en-US");
+
+/**
+ * The grader's first failed rule in the TV's own words (tv/web/src/mirror/format.ts, as Alexa says
+ * it), from the grade's structured fields: the words really missing, never the ASR slips Bee
+ * accepted, and a habit's word once, not the quotes in its label. Null on a pass or with no grade.
+ */
+export function failLine(g: Partial<GradeResult> | null | undefined): string | null {
+  return plainReason(gradeFailure(g));
+}

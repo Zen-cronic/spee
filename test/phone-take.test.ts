@@ -3,7 +3,9 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeMeters, sanitizeSummary } from "../src/hub/mirror.js";
 import { ProsodyEngine, synthVoice } from "../web/phone/src/prosody.js";
-import { captionOf, countWords, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase } from "../web/phone/src/take.js";
+import { grade, type GradeCard } from "../src/hub/grade.js";
+import * as tv from "../tv/web/src/mirror/format.js";
+import { captionOf, countWords, failLine, judgePhase, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase } from "../web/phone/src/take.js";
 
 describe("join URL", () => {
   it("reads the room code and the pair token from /p/<code>?k=...", () => {
@@ -80,5 +82,32 @@ describe("speechLang (review L47)", () => {
     expect(speechLang({ lang: "fr" } as any)).toBe("fr-FR");
     expect(speechLang({ lang: "en" } as any)).toBe("en-US");
     expect(speechLang(null)).toBe("en-US");
+  });
+});
+
+describe("the drill's failure line: the TV's words, from the grade's own fields", () => {
+  const card = (habit: GradeCard["habit"], resay: string, mustSay?: string[]): GradeCard => ({ lang: "en", resay, habit, mustSay });
+  const hedge = (resay: string, mustSay?: string[]) => card({ kind: "hedge", targets: ["i guess"], label: 'the hedge "i guess"' }, resay, mustSay);
+  it("a content fail names the words that were missing, not the ASR slips Bee accepted", () => {
+    const g = grade(hedge("Send the weekly report to the whole team by Friday."), "Send the weekly to the whole teem.");
+    expect(g.fuzzy).toEqual([{ target: "team", heard: "teem" }]); // accepted, not missing
+    expect(failLine(g)).toBe("A few words were missing: report, by, friday");
+  });
+  it('a "like" card names the word once', () => {
+    const g = grade(card({ kind: "filler", targets: ["like"], label: '"like" as a filler' }, "We ship the export on Friday."), "We like ship the export on, like, Friday.");
+    expect(failLine(g)).toBe("You still said “like”");
+  });
+  it("every rule says what the TV says; a pass or no grade says nothing", () => {
+    const long = "We ship the billing export to the finance team on Friday morning.";
+    const cases = [
+      grade(hedge("We ship the export on Friday."), "I guess we ship the export on Friday."),
+      grade(hedge("We ship the export on Friday."), "Um, um, we ship the export on Friday."),
+      grade(hedge("We ship the export on Friday."), "We ship it."),
+      grade(hedge(long, ["Friday"]), long.replace("Friday", "Monday")),
+      grade(hedge("We ship the export on Friday."), ""),
+    ];
+    for (const g of cases) expect(failLine(g)).toBe(tv.plainReason(tv.gradeFailure(g)));
+    expect(failLine(grade(hedge("We ship the export on Friday."), "We ship the export on Friday."))).toBeNull();
+    expect(failLine(null)).toBeNull();
   });
 });

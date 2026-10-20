@@ -16,7 +16,7 @@ import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
 import { createProgress } from "./progressView.js";
 import { dictation, listen, speechCtor, type Listener } from "./speech.js";
-import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
+import { captionOf, countWords, failLine, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const now = () => performance.timeOrigin + performance.now();
@@ -140,18 +140,9 @@ function onEvent(topic: string, p: Record<string, any>) {
   if (topic === "attempt.graded") {
     const a = p.attempt;
     stage(a.final?.pass ? "ok" : "bad", `${a.final?.pass ? "Passed" : "Not yet"}${a.agreement === "bee-overrules" ? ": Bee’s call, not the preview’s" : ""}`);
-    const why = (a.final?.grade?.reasons ?? []).find((r: string) => r.startsWith("FAIL"));
-    if (why) stage("dim", plainWhy(why));
+    const why = failLine(a.final?.grade);
+    if (why) stage("dim", why);
   }
-}
-
-// The grader's first failed rule in plain words ("FAIL fillers: 1 filler (\"um\"); allowed 0" -> "Bee heard a filler word: “um”").
-function plainWhy(reason: string): string {
-  const m = /^FAIL (\w+):\s*(.*)$/.exec(reason);
-  if (!m) return reason;
-  const quoted = [...m[2]!.matchAll(/"([^"]+)"/g)].map((q) => `“${q[1]}”`).slice(0, 2).join(" and ");
-  const lead: Record<string, string> = { fillers: "Bee heard a filler word", habit: "The old habit was still there", content: "A few words were missing", required: "A key word was missing", nonempty: "Bee heard nothing" };
-  return lead[m[1]!] ? `${lead[m[1]!]}${quoted ? `: ${quoted}` : ""}` : m[2]!;
 }
 
 const ATTEMPT_TOPICS = new Set(["attempt.status", "attempt.verified", "attempt.graded"]);
