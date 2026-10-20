@@ -18,8 +18,11 @@
 // `conversationLines`' in-memory context, which is dropped here. Logs carry ids, counts and error
 // kinds, never text and never a CLI error message (a parse error can quote the CLI's output).
 //
-// Robustness. One CLI call at a time, each with the CliBeeSource timeout and child tracking. Three
-// failed calls in a row open a circuit for 10 min. A failure is logged once per kind, and nothing here
+// Robustness. One CLI call at a time, each with the CliBeeSource timeout and child tracking. Failed
+// calls for three different conversations (or the list) in a row open a circuit for 10 min; one
+// conversation that keeps failing counts once. Each conversation remembers its own failures and
+// waits a growing backoff before it is tried again, and the list poll takes the newest first, so a
+// few that always fail never starve a newer one. A failure is logged once per kind, and nothing here
 // ever throws into the hub.
 import { join } from "node:path";
 import type { ConversationDetail, ConversationSummary, Me } from "../bee/schemas.js";
@@ -46,6 +49,9 @@ export interface IngestTimings {
   breakerFailures: number; // consecutive failed CLI calls that open the circuit
   breakerOpenMs: number;
   meRetryMs: number; // retry `bee me` this often while it is unavailable
+  retryBaseMs: number; // a conversation that failed (or was not ready) waits this long, doubling per try
+  retryMaxMs: number;
+  deletedFailures: number; // failed fetches after delete-conversation before the entry is dropped
 }
 export const INGEST_TIMINGS: IngestTimings = {
   tickMs: 5000,
@@ -58,6 +64,9 @@ export const INGEST_TIMINGS: IngestTimings = {
   breakerFailures: 3,
   breakerOpenMs: 10 * 60_000,
   meRetryMs: 10 * 60_000,
+  retryBaseMs: 10 * 60_000,
+  retryMaxMs: 6 * 3600_000,
+  deletedFailures: 3,
 };
 
 export const COMPLETED = "COMPLETED";
@@ -68,12 +77,21 @@ interface Pending {
   since: number;
   dueAt: number;
   tries: number;
-  deleted: boolean; // the stream sent delete-conversation: a failed fetch then means it is gone
+  deleted: boolean; // the stream sent delete-conversation: Bee may have dropped it
+  failures: number; // failed fetches in a row
+}
+// One conversation's history of failed or not-ready fetches.
+interface Retry {
+  failures: number;
+  notReady: number;
+  retryAt: number;
 }
 export type IngestStore = RealCorpus & { note: string };
 
 const NOTE = "conversations the live hub ingested (src/hub/ingest.ts): the wearer's lines and per-conversation counts only; never other speakers' words";
 const emptyStore = (): IngestStore => ({ generatedAt: new Date(0).toISOString(), note: NOTE, wearer: { labels: [], method: "none", counts: {} }, sessions: [], lines: [] });
+// Bee says the conversation does not exist (the message is read here, never logged).
+const notFound = (err: unknown) => /\b404\b|not found|no such conversation/i.test(String((err as Error)?.message ?? ""));
 // An error's kind for the log: never its message, which can quote the CLI's output.
 const errorKind = (err: unknown) => {
   const e = err as { name?: unknown; code?: unknown; signal?: unknown; killed?: unknown } | null;
@@ -89,7 +107,8 @@ export class LiveIngest {
   private stopped = false;
   private timer: NodeJS.Timeout | null = null;
   private nextPollAt: number;
-  private failures = 0;
+  private failing = new Set<string>(); // distinct calls that failed in a row (the breaker)
+  private retries = new Map<string, Retry>();
   private openUntil = -Infinity;
   private me: Me | null;
   private meTriedAt = -Infinity;
@@ -165,9 +184,11 @@ export class LiveIngest {
     if (c.state === "CAPTURING" && c.endMs == null) return;
     if (this.done.has(id) || this.o.known().has(id)) return;
     const now = this.o.clock();
-    const due = c.state === COMPLETED ? now : now + this.t.recheckMs[0]!;
+    // One that failed waits for its backoff.
+    const r = this.retries.get(id);
+    const due = Math.max(c.state === COMPLETED ? now : now + this.t.recheckMs[0]!, r && r.failures ? r.retryAt : now);
     if (p) p.dueAt = Math.min(p.dueAt, due);
-    else this.pending.set(c.id, { id: c.id, since: now, dueAt: due, tries: 0, deleted: false });
+    else this.pending.set(c.id, { id: c.id, since: now, dueAt: due, tries: 0, deleted: false, failures: 0 });
   }
 
   // Due re-fetches, then the list poll when it is time. Never throws; one run at a time.
@@ -197,19 +218,20 @@ export class LiveIngest {
     return this.o.clock() < this.openUntil;
   }
 
-  // One Bee CLI call through the breaker. Rethrows so the caller can reschedule.
-  private async call<T>(op: string, f: () => Promise<T>): Promise<T> {
+  // One Bee CLI call through the breaker. `key` names what was asked for: repeated failures of the
+  // same key count once. Rethrows so the caller can reschedule.
+  private async call<T>(op: string, f: () => Promise<T>, key = op): Promise<T> {
     try {
       const v = await f();
-      this.failures = 0;
+      this.failing.clear();
       this.logged.delete(op);
       return v;
     } catch (err) {
       this.counters.failures++;
-      this.failures++;
+      this.failing.add(key);
       this.logOnce(op, "bee.ingest.error", errorKind(err));
-      if (this.failures >= this.t.breakerFailures) {
-        this.failures = 0;
+      if (this.failing.size >= this.t.breakerFailures) {
+        this.failing.clear();
         this.openUntil = this.o.clock() + this.t.breakerOpenMs;
         this.counters.circuitOpened++;
         this.log("bee.ingest.circuit-open", { forMs: this.t.breakerOpenMs });
@@ -227,9 +249,11 @@ export class LiveIngest {
       return;
     }
     const known = this.o.known();
+    const now = this.o.clock();
+    // Newest first, and not one that is waiting out its backoff.
     const fresh = list
-      .filter((s) => s.state === COMPLETED && !known.has(String(s.id)) && !this.done.has(String(s.id)))
-      .sort((a, b) => a.start_time - b.start_time)
+      .filter((s) => s.state === COMPLETED && !known.has(String(s.id)) && !this.done.has(String(s.id)) && (this.retries.get(String(s.id))?.retryAt ?? -Infinity) <= now)
+      .sort((a, b) => b.start_time - a.start_time)
       .slice(0, this.t.maxPerPoll);
     if (fresh.length) this.log("bee.ingest.poll", { listed: list.length, fresh: fresh.length });
     for (const s of fresh) {
@@ -238,7 +262,19 @@ export class LiveIngest {
     }
   }
 
-  private reschedule(p: Pending | undefined) {
+  // A failed or not-ready fetch: the conversation waits retryBaseMs, doubling per try (at most
+  // retryMaxMs), before the list poll or the stream tries it again.
+  private backoff(id: number, kind: "failures" | "notReady"): Retry {
+    const key = String(id);
+    const r = this.retries.get(key) ?? { failures: 0, notReady: 0, retryAt: -Infinity };
+    r[kind]++;
+    const n = r.failures + r.notReady;
+    r.retryAt = this.o.clock() + Math.min(this.t.retryMaxMs, this.t.retryBaseMs * 2 ** (n - 1));
+    this.retries.set(key, r);
+    return r;
+  }
+
+  private reschedule(p: Pending | undefined, atLeast = -Infinity) {
     if (!p) return;
     const now = this.o.clock();
     p.tries++;
@@ -247,17 +283,23 @@ export class LiveIngest {
       this.log("bee.ingest.gave-up", { id: p.id, tries: p.tries, note: "the list poll still picks it up once Bee completes it" });
       return;
     }
-    p.dueAt = now + this.t.recheckMs[Math.min(p.tries, this.t.recheckMs.length - 1)]!;
+    p.dueAt = Math.max(atLeast, now + this.t.recheckMs[Math.min(p.tries, this.t.recheckMs.length - 1)]!);
   }
 
   private async fetch(id: number, via: "stream" | "poll") {
     const p = this.pending.get(id);
     let c: ConversationDetail | null;
     try {
-      c = await this.call("get", () => this.o.src.conversation(id));
-    } catch {
-      if (p?.deleted) this.pending.delete(id); // Bee deleted it: nothing to ingest
-      else this.reschedule(p);
+      c = await this.call("get", () => this.o.src.conversation(id), `get:${id}`);
+    } catch (err) {
+      // Bee sends delete-conversation after every stop, so a failure after it is only "gone" when Bee
+      // says so, or after a few failures in a row; anything else (a timeout, a network error) backs off.
+      const r = this.backoff(id, "failures");
+      if (p) p.failures++;
+      if (p?.deleted && (notFound(err) || p.failures >= this.t.deletedFailures)) {
+        this.pending.delete(id);
+        this.log("bee.ingest.dropped", { id, failures: p.failures, note: "deleted by Bee" });
+      } else this.reschedule(p, r.retryAt);
       return;
     }
     this.counters.fetched++;
@@ -265,9 +307,13 @@ export class LiveIngest {
       this.pending.delete(id);
       return;
     }
+    if (p) p.failures = 0;
+    const r = this.retries.get(String(id));
+    if (r) r.failures = 0;
     if (c.state !== COMPLETED) return this.reschedule(p);
     if ((await this.ingest(c, via)) === "deferred") return this.reschedule(p);
     this.pending.delete(id);
+    this.retries.delete(String(id));
   }
 
   // The Bee profile names the wearer. Retried while unavailable, at most every meRetryMs.

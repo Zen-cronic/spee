@@ -67,6 +67,7 @@ class FakeBee implements IngestSource {
   convs = new Map<number, ConversationDetail>();
   calls: string[] = [];
   fail: Error | null = null; // every call throws this while set
+  failIds = new Map<number, Error>(); // `get <id>` throws this while set
   meFails = false;
   add(c: ConversationDetail) {
     this.convs.set(c.id, c);
@@ -86,6 +87,8 @@ class FakeBee implements IngestSource {
   async conversation(id: number) {
     this.calls.push(`get ${id}`);
     if (this.fail) throw this.fail;
+    const f = this.failIds.get(id);
+    if (f) throw f;
     return structuredClone(this.convs.get(id) ?? null);
   }
 }
@@ -189,19 +192,46 @@ describe("live ingest: a finished conversation becomes a stats session", () => {
     expect(hedges(r.hub).status).toBe("measured");
   });
 
-  it("a deleted conversation Bee no longer returns is dropped, not retried", async () => {
+  it("after delete-conversation, a failed fetch backs off; the entry is dropped only when Bee says it is gone", async () => {
     const r = rig({ poll: false });
+    r.bee.add(conversation(300, T_DRILL + 3600_000));
     r.hub.ingestBee(r.ended(300, "PROCESSING"));
     r.hub.ingestBee({ ...r.ended(300, "PROCESSING"), type: "delete-conversation" } as BeeEvent);
-    r.bee.fail = Object.assign(new Error("Command failed: bee conversations get 300 --json"), { code: 1 });
+    // a timeout on the first re-fetch: not "gone", so it is tried again after its backoff
+    r.bee.failIds.set(300, Object.assign(new Error("Command failed: bee conversations get 300 --json"), { killed: true, signal: "SIGKILL" }));
     r.advance(INGEST_TIMINGS.recheckMs[0]!);
     await r.ingest.tick();
-    r.bee.fail = null;
-    r.advance(INGEST_TIMINGS.pendingMaxAgeMs);
+    expect(r.ingest.status().pending).toBe(1);
+    r.bee.failIds.delete(300);
+    r.advance(INGEST_TIMINGS.retryBaseMs);
     await r.ingest.tick();
-    expect(r.bee.calls).toEqual(["get 300"]);
-    expect(r.ingest.status().pending).toBe(0);
+    expect(r.bee.calls).toEqual(["get 300", "get 300"]);
+    expect(r.hub.sessions.map((s) => s.id)).toContain("300");
   });
+
+  it("a deleted conversation Bee no longer returns is dropped, not retried", async () => {
+    const r = rig({ poll: false });
+    r.hub.ingestBee(r.ended(301, "PROCESSING"));
+    r.hub.ingestBee({ ...r.ended(301, "PROCESSING"), type: "delete-conversation" } as BeeEvent);
+    r.bee.failIds.set(301, Object.assign(new Error("Command failed: bee conversations get 301 --json: Conversation not found"), { code: 1 }));
+    r.advance(INGEST_TIMINGS.recheckMs[0]!);
+    await r.ingest.tick();
+    expect(r.ingest.status().pending).toBe(0);
+    // an error that does not say so is retried, and dropped after a few in a row
+    r.hub.ingestBee(r.ended(302, "PROCESSING"));
+    r.hub.ingestBee({ ...r.ended(302, "PROCESSING"), type: "delete-conversation" } as BeeEvent);
+    r.bee.failIds.set(302, Object.assign(new Error("Command failed"), { code: 1 }));
+    for (let i = 0; i < INGEST_TIMINGS.deletedFailures; i++) {
+      r.advance(INGEST_TIMINGS.retryBaseMs * 4);
+      await r.ingest.tick();
+    }
+    expect(r.bee.calls.filter((c) => c === "get 302")).toHaveLength(INGEST_TIMINGS.deletedFailures);
+    expect(r.ingest.status().pending).toBe(0);
+    r.advance(INGEST_TIMINGS.retryMaxMs);
+    await r.ingest.tick();
+    expect(r.bee.calls.filter((c) => c === "get 302")).toHaveLength(INGEST_TIMINGS.deletedFailures);
+  });
+
 });
 
 describe("live ingest: de-duplication with the offline files", () => {
@@ -296,17 +326,14 @@ describe("live ingest: the list poll fallback", () => {
 });
 
 describe("live ingest: failures never stop the hub", () => {
-  it("logs a failure once, opens the circuit after 3 in a row, and recovers", async () => {
+  it("logs a failure once, opens the circuit after 3 different calls fail in a row, and recovers", async () => {
     const r = rig({ poll: false });
-    r.bee.add(conversation(200, T_DRILL + 3600_000));
+    for (const id of [200, 201, 202]) r.bee.add(conversation(id, T_DRILL + 3600_000 + (id - 200) * 60_000));
     // a parse error can quote the CLI's output: the message must never be logged
     r.bee.fail = new SyntaxError(`Unexpected token in JSON: "${SECRET}"`);
-    r.hub.ingestBee(r.ended(200, "COMPLETED"));
-    for (let i = 0; i < 3; i++) {
-      if (i) r.advance(INGEST_TIMINGS.recheckMs[i]!); // the next recheck on the backoff
-      await expect(r.ingest.tick()).resolves.toBeUndefined();
-    }
-    expect(r.bee.calls.length).toBe(3);
+    for (const id of [200, 201, 202]) r.hub.ingestBee(r.ended(id, "COMPLETED"));
+    await expect(r.ingest.tick()).resolves.toBeUndefined();
+    expect(r.bee.calls).toEqual(["get 200", "get 201", "get 202"]);
     expect(r.logs.filter((l) => l.includes('"bee.ingest.error"'))).toHaveLength(1);
     expect(r.logs.filter((l) => l.includes('"bee.ingest.circuit-open"'))).toHaveLength(1);
     expect(r.ingest.status().circuitOpen).toBe(true);
@@ -318,6 +345,39 @@ describe("live ingest: failures never stop the hub", () => {
     expect(hedges(r.hub).status).toBe("measured");
     expect(r.logs.join("\n")).not.toContain(SECRET);
     expect(r.logs.join("\n")).not.toContain("Unexpected token");
+  });
+
+  it("one conversation that always fails counts once toward the circuit and waits a growing backoff", async () => {
+    const r = rig({ poll: false });
+    r.bee.add(conversation(200, T_DRILL + 3600_000));
+    r.bee.failIds.set(200, new SyntaxError("bad json"));
+    r.hub.ingestBee(r.ended(200, "COMPLETED"));
+    for (let i = 0; i < 12; i++) {
+      await r.ingest.tick();
+      r.advance(INGEST_TIMINGS.recheckMs.at(-1)!);
+    }
+    // 2 hours: tried at 0, 10, 30 and 70 min (backoff 10, 20, 40 min), never opening the circuit
+    expect(r.bee.calls).toEqual(["get 200", "get 200", "get 200", "get 200"]);
+    expect(r.ingest.status().counters.circuitOpened).toBe(0);
+  });
+
+  it("conversations that always fail never starve a newer one the stream missed", async () => {
+    const r = rig();
+    const poison = [210, 211, 212];
+    poison.forEach((id, i) => (r.bee.add(conversation(id, T_DRILL + 3600_000 + i * 60_000)), r.bee.failIds.set(id, new SyntaxError("bad json"))));
+    r.bee.add(conversation(220, T_DRILL + 3 * 3600_000));
+    r.advance(INGEST_TIMINGS.firstPollMs);
+    await r.ingest.tick();
+    // newest first: the good one is in at the first poll
+    expect(r.bee.calls.slice(0, 2)).toEqual(["list", "get 220"]);
+    expect(r.hub.sessions.map((s) => s.id)).toContain("220");
+    // three hours of polls: each failing one waits its backoff instead of being first in line every time
+    for (let i = 0; i < 18; i++) {
+      r.advance(INGEST_TIMINGS.pollEveryMs);
+      await r.ingest.tick();
+    }
+    const gets = r.bee.calls.filter((c) => c.startsWith("get 21"));
+    expect(gets.length).toBeLessThan(poison.length * 6);
   });
 
   it("a write that fails is logged once; the session still counts in memory", async () => {
@@ -385,6 +445,7 @@ describe("live ingest: privacy", () => {
     expect(everything).not.toContain("zebra orchid");
     expect(everything).not.toContain(SECRET);
   });
+
 });
 
 describe("live ingest: wired into the live hub (liveSetup, fake bee stream and CLI)", () => {
