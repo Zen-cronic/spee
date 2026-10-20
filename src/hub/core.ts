@@ -613,6 +613,19 @@ export class CoachHub extends EventEmitter {
     };
   }
 
+  // Sessions the live ingest (ingest.ts) picked up while the hub runs. A session id the hub already
+  // has (an offline file, or an earlier ingest) is left as it is. When anything was added, the stats
+  // and the transfer are recomputed for everyone: stats.updated makes the screens refetch both, and
+  // "how am I doing?" reads them on every ask. Returns how many sessions were added.
+  addSessions(ss: StatSession[]): number {
+    const have = new Set(this.sessions.map((s) => s.id));
+    const added = ss.filter((s) => !have.has(s.id) && !!have.add(s.id));
+    if (!added.length) return 0;
+    this.sessions = [...this.sessions, ...added].sort((a, b) => a.startMs - b.startMs);
+    this.publishStats();
+    return added.length;
+  }
+
   transfer(source: SourceSel = "bee") {
     if (!this.prereg) return null;
     // Bee lines that were drill attempts are not everyday speech (review M2)

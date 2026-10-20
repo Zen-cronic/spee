@@ -1,15 +1,18 @@
 // Builds a CoachHub for live mode (real gitignored data, spawned `bee stream`, Bee CLI poll) or
 // demo mode (synthetic fixtures, a demo clock, and scripted Bee replays labelled as replay).
+import type { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliBeeSource, pickUtterances } from "../bee/source.js";
 import type { Me } from "../bee/schemas.js";
-import { discoverWearerLabels, isWearer, matchesProfile } from "../real/wearer.js";
+import { discoverWearerLabels, isWearer, matchesProfile, namedWearerOnly } from "../real/wearer.js";
+import { speakerCounts } from "../real/corpus.js";
 import { TZ as LIVE_TZ } from "../real/deck.js";
 import { DEFAULT_TIMINGS, replay, scaleTimings, spawnBeeStream, toMs, type BeeEvent, type PolledUtterance, type PollFn, type ReplayStep, type StreamHandle, type TaggedUtterance, type WearerTagRule } from "./bee.js";
 import { beeCalendar, type CalendarFn } from "./brief.js";
 import { deriveHabit, deriveMustSay, type HubCard } from "./cards.js";
 import { CoachHub, loadAttempts, type Attempt } from "./core.js";
+import { INGEST_TIMINGS, LiveIngest, type IngestSource, type IngestTimings } from "./ingest.js";
 import { DEMO_DEFAULT_CYCLE, DEMO_EPOCH, DEMO_LABEL, DEMO_TZ, DEMO_WEARER, type DemoScenario } from "./demoData.js";
 import { loadHubDeck, saveHubDeck, type HubDeck } from "./scheduler.js";
 import { loadPrereg, loadRealSessions, type StatSession, type TransferPrereg } from "./stats.js";
@@ -22,6 +25,7 @@ export interface Setup {
   calendar: CalendarFn;
   stream: StreamHandle | null;
   demo: DemoDirector | null;
+  ingest?: LiveIngest | null; // live mode: finished Bee conversations become stats sessions (ingest.ts)
   stateDir: string | null; // where plugins persist (<stateDir>/<plugin>/): live "real", demo "out/demo" or null (memory only)
   pace: number; // demo replay pace (1 = real time; live mode is always 1)
   describe: Record<string, unknown>;
@@ -40,10 +44,20 @@ export function wearerRule(me: Pick<Me, "first_name" | "last_name"> | null, pers
 
 // Live
 
-export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: (e: string, d?: Record<string, unknown>) => void } = {}): Promise<Setup> {
+// `source`, `spawnFn` and `ingest` are for tests (a fake Bee CLI and stream); the hub passes none.
+export async function liveSetup(
+  opts: {
+    stateDir?: string;
+    bee?: boolean;
+    log?: (e: string, d?: Record<string, unknown>) => void;
+    source?: IngestSource & { me(): Promise<Me> };
+    spawnFn?: typeof spawn;
+    ingest?: Partial<IngestTimings>;
+  } = {},
+): Promise<Setup> {
   const dir = opts.stateDir ?? "real";
   const log = opts.log ?? (() => {});
-  const src = new CliBeeSource();
+  const src = opts.source ?? new CliBeeSource();
   const me = await src.me().catch(() => null);
   if (!me) log("bee.me.unavailable", { note: "wearer tags cannot be matched to the profile; set BEE_WEARER_PERSON_ID" });
   const deckPath = join(dir, "deck.json");
@@ -59,12 +73,8 @@ export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: 
       const c = await src.conversation(id);
       if (!c) continue;
       const utts = pickUtterances(c);
-      const counts: Record<string, number> = {};
-      for (const u of utts) counts[u.speaker] = (counts[u.speaker] ?? 0) + 1;
-      // Only a label the profile (or BEE_WEARER_LABELS) names is the wearer: when `bee me` failed,
-      // the "only named label" guess could be an enrolled colleague, so nothing is matched.
-      const found = discoverWearerLabels(counts, me);
-      const w = found.method === "env" || found.method === "profile-name" ? found : { ...found, labels: [] };
+      // Only a label the profile (or BEE_WEARER_LABELS) names is the wearer (namedWearerOnly).
+      const w = namedWearerOnly(discoverWearerLabels(speakerCounts([c]), me));
       for (const u of utts) {
         if (!isWearer(u.speaker, w) || u.spoken_at == null) continue;
         const s = toMs(u.spoken_at)!;
@@ -90,16 +100,39 @@ export async function liveSetup(opts: { stateDir?: string; bee?: boolean; log?: 
     poll,
     replay: false,
   });
-  const stream = opts.bee === false ? null : spawnBeeStream({ onEvent: (e) => hub.ingestBee(e), log });
+  const stream = opts.bee === false ? null : spawnBeeStream({ onEvent: (e) => hub.ingestBee(e), log, spawnFn: opts.spawnFn });
+  // Finished conversations become stats sessions while the hub runs (ingest.ts). It rides on the
+  // stream, so --no-bee turns it off too, and COACH_INGEST=off turns it off on its own.
+  const ingest =
+    stream && process.env.COACH_INGEST !== "off"
+      ? new LiveIngest({ src, stateDir: dir, clock: hub.clock, known: () => new Set(hub.sessions.map((s) => s.id)), onSessions: (ss) => hub.addSessions(ss), me, log, timings: opts.ingest })
+      : null;
+  const offIngest = ingest ? hub.onBee({ conversation: (c) => ingest.onConversation(c) }) : () => {};
+  ingest?.start();
   return {
     hub,
     calendar: beeCalendar(),
     stream,
     demo: null,
+    ingest,
     stateDir: dir,
     pace: 1,
-    describe: { mode: "live", deckPath, attemptsPath, cards: deck.cards.length, sessions: hub.sessions.length, prereg: prereg ? preregPath : null, beeStream: stream ? "bee stream (spawned)" : "off (--no-bee)", wearerProfile: !!me },
-    stop: () => stream?.stop(),
+    describe: {
+      mode: "live",
+      deckPath,
+      attemptsPath,
+      cards: deck.cards.length,
+      sessions: hub.sessions.length,
+      prereg: prereg ? preregPath : null,
+      beeStream: stream ? "bee stream (spawned)" : "off (--no-bee)",
+      ingest: ingest ? `finished conversations (Bee COMPLETED, plus a list poll every ${Math.round((opts.ingest?.pollEveryMs ?? INGEST_TIMINGS.pollEveryMs) / 60_000)} min) -> ${ingest.path}` : "off",
+      wearerProfile: !!me,
+    },
+    stop: () => {
+      offIngest();
+      ingest?.stop();
+      stream?.stop();
+    },
   };
 }
 

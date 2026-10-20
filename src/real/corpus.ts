@@ -5,7 +5,7 @@
 // the only things ever persisted (to gitignored real/ and out/). Other speakers' lines live in
 // `TransientContext`, an in-memory map that is never serialized; it exists only so an LLM prompt
 // can see the reply to a "how do you say X?" moment. test/privacy.test.ts enforces this.
-import type { Me } from "../bee/schemas.js";
+import type { ConversationDetail, Me } from "../bee/schemas.js";
 import { epochMs, pickUtterances, type BeeSource } from "../bee/source.js";
 import { splitSentences } from "../analyze/segment.js";
 import { detectMislabels } from "./mislabel.js";
@@ -73,10 +73,37 @@ export async function loadRealCorpus(
     if (c) details.push(c);
   }
   // Discover the wearer's labels from the whole pull (labels and counts only).
+  const wearer = discoverWearerLabels(speakerCounts(details), me);
+  const { sessions, lines, context } = conversationLines(details, wearer);
+
+  if (opts.includeVoiceNotes !== false) {
+    for (const j of await src.voiceNotes(sinceMs)) {
+      const t = epochMs(j.created_at);
+      if (t >= untilMs || !j.text) continue;
+      // Voice notes are wearer-only by construction (push-to-talk). Raw `text`, never cleanedUpText.
+      const sents = splitSentences(j.text);
+      const dom = dominantLang(j.text);
+      sents.forEach((s, i) =>
+        lines.push({ key: `v:${j.id}:${i}`, session: j.id, kind: "voice_note", start: null, end: null, spokenAt: t, text: s, lang: lineLang(s), dom: dominantLang(s, dom), uncertain: false, mislabelScore: 0, reasons: [] }),
+      );
+      sessions.push({ id: j.id, kind: "voice_note", state: j.state, startMs: t, totalLines: sents.length, wearerLines: sents.length, uncertainLines: 0, wearerShare: 1 });
+    }
+  }
+  sessions.sort((a, b) => a.startMs - b.startMs);
+  return { corpus: { generatedAt: new Date().toISOString(), wearer, sessions, lines }, context };
+}
+
+// Speaker label -> utterance count over the final transcriptions (labels and counts only).
+export function speakerCounts(details: ConversationDetail[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const c of details) for (const u of pickUtterances(c)) counts[u.speaker] = (counts[u.speaker] ?? 0) + 1;
-  const wearer = discoverWearerLabels(counts, me);
+  return counts;
+}
 
+// The wearer filter and the mislabel detector over fetched conversations: per-conversation counts,
+// the wearer's lines, and (in memory only) everyone else's. The offline pipeline (loadRealCorpus) and
+// the hub's live ingest (src/hub/ingest.ts) both go through here.
+export function conversationLines(details: ConversationDetail[], wearer: WearerLabels): { sessions: SessionStats[]; lines: WearerLine[]; context: TransientContext } {
   const sessions: SessionStats[] = [];
   const lines: WearerLine[] = [];
   const context: TransientContext = new Map();
@@ -129,22 +156,7 @@ export async function loadRealCorpus(
     stat.wearerShare = utts.length ? Math.round((mine.length / utts.length) * 1000) / 1000 : 0;
     sessions.push(stat);
   }
-
-  if (opts.includeVoiceNotes !== false) {
-    for (const j of await src.voiceNotes(sinceMs)) {
-      const t = epochMs(j.created_at);
-      if (t >= untilMs || !j.text) continue;
-      // Voice notes are wearer-only by construction (push-to-talk). Raw `text`, never cleanedUpText.
-      const sents = splitSentences(j.text);
-      const dom = dominantLang(j.text);
-      sents.forEach((s, i) =>
-        lines.push({ key: `v:${j.id}:${i}`, session: j.id, kind: "voice_note", start: null, end: null, spokenAt: t, text: s, lang: lineLang(s), dom: dominantLang(s, dom), uncertain: false, mislabelScore: 0, reasons: [] }),
-      );
-      sessions.push({ id: j.id, kind: "voice_note", state: j.state, startMs: t, totalLines: sents.length, wearerLines: sents.length, uncertainLines: 0, wearerShare: 1 });
-    }
-  }
-  sessions.sort((a, b) => a.startMs - b.startMs);
-  return { corpus: { generatedAt: new Date().toISOString(), wearer, sessions, lines }, context };
+  return { sessions, lines, context };
 }
 
 // Other speakers' lines right after a wearer line (for "how do you say X?"). Transient only.

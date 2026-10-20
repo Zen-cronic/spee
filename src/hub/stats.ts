@@ -13,6 +13,7 @@ import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
 import { listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
+import { readJsonSafe } from "./atomic.js";
 import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
 import { countHabitKey, habitMatches, isRegistered, parseHabitKey, umbrellaOf, vagueMatches } from "./habits.js";
 
@@ -31,32 +32,49 @@ export interface StatSession {
   synthetic?: boolean;
 }
 
-// Merge the gitignored real-data files into one session list (deduplicated by session and line key).
+// Where the running live hub keeps the conversations it picked up itself (src/hub/ingest.ts),
+// relative to its state dir: a RealCorpus of wearer lines and per-conversation counts, gitignored.
+export const LIVE_SESSIONS_FILE = join("live", "sessions.json");
+
+// Add a corpus's sessions (and their wearer lines) to `byId`. Lines of a session already present
+// are merged by line key, as between the offline files. With `newOnly`, a session already present
+// is left exactly as it is: the live ingest never changes what an offline run produced.
+export function mergeCorpus(byId: Map<string, StatSession>, corpus: RealCorpus | undefined, timelines: MeetingTimeline[] = [], opts: { newOnly?: boolean } = {}): void {
+  if (!corpus) return;
+  const mine = new Set<string>();
+  for (const s of corpus.sessions ?? []) {
+    if (s.skipped) continue;
+    if (!byId.has(s.id)) {
+      byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, lines: [] });
+      mine.add(s.id);
+    }
+  }
+  for (const l of (corpus.lines ?? []) as WearerLine[]) {
+    if (opts.newOnly && !mine.has(l.session)) continue;
+    const s = byId.get(l.session);
+    if (s && !s.lines.some((x) => x.key === l.key)) s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain });
+  }
+  for (const t of timelines) {
+    const s = byId.get(t.session);
+    if (s && (!opts.newOnly || mine.has(t.session))) s.timeline = t;
+  }
+}
+
+// Merge the gitignored real-data files into one session list (deduplicated by session and line key):
+// the offline runs first (real/corpus.json, real/class-*.json, real/meetings.json), then the
+// conversations the live hub ingested (LIVE_SESSIONS_FILE), which only add sessions no offline file has.
 export function loadRealSessions(dir = "real"): StatSession[] {
   const byId = new Map<string, StatSession>();
-  const add = (corpus: RealCorpus | undefined, timelines: MeetingTimeline[] = []) => {
-    if (!corpus) return;
-    for (const s of corpus.sessions) {
-      if (s.skipped) continue;
-      if (!byId.has(s.id)) byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, lines: [] });
-    }
-    for (const l of corpus.lines as WearerLine[]) {
-      const s = byId.get(l.session);
-      if (s && !s.lines.some((x) => x.key === l.key)) s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain });
-    }
-    for (const t of timelines) {
-      const s = byId.get(t.session);
-      if (s) s.timeline = t;
-    }
-  };
   const read = (f: string) => {
     const p = join(dir, f);
     return existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : undefined;
   };
-  add(read("corpus.json"));
-  if (existsSync(dir)) for (const f of readdirSync(dir).filter((f) => /^class-.*\d\.json$/.test(f))) add(read(f)?.corpus);
+  mergeCorpus(byId, read("corpus.json"));
+  if (existsSync(dir)) for (const f of readdirSync(dir).filter((f) => /^class-.*\d\.json$/.test(f))) mergeCorpus(byId, read(f)?.corpus);
   const m = read("meetings.json");
-  if (m) add(m.corpus, m.timelines);
+  if (m) mergeCorpus(byId, m.corpus, m.timelines);
+  // The hub writes this one while it runs: a damaged file is set aside (readJsonSafe), never fatal.
+  mergeCorpus(byId, readJsonSafe<RealCorpus | undefined>(join(dir, LIVE_SESSIONS_FILE), () => undefined), [], { newOnly: true });
   return [...byId.values()].sort((a, b) => a.startMs - b.startMs);
 }
 

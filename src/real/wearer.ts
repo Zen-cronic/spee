@@ -48,3 +48,11 @@ export function discoverWearerLabels(counts: Record<string, number>, me: Pick<Me
 export function isWearer(speaker: string, w: WearerLabels): boolean {
   return w.labels.includes(speaker);
 }
+
+// The hub's stricter rule for one conversation at a time (the fallback poll and the live ingest):
+// only a label the profile (or BEE_WEARER_LABELS) names is the wearer. Within a single conversation,
+// or when `bee me` failed, the "only named label" guess could be an enrolled colleague, so nothing
+// is matched.
+export function namedWearerOnly(w: WearerLabels): WearerLabels {
+  return w.method === "env" || w.method === "profile-name" ? w : { ...w, labels: [] };
+}
