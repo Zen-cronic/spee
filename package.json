@@ -1,9 +1,12 @@
 {
-  "name": "bee-drill-poc",
+  "name": "speaking-mirror",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "setup": "npm install && npm --prefix tv/web install",
     "demo": "npm run web:build && npm run tv:web:build && tsx src/hub/server.ts --demo",
