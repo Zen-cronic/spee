@@ -412,7 +412,7 @@ Each meeting caption session is paired with every Bee conversation that overlaps
 ```
 
 - `captions` and `bee` (additive): each side's count of the habit and its 95% interval per 100 words (Poisson, Byar).
-- `agree`: `null` (not compared) until both sides have at least `minCount` of the habit or `enoughWords` words (and `minWords` at the least). Then `true` only when the two intervals overlap and the rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. Captions copied from Bee's own lines (the synthetic demo) are never compared.
+- `agree`: `null` (not compared) until one side has at least `minCount` of the habit and the other side has it too, or both sides have `enoughWords` words (and `minWords` at the least). A handful of a habit is never compared, whatever the word count. Then `true` only when the two intervals overlap and the rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. Captions copied from Bee's own lines (the synthetic demo) are never compared.
 - `claim`: `practised-agree` (unsure words and filler "like" both agree), `practised-differ`, `too-little-data` (either practised habit not compared) or `no-pairs`. Only `practised-agree` lets a screen say captions and Bee gave similar numbers; with `too-little-data` the TV says there is too little data to compare.
 
 ### `GET /api/brief`

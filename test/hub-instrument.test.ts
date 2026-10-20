@@ -2,7 +2,8 @@
 // line (captionsLine in tv/web/src/mirror/format.ts). SYNTHETIC data only.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { INSTRUMENT_MIN_WORDS, type InstrumentResponse, type TransferResponse } from "../src/hub/contract.js";
-import { instrumentReport, ratesAgree } from "../src/hub/instrument.js";
+import { habitAgrees, instrumentReport, ratesAgree } from "../src/hub/instrument.js";
+import { rateCi95 } from "../src/real/talk.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { sourceBreakdown, type StatSession } from "../src/hub/stats.js";
@@ -66,6 +67,13 @@ describe("instrumentReport", () => {
     expect(r.habits.every((h) => h.agree === null)).toBe(true);
     expect(r.claim).toBe("too-little-data");
     expect(r.note).toMatch(/copied from Bee's own lines/);
+  });
+  it("a handful of a habit is never compared, even on 1,000 words a side; enough on one side is", () => {
+    const r = (count: number, words: number) => ({ count, per100: Math.round((count / words) * 10000) / 100, ci95: rateCi95(count, words) });
+    for (const [c, b] of [[3, 0], [4, 1], [0, 0], [19, 19]]) expect(habitAgrees(r(c!, 1000), 1000, r(b!, 1000), 1000)).toBeNull();
+    expect(habitAgrees(r(25, 1000), 1000, r(0, 1000), 1000)).toBe(false); // one side heard plenty, the other none: a real difference
+    expect(habitAgrees(r(22, 1000), 1000, r(20, 1000), 1000)).toBe(true);
+    expect(habitAgrees(r(25, 500), 500, r(5, 500), 500)).toBeNull(); // under 1,000 words both sides need the floor
   });
   it("tolerance: an absolute floor for small rates and a share of the higher rate", () => {
     expect(ratesAgree(1.62, 1.57)).toBe(true);

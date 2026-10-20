@@ -369,10 +369,11 @@ export interface FirstSignal {
 }
 // GET /api/instrument (additive): Bee and meeting captions on the meetings both heard, as
 // aggregates. Per habit, each side's count and 95% interval (Poisson, Byar). `agree` per habit is
-// null until both sides have INSTRUMENT_MIN_COUNT of that habit or INSTRUMENT_ENOUGH_WORDS words
-// (and INSTRUMENT_MIN_WORDS at the least); then true only when the two intervals overlap and the
-// rates are within INSTRUMENT_TOLERANCE. "practised-agree": the two pre-registered practised habits
-// (hedges, filler:like) both agree; only then may a screen say captions and Bee gave similar numbers.
+// null until one side has INSTRUMENT_MIN_COUNT of that habit and the other has it too or both have
+// INSTRUMENT_ENOUGH_WORDS words (and INSTRUMENT_MIN_WORDS at the least); then true only when the
+// two intervals overlap and the rates are within INSTRUMENT_TOLERANCE. "practised-agree": the two
+// pre-registered practised habits (hedges, filler:like) both agree; only then may a screen say
+// captions and Bee gave similar numbers.
 // Captions that are copies of Bee's lines (the synthetic demo) are never compared: "too-little-data".
 export const INSTRUMENT_HABITS = ["hedges", "filler:like", "restart", "um-uh", "fillers"] as const;
 export const INSTRUMENT_MIN_WORDS = 200;

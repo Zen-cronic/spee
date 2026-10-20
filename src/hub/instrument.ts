@@ -3,8 +3,9 @@
 // their 95% intervals pooled over the pairs (transcriberRates), and whether the two transcribers
 // gave similar numbers on each habit. No line text, no session id.
 //
-// "Similar" needs enough of each habit to mean something: both sides hold INSTRUMENT_MIN_COUNT of
-// it or INSTRUMENT_ENOUGH_WORDS words, the two intervals overlap, and the rates are within
+// "Similar" needs enough of each habit to mean something: at least one side holds
+// INSTRUMENT_MIN_COUNT of it whatever the word count, and both sides hold it too or both have
+// INSTRUMENT_ENOUGH_WORDS words; then the two intervals overlap, and the rates are within
 // INSTRUMENT_TOLERANCE. Otherwise the habit is not compared (null). Captions that are copies of
 // Bee's own lines (the synthetic demo) are never compared. The pre-registered check stays Bee-only
 // (prereg/transfer.json).
@@ -23,7 +24,10 @@ const overlap = (a: [number, number], b: [number, number]) => a[0] <= b[1] && b[
 /** One habit compared: null with too little of it on either side, else intervals overlap and rates within tolerance. */
 export function habitAgrees(c: Rate, cWords: number, b: Rate, bWords: number): boolean | null {
   if (cWords < INSTRUMENT_MIN_WORDS || bWords < INSTRUMENT_MIN_WORDS) return null;
-  const enough = (c.count >= INSTRUMENT_MIN_COUNT && b.count >= INSTRUMENT_MIN_COUNT) || (cWords >= INSTRUMENT_ENOUGH_WORDS && bWords >= INSTRUMENT_ENOUGH_WORDS);
+  // The count floor holds on every path: a handful of a habit on 1,000 words is within the absolute
+  // tolerance of zero, so it would "agree" with a side that heard none of it.
+  if (Math.max(c.count, b.count) < INSTRUMENT_MIN_COUNT) return null;
+  const enough = Math.min(c.count, b.count) >= INSTRUMENT_MIN_COUNT || (cWords >= INSTRUMENT_ENOUGH_WORDS && bWords >= INSTRUMENT_ENOUGH_WORDS);
   if (!enough) return null;
   return overlap(c.ci95, b.ci95) && ratesAgree(c.per100, b.per100);
 }
