@@ -32,6 +32,7 @@ export interface SessionStats {
   kind: "conversation" | "voice_note" | "meeting";
   state: string;
   startMs: number;
+  endMs?: number; // Bee's end_time, when set (a conversation)
   totalLines: number;
   wearerLines: number; // labelled as the wearer
   uncertainLines: number; // of those, flagged by the mislabel detector
@@ -113,7 +114,7 @@ export function conversationLines(details: ConversationDetail[], wearer: WearerL
   for (const c of details) {
     const utts = pickUtterances(c);
     const final = c.transcriptions.some((t) => !t.realtime);
-    const stat: SessionStats = { id: String(c.id), kind: "conversation", state: c.state, startMs: c.start_time, totalLines: utts.length, wearerLines: 0, uncertainLines: 0, wearerShare: 0 };
+    const stat: SessionStats = { id: String(c.id), kind: "conversation", state: c.state, startMs: c.start_time, ...(c.end_time != null ? { endMs: c.end_time } : {}), totalLines: utts.length, wearerLines: 0, uncertainLines: 0, wearerShare: 0 };
     // Bee restarts `start`/`end` offsets at 0 when a later recording is appended to the same open
     // conversation (observed 2026-10-15, FL-6), so place every utterance on one timeline derived from
     // `spoken_at` (epoch ms) relative to the conversation start; fall back to the raw offsets.

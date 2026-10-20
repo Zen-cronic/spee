@@ -258,7 +258,9 @@ export class SettingsBook {
   tags(): Map<string, SettingTag> {
     const ss = this.o.hub.sessions;
     if (this.cache && this.cache.sessions === ss && this.cache.version === this.version) return this.cache.tags;
-    const paired = new Set(pairMeetings(ss).map((p) => p.bee));
+    // Every Bee conversation that overlaps a captioned meeting, paired or skipped for too few lines.
+    const mp = pairMeetings(ss);
+    const paired = new Set([...mp.pairs, ...mp.skipped].flatMap((p) => p.bee));
     const tags = new Map<string, SettingTag>();
     for (const s of ss) {
       const o = this.overrideFor(s.id, s.startMs);

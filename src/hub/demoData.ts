@@ -178,7 +178,9 @@ export function buildSessions(): StatSession[] {
       });
       timeline = { session: p.id, durationMin: Math.round(sec / 60), speakers: 5, highlightLinesSkipped: 0, steps };
     }
-    return { id: p.id, kind: p.kind, startMs, lines, timeline, synthetic: true, ...(p.speakers ? { speakers: p.speakers } : {}) };
+    // A conversation ends about 20 s per sentence after it starts (the instrument check's overlap).
+    const endMs = p.kind === "conversation" ? startMs + text.length * 20_000 : undefined;
+    return { id: p.id, kind: p.kind, startMs, ...(endMs ? { endMs } : {}), lines, timeline, synthetic: true, ...(p.speakers ? { speakers: p.speakers } : {}) };
   }).sort((a, b) => a.startMs - b.startMs);
 }
 

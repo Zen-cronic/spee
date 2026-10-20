@@ -12,7 +12,7 @@ import { localDate, addDays } from "../real/deck.js";
 import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
-import { listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
+import { countedLines, listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
 import { readJsonSafe } from "./atomic.js";
 import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
 import { align, normTokens } from "./fuzzy.js";
@@ -29,6 +29,7 @@ export interface StatSession {
   id: string;
   kind: "conversation" | "meeting" | "voice_note";
   startMs: number;
+  endMs?: number; // Bee's end time for a conversation, when the source has it
   lines: StatLine[];
   timeline?: MeetingTimeline;
   synthetic?: boolean;
@@ -52,7 +53,7 @@ export function mergeCorpus(byId: Map<string, StatSession>, corpus: RealCorpus |
     if (s.skipped) continue;
     if (!byId.has(s.id)) {
       const speakers = s.speakers ?? (s.totalLines > s.wearerLines ? 2 : s.wearerLines > 0 ? 1 : undefined);
-      byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, lines: [], ...(speakers ? { speakers } : {}) });
+      byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, ...(s.endMs != null ? { endMs: s.endMs } : {}), lines: [], ...(speakers ? { speakers } : {}) });
       mine.add(s.id);
     }
   }
@@ -93,7 +94,7 @@ export type SourceSel = "bee" | "all";
 export const parseSource = (s: string | null | undefined): SourceSel | null => (!s || s === "bee" ? "bee" : s === "all" ? "all" : null);
 export const inSource = (s: StatSession, src: SourceSel) => (src === "bee" ? s.kind === "conversation" : NON_DRILL_KINDS.has(s.kind));
 export const SOURCE_LABEL: Record<string, string> = { conversation: "Bee (Apple Watch) conversation", meeting: "meeting captions (secondary source)", voice_note: "Bee voice note (excluded: scripted readings/drills)" };
-const enLines = (ss: StatSession[]) => ss.flatMap((s) => s.lines.filter((l) => !l.uncertain && l.dom === "en"));
+const enLines = (ss: StatSession[]) => ss.flatMap((s) => countedLines(s.lines));
 
 export interface Rate {
   count: number;

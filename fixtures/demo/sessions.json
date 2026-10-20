@@ -5,6 +5,7 @@
    "id": "demo-bee-1010",
    "kind": "conversation",
    "startMs": 1791675000000,
+   "endMs": 1791675400000,
    "lines": [
     {
      "key": "u:demo-bee-1010:0",
@@ -134,6 +135,7 @@
    "id": "demo-bee-1011",
    "kind": "conversation",
    "startMs": 1791734400000,
+   "endMs": 1791734800000,
    "lines": [
     {
      "key": "u:demo-bee-1011:0",
@@ -263,6 +265,7 @@
    "id": "demo-bee-1013",
    "kind": "conversation",
    "startMs": 1791900300000,
+   "endMs": 1791900820000,
    "lines": [
     {
      "key": "u:demo-bee-1013:0",
@@ -886,6 +889,7 @@
    "id": "demo-bee-1014",
    "kind": "conversation",
    "startMs": 1791985800000,
+   "endMs": 1791986320000,
    "lines": [
     {
      "key": "u:demo-bee-1014:0",
@@ -1271,6 +1275,7 @@
    "id": "demo-bee-1015",
    "kind": "conversation",
    "startMs": 1792071600000,
+   "endMs": 1792072120000,
    "lines": [
     {
      "key": "u:demo-bee-1015:0",
@@ -1436,6 +1441,7 @@
    "id": "demo-bee-1016",
    "kind": "conversation",
    "startMs": 1792159800000,
+   "endMs": 1792160260000,
    "lines": [
     {
      "key": "u:demo-bee-1016:0",
@@ -1583,6 +1589,7 @@
    "id": "demo-bee-1017",
    "kind": "conversation",
    "startMs": 1792282500000,
+   "endMs": 1792282900000,
    "lines": [
     {
      "key": "u:demo-bee-1017:0",
@@ -1712,6 +1719,7 @@
    "id": "demo-bee-1018",
    "kind": "conversation",
    "startMs": 1792337400000,
+   "endMs": 1792337800000,
    "lines": [
     {
      "key": "u:demo-bee-1018:0",
@@ -2061,6 +2069,7 @@
    "id": "demo-bee-1019",
    "kind": "conversation",
    "startMs": 1792437600000,
+   "endMs": 1792438080000,
    "lines": [
     {
      "key": "u:demo-bee-1019:0",
@@ -2214,6 +2223,7 @@
    "id": "demo-bee-1020",
    "kind": "conversation",
    "startMs": 1792503300000,
+   "endMs": 1792503760000,
    "lines": [
     {
      "key": "u:demo-bee-1020:0",

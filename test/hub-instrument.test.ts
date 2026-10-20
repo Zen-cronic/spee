@@ -36,6 +36,18 @@ describe("instrumentReport", () => {
     const out = JSON.stringify(r);
     for (const leak of ["ledger", "meet-1", "bee-1", "Unrelated"]) expect(out).not.toContain(leak);
   });
+  it("counts only Bee's lines inside the meeting's time, and a weaker start-time match is said in the note", () => {
+    const timed = (id: string, kind: StatSession["kind"], startMs: number, texts: string[], everyMs: number): StatSession => ({ ...session(id, kind, startMs, texts), lines: texts.map((text, i) => ({ key: `${id}:${i}`, text, dom: "en", uncertain: false, spokenAt: startMs + i * everyMs })) });
+    const m = { ...session("meet-1", "meeting", T, many(SAY, 20)), timeline: { session: "meet-1", durationMin: 18, speakers: 4, highlightLinesSkipped: 0, steps: [] } };
+    // 20 lines one minute apart inside the meeting (and its minute of clock slack), then 20 more after it ended (same recording)
+    const b = timed("bee-1", "conversation", T, [...many(SAY, 20), ...many("Um um um after the call.", 20)], 60_000);
+    const r = instrumentReport([m, b], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
+    expect(r.words.bee).toBe(r.words.captions);
+    expect(r.habits.find((h) => h.habit === "um-uh")!.beePer100).toBe(0);
+    expect(r.note).not.toMatch(/start time only/);
+    const weak = instrumentReport([session("m", "meeting", T, many(SAY, 20)), session("b", "conversation", T + 60_000, many(SAY, 20))], { nowMs: T, tz: TZ, dataLabel: "x", synthetic: true });
+    expect(weak.note).toMatch(/1 of the 1 matched by start time only, a weaker match/);
+  });
   it("tolerance: an absolute floor for small rates and a share of the higher rate", () => {
     expect(ratesAgree(1.62, 1.57)).toBe(true);
     expect(ratesAgree(5.47, 5.44)).toBe(true);

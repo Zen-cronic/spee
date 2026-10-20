@@ -57,6 +57,10 @@ export function dominantLang(text: string, fallback: "fr" | "en" = "en"): "fr" |
 
 // Filler lexicon, per the operator's spec. EN "like" counts only in filler position (not
 // "I like it", "feel like", "looks like", "something like").
+// The lines a habit rate counts: the wearer's English lines, without the ones flagged "maybe not the
+// wearer". Stats (src/hub/stats.ts) and the instrument check (src/real/instruments.ts) share it.
+export const countedLines = <L extends { uncertain: boolean; dom: "fr" | "en" }>(ls: L[]): L[] => ls.filter((l) => !l.uncertain && l.dom === "en");
+
 export const FILLER_RE = {
   fr: /\b(?:um+|uh+|euh+|heu+|ben|bah)\b/gi,
   en: /\b(?:um+|uh+|you know)\b|(?<!\b(?:i|you|we|they|stuff|things|anything|everything|would|'d|feel|feels|felt|look|looks|looked|sound|sounds|seem|seems|something|just|don't|didn't|really|not|kind|sort)\s)\blike\b(?!\s+(?:to|it|that|this|me|you|him|her|them|us)\b)/gi,
