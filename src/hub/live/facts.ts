@@ -16,8 +16,9 @@
 // Idempotent. The ledger (<stateDir>/live/facts.json) records the intent before every create, so a
 // restart or a create that timed out never makes a second fact: the coach looks for its own text in
 // `bee facts list` first and adopts the fact it finds. A create that exited 0 without an id is never
-// made again. Calls are serialized, 1.5 s apart, 10 s timeout each. Its own breaker (3 consecutive
-// failed calls open it for 30 min) never touches the wrist, so live coaching carries on.
+// made again. Every call, the goal's and the count read's, runs on one chain: serialized, 1.5 s
+// apart, 10 s timeout each. Its own breaker (3 consecutive failed calls open it for 30 min) never
+// touches the wrist, so live coaching carries on.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -249,14 +250,18 @@ export class BeeFacts {
     await this.sync("tick");
   }
 
+  // Every Bee call runs on this one chain, so calls never overlap and stay FACTS_MIN_GAP_MS apart.
+  private enqueue(job: () => Promise<void>, onError: (e: unknown) => void): Promise<void> {
+    this.chain = this.chain.then(job).catch(onError);
+    return this.chain;
+  }
+
   /** Queue a goal sync (coalesced per reason); resolves when the queue is idle. */
   sync(reason: SyncReason): Promise<void> {
     if (this.o.mode !== "live" || this.stopped) return Promise.resolve();
     if (!this.queued.has(reason)) {
       this.queued.add(reason);
-      this.chain = this.chain
-        .then(() => (this.queued.delete(reason), this.syncNow(reason)))
-        .catch((e) => this.log("facts.sync.error", { reason, error: callError(e) }));
+      return this.enqueue(() => (this.queued.delete(reason), this.syncNow(reason)), (e) => this.log("facts.sync.error", { reason, error: callError(e) }));
     }
     return this.chain;
   }
@@ -426,9 +431,15 @@ export class BeeFacts {
     this.log("facts.goal.gone", { factId });
   }
 
+  /** Read Bee's insight and fact counts, on the call chain after any goal sync; resolves when it is idle. */
+  readCounts(): Promise<void> {
+    if (this.o.mode !== "live" || this.stopped) return Promise.resolve();
+    return this.enqueue(() => this.countsNow(), (e) => this.log("facts.counts.error", { error: callError(e) }));
+  }
+
   // Counts only: the items are dropped as soon as they are counted.
-  async readCounts(): Promise<void> {
-    if (this.o.mode !== "live" || this.stopped || this.circuitOpenUntil() != null) return;
+  private async countsNow(): Promise<void> {
+    if (this.stopped || this.circuitOpenUntil() != null) return;
     const before = JSON.stringify(this.memory());
     const insights = await this.countPages(["insights", "list"], (out) => parseInsightCount(out));
     const facts = await this.countPages(["facts", "list"], (out) => {

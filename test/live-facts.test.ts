@@ -365,6 +365,36 @@ describe("counts only, every 6 h", () => {
   });
 });
 
+describe("one Bee call at a time", () => {
+  it("the count read and a pass's create and confirm run on one chain: never two calls at once, always the gap apart", async () => {
+    const bee = fakeBee();
+    let inFlight = 0;
+    let most = 0;
+    const spans: { start: number; end: number }[] = [];
+    const slow: ExecFn = async (f, a, o) => {
+      most = Math.max(most, ++inFlight);
+      const start = Date.now();
+      await new Promise((r) => setTimeout(r, 15));
+      try {
+        return await bee.exec(f, a, o);
+      } finally {
+        inFlight--;
+        spans.push({ start, end: Date.now() });
+      }
+    };
+    const h = hub();
+    const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-chain-")), exec: slow, minGapMs: 20, countsFirstMs: 1e9 });
+    f.start();
+    stops.push(() => f.stop());
+    pass(h); // the pass's sync is queued first; the count reads and the tick come while it runs
+    await Promise.all([f.readCounts(), f.tick()]);
+    await f.settle();
+    expect(bee.factCalls()).toEqual(["facts create --text", "facts confirm 901", "insights list --limit", "facts list --limit", "insights list --limit", "facts list --limit"]);
+    expect(most).toBe(1);
+    for (let i = 1; i < spans.length; i++) expect(spans[i]!.start - spans[i - 1]!.end, `call ${i}`).toBeGreaterThanOrEqual(19);
+  });
+});
+
 describe("privacy", () => {
   it("a planted marker (a wearer line, another speaker in Bee's facts and insights) never reaches Bee, the ledger, the route or the logs", async () => {
     const other = { id: 55, text: `Jordan said the ${PLANTED_OTHER_MARKER} passcode is 4417`, confirmed: false };

@@ -198,7 +198,7 @@ The coach keeps **one goal fact** in Bee's memory, and reads how many insights a
   - A create that timed out and never shows up is made again at the next pass, once.
   - A fact you delete in the Bee app is forgotten, and the next pass writes one goal fact again. To stop it, start the hub without `COACH_FACTS=1`.
 - **Counts only.** One minute after start and then every 6 h: `bee insights list --limit 100 --json` and `bee facts list --limit 100 --json`, following a cursor for up to 5 pages. Only the counts are kept.
-- **Its own breaker.** Calls are serialized, 1.5 s apart, with a 10 s timeout. 3 consecutive failed calls open the breaker for 30 min (`status: "failed"`). It never touches the wrist or live mode, so live coaching carries on.
+- **Its own breaker.** Calls are serialized on one queue (the goal's and the count read's alike), 1.5 s apart, with a 10 s timeout. 3 consecutive failed calls open the breaker for 30 min (`status: "failed"`). It never touches the wrist or live mode, so live coaching carries on.
 - **The route.** `status` is `off`, `demo`, `pending` (no confirmed fact yet), `synced` or `failed`; `goal` is `{factId, text, confirmed, updatedAt}`; `insights` and `facts` are `{count, readAt}`. When the memory changes, the hub re-sends `stats.updated` so a screen refetches.
 - **The JSON shape is unverified.** bee-cli 0.8.0 types these calls as `unknown`, so the readers in `src/hub/live/factsParse.ts` accept the likely shapes (a bare or wrapped object or list, string or number ids, notice lines) and return nothing for anything else. The read-only spike below checks them on the account. When the hub cannot read a create's output, it logs `facts.create.unreadable` with the output's shape (keys and types), never its text.
 
