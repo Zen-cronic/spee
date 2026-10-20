@@ -6,6 +6,8 @@
 //   GET  /api/recaps/<id>    Recap | 404 unknown_recap
 //   GET  /api/coach/now      CoachNow (deterministic; no model call)
 //   POST /api/demo/live      {script?} -> 202 DemoLiveResponse (demo only)
+//   GET  /api/settings       SettingsResponse: the conversation settings, per-setting rates (secondary view)
+//   POST /api/sessions/<id>/setting  {setting} -> SettingResponse, then stats.updated (src/hub/settings.ts)
 //
 // It listens to the hub's internal Bee events (core.ts `bee.line` / `bee.conversation`), which
 // come from the hub's one `bee stream` subscriber (live) or the demo replay; there is no second
@@ -13,7 +15,9 @@
 // also replay when the hub runs with --no-bee). Recap phrasing: template, or Claude Haiku on
 // Bedrock when COACH_RECAP_LLM=1 in live mode. See docs/live.md.
 import { join } from "node:path";
-import { NUDGE_RULES, type DemoLiveResponse, type DemoLiveScript, type LiveModeRequest, type NudgeRule } from "../contract.js";
+import { NUDGE_RULES, type DemoLiveResponse, type DemoLiveScript, type LiveModeRequest, type NudgeRule, type Recap, type SettingResponse } from "../contract.js";
+import { isSetting, SettingsBook } from "../settings.js";
+import { parseSource } from "../stats.js";
 import type { HubPlugin, PluginCtx } from "../plugin.js";
 import { matchRoute } from "../plugin.js";
 import { DEFAULT_TIMINGS } from "../bee.js";
@@ -25,8 +29,8 @@ import { loadPrinciples, type Principles } from "./principles.js";
 import type { PhraseFn } from "./recapPrompt.js";
 import { BeeTodoWrist, REPLAY_TODO_MS, ReplayWrist, type ExecFn, type Wrist } from "./wrist.js";
 
-export const LIVE_PREFIXES = ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live"];
-export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "POST /api/demo/live"];
+export const LIVE_PREFIXES = ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live", "/api/settings", "/api/sessions"];
+export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "POST /api/demo/live", "GET /api/settings", "POST /api/sessions/<id>/setting"];
 export const LIVE_TOPICS = ["conversation.started", "live.window", "nudge.sent", "nudge.skipped", "conversation.ended", "recap.ready", "live.mode"];
 
 export interface LivePluginOptions {
@@ -58,7 +62,12 @@ async function bedrockPhrase(): Promise<PhraseFn> {
 
 export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
   let engine: LiveEngine | null = null;
+  let book: SettingsBook | null = null;
   let principles: Principles | null = null;
+  // A recap as served: its setting is the wearer's choice when there is one.
+  // A recap made before settings existed gets the automatic tag (others heard: talk share under 1).
+  const recapTag = (b: SettingsBook, r: Recap) => b.tagRecap(r) ?? b.tagConversation({ conversationId: r.conversationId, startedAt: r.startedAt, endedAt: r.endedAt, otherLines: r.metrics.talkShare != null && r.metrics.talkShare < 1 ? 1 : 0 });
+  const served = (r: Recap): Recap => (book ? { ...r, setting: recapTag(book, r) } : r);
   let wrist: Wrist | null = null;
 
   const pickWrist = (ctx: PluginCtx): Wrist => {
@@ -75,6 +84,9 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
       principles = opts.principles ?? loadPrinciples();
       wrist = pickWrist(ctx);
       const wantLlm = opts.phrase === undefined && !ctx.demo && process.env.COACH_RECAP_LLM === "1";
+      // The calendar (Bee's today brief) is read only when the hub talks to Bee, or in demo (injected).
+      const b = new SettingsBook({ hub: ctx.hub, stateDir: ctx.stateDir, load: !ctx.demo, calendar: ctx.demo || ctx.setup.stream ? ctx.setup.calendar : null, log: ctx.log });
+      book = b;
       const e = new LiveEngine({
         hub: ctx.hub,
         publish: (t, d) => ctx.publish(t, d),
@@ -87,6 +99,7 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
         log: ctx.log,
         phrase: opts.phrase ?? null,
         loadState: !ctx.demo,
+        settings: { tagConversation: (c) => b.tagConversation(c), baselineFor: (s) => b.baselineFor(s), tagRecap: (r) => b.tagRecap(r), onStarted: () => void b.refreshCalendar() },
       });
       engine = e;
       if (wantLlm) void bedrockPhrase().then((p) => e.setPhrase(p), (err) => ctx.log("live.llm.unavailable", { error: (err as Error).message }));
@@ -115,15 +128,39 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
         case "GET /api/recaps": {
           const raw = Number(url.searchParams.get("limit") ?? 10);
           const limit = Math.max(1, Math.min(50, Number.isFinite(raw) ? Math.floor(raw) : 10));
-          return ctx.json(res, 200, { dataLabel: ctx.hub.dataLabel, synthetic: ctx.demo, recaps: e.recapList(limit) }), true;
+          return ctx.json(res, 200, { dataLabel: ctx.hub.dataLabel, synthetic: ctx.demo, recaps: e.recapList(limit).map(served) }), true;
         }
         case "GET /api/recaps/<id>": {
           const id = matchRoute(hit, method, path)!.id!;
           const r = e.recap(id);
-          return r ? ctx.json(res, 200, r) : ctx.json(res, 404, { error: "unknown_recap", message: `no recap ${id}` }), true;
+          return r ? ctx.json(res, 200, served(r)) : ctx.json(res, 404, { error: "unknown_recap", message: `no recap ${id}` }), true;
         }
         case "GET /api/coach/now":
           return ctx.json(res, 200, e.coachNow()), true;
+        case "GET /api/settings": {
+          const source = parseSource(url.searchParams.get("source"));
+          if (!source) return ctx.json(res, 400, { error: "bad_source", message: "source must be bee (default) or all" }), true;
+          await book!.refreshCalendar();
+          return ctx.json(res, 200, book!.report(source)), true;
+        }
+        case "POST /api/sessions/<id>/setting": {
+          const id = matchRoute(hit, method, path)!.id!;
+          const b = await ctx.readJson(req);
+          if (!("setting" in b) || !(b.setting === null || isSetting(b.setting))) return ctx.json(res, 400, { error: "bad_request", message: "setting must be \"meeting\", \"work\", \"casual\" or null (back to the automatic one)" }), true;
+          // A recap id, a recap's conversation id (the live stream's uuid) or a stats session id.
+          const recap = e.recap(id) ?? e.recaps.find((r) => r.conversationId === id) ?? null;
+          const session = ctx.hub.sessions.find((s) => s.id === id) ?? null;
+          if (!recap && !session) return ctx.json(res, 404, { error: "unknown_session", message: `no conversation or recap ${id}` }), true;
+          const key = recap ? recap.conversationId : id;
+          book!.set(key, b.setting, recap ? { startMs: recap.startedAt, endMs: recap.endedAt } : undefined);
+          const tag = recap ? recapTag(book!, recap) : book!.tagSession(id)!;
+          const recapIds = e.recaps.filter((r) => r.conversationId === key || (session && session.startMs >= r.startedAt - 120_000 && session.startMs <= r.endedAt + 120_000)).map((r) => r.id);
+          ctx.log("settings.set", { id: key, setting: b.setting ?? null });
+          // The per-setting rates and the screens' recaps move: the screens refetch on stats.updated.
+          ctx.hub.publishStats();
+          const out: SettingResponse = { id: key, tag, recapIds };
+          return ctx.json(res, 200, out), true;
+        }
         case "POST /api/demo/live": {
           const b = await ctx.readJson(req);
           const director = ctx.setup.demo;

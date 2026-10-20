@@ -108,13 +108,28 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c(off.body.mode?.enabled === false && off.body.mode.reason === "off" && !!(await until((e) => after(e) && e.topic === "live.mode" && e.payload.mode?.enabled === false, "live.mode off")), "live mode off -> live.mode (reason off)");
   await ctx.post("/api/live/mode", { enabled: true, minutes: 60, by: "check" });
 
+  // Conversation settings: the recap's setting, the wearer's correction, the per-setting line; the
+  // pre-registered transfer does not move (src/hub/settings.ts)
+  const tr0 = await ctx.get("/api/transfer");
+  const sets = await ctx.get("/api/settings", "GET /api/settings");
+  c(sets.status === 200 && sets.body.synthetic === true && ["work", "casual"].every((k) => sets.body.rates?.some((r: any) => r.setting === k)) && /^By setting · /.test(sets.body.line ?? ""), "GET /api/settings: work talk and casual rates, and one plain line for the TV");
+  c(recap?.setting?.setting === "work" && recap.setting.source === "auto" && recap.metrics?.baselineSetting === "work" && / at work\./.test(recap.headline), "recap.ready: tagged work talk and compared with the usual at work");
+  const seqS = Math.max(0, ...ctx.tv.events.map(seqOf));
+  const setR = await ctx.post(`/api/sessions/${encodeURIComponent(recap?.conversationId ?? "none")}/setting`, { setting: "meeting" }, "POST /api/sessions/<id>/setting");
+  c(setR.status === 200 && setR.body.tag?.setting === "meeting" && setR.body.tag.source === "you" && setR.body.recapIds?.includes(recap?.id), "POST /api/sessions/<id>/setting: the wearer's choice, on that recap");
+  c(!!(await until((e) => seqOf(e) > seqS && e.topic === "stats.updated", "stats.updated after a setting change")), "a setting change publishes stats.updated (the screens refetch)");
+  c((await ctx.get(`/api/recaps/${recap?.id}`)).body.setting?.setting === "meeting", "GET /api/recaps/<id> shows the wearer's setting");
+  const tr1 = await ctx.get("/api/transfer");
+  c(tr1.body.headline === tr0.body.headline && tr1.body.claim === tr0.body.claim && JSON.stringify(tr1.body.habits) === JSON.stringify(tr0.body.habits), "the pre-registered transfer (headline, claim, habits) is unchanged by settings");
+  c((await ctx.post(`/api/sessions/${encodeURIComponent(recap?.conversationId ?? "none")}/setting`, { setting: null })).body.tag?.source === "auto" && (await ctx.post("/api/sessions/nope/setting", { setting: "work" })).status === 404 && (await ctx.post(`/api/sessions/${encodeURIComponent(recap?.conversationId ?? "none")}/setting`, { setting: "party" })).status === 400, "setting null goes back to automatic; unknown id 404; bad setting 400");
+
   // The planted other-speaker line appears nowhere
   const recent = await ctx.get("/api/events/recent");
-  const seen = JSON.stringify([ctx.tv.events, ctx.phone.events, ctx.sse, recent.body, live1.body, now.body, list.body]);
+  const seen = JSON.stringify([ctx.tv.events, ctx.phone.events, ctx.sse, recent.body, live1.body, now.body, list.body, sets.body, setR.body]);
   const dir = join(STATE_DIR, "live");
   const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
   const onDisk = files.map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
-  c(files.includes("recaps.json") && files.includes("nudges.json"), `live state persisted under ${dir}/ (${files.join(", ")})`);
+  c(files.includes("recaps.json") && files.includes("nudges.json") && files.includes("settings.json"), `live state persisted under ${dir}/ (${files.join(", ")})`);
   c(!seen.includes(PLANTED_OTHER_MARKER) && !onDisk.includes(PLANTED_OTHER_MARKER) && !/4417/.test(onDisk), "the planted other-speaker line never reaches an event, a response or a file");
 
   return { name: "live", ...ctx.counts() };

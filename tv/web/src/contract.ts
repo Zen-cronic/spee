@@ -369,6 +369,75 @@ export interface FirstSignal {
 export const TRANSFER_CLAIMS = ["all-dropped-control-flat", "dropped-control-flat", "dropped-control-dropped", "dropped-control-unclear", "partly-started", "not-drilled-yet", "no-drop-yet"] as const;
 export type TransferClaim = (typeof TRANSFER_CLAIMS)[number];
 
+// Conversation settings (src/hub/settings.ts): where a Bee conversation happened, so the coach
+// compares like with like. A secondary view: the pre-registered transfer check never uses it.
+export const CONVERSATION_SETTINGS = ["meeting", "work", "casual"] as const;
+export type ConversationSetting = (typeof CONVERSATION_SETTINGS)[number];
+// The words a person sees for each setting.
+export const SETTING_NAME: Record<ConversationSetting, string> = { meeting: "Meeting", work: "Work talk", casual: "Casual" };
+// Why the setting was picked (codes, never text from the conversation):
+//   "you"              the wearer set it (POST /api/sessions/<id>/setting); it wins over every rule
+//   "captions"         a meeting-captions session
+//   "paired-captions"  a Bee conversation that a meeting-captions session matches by time
+//   "calendar"         it overlaps a calendar event
+//   "work-hours"       a weekday inside the work hours, with 2-4 speakers ("speakers")
+//   "weekend" | "outside-work-hours" | "speakers-out-of-range"   why it is casual
+//   "speakers-unknown" no speaker count: casual, with low confidence
+export type SettingReason = "you" | "captions" | "paired-captions" | "calendar" | "work-hours" | "speakers" | "weekend" | "outside-work-hours" | "speakers-out-of-range" | "speakers-unknown";
+export interface SettingTag {
+  setting: ConversationSetting;
+  source: "auto" | "you";
+  confidence: "high" | "low"; // low: casual in work hours only because the speaker count was missing or outside 2-4
+  reasons: SettingReason[];
+}
+// POST /api/sessions/<id>/setting (a stats session id, a recap's conversationId or a recap id)
+export interface SettingRequest {
+  setting: ConversationSetting | null; // null clears the wearer's choice (back to the automatic one)
+}
+export interface SettingResponse {
+  id: string;
+  tag: SettingTag;
+  recapIds: string[]; // recaps of this conversation, which now show this setting
+}
+// One setting's habit rates (per 100 of the wearer's English words; null with too little speech).
+export interface SettingRates {
+  setting: ConversationSetting;
+  name: string;
+  sessions: number;
+  words: number;
+  enough: boolean; // words >= minWords
+  per100: { hedges: number | null; "filler:like": number | null; vague: number | null; restart: number | null };
+}
+export interface SettingPeriodSide {
+  sessions: number;
+  words: number;
+  count: number;
+  per100: number;
+}
+// A practised habit before and after its first practice, within one setting. Never a verdict.
+export interface SettingBeforeAfter {
+  setting: ConversationSetting;
+  name: string;
+  before: SettingPeriodSide;
+  after: SettingPeriodSide;
+  enough: boolean; // both sides have minWords
+  deltaPer100: number | null; // only when enough
+}
+// GET /api/settings?source=bee|all
+export interface SettingsResponse extends Labelled {
+  generatedAt: string;
+  source: SourceSel;
+  note: string;
+  minWords: number;
+  workHours: { start: string; end: string; days: string; tz: string | null };
+  sessions: { id: string; kind: "conversation" | "meeting" | "voice_note"; date: string; startMs: number; words: number; tag: SettingTag }[];
+  rates: SettingRates[];
+  practised: { habit: string; label: string; cutoverAt: number | null; bySetting: SettingBeforeAfter[] }[];
+  // One plain line for the TV's Progress screen ("By setting · Unsure words: work talk 2.1 → 1.4 ·
+  // casual: too little speech"), or null when no setting has enough speech on both sides.
+  line: string | null;
+}
+
 // GET /api/brief
 export interface Brief {
   dataLabel: string;
@@ -563,7 +632,12 @@ export interface Recap extends Labelled {
     longestMonologueMs: number;
     pauses: { count: number; longestMs: number };
     habits: RecapHabit[];
+    // The setting whose usual rates `baselinePer100` are ("against your usual 1.6 in meetings"), or
+    // null/absent when the overall usual was used (the setting had too little speech). Additive.
+    baselineSetting?: ConversationSetting | null;
   };
+  // Where this conversation happened (the wearer's choice when set, else the automatic tag). Additive.
+  setting?: SettingTag | null;
   headline: string; // one line for the TV
   // One wearer moment (the wearer's own words, <= RECAP_MOMENT_MAX_WORDS) and its rephrase.
   moment: { text: string; at: number; habit: string; rephrase: string } | null;
@@ -585,7 +659,7 @@ export interface CoachNow extends Labelled {
   narration: string; // TTS-ready, <= 4 sentences: the lead, the first signal (only when there is one), the week, live coaching
   mode: LiveMode;
   live: LiveWindow | null;
-  lastRecap: { id: string; endedAt: number; headline: string } | null;
+  lastRecap: { id: string; endedAt: number; headline: string; setting?: ConversationSetting | null } | null; // setting: additive
   week: { words: number; hedgesPer100: number; likesPer100: number; vaguePer100: number; topHabit: { key: string; label: string; per100: number } | null };
   drills: { dueNow: number; nextCardId: string | null };
   transferHeadline: string | null;

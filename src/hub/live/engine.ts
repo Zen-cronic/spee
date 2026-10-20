@@ -20,6 +20,8 @@ import type { CoachHub } from "../core.js";
 import { localDate } from "../../real/deck.js";
 import { habitNameOf, PER_100_GLOSS } from "../habitNames.js";
 import { firstSignalSentence } from "../stats.js";
+import { SETTING_NOUN, SETTING_WHERE, type LiveConversation, type SettingBaseline } from "../settings.js";
+import type { ConversationSetting, SettingTag } from "../contract.js";
 import { computeBaseline, type Baseline } from "./baseline.js";
 import { clockTime, LivePolicy, modeNarration } from "./policy.js";
 import type { Principles } from "./principles.js";
@@ -52,6 +54,15 @@ export interface EngineOptions {
   log?: (event: string, data?: Record<string, unknown>) => void;
   phrase?: PhraseFn | null; // optional model phrasing of recaps (null: template only)
   loadState?: boolean; // live: reload earlier recaps from disk
+  settings?: EngineSettings | null; // conversation settings (src/hub/settings.ts); absent: no setting on recaps
+}
+
+// What the engine asks of the conversation settings (src/hub/settings.ts SettingsBook).
+export interface EngineSettings {
+  tagConversation(c: LiveConversation): SettingTag;
+  baselineFor(setting: ConversationSetting): SettingBaseline | null;
+  tagRecap(r: Recap): SettingTag | null;
+  onStarted?(): void; // a conversation started: a chance to refresh the calendar times
 }
 
 let idN = 0;
@@ -247,6 +258,7 @@ export class LiveEngine {
       this.counters.conversations++;
       this.freshBaseline();
       this.publish("conversation.started", { conversationId: w.conversationId, startedAt: w.startedAt, replay: w.replay });
+      this.o.settings?.onStarted?.();
       this.log("live.conversation.started", { conversationId: w.conversationId });
     }
     const a = w.analyze(this.now(), windowThresholds(this.th), this.baseline);
@@ -339,17 +351,28 @@ export class LiveEngine {
       this.counters.recapsSkipped++;
       return;
     }
-    this.recapChain = this.recapChain.then(() => this.makeRecap(w, a, endedAt)).catch((e) => this.log("live.recap.failed", { error: (e as Error).message }));
+    this.recapChain = this.recapChain.then(() => this.makeRecap(w, a, endedAt, ended.otherLines)).catch((e) => this.log("live.recap.failed", { error: (e as Error).message }));
   }
 
-  private async makeRecap(w: ConversationWindow, a: Analysis, endedAt: number) {
+  // The wearer's usual in this conversation's setting, when that setting has enough speech; else null
+  // (the overall usual). Rate of speech always comes from the overall baseline.
+  private settingBaseline(tag: SettingTag | null): Baseline | null {
+    const sb = tag ? this.o.settings?.baselineFor(tag.setting) : null;
+    if (!sb) return null;
+    return { ...this.baseline, source: `bee ${sb.range === "week" ? "week" : "all Bee conversations"}, ${SETTING_WHERE[sb.setting]} (non-drill conversations${this.o.demo ? "; synthetic" : ""})`, words: sb.words, hedgesPer100: sb.hedgesPer100, likesPer100: sb.likesPer100, fillersPer100: sb.fillersPer100, vaguePer100: sb.vaguePer100, restartsPer100: sb.restartsPer100 };
+  }
+
+  private async makeRecap(w: ConversationWindow, a: Analysis, endedAt: number, otherLines = 0) {
     if (this.stopped || this.deleted.has(w.conversationId)) return;
     const on = this.policy.isEnabled();
+    const tag = this.o.settings ? this.o.settings.tagConversation({ conversationId: w.conversationId, startedAt: w.startedAt, endedAt, otherLines }) : null;
+    const sb = this.settingBaseline(tag);
     const { recap, slots } = composeRecap({
       id: newId("rcp", this.now()),
       win: w,
       a,
-      baseline: this.baseline,
+      baseline: sb ?? this.baseline,
+      usualWhere: sb && tag ? SETTING_WHERE[tag.setting] : undefined,
       endedAt,
       createdAt: this.now(),
       pace: this.o.pace,
@@ -359,6 +382,10 @@ export class LiveEngine {
       momentMaxWords: this.th.recap.momentMaxWords,
       monologueMs: this.th.monologue.nudgeMs,
     });
+    if (this.o.settings) {
+      recap.metrics.baselineSetting = sb && tag ? tag.setting : null;
+      recap.setting = tag;
+    }
     if (this.o.phrase) {
       const p = await phraseRecap(recap, slots, this.o.principles, this.o.phrase);
       if (p) (Object.assign(recap, p), (recap.phrasing = "llm"), this.counters.llmAccepted++);
@@ -448,15 +475,21 @@ export class LiveEngine {
       const worst = lastToday.metrics.habits.filter((x) => x.verdict === "worse")[0];
       const hd = lastToday.metrics.habits.find((x) => x.key === "hedges");
       const turn = lastToday.metrics.longestMonologueMs;
+      // The setting, when the recap has one: "Your last conversation, a meeting, ran high on ...",
+      // and "against your usual 1.6 in meetings" when the usual was that setting's.
+      // Said once: "against your usual 1.6 in meetings" names it, so the apposition is left out then.
+      const where = lastToday.metrics.baselineSetting ? ` ${SETTING_WHERE[lastToday.metrics.baselineSetting]}` : "";
+      const tag = where ? null : (this.o.settings?.tagRecap(lastToday) ?? null);
+      const lc = tag ? `last conversation, ${SETTING_NOUN[tag.setting]},` : "last conversation";
       lead = worst
-        ? `Your last conversation ran high on ${habitNameOf(worst.key)}: ${worst.count}, or ${f1(worst.per100)} ${PER_100_GLOSS}, against your usual ${f1(worst.baselinePer100 ?? 0)}.`
+        ? `Your ${lc} ran high on ${habitNameOf(worst.key)}: ${worst.count}, or ${f1(worst.per100)} ${PER_100_GLOSS}, against your usual ${f1(worst.baselinePer100 ?? 0)}${where}.`
         : turn >= this.th.monologue.nudgeMs
-          ? `In your last conversation, one turn ran ${(Math.round(turn / 6000) / 10).toFixed(1)} minutes without a break.`
+          ? `In your ${lc}${tag ? "" : ","} one turn ran ${(Math.round(turn / 6000) / 10).toFixed(1)} minutes without a break.`
           : hd && hd.baselinePer100 != null && hd.verdict === "better"
-          ? `In your last conversation you used unsure words less than usual: ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}.`
+          ? `In your ${lc} you used unsure words less than usual: ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}${where}.`
           : hd && hd.baselinePer100 != null
-          ? `Your last conversation looked typical: unsure words at ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}.`
-          : `Here's your last conversation: ${lastToday.headline}`;
+          ? `Your ${lc} looked typical: unsure words at ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}${where}.`
+          : `Here's your ${tag ? `last conversation, ${SETTING_NOUN[tag.setting]}` : "last conversation"}: ${lastToday.headline}`;
     } else {
       basis = "week";
       lead = top ? `This week, the habit to work on is ${habitNameOf(top.key)}: ${f1(top.per100)} ${PER_100_GLOSS}.` : "Bee hasn't heard enough of you this week to pick a habit yet.";
@@ -475,7 +508,7 @@ export class LiveEngine {
       narration: [lead, signal, week, modeLine].filter(Boolean).join(" "),
       mode,
       live,
-      lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: lastToday.headline } : null,
+      lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: lastToday.headline, ...(this.o.settings ? { setting: this.o.settings.tagRecap(lastToday)?.setting ?? null } : {}) } : null,
       week: { words: h.words, hedgesPer100: h.hedges.per100, likesPer100: per100(h.fillers.breakdown.like ?? 0), vaguePer100: h.vague.per100, topHabit: top ? { key: top.key, label: habitNameOf(top.key), per100: top.per100 } : null },
       drills: { dueNow: due, nextCardId: next?.id ?? null },
       transferHeadline: t?.headline ?? null,

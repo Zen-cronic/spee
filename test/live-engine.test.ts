@@ -93,9 +93,9 @@ describe("the story (live coaching on)", () => {
     expect(engine.recap(recap.id)).toEqual(recap);
     const now = engine.coachNow();
     expect(now.basis).toBe("recap");
-    expect(now.lastRecap).toEqual({ id: recap.id, endedAt: recap.endedAt, headline: recap.headline });
+    expect(now.lastRecap).toEqual({ id: recap.id, endedAt: recap.endedAt, headline: recap.headline, setting: "work" });
     // the demo's drilled habits have a next conversation: one first-signal sentence, labelled as not proof
-    expect(now.narration).toMatch(/^Your last conversation ran high on unsure words: \d+, or \d\.\d out of every 100 words you said, against your usual 1\.4\. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2\.6 to 0\.8 and filler "like" from 3\.2 to 0\.8 per 100 words\. This week, unsure words are at 1\.4 per 100 words, and \d lines are ready to practise\. Live coaching is on until 2:30 PM\.$/);
+    expect(now.narration).toMatch(/^Your last conversation ran high on unsure words: \d+, or \d\.\d out of every 100 words you said, against your usual 1\.4 at work\. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2\.6 to 0\.8 and filler "like" from 3\.2 to 0\.8 per 100 words\. This week, unsure words are at 1\.2 per 100 words, and \d lines are ready to practise\. Live coaching is on until 2:30 PM\.$/);
     expect(now.narration.split(/(?<=\.)\s+/).length).toBe(4);
     expect(engine.coachNow().narration).toBe(now.narration); // deterministic
   });

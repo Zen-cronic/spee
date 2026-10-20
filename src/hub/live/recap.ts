@@ -91,6 +91,9 @@ export interface RecapInput {
   delivery: Recap["delivery"];
   momentMaxWords?: number;
   monologueMs?: number; // a turn this long leads the recap when no habit ran high
+  // The baseline is the wearer's usual in this conversation's setting: "in meetings" follows each
+  // "usual" (src/hub/settings.ts SETTING_WHERE). Absent: the overall usual, worded as before.
+  usualWhere?: string;
 }
 
 export function paceWord(wpm: number | null, base: number | null): "steady" | "fast" | "slow" | null {
@@ -129,7 +132,9 @@ export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots }
   const values: Record<string, string> = {};
   const slot = (name: string, value: string | number) => ((values[name] = String(value)), `{${name}}`);
   const rate = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_rate`, f1(h.per100));
-  const usual = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_usual`, f1(h.baselinePer100!));
+  const where = i.usualWhere ? ` ${i.usualWhere}` : "";
+  // "your usual {hedges_usual} in meetings": the setting is words, never a slot
+  const usual = (h: RecapHabit) => `${slot(`${SLOT_HABIT[h.key as RecapKey]}_usual`, f1(h.baselinePer100!))}${where}`;
   const count = (h: RecapHabit) => slot(`${SLOT_HABIT[h.key as RecapKey]}_count`, h.count);
   // Every habit's count may be named, whatever the template says ("no unsure words" may become "{hedges_count} unsure words").
   for (const h of habits) values[`${SLOT_HABIT[h.key as RecapKey]}_count`] = String(h.count);
@@ -143,7 +148,7 @@ export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots }
   } else if (longTurn) headline = `A long turn: ${slot("longest_turn_min", turnMin)} minutes without a break.${hedges.count === 0 ? " No unsure words." : ""}`;
   else if (better[0]) {
     const b = better[0];
-    headline = b.count === 0 ? `No ${habitNameOf(b.key)} this time (usually ${usual(b)} per 100 words).` : `${habitTitle(b.key)} ${was(b.key as RecapKey)} down: ${rate(b)} per 100 words against your usual ${usual(b)}.`;
+    headline = b.count === 0 ? `No ${habitNameOf(b.key)} this time (usually ${slot(`${SLOT_HABIT[b.key as RecapKey]}_usual`, f1(b.baselinePer100!))} per 100 words${where}).` : `${habitTitle(b.key)} ${was(b.key as RecapKey)} down: ${rate(b)} per 100 words against your usual ${usual(b)}.`;
   } else if (hedges.baselinePer100 != null) {
     headline = `A typical conversation: unsure words at ${rate(hedges)} per 100 words, against your usual ${usual(hedges)}.`;
   } else headline = `${slot("words", a.window.wearer.words)} words from you, ${count(hedges)} of them unsure words.`;
