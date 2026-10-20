@@ -12,7 +12,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-native-web": "^0.21.4",
-    "tv-voice-bridge": "file:../../vendor/tv-voice-bridge-0.3.3.tgz"
+    "tv-voice-bridge": "file:../../vendor/tv-voice-bridge-0.3.4.tgz"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
