@@ -130,8 +130,8 @@ describe("drill lines in the final transcript", () => {
 
   it("a line Bee merged with a lead-in, starting well before the attempt, is still a drill line (its span overlaps)", () => {
     const at = T0 + 30_000;
-    const d = { keys: new Set<string>(), spans: [{ session: "7", fromMs: at + 12_000, toMs: at + 15_000, text: "the export ships on Friday after the review" }] };
-    const text = "Okay so let me try that one again, the export ships on Friday after the review.";
+    const d = { keys: new Set<string>(), spans: [{ session: "7", fromMs: at + 12_000, toMs: at + 15_000, text: "the export ships on Friday after the demo" }] };
+    const text = "Okay so let me try that one again, the export ships on Friday after the demo.";
     const merged = { key: "u:9", text, dom: "en" as const, uncertain: false, spokenAt: at, spokenEndAt: at + 15_000 };
     expect(isDrillLine("7", merged, d)).toBe(true);
     // no known end: estimated from its words (16 words, 8 s), which still reaches the window

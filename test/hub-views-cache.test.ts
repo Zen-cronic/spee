@@ -37,12 +37,12 @@ describe("shared session views", () => {
     const h = hub();
     const first = h.everydaySessions();
     expect(h.everydaySessions()).toBe(first);
-    h.addSessions([{ id: "new-1", kind: "conversation", startMs: Date.parse("2026-10-20T10:00:00-04:00"), lines: [{ key: "u:x1", text: "The export is ready for review today.", dom: "en", uncertain: false, spokenAt: Date.parse("2026-10-20T10:00:05-04:00") }] }]);
+    h.addSessions([{ id: "new-1", kind: "conversation", startMs: Date.parse("2026-10-20T10:00:00-04:00"), lines: [{ key: "u:x1", text: "The export is ready for launch today.", dom: "en", uncertain: false, spokenAt: Date.parse("2026-10-20T10:00:05-04:00") }] }]);
     const second = h.everydaySessions();
     expect(second).not.toBe(first);
     expect(second.some((s) => s.id === "new-1")).toBe(true);
     // the same sentence becomes a drill line once an attempt holds it
-    h.attempts.push({ id: "att_c", cardId: "c", sessionId: null, status: "polling", counted: false, createdAt: Date.parse("2026-10-20T10:00:10-04:00"), settledAt: null, provisional: { source: "phone", text: "the export is ready for review today", speechEndAt: Date.parse("2026-10-20T10:00:08-04:00"), grade: {} as never }, bee: null, final: null, agreement: null, reason: "", box: null });
+    h.attempts.push({ id: "att_c", cardId: "c", sessionId: null, status: "polling", counted: false, createdAt: Date.parse("2026-10-20T10:00:10-04:00"), settledAt: null, provisional: { source: "phone", text: "the export is ready for launch today", speechEndAt: Date.parse("2026-10-20T10:00:08-04:00"), grade: {} as never }, bee: null, final: null, agreement: null, reason: "", box: null });
     expect(h.everydaySessions().find((s) => s.id === "new-1")!.lines).toEqual([]);
     h.dispose();
   });

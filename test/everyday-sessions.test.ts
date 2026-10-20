@@ -11,7 +11,7 @@ import { habitRates, withoutDrillLines, type StatLine, type StatSession } from "
 
 const t0 = Date.parse("2026-10-20T10:00:00-04:00"); // a Tuesday, in work hours
 const PLAIN = "The billing export finished on Monday and the totals match the ledger today";
-const DRILL = "We will ship the export on Friday after the review";
+const DRILL = "We will ship the export on Friday after the demo";
 
 function rig() {
   const lines: StatLine[] = Array.from({ length: 40 }, (_, i) => ({ key: `u:${5000 + i}`, text: PLAIN, dom: "en" as const, uncertain: false, spokenAt: t0 + i * 20_000 }));

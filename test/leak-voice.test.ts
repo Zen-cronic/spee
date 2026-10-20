@@ -24,7 +24,7 @@ describe("the product's own phrases", () => {
 });
 
 describe("what counts as the product's own copy", () => {
-  // the reviewer's case: another speaker's (synthetic) line pasted into a demo-data string literal
+  // another speaker's (synthetic) line pasted into a demo-data string literal
   const PASTED = 'const LINES = ["the zebra orchid passcode is 4417 today"];';
   const hits = ["the zebra orchid passcode is", "zebra orchid passcode is 4417"];
   it("a phrase pasted into a literal never vouches for itself, in its own file or in its synced copy", () => {
