@@ -2,7 +2,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
+import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, R, SP, SPLIT, T } from '../theme';
@@ -180,7 +180,8 @@ function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null
   const unsure = habitTitle('hedges').toLowerCase();
   const like = curly(habitTitle('filler:like')).replace(/^F/, 'f');
   const status = w ? 'Bee is hearing you now.' : live.ended ? 'Conversation ended · your usual numbers' : 'Bee is listening · your usual numbers';
-  const hint = live.ended && !w ? `${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Your recap is on its way.' : 'Too short for a recap.'}` : null;
+  const footer = lastConversation(live.ended, last);
+  const hint = !w ? footer.hint : null;
   return (
     <View style={styles.fill}>
       <View style={styles.rowBetween}>
@@ -215,10 +216,10 @@ function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null
           {nudge.wrist.status !== 'failed' ? <Text style={styles.nudgeWhen}>{`Buzzed ${fmtMs(nudge.latencyMs.total)} after you said it${nudge.replay ? ' (replay)' : ''}`}</Text> : null}
           {debug ? <HopTimeline nudge={nudge} width={700} /> : null}
         </View>
-      ) : idle && last ? (
+      ) : idle && footer.headline ? (
         <View style={styles.last} testID="last-conversation">
           <Text style={styles.lastKicker}>Last conversation</Text>
-          <Text style={styles.lastText} numberOfLines={2}>{curly(last.headline)}</Text>
+          <Text style={styles.lastText} numberOfLines={2}>{curly(footer.headline)}</Text>
         </View>
       ) : idle ? (
         <Text style={styles.listenHint} numberOfLines={2}>{hint ?? 'Your numbers light up when you talk. Other voices are never shown.'}</Text>

@@ -115,7 +115,8 @@ export interface MirrorState {
   drill: DrillState;
   live: LiveSlice;
   practice: PracticeSlice;
-  recap: Recap | null;
+  recap: Recap | null; // the recap the overlay shows (the newest, or one a focus asked for)
+  latestRecap: Recap | null; // the recap of the most recent conversation (by its end), for Live's "Last conversation"
   recapVisible: boolean;
   recapShownAt: number | null;
   recapWanted: string | null; // a focus asked for a recap id we do not hold yet
@@ -181,6 +182,7 @@ export function initialMirror(view: ScreenView = 'week'): MirrorState {
     live: { mode: null, baseline: null, conversationId: null, startedAt: null, window: null, ended: null, nudges: [], skips: [] },
     practice: emptyPractice(),
     recap: null,
+    latestRecap: null,
     recapVisible: false,
     recapShownAt: null,
     recapWanted: null,
@@ -227,10 +229,12 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       return { ...s, live: { ...s.live, mode: newerMode(s.live.mode, a.live.mode), baseline: a.live.baseline ?? s.live.baseline, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;
-      return { ...s, recap: a.recap, recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };
+      return { ...s, recap: a.recap, latestRecap: newerRecap(s.latestRecap, a.recap), recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };
   }
 }
 
+// The recap of the later conversation (by when it ended); a tie keeps the one already held.
+export const newerRecap = (have: Recap | null, got: Recap): Recap => (!have || got.endedAt > have.endedAt || got.id === have.id ? got : have);
 // The live mode with the later change; a refetch with the same change refreshes the counts.
 export const newerMode = (have: LiveMode | null, got: LiveMode): LiveMode => (!have || (got.changedAt ?? 0) >= (have.changedAt ?? 0) ? got : have);
 
@@ -382,7 +386,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       return { ...s, live: { ...s.live, ended: stripSeq(p) as unknown as ConversationEnded, window: same ? null : s.live.window } };
     }
     case 'recap.ready':
-      return p.recap ? { ...s, recap: p.recap as Recap, recapVisible: true, recapShownAt: now, recapWanted: null } : s;
+      return p.recap ? { ...s, recap: p.recap as Recap, latestRecap: newerRecap(s.latestRecap, p.recap as Recap), recapVisible: true, recapShownAt: now, recapWanted: null } : s;
     case 'live.mode':
       return p.mode ? { ...s, live: { ...s.live, mode: p.mode as LiveMode } } : s;
     case 'practice.summary': {

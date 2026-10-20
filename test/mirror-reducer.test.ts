@@ -333,5 +333,12 @@ describe("stale refetches and older recaps", () => {
     s = run(s, { type: "liveState", live: live({ ...mode(false, 2000), sent: { lastHour: 3, today: 9 } }) });
     expect(s.live.mode?.sent).toEqual({ lastHour: 3, today: 9 });
   });
-
+  it("the latest recap is the newest conversation's: an older one shown on request does not replace it", () => {
+    const r = fx["recap.json"] as any;
+    const newer = { ...r, id: "rcp_new", conversationId: "c-new", endedAt: r.endedAt + 600_000 };
+    let s = run(initialMirror(), { type: "event", event: ev(1, "recap.ready", { recap: newer }), now: 0 });
+    s = run(s, { type: "recap", recap: r, show: true, now: 1 }); // "show my recap" for the older one
+    expect(s.recap?.id).toBe(r.id);
+    expect(s.latestRecap?.id).toBe("rcp_new");
+  });
 });

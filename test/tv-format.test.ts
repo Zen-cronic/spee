@@ -1,7 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -185,6 +185,17 @@ describe("first signal on Progress: numbers only when the hub measured them, alw
 });
 
 describe("Live between conversations", () => {
+  const ended = (id: string, endedAt: number, recap: "pending" | "skipped-short" = "pending") => ({ conversationId: id, endedAt, wearerWords: 42, recap });
+  const recap = (id: string, endedAt: number) => ({ conversationId: id, endedAt, headline: `headline of ${id}` });
+  it("right after a conversation ends, says what comes next instead of an older conversation's headline", () => {
+    expect(lastConversation(ended("c2", 2000), recap("c1", 1000))).toEqual({ headline: null, hint: "42 of your words. Your recap is on its way." });
+    expect(lastConversation(ended("c2", 2000, "skipped-short"), recap("c1", 1000))).toEqual({ headline: null, hint: "42 of your words. Too short for a recap." });
+    // its own recap arrived: that one is the last conversation
+    expect(lastConversation(ended("c2", 2000), recap("c2", 2000))).toEqual({ headline: "headline of c2", hint: null });
+    expect(lastConversation(null, recap("c1", 1000))).toEqual({ headline: "headline of c1", hint: null });
+    expect(lastConversation(ended("c1", 1000), null).hint).toMatch(/on its way/);
+    expect(lastConversation(null, null)).toEqual({ headline: null, hint: null });
+  });
   it("labels the usual word count by what it covers", () => {
     expect(baselineWordsLabel({ source: "bee week (non-drill conversations)", range: "week" })).toBe("your words this week");
     expect(baselineWordsLabel({ source: "bee all Bee conversations (non-drill conversations)", range: "all" })).toBe("your words so far");

@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { FirstSignal, GradeCheck, GradeResult, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
+import type { ConversationEnded, FirstSignal, GradeCheck, GradeResult, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -199,6 +199,17 @@ export function plainReason(f: GradeFailure | null): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * Live's footer between conversations. Right after a conversation ends, and until its own recap
+ * arrives, it says how many words that was and whether a recap is coming; it never shows an older
+ * conversation's headline as the last one. Otherwise, the latest recap's headline.
+ */
+export function lastConversation(ended: Pick<ConversationEnded, 'conversationId' | 'endedAt' | 'wearerWords' | 'recap'> | null, last: Pick<Recap, 'conversationId' | 'endedAt' | 'headline'> | null): { headline: string | null; hint: string | null } {
+  const endedNewer = !!ended && (!last || (last.conversationId !== ended.conversationId && ended.endedAt >= last.endedAt));
+  if (ended && endedNewer) return { headline: null, hint: `${ended.wearerWords} of your words. ${ended.recap === 'pending' ? 'Your recap is on its way.' : 'Too short for a recap.'}` };
+  return { headline: last?.headline ?? null, hint: null };
 }
 
 /** What the usual word count covers: this week, or every conversation when the week is too quiet. */
