@@ -44,6 +44,8 @@ export const C = {
 export const T = { hero: 200, big: 120, h1: 64, h2: 46, title: 38, body: 30, small: 28, label: 24 };
 /** Overscan safe zone: nothing within the outer 5% of the 1920x1080 stage. */
 export const SAFE = { x: 96, y: 54 };
+/** One fixed split for every two-panel screen (Today, Live, Practice): the paper card is this wide, so panels never move between tabs or states. */
+export const SPLIT = { left: 860 };
 export const SP = { xs: 8, s: 12, m: 20, l: 28, xl: 40, xxl: 64, xxxl: 96 };
 export const R = { s: 12, m: 20, l: 32, pill: 999 };
 export { F };

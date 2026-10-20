@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
 import { changeLabel, controlWord, fmt1, habitTitle, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
-import { C, F, R, SP, T } from '../theme';
+import { C, F, R, SP, SPLIT, T } from '../theme';
 
 /**
  * Today: today's practice (the lines due, how many are done, the one thing to say), this week's
@@ -49,7 +49,7 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
         <View style={[styles.card, styles.weekCard]}>
           <View style={styles.cardHead}>
             <Text style={styles.cardTitle}>This week</Text>
-            <Text style={styles.cardNote}>{`out of every 100 words you said · ${sessions} conversation${sessions === 1 ? '' : 's'}`}</Text>
+            <Text style={styles.cardNote}>out of every 100 words you said</Text>
           </View>
           {rows.map((r) => (
             <View key={r.key} style={styles.row} testID={`week-${r.key}`}>
@@ -84,7 +84,7 @@ function TodayBar({ done, due }: { done: number; due: number }) {
           <View key={i} style={[styles.seg, i < filled ? styles.segDone : styles.segTodo, i === shown - 1 && { marginRight: 0 }]} />
         ))}
       </View>
-      <Text style={styles.todayText}>{due === 0 ? `${done} passed today` : done ? `${done} passed today · ${due} to go` : `${due} to go today`}</Text>
+      <Text style={styles.todayText}>{due === 0 ? `${done} passed today` : done ? `${done} passed today · ${due} to go` : 'None done yet today'}</Text>
     </View>
   );
 }
@@ -114,7 +114,7 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
                 <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }, !change.pct && styles.workNone]}>{change.pct ? change.text : '—'}</Text>
               </View>
               <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(x.habit, x.label)}</Text>
-              {change.pct ? null : <Text style={styles.workWords} numberOfLines={1}>{change.text}</Text>}
+              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : `${change.text} · practised`}</Text>
             </View>
           );
         })}
@@ -144,7 +144,7 @@ const PAD = { paddingHorizontal: SP.xxl, paddingVertical: 44 };
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, flexDirection: 'row' },
-  hero: { width: 720, backgroundColor: C.paper, borderRadius: R.l, ...PAD, marginRight: SP.l },
+  hero: { width: SPLIT.left, backgroundColor: C.paper, borderRadius: R.l, ...PAD, marginRight: SP.l },
   heroKicker: { color: C.inkDim, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
   heroNum: { color: C.ink, fontSize: 260, lineHeight: 270, fontWeight: '700', letterSpacing: -4, marginTop: SP.xs, fontFamily: F.family },
   heroDone: { fontSize: T.big, lineHeight: 140, letterSpacing: -3 },

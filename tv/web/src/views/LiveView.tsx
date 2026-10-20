@@ -5,7 +5,7 @@ import { useDebug } from '../debug';
 import { curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
-import { C, F, R, SP, T } from '../theme';
+import { C, F, R, SP, SPLIT, T } from '../theme';
 
 /**
  * Live: the drill on the left (the sentence to say, one status sentence, and a three-step tracker:
@@ -16,7 +16,7 @@ import { C, F, R, SP, T } from '../theme';
 export function LiveView({ drill, live, partial, focus, last }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live'; last?: Recap | null }) {
   return (
     <View style={styles.wrap} testID="view-live">
-      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet]}>
+      <View style={styles.drill}>
         <DrillPanel d={drill} partial={partial} />
       </View>
       <View style={styles.convo}>
@@ -57,17 +57,26 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   // the pass lands with a short spring (none with reduced motion): the one moment worth celebrating
   const pop = usePop(d.graded?.pass ? `${d.attemptId}:pass` : 'none', 0.05);
   if (!card) {
+    // the same frame as an open line (kicker, sentence, result slot, tracker), so nothing moves when one opens
+    const due = d.deck?.dueNow ?? 0;
     return (
       <View style={styles.fill}>
         <Text style={styles.kicker}>Practice line</Text>
-        <Text style={styles.sentence}>Ready when you are.</Text>
-        <Text style={[styles.support, styles.idleSupport]}>Alexa gives you a line. Say it out loud, and Bee checks it.</Text>
-        <View style={{ flex: 1 }} />
-        {d.deck && d.deck.dueNow > 0 ? <Text style={styles.dueLine}>{`${d.deck.dueNow} line${d.deck.dueNow === 1 ? '' : 's'} to practise today`}</Text> : null}
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
+        <Text style={styles.sentence} numberOfLines={3}>Ready when you are.</Text>
+        <View style={[styles.band, styles.bandIdle]} testID="drill-idle">
+          <Text style={[styles.status, { color: C.ink }]} numberOfLines={2}>{due > 0 ? `${due} line${due === 1 ? '' : 's'} to practise.` : 'Nothing due right now.'}</Text>
+          <Text style={styles.support} numberOfLines={2}>{d.summary ? sessionTally('Last time', d.summary) : 'Alexa gives you a line. Say it out loud, and Bee checks it.'}</Text>
+          <View style={[styles.cta, styles.ctaInBand]}>
+            <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
+          </View>
         </View>
-        {d.summary ? <Text style={styles.support}>{sessionTally('Last time', d.summary)}</Text> : null}
+        <Tracker
+          steps={[
+            { label: 'You said it', state: 'todo' },
+            { label: 'Checked by Bee', state: 'todo', bee: true },
+            { label: 'Result', state: 'todo' },
+          ]}
+        />
       </View>
     );
   }
@@ -222,8 +231,7 @@ function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null
 const styles = StyleSheet.create({
   wrap: { flex: 1, flexDirection: 'row' },
   fill: { flex: 1 },
-  drill: { flex: 1.15, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
-  drillQuiet: { flex: 0.8 },
+  drill: { width: SPLIT.left, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
   convo: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
@@ -241,8 +249,6 @@ const styles = StyleSheet.create({
   listenTitle: { color: C.dim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   listenHint: { color: C.faint, fontSize: T.body, lineHeight: 42, maxWidth: 640, fontFamily: F.family },
   usual: { color: C.faint },
-  dueLine: { color: C.ink, fontSize: T.body, fontWeight: '700', marginBottom: SP.m, fontFamily: F.family },
-  idleSupport: { color: C.inkDim, marginTop: SP.l, maxWidth: 680 },
   last: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l },
   lastKicker: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   lastText: { color: C.text, fontSize: T.body, lineHeight: 42, fontWeight: '600', marginTop: SP.xs, fontFamily: F.family },
@@ -251,6 +257,7 @@ const styles = StyleSheet.create({
   support: { color: C.inkDim, fontSize: T.body, lineHeight: 40, marginTop: SP.s, fontFamily: F.family },
   supportSmall: { fontSize: T.small, lineHeight: 38 },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },
+  ctaInBand: { marginTop: SP.l, marginBottom: 0 },
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   tracker: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SP.xl },
   trackLine: { position: 'absolute', left: 18, right: 18, top: 17, height: 3, backgroundColor: 'rgba(0,0,0,0.12)' },
