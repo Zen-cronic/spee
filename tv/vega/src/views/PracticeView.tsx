@@ -4,10 +4,10 @@ import { Sparkline } from '../components/Sparkline';
 import { useDebug } from '../debug';
 import { dbFrac, FLAG_LABEL, fmt1, fmtInt, fmtMs, fmtPct } from '../mirror/format';
 import { PRACTICE_HISTORY, type PracticeSlice } from '../mirror/reducer';
-import { C, F, R, SP, T } from '../theme';
+import { C, F, R, SP, SPLIT, T } from '../theme';
 
 const VOL_W = 520;
-const TRACE_W = 900;
+const TRACE_W = 700;
 const QUIET = -35;
 const LOUD = -12;
 // pitch axis in semitones above 70 Hz: 70 Hz .. 400 Hz is about 30 semitones
@@ -46,6 +46,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
   const pauses = done ? s!.pauses.count : (m?.pause.count ?? s?.pauses.count ?? 0);
   const range = done ? s!.pitch.rangeSt : (m?.pitchRangeSt ?? null);
   const flat = done ? s!.pitch.monotone : !!m?.monotone;
+  const axis = pitchAxis(pitch);
   // the volume block stays after the take: the take's average level, worded from the hub's own flags
   const level = done ? s!.volume.meanDbfs : db;
   const lvBand: keyof typeof BAND_WORD = done ? (s!.flags.includes('quiet') ? 'quiet' : s!.flags.includes('loud') ? 'loud' : 'ok') : band;
@@ -63,6 +64,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
               <View style={[styles.zone, { left: dbFrac(QUIET) * VOL_W, width: (dbFrac(LOUD) - dbFrac(QUIET)) * VOL_W }]} />
               <View style={[styles.volFill, { width: Math.max(8, dbFrac(level) * VOL_W) }]} />
             </View>
+            <Text style={styles.zoneNote}>The shaded part is a good level</Text>
           </View>
           <View style={styles.pauseRow}>
             <Text style={[styles.pauseNum, !done && m?.pause.active && { color: C.ink }]}>{String(pauses)}</Text>
@@ -74,7 +76,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
           <Text style={styles.darkTitle}>Your melody</Text>
           <Text style={styles.darkSub}>the last 5 seconds</Text>
           <View style={styles.chart}>
-            <Sparkline testID="pitch-trace" points={pitch} min={0} max={30} width={TRACE_W} height={400} color={C.lime} slots={PRACTICE_HISTORY} dot={16} />
+            <Sparkline testID="pitch-trace" points={pitch} min={axis.min} max={axis.max} width={TRACE_W} height={300} color={C.lime} slots={PRACTICE_HISTORY} dot={16} band={axis.band} />
           </View>
           <Text style={[styles.melody, flat && { color: C.coral }]}>{range === null ? '' : flat ? 'Flat. Let your voice move more.' : `Lively: a ${fmt1(range)}-semitone range.`}</Text>
           {debug && m ? <Text style={styles.debug}>{`${fmt1(db)} dBFS · ${m.pitchHz ? `${fmtInt(m.pitchHz)} Hz` : 'unvoiced'} · range ${fmt1(m.pitchRangeSt)} st`}</Text> : null}
@@ -98,6 +100,19 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
   );
 }
 
+/**
+ * The melody's vertical axis fits the voice: the sung range plus 3 semitones each side (at least 12
+ * in all), so the contour fills the box; the range itself is a faint lime band behind the dots.
+ */
+function pitchAxis(pts: (number | null)[]): { min: number; max: number; band: { lo: number; hi: number; color: string } | null } {
+  const v = pts.filter((x): x is number => x !== null && Number.isFinite(x));
+  if (v.length < 2) return { min: 0, max: 30, band: null };
+  const lo = Math.min(...v);
+  const hi = Math.max(...v);
+  const pad = Math.max(3, (12 - (hi - lo)) / 2);
+  return { min: lo - pad, max: hi + pad, band: { lo, hi, color: 'rgba(215,242,106,0.10)' } };
+}
+
 /** The take in one plain sentence, from the summary's own flags and counts ("Steady pace, a lively melody, 2 pauses."). */
 function takeSentence(s: NonNullable<PracticeSlice['summary']>): string {
   const pace = s.flags.includes('fast') ? 'A bit fast' : s.flags.includes('slow') ? 'A bit slow' : 'Steady pace';
@@ -113,7 +128,7 @@ const styles = StyleSheet.create({
   idleTitle: { color: C.ink, fontSize: 72, lineHeight: 84, fontWeight: '700', marginTop: SP.l, maxWidth: 1300, fontFamily: F.family },
   idleHint: { color: C.ink, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
   idleNote: { color: C.inkDim, fontSize: T.body, marginTop: SP.s, fontFamily: F.family },
-  paper: { width: 660, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
+  paper: { width: SPLIT.left, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   big: { color: C.ink, fontSize: T.hero, lineHeight: 210, fontWeight: '700', letterSpacing: -2, marginTop: SP.s, fontFamily: F.family },
   bigLabel: { color: C.ink, fontSize: T.h2, fontWeight: '600', marginTop: -SP.s, fontFamily: F.family },
@@ -124,6 +139,7 @@ const styles = StyleSheet.create({
   pauseRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: SP.l },
   pauseNum: { color: C.ink, fontSize: 64, fontWeight: '700', fontFamily: F.family },
   pauseLabel: { color: C.inkDim, fontSize: T.body, marginLeft: SP.s, fontFamily: F.family },
+  zoneNote: { color: C.inkFaint, fontSize: T.label, marginTop: SP.xs, fontFamily: F.family },
   note: { color: C.inkFaint, fontSize: T.label, marginTop: SP.s, fontFamily: F.family },
   dark: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
   darkTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },
@@ -131,7 +147,7 @@ const styles = StyleSheet.create({
   chart: { flex: 1, justifyContent: 'center' },
   melody: { color: C.text, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
   caption: { backgroundColor: C.surface, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginTop: SP.m },
-  captionText: { color: C.text, fontSize: T.title, fontStyle: 'italic', fontFamily: F.family },
+  captionText: { color: C.text, fontSize: T.title, fontFamily: F.family },
   summary: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginTop: SP.m },
   flags: { flexDirection: 'row', gap: SP.s, marginRight: SP.l },
   summaryText: { flexShrink: 1, color: C.text, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
