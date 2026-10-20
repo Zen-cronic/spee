@@ -138,7 +138,7 @@ describe("APL document", () => {
     const C: Record<string, string> = Object.fromEntries([...theme.slice(theme.indexOf("export const C"), theme.indexOf("};")).matchAll(/(\w+): '(#[0-9a-f]{6})'/gi)].map((m) => [m[1]!, m[2]!.toLowerCase()]));
     const colors: Record<string, string> = DOC.resources[0].colors;
     for (const [k, v] of Object.entries(colors)) {
-      const tvKey = k === "colorBee" ? (C.bee ? "bee" : "lavender") : k === "colorBeeBg" ? (C.beeBg ? "beeBg" : "lavenderBg") : k;
+      const tvKey = k === "colorBee" ? "bee" : k === "colorBeeBg" ? "beeBg" : k;
       expect(v.toLowerCase(), k).toBe(C[tvKey]);
     }
     // no colour literal anywhere outside the palette resource
