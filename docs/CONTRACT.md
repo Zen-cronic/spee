@@ -1012,6 +1012,72 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
 ```
 <!-- /fixture -->
 
+### `GET /api/coach/facts` (Bee memory; packet W)
+
+The coach's one goal fact in Bee, and Bee's insight and fact counts (`BeeMemory`, `src/hub/live/facts.ts`, [live.md](live.md) "Bee memory"). Opt-in: `COACH_FACTS=1` in live mode with the Bee stream. `status`:
+
+- `"off"` (the default): no Bee call of any kind; `goal`, `insights` and `facts` are null.
+- `"demo"`: nothing is written; `goal` is the text the coach would write (`factId: null`).
+- `"pending"`: on, no confirmed goal fact yet (it is written after the first Bee-verified pass).
+- `"synced"`: the goal fact exists in Bee, confirmed, with this text.
+- `"failed"`: the last write failed, or the facts breaker is open (3 failed calls, 30 min). Live coaching is not affected.
+
+`goal.text` is template text only (numbers, the fixed habit names, the transfer verdicts; `GOAL_TEXT_RE`). `insights` and `facts` are counts read every 6 h, never their text. `note` is always `BEE_MEMORY_NOTE`. When the memory changes the hub re-sends `stats.updated`.
+
+Demo hub:
+
+```json
+{
+ "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+ "synthetic": true,
+ "note": "Bee's chat and Alexa+ may not read coach-written facts.",
+ "enabled": true,
+ "status": "demo",
+ "goal": {
+  "factId": null,
+  "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 4 lines passed, checked by Bee.",
+  "confirmed": false,
+  "updatedAt": 1792411626000
+ },
+ "insights": null,
+ "facts": null
+}
+```
+
+Live, after a pass (illustrative ids and counts):
+
+```json
+{ "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
+  "enabled": true, "status": "synced",
+  "goal": { "factId": "901", "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": true, "updatedAt": 1792530000000 },
+  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 } }
+```
+
+### `POST /api/coach/cue` (the if-then wrist cue; packet W)
+
+`CueRequest {inMinutes? (0-180, default 0), by?}` -> `200 CueResponse` (`src/hub/live/cue.ts`, [live.md](live.md) "Wrist cue"). One fixed line, at most `WRIST_TEXT_MAX` characters, through the wrist queue as a Bee to-do with an alarm `inMinutes` from now (never sooner than the lead). Opt-in: `COACH_CUES=1` in live mode; the demo hub always answers on the replay wrist.
+
+- `cue.habit` is a pre-registered drilled habit already practised (`CUE_HABITS`): never the control (`restart`), never an unpractised habit.
+- `deduped: true`: the same habit was cued in the last 30 min; the first cue comes back and nothing new reaches the wrist.
+- `wrist.status: "failed"` (200): Bee did not take the to-do; it counts toward neither the dedupe nor the cap.
+- Errors: `400 bad_request`; `409 cues_off`; `409 no_practised_habit`; `409 quiet_hours` (the alarm falls between 22:00 and 08:00 local); `429 cue_cap` (3 a day); `503 wrist_down` (the wrist circuit is open).
+- The texts: `[coach] If asked for status: result first, no "I guess".` (`hedges`) and `[coach] If you need a second: pause, don't say "like".` (`filler:like`). Never a calendar title or a transcript line. The hub has no calendar timer: the coaching skill decides when.
+
+Demo hub, `{"inMinutes": 10, "by": "skill"}`:
+
+```json
+{
+ "cue": { "id": "cue_mvgyktu000", "habit": "filler:like", "text": "[coach] If you need a second: pause, don't say \"like\".", "alarmAt": 1792518000072, "by": "skill" },
+ "wrist": { "channel": "replay", "status": "replay", "todoId": null, "error": null },
+ "deduped": false,
+ "narration": "Demo cue, no Bee call: the wrist alarm would go off at 1:40 PM. If you need a second: pause, don't say \"like\"."
+}
+```
+
+Then `{}` again within 30 min: the same `cue` and `wrist`, with `"deduped": true` and the narration "That cue is already set for 1:40 PM, so I didn't send another."
+
+Live, the wrist answer is `{"channel": "bee-todo", "status": "scheduled", "todoId": "<Bee to-do id>", "error": null}`, and the narration starts "Cue set: your wrist alarm goes off at ...".
+
 ### Conversation settings: `GET /api/settings` and `POST /api/sessions/<id>/setting`
 
 Each conversation gets a setting, so the coach compares like with like: `meeting`, `work` or `casual` (shown as "Meeting", "Work talk", "Casual", `SETTING_NAME`). It is a **secondary, labelled view**: `GET /api/transfer` (headline, claim, verdicts, first signal) never reads it, and `test/settings.test.ts` and `npm run contract:check` assert that the transfer is identical with and without settings data. Additive: older hubs answer `404 not_found`, and a screen then hides the strip.
@@ -1611,6 +1677,7 @@ Each packet edits only its own files. The lead's files are frozen for the packet
 |---|---|---|---|
 | **A: live** | `src/hub/live/**`, `src/hub/core.ts`, `src/hub/bee.ts`, `src/hub/setup.ts`, `src/hub/demoData.ts`, `scripts/wrist-probe.ts`, `scripts/demo-replay.ts`, `docs/live.md`, `test/live-*.test.ts` | `src/hub/live/plugin.ts` (`createLivePlugin`) | `scripts/checks/live.ts` |
 | **B: mirror** | `src/hub/mirror.ts`, `tv/web/**`, `tv/vega/**`, `web/phone/**`, `scripts/tv-sync.ts`, `test/mirror-*.test.ts`, `test/tv-*.test.ts`, `test/phone-*.test.ts` | `src/hub/mirror.ts` (`createMirrorPlugin`) | `scripts/checks/mirror.ts` |
+| **W: Bee write-back** | `src/hub/live/facts.ts`, `src/hub/live/factsParse.ts`, `src/hub/live/cue.ts`, `test/live-facts.test.ts`, `test/live-cue.test.ts` (inside packet A's `src/hub/live/**`) | `GET /api/coach/facts`, `POST /api/coach/cue` in `createLivePlugin` | `scripts/checks/live.ts` |
 | **C: Alexa and MCP** | `src/alexa/**`, `src/mcp/**`, `alexa/**`, `web/sim/**`, `scripts/alexa-deploy.ts`, `test/alexa-*.test.ts`, `test/mcp-*.test.ts` | `src/alexa/plugin.ts` (`createAlexaPlugin`), `src/mcp/plugin.ts` (`createMcpPlugin`) | `scripts/checks/alexa.ts`, `scripts/checks/mcp.ts` |
 | **lead (frozen)** | `src/hub/contract.ts`, `src/hub/plugin.ts`, `src/hub/plugins.ts`, `src/hub/server.ts`, `src/hub/gate.ts`, `src/hub/static.ts`, `src/hub/fixtureV2.ts`, `src/hub/contractExamples.ts`, `docs/CONTRACT.md`, `fixtures/contract-v2/**`, `coach/principles.template.md`, `scripts/contract-check.ts`, `scripts/checks/types.ts`, `scripts/contract-v2-examples.ts`, `scripts/leak-check.ts`, `package.json`, `package-lock.json`, `tsconfig.json`, `vitest.config.ts`, `.gitignore`, `test/contract-*.test.ts`, `test/hub-gate.test.ts`, `test/hub-static.test.ts`, `test/hub-plugins.test.ts`, `test/deps-mcp-sdk.test.ts` | | |
 

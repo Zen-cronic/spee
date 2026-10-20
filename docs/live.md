@@ -6,6 +6,8 @@ The live engine turns Bee's live stream into three kinds of feedback:
 - a **recap** after every conversation;
 - an on-demand answer to **"how am I doing?"** (`GET /api/coach/now`, used by Alexa and MCP).
 
+Two opt-in Bee write-backs sit beside it: one **goal fact** kept in Bee's memory (`GET /api/coach/facts`, see "Bee memory") and an **if-then cue** on the wrist before a conversation (`POST /api/coach/cue`, see "Wrist cue").
+
 **Latency.** Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it. A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn.
 
 The payloads are frozen in [`CONTRACT.md`](CONTRACT.md) (v2) and [`src/hub/contract.ts`](../src/hub/contract.ts). This page covers how the engine produces them, the defaults, and how to run it on real devices.
@@ -22,6 +24,8 @@ bee stream (one subscriber, src/hub/bee.ts)
   -> nudge.sent | nudge.skipped
 end of conversation -> conversation.ended -> recap (live/recap.ts) -> recap.ready -> wrist -> disk
 Bee marks it COMPLETED -> live ingest (ingest.ts) -> stats session -> stats.updated (Progress, first signal)
+Bee-verified pass -> Bee memory (live/facts.ts): one goal fact, created, confirmed, then updated   (COACH_FACTS=1)
+POST /api/coach/cue -> cue (live/cue.ts) -> wrist (kind "cue")                                    (COACH_CUES=1)
 ```
 
 - **No second stream.** The hub keeps its one `bee stream` process. The verifier emits `bee.line` once Bee has decided a line's speaker: the wearer tag, another person's tag, a low score, or the 3 s tag timeout. Only a wearer line (tag score at least 0.5) carries text. Every other line is a word count.
@@ -40,6 +44,9 @@ Bee marks it COMPLETED -> live ingest (ingest.ts) -> stats session -> stats.upda
 | `src/hub/live/policy.ts` | Live mode (on, off, expiry), cooldowns, caps, quiet hours, warm-up, drill and wrist suppression |
 | `src/hub/live/baseline.ts` | The wearer's baseline rates and rate of speech |
 | `src/hub/live/wrist.ts` | `BeeTodoWrist` (queue, retries, breaker, ledger, cleanup) and `ReplayWrist` |
+| `src/hub/live/facts.ts` | Bee memory: the one goal fact (template, ledger, its own breaker) and the insight and fact counts |
+| `src/hub/live/factsParse.ts` | Defensive readers for the `bee facts` and `bee insights` JSON, and the read-only spike |
+| `src/hub/live/cue.ts` | The if-then wrist cue: which habit, dedupe, the daily cap, quiet hours |
 | `src/hub/live/recap.ts` | Template recap: metrics, verdicts, the moment and its rephrase |
 | `src/hub/settings.ts` | Conversation settings: the automatic tag, the wearer's correction, per-setting rates and baselines |
 | `src/hub/live/recapPrompt.ts` | Optional Claude Haiku phrasing and its acceptance checks |
@@ -104,10 +111,10 @@ Notes on how the rules are computed:
 - **Circuit breaker.** 3 consecutive failed create calls open the circuit for 10 min. The engine turns live mode off (`wrist-down`) and publishes `live.mode`. A nudge whose wrist call failed is still `nudge.sent`, with `wrist.status: "failed"` and null `todoAt`/`alarmAt`.
 - **Ledger.** `<stateDir>/live/todos.json` (`real/live/` in live mode, gitignored). It holds the id, kind, the generated text, the alarm, the cleanup action and the state.
 - **Cleanup.**
-  - A nudge to-do is **deleted** 10 min after its alarm.
+  - A nudge or cue to-do is **deleted** 10 min after its alarm.
   - A recap to-do is **completed** (it shows ticked in the Bee app) 30 min after its alarm.
   - Cleanups are checked every minute.
-  - At startup and every hour, a sweep lists the to-dos and deletes any open `[coach] ` to-do whose alarm passed more than 30 min ago, that the ledger does not track (a crash, old probes), and that is the coach's own: an id it created (kept past the ledger's trim) or text in exactly the shape it generates (a nudge, a recap, a wrist probe). A personal to-do such as "[coach] prep 1:1 notes" is never touched, and any truthy `completed` counts as done.
+  - At startup and every hour, a sweep lists the to-dos and deletes any open `[coach] ` to-do whose alarm passed more than 30 min ago, that the ledger does not track (a crash, old probes), and that is the coach's own: an id it created (kept past the ledger's trim) or text in exactly the shape it generates (a nudge, a recap, a cue, a wrist probe). A personal to-do such as "[coach] prep 1:1 notes" is never touched, and any truthy `completed` counts as done.
   - A `todo-deleted` stream event for a pending ledger entry (deleted by the wearer in the Bee app, or by us) marks it `gone`, so it is never cleaned up twice.
 - **Channel selection.**
   - Demo mode uses `ReplayWrist`: no CLI, the same hops with a 1.45 s create and the alarm lead, scaled by the pace.
@@ -175,6 +182,37 @@ Deterministic, at most 4 sentences:
 3. **The week.** The top habit's rate (hedges or vague answers when they have at least 3 occurrences, otherwise fillers or restarts) and the number of due drills.
 4. **Live mode.** `Live coaching is on until 2:30 PM.` or `Live coaching is off.`
 
+## Bee memory (`GET /api/coach/facts`)
+
+The coach keeps **one goal fact** in Bee's memory, and reads how many insights and facts Bee has. It is the developer-built counterpart of Bee's own goals. No source says Bee's chat, Daily Insights or Alexa+ read a fact a developer wrote, so the route always says: "Bee's chat and Alexa+ may not read coach-written facts."
+
+- **Off by default.** `COACH_FACTS=1` turns it on, in live mode with the Bee stream only. Off makes no Bee call of any kind (no write, no count). Demo mode writes nothing: the route shows the goal the coach would write, with `status: "demo"`.
+- **The text** is a template filled with numbers, the fixed habit names and the pre-registered transfer verdicts, for example: `Speaking goal (Speaking Mirror): fewer unsure words and filler "like". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler "like" needs more speech; 3 lines passed, checked by Bee.` A guard (`GOAL_TEXT_RE`) refuses any other text before the CLI is called. It never carries transcript text, another speaker's words or another fact's text.
+- **When it writes.**
+  - The first Bee-verified pass (graded on Bee's own text, counted, passed) runs `bee facts create --text "<goal>" --json`, then `bee facts confirm <id> --json`: a new fact comes back unconfirmed.
+  - After that, always the **same id**: `bee facts update <id> --text "<goal>" --confirmed true --json`. A drilled habit's verdict changing (checked on `stats.updated`) updates it at once. A text-only change (the pass count) waits for a pass or the 6-hourly read, at most once every 10 min.
+- **Never a second fact.** The ledger `<stateDir>/live/facts.json` (`real/live/` in live mode) records the intent before every create.
+  - A create that timed out, or a hub stopped during one, is looked for first (`bee facts list --unconfirmed`, then `bee facts list`, matched by its exact text) and adopted.
+  - A create that exited 0 without printing an id is never made again; the status stays `failed` until Bee lists it.
+  - A create that timed out and never shows up is made again at the next pass, once.
+  - A fact you delete in the Bee app is forgotten, and the next pass writes one goal fact again. To stop it, start the hub without `COACH_FACTS=1`.
+- **Counts only.** One minute after start and then every 6 h: `bee insights list --limit 100 --json` and `bee facts list --limit 100 --json`, following a cursor for up to 5 pages. Only the counts are kept.
+- **Its own breaker.** Calls are serialized, 1.5 s apart, with a 10 s timeout. 3 consecutive failed calls open the breaker for 30 min (`status: "failed"`). It never touches the wrist or live mode, so live coaching carries on.
+- **The route.** `status` is `off`, `demo`, `pending` (no confirmed fact yet), `synced` or `failed`; `goal` is `{factId, text, confirmed, updatedAt}`; `insights` and `facts` are `{count, readAt}`. When the memory changes, the hub re-sends `stats.updated` so a screen refetches.
+- **The JSON shape is unverified.** bee-cli 0.8.0 types these calls as `unknown`, so the readers in `src/hub/live/factsParse.ts` accept the likely shapes (a bare or wrapped object or list, string or number ids, notice lines) and return nothing for anything else. The read-only spike below checks them on the account. When the hub cannot read a create's output, it logs `facts.create.unreadable` with the output's shape (keys and types), never its text.
+
+## Wrist cue (`POST /api/coach/cue`)
+
+One if-then cue on the wrist before a conversation: `{inMinutes?, by?}` (`inMinutes` 0 to 180, default 0 for the alarm lead).
+
+- **Opt-in.** `COACH_CUES=1` in live mode. The demo hub always answers, on the replay wrist (no Bee call). Off: `409 cues_off`.
+- **The text** is one fixed line per habit, at most 60 characters: `[coach] If asked for status: result first, no "I guess".` (unsure words) and `[coach] If you need a second: pause, don't say "like".` (filler "like"). It never carries a calendar title or a transcript line.
+- **Which habit.** Only a pre-registered drilled habit that has been practised (a counted drill). Never the habit kept undrilled (starting over), because a cue about it would be practice and spoil the check. Never a habit not practised yet (`409 no_practised_habit`). Of the practised ones, the one with the higher latest rate.
+- **Limits.** The same habit again within 30 min returns the first cue with `deduped: true` and makes no second to-do. At most 3 cues a day. None whose alarm falls in quiet hours, 22:00 to 08:00 (`409 quiet_hours`). Over the cap: `429 cue_cap`. Wrist circuit open: `503 wrist_down`.
+- **Delivery.** Through the wrist queue as kind `"cue"`: a Bee to-do whose alarm is `inMinutes` from now, never sooner than the lead, deleted 10 min after its alarm. The Watch buzzes only while Bee records and the iPhone is locked.
+- **No calendar timer in the hub.** The coaching skill (`skills/speaking-coach/scripts/coach.mjs`, `cue` and `heartbeat`) decides when, from `GET /api/brief`.
+- **Ledger.** `<stateDir>/live/cues.json` (live mode): cue ids, the fixed text and alarm times, so dedupe and the cap survive a restart.
+
 ## Finished conversations feed the stats (live ingest)
 
 The live hub picks up finished conversations by itself. The weekly stats, the transfer check and its first signal (Progress on the TV, and "how am I doing?") update once Bee has finished a conversation. You do not need `npm run real` or a hub restart.
@@ -237,6 +275,8 @@ Every conversation gets a setting, so the coach compares like with like: **Meeti
   - `recaps.json`: metrics, plus a moment of at most 12 of the wearer's own words;
   - `nudges.json`: generated text and numbers;
   - `todos.json`: generated text and ids;
+  - `facts.json`: the goal fact's id and its template text, and Bee's insight and fact counts (never another fact's or an insight's text);
+  - `cues.json`: cue ids, the fixed cue text and alarm times;
   - `sessions.json`: finished conversations the hub ingested, as the wearer's lines plus per-conversation counts. Other speakers' lines are counted, never stored.
 - **Where state lives.** `real/live/` in live mode (gitignored, and screened as wearer text by `npm run leak-check`), `out/demo/live/` in demo mode.
 - **Logs.** Event names and ids only.
@@ -300,6 +340,19 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
    - `real/live/todos.json` shows each entry `done`.
    - Restarting the hub runs the stale `[coach]` sweep.
 
+### Bee memory and one cue (consented writes)
+
+These write to your Bee account: **one goal fact** and **one or two to-dos** (cues). Nothing else writes; the spike only reads.
+
+1. **The read-only spike (before any write):** `npx tsx src/hub/live/factsParse.ts inspect`. It runs `bee facts list --limit 5 --json`, the same with `--unconfirmed`, and `bee insights list --limit 5 --json`, and prints only each output's shape (keys, value types, array lengths) and what the readers made of it (`parsed.count`, confirmed flags, `cursor`), never a fact's text. If `output.shape` shows items with an `id` but `parsed.count` is 0, the readers need adjusting: share the shape lines, never the raw output.
+2. **Start the hub:** `COACH_FACTS=1 COACH_CUES=1 npm run hub`. The live plugin's health note ends `Bee facts: live (pending); cues: on`.
+3. **The one fact.** Say "Alexa, ask Speech Coach to quiz me", then say the line. After Bee's pass, within about a minute, `curl -s localhost:8791/api/coach/facts` shows `"status": "synced"` and `goal.factId`. Check that one fact only with `bee facts get <factId> --json` (not `bee facts list`, which prints every fact, and facts can name other people).
+4. **The one cue.** With the iPhone locked and Bee recording, run `node skills/speaking-coach/scripts/coach.mjs cue --in 0` (or `curl -s -X POST localhost:8791/api/coach/cue -H 'content-type: application/json' -d '{"inMinutes":0,"by":"operator"}'`). The Watch buzzes about 10 s later. Note `wrist.todoId` in the answer. Running it again answers `deduped: true` and makes no second to-do.
+5. **Restart the hub:** no second fact (`real/live/facts.json` keeps the id), and the cue is still deduped (`real/live/cues.json`).
+6. **Undo.**
+   - The cue to-do deletes itself 10 min after its alarm. To remove it at once: `bee todos delete <todoId> --json`.
+   - The fact: stop the hub, run `bee facts delete <factId> --json`, then delete `real/live/facts.json`, and start the hub without `COACH_FACTS=1`. While `COACH_FACTS=1` is set, the next pass writes one goal fact again.
+
 ## Environment
 
 | Variable | Default | Effect |
@@ -310,6 +363,8 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
 | `HUB_MASK` | on when a terms file exists | `0` = no display masking (same as `--no-mask`); see "Filming" above |
 | `COACH_WORK_HOURS` | `09:00-18:00` | work hours for the Work talk setting (weekdays, `BEE_TZ`) |
 | `COACH_INGEST` | on (live mode with the stream) | `off` = finished conversations are not ingested; run `npm run real` and restart as before |
+| `COACH_FACTS` | unset (off: no Bee call) | `1` = keep one goal fact in Bee and read the insight and fact counts, live mode with the stream only (see "Bee memory") |
+| `COACH_CUES` | unset (off) | `1` = `POST /api/coach/cue` sends a wrist cue in live mode (the demo hub always answers, on the replay wrist) |
 | `BEE_BIN`, `BEE_TZ`, `BEE_WEARER_PERSON_ID` | | as for the hub (`CONTRACT.md` "Live mode") |
 
 ## Known limits
@@ -321,6 +376,8 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
 - **Talk share.** Other speakers are only those lines Bee did not tag as the wearer, so a missed wearer tag counts toward the others.
 - **Recap moments** exist only for hedges and "like" (vague answers and restarts have no mechanical rephrase).
 - **Wrist lead.** The Watch only buzzes while Bee records and the iPhone is locked; otherwise the alarm lands on the iPhone.
+- **Coach-written facts.** No source says Bee's chat, Daily Insights or Alexa+ read them. Bee may merge or reword facts; the coach then no longer finds its own by its text.
+- **The facts JSON shape** is unverified until the spike (see "Bee memory and one cue").
 
 ## Contract change requests
 
