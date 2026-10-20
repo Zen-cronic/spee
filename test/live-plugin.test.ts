@@ -1,8 +1,9 @@
 // The live plugin's HTTP routes on a real demo hub (pace 0.01): GET /api/live, POST
-// /api/live/mode, GET /api/recaps[/<id>], GET /api/coach/now, GET /api/coach/facts and POST
-// /api/demo/live, with their errors. The demo story runs through the replayed Bee stream in about 3 s.
+// /api/live/mode, GET /api/recaps[/<id>], GET /api/coach/now, GET /api/coach/facts, POST
+// /api/coach/cue and POST /api/demo/live, with their errors. The demo story runs through the
+// replayed Bee stream in about 3 s.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { BEE_MEMORY_NOTE } from "../src/hub/contract.js";
+import { BEE_MEMORY_NOTE, CUE_HABITS, WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
 import { GOAL_TEXT_RE } from "../src/hub/live/facts.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
@@ -39,7 +40,7 @@ afterAll(async () => s.close());
 describe("live routes (demo hub)", () => {
   it("health: the live plugin is ready, with its wrist and principles source", async () => {
     const h = (await get("/api/health")).body;
-    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template; Bee facts: demo$/), routes: expect.arrayContaining(["GET /api/coach/facts"]) });
+    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template; Bee facts: demo; cues: on$/), routes: expect.arrayContaining(["GET /api/coach/facts", "POST /api/coach/cue"]) });
   });
   it("GET /api/live: off by default, the synthetic baseline, the replay wrist", async () => {
     const r = await get("/api/live");
@@ -83,9 +84,19 @@ describe("live routes (demo hub)", () => {
     expect(r.body).toMatchObject({ synthetic: true, enabled: true, status: "demo", goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE });
     expect(r.text).not.toContain(PLANTED_OTHER_MARKER);
   });
+  it("POST /api/coach/cue (demo): one cue on the replay wrist, deduped on a repeat, 400 on a bad body", async () => {
+    expect(await post("/api/coach/cue", { inMinutes: 500 })).toMatchObject({ status: 400, body: { error: "bad_request" } });
+    const a = await post("/api/coach/cue", { inMinutes: 0, by: "test" });
+    expect(a.status).toBe(200);
+    expect(a.body).toMatchObject({ cue: { by: "test", alarmAt: expect.any(Number) }, wrist: { channel: "replay", status: "replay", todoId: null, error: null }, deduped: false });
+    expect(CUE_HABITS).toContain(a.body.cue.habit);
+    expect(a.body.cue.text.startsWith("[coach] ") && a.body.cue.text.length <= WRIST_TEXT_MAX).toBe(true);
+    const b = await post("/api/coach/cue", {});
+    expect(b.body).toMatchObject({ deduped: true, cue: { id: a.body.cue.id } });
+  });
   it("a tunnel or public request to the coach routes gets 403 (the gate)", async () => {
-    const tunnel = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https" };
-    expect((await raw(s.port, "/api/coach/facts", { headers: tunnel })).status).toBe(403);
+    const tunnel = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https", "content-type": "application/json" };
+    expect((await raw(s.port, "/api/coach/cue", { method: "POST", headers: tunnel, body: "{}" })).status).toBe(403);
     expect((await raw(s.port, "/api/coach/facts", { headers: { host: "bee-coach-demo.ngrok-free.app" } })).status).toBe(403);
   });
   it("unknown paths under the prefixes fall through to not_found", async () => {

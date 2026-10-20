@@ -6,6 +6,7 @@
 //   GET  /api/recaps/<id>    Recap | 404 unknown_recap
 //   GET  /api/coach/now      CoachNow (deterministic; no model call)
 //   GET  /api/coach/facts    BeeMemory: the goal fact in Bee and Bee's counts (live/facts.ts; COACH_FACTS=1)
+//   POST /api/coach/cue      {inMinutes?, by?} -> CueResponse: one if-then wrist cue (live/cue.ts; COACH_CUES=1)
 //   POST /api/demo/live      {script?} -> 202 DemoLiveResponse (demo only)
 //   GET  /api/settings       SettingsResponse: the conversation settings, per-setting rates (secondary view)
 //   POST /api/sessions/<id>/setting  {setting} -> SettingResponse, then stats.updated (src/hub/settings.ts)
@@ -25,6 +26,7 @@ import { DEFAULT_TIMINGS } from "../bee.js";
 import { corpusWpm, DEFAULT_WPM } from "./baseline.js";
 import { DEMO_SCRIPTS, predictedSteps, scheduleScript } from "./demoScripts.js";
 import { LiveEngine } from "./engine.js";
+import { CueBook, cuesEnabledFor } from "./cue.js";
 import { BeeFacts, factsModeFor, type BeeFactsOptions, type FactsMode } from "./facts.js";
 import { MODE_MAX_MINUTES } from "./policy.js";
 import { loadPrinciples, type Principles } from "./principles.js";
@@ -32,7 +34,7 @@ import type { PhraseFn } from "./recapPrompt.js";
 import { BeeTodoWrist, REPLAY_TODO_MS, ReplayWrist, type ExecFn, type Wrist } from "./wrist.js";
 
 export const LIVE_PREFIXES = ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live", "/api/settings", "/api/sessions"];
-export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "GET /api/coach/facts", "POST /api/demo/live", "GET /api/settings", "POST /api/sessions/<id>/setting"];
+export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "GET /api/coach/facts", "POST /api/coach/cue", "POST /api/demo/live", "GET /api/settings", "POST /api/sessions/<id>/setting"];
 export const LIVE_TOPICS = ["conversation.started", "live.window", "nudge.sent", "nudge.skipped", "conversation.ended", "recap.ready", "live.mode"];
 
 export interface LivePluginOptions {
@@ -43,7 +45,9 @@ export interface LivePluginOptions {
   onEngine?: (e: LiveEngine) => void;
   factsMode?: FactsMode; // default: COACH_FACTS=1 in live mode with the stream ("live"), demo "demo", else "off"
   facts?: Partial<BeeFactsOptions>; // tests: clock, sleep, timings
+  cues?: boolean; // default: COACH_CUES=1 in live mode; always on in demo
   onFacts?: (f: BeeFacts) => void;
+  onCues?: (c: CueBook) => void;
 }
 
 const SCRIPTS = Object.keys(DEMO_SCRIPTS) as DemoLiveScript[];
@@ -76,6 +80,7 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
   const served = (r: Recap): Recap => (book ? rewordRecapSetting({ ...r, setting: recapTag(book, r) }) : r);
   let wrist: Wrist | null = null;
   let facts: BeeFacts | null = null;
+  let cues: CueBook | null = null;
 
   const pickWrist = (ctx: PluginCtx): Wrist => {
     if (opts.wrist) return opts.wrist(ctx);
@@ -113,12 +118,14 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
       ctx.hub.onBee({ line: (l) => e.onLine(l), conversation: (c) => e.onConversation(c), todoDeleted: (t) => e.onTodoDeleted(t) });
       wrist.start();
       opts.onEngine?.(e);
-      // Bee memory: separate from the engine, so a Bee facts failure never touches live coaching.
+      // Bee memory and wrist cues: separate from the engine, so a Bee facts failure never touches live coaching.
       const factsMode = opts.factsMode ?? factsModeFor({ demo: ctx.demo, stream: !!ctx.setup.stream });
       facts = new BeeFacts({ hub: ctx.hub, mode: factsMode, stateDir: ctx.stateDir, exec: opts.exec, log: ctx.log, onChange: () => ctx.hub.publishStats(), ...opts.facts });
       facts.start();
       opts.onFacts?.(facts);
-      ctx.log("live.attached", { wrist: wrist.channel, principles: principles.source, thresholds: principles.thresholdsFrom, phrasing: wantLlm ? "llm" : e.phrasing, facts: factsMode });
+      cues = new CueBook({ hub: ctx.hub, wrist, enabled: opts.cues ?? cuesEnabledFor({ demo: ctx.demo }), stateDir: ctx.demo ? null : ctx.stateDir, log: ctx.log });
+      opts.onCues?.(cues);
+      ctx.log("live.attached", { wrist: wrist.channel, principles: principles.source, thresholds: principles.thresholdsFrom, phrasing: wantLlm ? "llm" : e.phrasing, facts: factsMode, cues: cues.describe() });
     },
     async route(req, res, url, ctx) {
       const e = engine;
@@ -151,6 +158,10 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
           return ctx.json(res, 200, e.coachNow()), true;
         case "GET /api/coach/facts":
           return ctx.json(res, 200, facts!.memory()), true;
+        case "POST /api/coach/cue": {
+          const r = await cues!.request(await ctx.readJson(req));
+          return ctx.json(res, r.status, r.body), true;
+        }
         case "GET /api/settings": {
           const source = parseSource(url.searchParams.get("source"));
           if (!source) return ctx.json(res, 400, { error: "bad_source", message: "source must be bee (default) or all" }), true;
@@ -199,7 +210,7 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
         status: !engine ? "off" : w && !w.healthy ? "degraded" : "ready",
         routes: LIVE_ROUTES,
         topics: LIVE_TOPICS,
-        note: engine ? `wrist: ${w?.channel}${w && !w.healthy ? " (circuit open)" : ""}; principles: ${principles?.source}; recap phrasing: ${engine.phrasing}; Bee facts: ${facts?.describe()}` : "not attached",
+        note: engine ? `wrist: ${w?.channel}${w && !w.healthy ? " (circuit open)" : ""}; principles: ${principles?.source}; recap phrasing: ${engine.phrasing}; Bee facts: ${facts?.describe()}; cues: ${cues?.describe()}` : "not attached",
       };
     },
     stop() {
