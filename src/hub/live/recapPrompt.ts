@@ -45,8 +45,8 @@ export function recapPrompt(recap: Recap, slots: RecapSlots, principles: Princip
   const system = [
     "You reword a short recap of one conversation for a personal speaking coach.",
     "The wearer reads it on a watch and hears it from a voice assistant. Be warm, direct and brief.",
-    "Use only the facts given. Never write a number, in digits or in words (one, once, twice, half...): write the slot instead, in braces, exactly as named in `slots`, e.g. {hedges_rate}. The only number you may write is the unit \"per 100 words\".",
-    "Keep every slot the template uses. Each sentence with a slot names what it is about: a habit's slots with that habit (hedges, \"like\", vague answers, restarts), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
+    "Use only the facts given. Never write a number, in digits or in words (one, once, twice, half...): write the slot instead, in braces, exactly as named in `slots`, e.g. {hedges_rate}. The only number you may write is the unit \"per 100 words\" (or \"out of every 100 words\").",
+    "Keep every slot the template uses. Each sentence with a slot names what it is about: a habit's slots with that habit (unsure words, \"like\", vague answers, starting over), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
     "Do not invent quotes: quote only the given moment or its rephrase, word for word.",
     "Follow these coaching principles, but never quote or closely paraphrase them:",
     "<principles>",
@@ -69,11 +69,11 @@ export const NUMBER_WORDS = new Set(
     "twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million dozen half quarter couple single double triple").split(" "),
 );
 const SLOT_RE = /\{([a-z_]+)\}/g;
-const UNIT = /\bper 100 words?\b/gi;
+const UNIT = /\bper 100 words?\b|\bout of every 100 words\b/gi;
 export const slotsIn = (t: string) => [...t.matchAll(SLOT_RE)].map((m) => m[1]!);
 
 // What a sentence must name for each slot in it.
-const HABIT_SUBJECT: Record<string, RegExp> = { hedges: /hedg/i, like: /\blikes?\b/i, vague: /\bvague/i, restarts: /\brestart/i };
+const HABIT_SUBJECT: Record<string, RegExp> = { hedges: /hedg|\bunsure\b/i, like: /\blikes?\b/i, vague: /\bvague/i, restarts: /\brestart|\bstart(?:ed|ing|s)? over\b/i };
 function subjectOf(slot: string): RegExp | null {
   const m = /^(\w+?)_(count|rate|usual)$/.exec(slot);
   if (m && HABIT_SUBJECT[m[1]!]) return HABIT_SUBJECT[m[1]!]!;

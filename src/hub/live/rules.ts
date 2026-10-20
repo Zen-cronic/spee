@@ -1,6 +1,6 @@
 // Live rules: which rules fire on a window, and the wrist text for each. Thresholds are relative to
 // the wearer's baseline (live/baseline.ts) and come from the principles' JSON block:
-//   hedge-streak  at least max(3, 2 x expected) hedges in 120 s
+//   hedge-streak  at least max(3, 2 x expected) hedges (shown as "unsure words") in 120 s
 //   like-streak   at least max(4, 2 x expected) "like" fillers in 120 s
 //   monologue     90 s or more
 //   fast-rate     the 2-minute rate at or above wpmFast (off by default)
@@ -23,7 +23,7 @@ export function firing(evidence: RuleEvidence[], enabled: (r: NudgeRule) => bool
 
 const mins = (ms: number) => {
   const m = Math.round(ms / 30_000) / 2;
-  return `${m % 1 ? m.toFixed(1) : m} min`;
+  return `${m % 1 ? m.toFixed(1) : m} ${m === 1 ? "minute" : "minutes"}`;
 };
 
 export function nudgeText(e: RuleEvidence): string {
@@ -31,16 +31,16 @@ export function nudgeText(e: RuleEvidence): string {
   let t: string;
   switch (e.rule) {
     case "hedge-streak":
-      t = `[coach] ${e.value} hedges in ${window}. Say it plainly.`;
+      t = `[coach] ${e.value} unsure words in ${window}. Say it plainly.`;
       break;
     case "like-streak":
-      t = `[coach] ${e.value} "like"s in ${window}. Pause instead.`;
+      t = `[coach] "Like" ${e.value} times in ${window}. Pause instead.`;
       break;
     case "monologue":
-      t = `[coach] ${mins(e.value)} without a break. Check in.`;
+      t = `[coach] You've talked ${mins(e.value)} straight. Check in.`;
       break;
     case "fast-rate":
-      t = `[coach] ${e.value} words a minute. Slow down.`;
+      t = `[coach] ${e.value} words a minute. Slow down a little.`;
       break;
   }
   return clipWrist(t);

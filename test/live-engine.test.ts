@@ -62,7 +62,7 @@ describe("the story (live coaching on)", () => {
     expect(topics()).toEqual(["live.mode", "conversation.started", "nudge.sent", "nudge.skipped", "conversation.ended", "recap.ready"]);
     const [n] = of("nudge.sent").map((p) => p.nudge);
     expect(n).toMatchObject({ conversationId: id, rule: "hedge-streak", wrist: { channel: "replay", status: "replay", todoId: null, leadMs: 10_000, error: null }, replay: true });
-    expect(n.text).toMatch(/^\[coach\] \d hedges in 2 min\. Say it plainly\.$/);
+    expect(n.text).toMatch(/^\[coach\] \d unsure words in 2 minutes\. Say it plainly\.$/);
     expect(n.text.length).toBeLessThanOrEqual(WRIST_TEXT_MAX);
     const hops = NUDGE_HOP_ORDER.map((k) => n.hops[k]);
     expect(hops).toEqual([...hops].sort((a, b) => a - b));
@@ -80,7 +80,7 @@ describe("the story (live coaching on)", () => {
     const [{ recap }] = of("recap.ready");
     expect(recap).toMatchObject({ conversationId: id, phrasing: "template", nudges: { sent: 1, skipped: 1 }, delivery: { wrist: "replay", todoId: null }, synthetic: true, replay: true });
     expect(recap.moment).toMatchObject({ text: "I guess we could maybe ship the export on Friday.", rephrase: "We could ship the export on Friday." });
-    expect(recap.headline).toMatch(/^Hedges ran high/);
+    expect(recap.headline).toMatch(/^Unsure words ran high/);
     // live.window: at most one per 3 s per conversation, and never text
     const wins = events.filter((e) => e.topic === "live.window");
     for (let i = 1; i < wins.length; i++) expect(wins[i]!.payload.at - wins[i - 1]!.payload.at).toBeGreaterThanOrEqual(3000);
@@ -95,7 +95,7 @@ describe("the story (live coaching on)", () => {
     expect(now.basis).toBe("recap");
     expect(now.lastRecap).toEqual({ id: recap.id, endedAt: recap.endedAt, headline: recap.headline });
     // the demo's drilled habits have a next conversation: one first-signal sentence, labelled as not proof
-    expect(now.narration).toMatch(/^Your last conversation ran high on hedges: \d+, or \d\.\d per 100 words against your usual 1\.4\. First signal, from one conversation and not proof: in your next conversation after drilling, hedges went from 2\.6 to 0\.8 and "like" from 3\.2 to 0\.8 per 100 words\. This week you are at 1\.4 hedges per 100 words, and \d drills are due\. Live coaching is on until 2:30 PM\.$/);
+    expect(now.narration).toMatch(/^Your last conversation ran high on unsure words: \d+, or \d\.\d out of every 100 words you said, against your usual 1\.4\. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2\.6 to 0\.8 and filler "like" from 3\.2 to 0\.8 per 100 words\. This week, unsure words are at 1\.4 per 100 words, and \d lines are ready to practise\. Live coaching is on until 2:30 PM\.$/);
     expect(now.narration.split(/(?<=\.)\s+/).length).toBe(4);
     expect(engine.coachNow().narration).toBe(now.narration); // deterministic
   });

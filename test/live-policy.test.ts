@@ -18,7 +18,7 @@ describe("live mode", () => {
     const p = new LivePolicy({ pace: 1, tz: TZ });
     const m = p.set({ enabled: true, by: "alexa" }, NOON);
     expect(m).toMatchObject({ enabled: true, since: NOON, expiresAt: NOON + 60 * MIN, by: "alexa", reason: "on", warmupMs: 60_000, cooldownMs: 180_000, ruleCooldownMs: 600_000, capPerHour: 6, capPerDay: 20, quietHours: { startHour: 22, endHour: 8 } });
-    expect(modeNarration(m)).toBe("Live coaching is on for 60 minutes. I'll tap your wrist if a habit streaks.");
+    expect(modeNarration(m)).toBe("Live coaching is on for 60 minutes. I'll tap your wrist if a habit keeps coming up.");
     expect(p.expireIfDue(NOON + 59 * MIN)).toBeNull();
     expect(p.expireIfDue(NOON + 60 * MIN)).toMatchObject({ enabled: false, reason: "expired", by: "auto" });
     expect(p.decide({ rule: "hedge-streak", now: NOON + 61 * MIN, ...ok })).toMatchObject({ reason: "off" });

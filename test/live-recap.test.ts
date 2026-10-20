@@ -74,9 +74,9 @@ describe("recap template", () => {
     expect(r.metrics.baselineWpm).toBe(140);
     expect(r.moment).toEqual({ text: "I guess we could maybe ship the export on Friday.", at: expect.any(Number), habit: "hedges", rephrase: "We could ship the export on Friday." });
     expect(r.moment!.text.split(/\s+/).length).toBeLessThanOrEqual(RECAP_MOMENT_MAX_WORDS);
-    expect(r.headline).toMatch(/^Hedges ran high: \d\.\d per 100 words against your usual 1\.4\. "Like" was down\.$/);
-    expect(r.narration).toMatch(/^That conversation ran about 2 minutes\. You hedged 6 times, .* and your pace held at 140 words a minute\. Try it without the hedges: "We could ship the export on Friday\."$/);
-    expect(r.wristText).toBe("[coach] Recap: hedges high, pace steady");
+    expect(r.headline).toMatch(/^Unsure words ran high: \d\.\d per 100 words against your usual 1\.4\. Filler "like" was down\.$/);
+    expect(r.narration).toMatch(/^That conversation ran about 2 minutes\. You used 6 unsure words, .* out of every 100 words you said .* and your pace held at 140 words a minute\. Try it without the unsure words: "We could ship the export on Friday\."$/);
+    expect(r.wristText).toBe("[coach] Recap: more unsure words than usual, pace steady");
     expect(r.wristText.length).toBeLessThanOrEqual(WRIST_TEXT_MAX);
     expect(r.phrasing).toBe("template");
     expect(JSON.stringify(r)).not.toMatch(/zebra|4417/);
@@ -130,7 +130,7 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
   it("slots: the template's numbers by name, and the template itself is an accepted phrasing", () => {
     const { recap, slots } = hedgy();
     expect(slots.values).toMatchObject({ hedges_count: "6", minutes: "2", wpm: "140", hedges_usual: "1.4" });
-    expect(slots.template.headline).toBe('Hedges ran high: {hedges_rate} per 100 words against your usual {hedges_usual}. "Like" was down.');
+    expect(slots.template.headline).toBe('Unsure words ran high: {hedges_rate} per 100 words against your usual {hedges_usual}. Filler "like" was down.');
     expect(fillSlots(slots.template.headline, slots.values)).toBe(recap.headline);
     expect(fillSlots(slots.template.narration, slots.values)).toBe(recap.narration);
     expect(acceptPhrasing(slots.template, recap, slots, principles)).toEqual({ headline: recap.headline, narration: recap.narration, wristText: recap.wristText });

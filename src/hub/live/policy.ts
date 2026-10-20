@@ -191,12 +191,12 @@ export class LivePolicy {
 export function modeNarration(m: LiveMode, tz?: string): string {
   if (m.enabled) {
     const mins = m.expiresAt != null && m.since != null ? Math.round((m.expiresAt - m.since) / 60_000) : MODE_DEFAULT_MINUTES;
-    return `Live coaching is on for ${mins} minutes. I'll tap your wrist if a habit streaks.`;
+    return `Live coaching is on for ${mins} minutes. I'll tap your wrist if a habit keeps coming up.`;
   }
-  if (m.reason === "expired") return "Live coaching has turned itself off after its time ran out.";
-  if (m.reason === "wrist-down") return "Live coaching turned itself off because the wrist channel kept failing.";
+  if (m.reason === "expired") return "Live coaching switched itself off when its time ran out.";
+  if (m.reason === "wrist-down") return "Live coaching switched itself off because Bee couldn't reach your wrist.";
   void tz;
-  return "Live coaching is off. Your conversations still get a recap.";
+  return "Live coaching is off. You'll still get a recap after each conversation.";
 }
 
 export function clockTime(ms: number, tz?: string): string {

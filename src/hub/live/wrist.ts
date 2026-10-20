@@ -62,8 +62,25 @@ export interface Wrist {
   reconcileDeleted?(todoId: string): void; // Bee's todo-deleted event (by us or by the wearer)
 }
 
-// The wrist texts the coach generates (src/hub/live/rules.ts nudgeText, recap.ts, scripts/wrist-probe.ts).
-export const GENERATED_WRIST_RE = /^\[coach\] (?:\d+ hedges in [\d.]+ min\. Say it plainly\.|\d+ "like"s in [\d.]+ min\. Pause instead\.|[\d.]+ min without a break\. Check in\.|\d+ words a minute\. Slow down\.|Recap: .+|probe \d+s)$/;
+// The wrist texts the coach generates (src/hub/live/rules.ts nudgeText, recap.ts, scripts/wrist-probe.ts),
+// current wording first, then the earlier wording (to-dos created before the rewording still match).
+const MIN = "[\\d.]+ (?:minutes?|min)";
+export const GENERATED_WRIST_RE = new RegExp(
+  "^\\[coach\\] (?:" +
+    [
+      `\\d+ unsure words in ${MIN}\\. Say it plainly\\.`,
+      `"Like" \\d+ times in ${MIN}\\. Pause instead\\.`,
+      `You've talked ${MIN} straight\\. Check in\\.`,
+      "\\d+ words a minute\\. Slow down a little\\.",
+      `\\d+ hedges in ${MIN}\\. Say it plainly\\.`,
+      `\\d+ "like"s in ${MIN}\\. Pause instead\\.`,
+      `${MIN} without a break\\. Check in\\.`,
+      "\\d+ words a minute\\. Slow down\\.",
+      "Recap: .+",
+      "probe \\d+s",
+    ].join("|") +
+    ")$",
+);
 
 export function assertWristText(text: string) {
   if (!text.startsWith("[coach] ") || text.length > WRIST_TEXT_MAX) throw new Error(`wrist text must start "[coach] " and be at most ${WRIST_TEXT_MAX} characters`);

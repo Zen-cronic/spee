@@ -18,6 +18,7 @@ import type { BeeConversationEvent, BeeLine } from "../bee.js";
 import type { CoachNow, ConversationEnded, LiveModeRequest, LiveModeResponse, LiveState, Nudge, NudgeSkipped, Recap, SequencedTopic } from "../contract.js";
 import type { CoachHub } from "../core.js";
 import { localDate } from "../../real/deck.js";
+import { habitNameOf, PER_100_GLOSS } from "../habitNames.js";
 import { firstSignalSentence } from "../stats.js";
 import { computeBaseline, type Baseline } from "./baseline.js";
 import { clockTime, LivePolicy, modeNarration } from "./policy.js";
@@ -433,8 +434,6 @@ export class LiveEngine {
     const hero = (["hedges", "vague"] as const).map((k) => ({ key: k, per100: h[k].per100, count: h[k].count })).filter((x) => x.count >= 3).sort((a, b) => b.per100 - a.per100);
     const rest = (["fillers", "restarts"] as const).map((k) => ({ key: k, per100: h[k].per100, count: h[k].count })).filter((x) => x.count > 0).sort((a, b) => b.per100 - a.per100);
     const top = hero[0] ?? rest[0] ?? null;
-    const LABEL: Record<string, string> = { hedges: "hedging", vague: "vague answers", fillers: "fillers", restarts: "restarts" };
-    const NOUN: Record<string, string> = { hedges: "hedges", vague: "vague answers", fillers: "fillers", restarts: "restarts" };
     const due = hub.deckSummary().dueNow;
     const next = hub.nextCard();
 
@@ -442,26 +441,27 @@ export class LiveEngine {
     let lead: string;
     if (live && live.wearer.words >= 20) {
       basis = "live";
-      lead = `You're in a conversation now: ${live.recent.hedges} ${live.recent.hedges === 1 ? "hedge" : "hedges"} in the last 2 minutes${live.wearer.wpm != null ? `, at ${live.wearer.wpm} words a minute` : ""}.`;
+      lead = `You're in a conversation now: ${live.recent.hedges} unsure ${live.recent.hedges === 1 ? "word" : "words"} in the last 2 minutes${live.wearer.wpm != null ? `, at ${live.wearer.wpm} words a minute` : ""}.`;
     } else if (lastToday) {
       basis = "recap";
       const worst = lastToday.metrics.habits.filter((x) => x.verdict === "worse")[0];
       const hd = lastToday.metrics.habits.find((x) => x.key === "hedges");
-      const noun = (k: string) => (k === "hedges" ? "hedges" : k === "filler:like" ? '"like"' : k === "vague" ? "vague answers" : "restarts");
       const turn = lastToday.metrics.longestMonologueMs;
       lead = worst
-        ? `Your last conversation ran high on ${noun(worst.key)}: ${worst.count}, or ${f1(worst.per100)} per 100 words against your usual ${f1(worst.baselinePer100 ?? 0)}.`
+        ? `Your last conversation ran high on ${habitNameOf(worst.key)}: ${worst.count}, or ${f1(worst.per100)} ${PER_100_GLOSS}, against your usual ${f1(worst.baselinePer100 ?? 0)}.`
         : turn >= this.th.monologue.nudgeMs
           ? `In your last conversation, one turn ran ${(Math.round(turn / 6000) / 10).toFixed(1)} minutes without a break.`
+          : hd && hd.baselinePer100 != null && hd.verdict === "better"
+          ? `In your last conversation you used unsure words less than usual: ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}.`
           : hd && hd.baselinePer100 != null
-          ? `Your last conversation looked typical: ${f1(hd.per100)} hedges per 100 words against your usual ${f1(hd.baselinePer100)}.`
-          : `Your last conversation is recapped: ${lastToday.headline}`;
+          ? `Your last conversation looked typical: unsure words at ${f1(hd.per100)} ${PER_100_GLOSS}, against your usual ${f1(hd.baselinePer100)}.`
+          : `Here's your last conversation: ${lastToday.headline}`;
     } else {
       basis = "week";
-      lead = top ? `This week your top habit is ${LABEL[top.key]}, at ${f1(top.per100)} per 100 words.` : "There is not enough of your speech this week to pick a habit yet.";
+      lead = top ? `This week, the habit to work on is ${habitNameOf(top.key)}: ${f1(top.per100)} ${PER_100_GLOSS}.` : "Bee hasn't heard enough of you this week to pick a habit yet.";
     }
-    const drills = due === 0 ? "no drills are due" : due === 1 ? "1 drill is due" : `${due} drills are due`;
-    const week = basis === "week" ? `${drills[0]!.toUpperCase()}${drills.slice(1)}.` : top ? `This week you are at ${f1(top.per100)} ${NOUN[top.key]} per 100 words, and ${drills}.` : `${drills[0]!.toUpperCase()}${drills.slice(1)}.`;
+    const drills = due === 0 ? "you're all caught up on practice" : due === 1 ? "1 line is ready to practise" : `${due} lines are ready to practise`;
+    const week = basis === "week" ? `${drills[0]!.toUpperCase()}${drills.slice(1)}.` : top ? `This week, ${habitNameOf(top.key)} ${/s$/.test(habitNameOf(top.key)) ? "are" : "is"} at ${f1(top.per100)} per 100 words, and ${drills}.` : `${drills[0]!.toUpperCase()}${drills.slice(1)}.`;
     const modeLine = mode.enabled && mode.expiresAt != null ? `Live coaching is on until ${clockTime(mode.expiresAt, tz)}.` : "Live coaching is off.";
     const t = hub.transfer();
     // one sentence for the first signal (the next conversation after a drill), when there is one
@@ -475,7 +475,7 @@ export class LiveEngine {
       mode,
       live,
       lastRecap: lastToday ? { id: lastToday.id, endedAt: lastToday.endedAt, headline: lastToday.headline } : null,
-      week: { words: h.words, hedgesPer100: h.hedges.per100, likesPer100: per100(h.fillers.breakdown.like ?? 0), vaguePer100: h.vague.per100, topHabit: top ? { key: top.key, label: LABEL[top.key]!, per100: top.per100 } : null },
+      week: { words: h.words, hedgesPer100: h.hedges.per100, likesPer100: per100(h.fillers.breakdown.like ?? 0), vaguePer100: h.vague.per100, topHabit: top ? { key: top.key, label: habitNameOf(top.key), per100: top.per100 } : null },
       drills: { dueNow: due, nextCardId: next?.id ?? null },
       transferHeadline: t?.headline ?? null,
     };

@@ -116,7 +116,7 @@ describe("rules", () => {
       expect(t.length).toBeLessThanOrEqual(WRIST_TEXT_MAX);
       expect(t).not.toMatch(/guess|sort of|done/i);
     }
-    expect(nudgeText(e[0]!)).toBe("[coach] 5 hedges in 2 min. Say it plainly.");
+    expect(nudgeText(e[0]!)).toBe("[coach] 5 unsure words in 2 minutes. Say it plainly.");
   });
 });
 
