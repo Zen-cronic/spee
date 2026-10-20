@@ -85,6 +85,7 @@
         letter-spacing: -0.025em;
         margin: 0;
         max-width: 20ch;
+        text-wrap: balance;
       }
       .lede {
         font-size: 19px;
@@ -161,13 +162,20 @@
       }
       .hero {
         display: grid;
-        grid-template-columns: 1.4fr 1fr;
-        gap: 32px;
+        /* the same columns as the cards below, so the status starts on the third card's edge */
+        grid-template-columns: 1.25fr 1fr 1fr;
+        gap: 18px;
         align-items: end;
+      }
+      .hero > div:first-child {
+        grid-column: span 2;
       }
       @media (max-width: 860px) {
         .hero {
           grid-template-columns: 1fr;
+        }
+        .hero > div:first-child {
+          grid-column: auto;
         }
       }
       .status {
