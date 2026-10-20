@@ -33,7 +33,7 @@ Counts and 95% intervals behind two of those rows (one meeting):
 
 - On this one meeting, unsure words came out alike (11 against 11) and filler "like" nearly alike (5.47 against 5.44 per 100). With counts this small, the intervals are wide (about half the rate either way), so that is consistent with captions being a fair second source for the practised habits, not proof of it.
 - On this one meeting, captions showed fewer "um" and "uh" (4.7 against 6.7 per 100), but the intervals overlap, so one meeting does not show a real gap. If there is one, it could be captions leaving fillers out, or Bee adding some (another voice labelled as yours). A before and after that mixed the two could still show a drop in filler words that is only the transcriber, which is why the pre-registration keeps Bee as the one instrument and captions appear only with `source=all`.
-- With `source=all`, a meeting that Bee also heard counts once, from Bee: its caption session is left out, so the same speech is not counted twice.
+- With `source=all`, a meeting that Bee also heard counts once, so the same speech is not counted twice: from Bee when Bee heard most of it (its caption session is left out), else from the captions (Bee's lines inside the meeting are left out).
 - Rerun the check whenever another meeting is both captioned and heard by Bee.
 
 ## On the TV and in the hub

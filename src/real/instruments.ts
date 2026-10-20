@@ -30,6 +30,7 @@ export interface MeetingPair {
   meeting: string;
   bee: string[]; // the Bee conversation ids whose lines are compared
   match: PairMatch;
+  window: { startMs: number; endMs: number | null }; // the meeting's span (end null when unknown)
   // Counted lines only (English, not "maybe not the wearer"). In memory only: never print or serve.
   captionLines: StatLine[];
   beeLines: StatLine[];
@@ -133,14 +134,40 @@ export function pairMeetings(sessions: StatSession[], o: { fallbackWindowMs?: nu
     }
     for (const p of parts) for (const l of p.lines) claimed.add(l.key);
     if (match === "nearest-start") usedWhole.add(ids[0]!);
-    pairs.push({ meeting: m.id, bee: parts.filter((p) => countedLines(p.lines).length).map((p) => p.id), match, captionLines, beeLines });
+    pairs.push({ meeting: m.id, bee: parts.filter((p) => countedLines(p.lines).length).map((p) => p.id), match, window: { startMs: ms.startMs, endMs: ms.endMs }, captionLines, beeLines });
   }
   return { pairs, skipped };
 }
 
-/** The ids of caption sessions whose meeting Bee also heard (a paired meeting): one speech, two transcripts. */
-export function captionsHeardByBee(sessions: StatSession[]): Set<string> {
-  return new Set(pairMeetings(sessions).pairs.map((p) => p.meeting));
+// One speech, two transcripts: with source=all a paired meeting must count once. Bee stays the
+// instrument of record (its caption session is left out) only when Bee heard most of the meeting:
+// Bee's wearer words are at least BEE_COVERS_WORDS of the captions' words, or Bee's lines span at
+// least BEE_COVERS_SPAN of the meeting's window. Otherwise (the watch stopped two minutes in) the
+// captions are kept and the Bee lines inside the meeting are left out instead.
+export const BEE_COVERS_WORDS = 0.5;
+export const BEE_COVERS_SPAN = 0.7;
+export interface MeetingDedup {
+  captions: Set<string>; // caption session ids to leave out
+  beeLines: Set<string>; // Bee line keys to leave out (inside a meeting whose captions are kept)
+}
+export function beeCoversMeeting(p: Pick<MeetingPair, "window" | "captionLines" | "beeLines">): boolean {
+  const words = (ls: StatLine[]) => ls.reduce((n, l) => n + wordCount(l.text), 0);
+  const cap = words(p.captionLines);
+  if (cap === 0 || words(p.beeLines) >= BEE_COVERS_WORDS * cap) return true;
+  const { startMs, endMs } = p.window;
+  const timed = p.beeLines.filter((l) => l.spokenAt != null);
+  if (endMs == null || endMs <= startMs || !timed.length) return false;
+  const from = Math.min(...timed.map((l) => l.spokenAt!));
+  const to = Math.max(...timed.map((l) => l.spokenEndAt ?? l.spokenAt!));
+  return (Math.min(to, endMs) - Math.max(from, startMs)) / (endMs - startMs) >= BEE_COVERS_SPAN;
+}
+export function meetingDedup(sessions: StatSession[], pairs: MeetingPair[] = pairMeetings(sessions).pairs): MeetingDedup {
+  const out: MeetingDedup = { captions: new Set(), beeLines: new Set() };
+  for (const p of pairs) {
+    if (beeCoversMeeting(p)) out.captions.add(p.meeting);
+    else for (const l of p.beeLines) out.beeLines.add(l.key);
+  }
+  return out;
 }
 
 // The habits the two transcribers are compared on: the pre-registered ones (practised: unsure words

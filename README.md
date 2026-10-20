@@ -32,7 +32,7 @@ Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a 
 - **Alexa+ third-party add-ons are partner-gated**, so the Alexa surface is a classic custom skill (tested in the Alexa iPhone app) plus an MCP server any MCP client can use; `/sim/` is that client in a browser, with a keyword router standing in for Alexa+'s model.
 - **No audio is stored by Bee**, so tone and pitch exist only in phone practice mode; Bee-based coaching works from words and timing.
 
-- **Bee vs meeting captions.** On one meeting both heard, unsure words came out alike (11 against 11) and filler "like" nearly alike, while captions showed fewer "um" and "uh" (4.7 against 6.7 per 100; the 95% intervals overlap, so one meeting does not show a real gap). See `docs/instrument-check.md`, `npm run instrument:check` and `GET /api/instrument`. Progress shows a secondary "Including meeting captions" line under the Bee-only result, labelled as not the pre-registered check. A meeting that Bee also heard counts once there, from Bee.
+- **Bee vs meeting captions.** On one meeting both heard, unsure words came out alike (11 against 11) and filler "like" nearly alike, while captions showed fewer "um" and "uh" (4.7 against 6.7 per 100; the 95% intervals overlap, so one meeting does not show a real gap). See `docs/instrument-check.md`, `npm run instrument:check` and `GET /api/instrument`. Progress shows a secondary "Including meeting captions" line under the Bee-only result, labelled as not the pre-registered check. A meeting that Bee also heard counts once there: from Bee when Bee heard most of it, else from the captions with Bee's lines inside the meeting left out.
 
 ## How it fits together
 

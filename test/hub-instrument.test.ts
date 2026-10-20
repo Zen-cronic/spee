@@ -107,7 +107,7 @@ describe("GET /api/instrument on the demo hub", () => {
     expect(bee.sources.meeting).toBeUndefined();
     expect(bee.claim).toBe("all-dropped-control-flat");
     const withCaptions = (await (await fetch(`${s.url}/api/transfer?source=all`)).json()) as TransferResponse;
-    // The Oct 13 stand-up was heard by Bee too: it counts once, from Bee, so two caption sessions remain.
+    // The Oct 13 stand-up was heard by Bee too, all of it: it counts once, from Bee, so two caption sessions remain.
     expect(withCaptions.sources.meeting).toMatchObject({ sessions: 2, from: "2026-10-14", to: "2026-10-19" });
     expect(withCaptions.sources.conversation!.words).toBe(bee.sources.conversation!.words);
     expect(captionsLine(withCaptions, r)!.label).toBe("2 captioned meetings since Oct 14 · not the pre-registered check");

@@ -138,3 +138,26 @@ describe("instrument check", () => {
     expect(byId.get("c1")!.endMs).toBe(T + 5 * MIN);
   });
 });
+
+describe("source=all: a meeting Bee heard only part of", () => {
+  const PLAIN = "The billing export finished on Monday and the totals match the ledger today";
+  const m0 = Date.UTC(2026, 9, 21, 14, 0);
+  const meeting = session("meet-x", "meeting", m0, Array.from({ length: 120 }, () => PLAIN), { everyMs: 30_000, durationMin: 60 });
+  it("keeps the captions and leaves out Bee's lines inside the meeting when the watch stopped two minutes in", () => {
+    const bee = session("456", "conversation", m0 - 3 * MIN, ["Morning everyone I can hear you fine", "Before we start, coffee anyone"], { everyMs: 30_000, endMs: m0 + 2 * MIN });
+    bee.lines[0]!.spokenAt = m0 - 2 * MIN; // said before the meeting began: stays counted
+    bee.lines[1]!.spokenAt = m0 + 30_000;
+    const all = fromSource([meeting, bee], "all");
+    expect(all.map((s) => s.id).sort()).toEqual(["456", "meet-x"]);
+    expect(all.find((s) => s.id === "456")!.lines.map((l) => l.text)).toEqual(["Morning everyone I can hear you fine"]);
+    expect(habitRates(all).words).toBe(habitRates([meeting]).words + 7);
+  });
+  it("counts the meeting once, from Bee, when Bee heard most of its words", () => {
+    const bee = session("789", "conversation", m0, Array.from({ length: 70 }, () => PLAIN), { everyMs: 30_000, endMs: m0 + 60 * MIN });
+    expect(fromSource([meeting, bee], "all").map((s) => s.id)).toEqual(["789"]);
+  });
+  it("counts it from Bee when Bee's lines span most of the meeting, though captions caught more words", () => {
+    const bee = session("790", "conversation", m0, Array.from({ length: 30 }, () => "Yes that works"), { everyMs: 100_000, endMs: m0 + 60 * MIN });
+    expect(fromSource([meeting, bee], "all").map((s) => s.id)).toEqual(["790"]);
+  });
+});

@@ -12,7 +12,7 @@ import { localDate, addDays } from "../real/deck.js";
 import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
-import { captionsHeardByBee } from "../real/instruments.js";
+import { meetingDedup } from "../real/instruments.js";
 import { countedLines, listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
 import { readJsonSafe } from "./atomic.js";
 import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
@@ -100,12 +100,16 @@ export const parseSource = (s: string | null | undefined): SourceSel | null => (
 export const inSource = (s: StatSession, src: SourceSel) => (src === "bee" ? s.kind === "conversation" : NON_DRILL_KINDS.has(s.kind));
 export const SOURCE_LABEL: Record<string, string> = { conversation: "Bee (Apple Watch) conversation", meeting: "meeting captions (secondary source)", voice_note: "Bee voice note (excluded: scripted readings/drills)" };
 // The sessions a source counts. With "all", a meeting that Bee also heard (src/real/instruments.ts
-// pairMeetings) would count its speech twice, once per transcriber, so its caption session is left
-// out and Bee stays the instrument of record for it.
+// pairMeetings) would count its speech twice, once per transcriber. When Bee heard most of it, its
+// caption session is left out and Bee stays the instrument of record; when Bee heard only part of it,
+// the captions are kept and Bee's lines inside the meeting are left out (meetingDedup).
 export function fromSource(ss: StatSession[], src: SourceSel): StatSession[] {
   if (src === "bee") return ss.filter((s) => inSource(s, src));
-  const dup = ss.some((s) => s.kind === "meeting") ? captionsHeardByBee(ss) : new Set<string>();
-  return ss.filter((s) => inSource(s, src) && !dup.has(s.id));
+  if (!ss.some((s) => s.kind === "meeting")) return ss.filter((s) => inSource(s, src));
+  const dup = meetingDedup(ss);
+  return ss
+    .filter((s) => inSource(s, src) && !dup.captions.has(s.id))
+    .map((s) => (dup.beeLines.size && s.kind === "conversation" && s.lines.some((l) => dup.beeLines.has(l.key)) ? { ...s, lines: s.lines.filter((l) => !dup.beeLines.has(l.key)) } : s));
 }
 const enLines = (ss: StatSession[]) => ss.flatMap((s) => countedLines(s.lines));
 
@@ -541,7 +545,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     prereg: { path: opts.preregPath, registeredAt: prereg.registered_at, drilled: prereg.drilled.map((h) => h.habit), control: prereg.control.map((h) => h.habit), basis: prereg.basis },
     minWordsPerPeriod: minWords,
     method:
-      "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once, from Bee; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
+      "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once: from Bee when Bee heard most of it, else from the captions; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
     habits,
     unregistered,
     headline,

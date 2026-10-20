@@ -389,7 +389,7 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 
 A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) attempt.
 
-**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("2 captioned meetings since Oct 14"). A meeting that Bee also heard (paired by `pairMeetings`) is counted once, from Bee: its caption session is left out of every `source=all` view.
+**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("2 captioned meetings since Oct 14"). A meeting that Bee also heard (paired by `pairMeetings`) is counted once in every `source=all` view: from Bee when Bee heard most of it (Bee's wearer words at least half the captions' words, or Bee's lines spanning at least 70% of the meeting), so its caption session is left out; otherwise from the captions, with Bee's lines inside the meeting left out (`meetingDedup`).
 
 **Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee agree only when `GET /api/instrument` has `claim: "practised-agree"`.
 
