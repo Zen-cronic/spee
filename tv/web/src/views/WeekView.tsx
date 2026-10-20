@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
-import { changeLabel, fmt1, fmtWords, shortHabit, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
+import { changeLabel, controlWord, fmt1, fmtWords, shortHabit, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 
 /**
@@ -75,27 +75,34 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
   const drilled = transfer.habits.filter((x) => x.role === 'drilled');
   const control = transfer.habits.find((x) => x.role === 'control');
   const shown = transferWorking(transfer.claim);
+  const cw = control ? controlWord(control) : null;
   return (
     <View style={[styles.card, styles.working]} testID="week-transfer">
-      <View style={styles.workHead}>
+      <View style={styles.cardHead}>
         <Text style={styles.cardTitle} numberOfLines={1}>{shown ? 'It’s working' : 'Since drilling'}</Text>
         <Text style={styles.cardNote} numberOfLines={1}>since your first drill</Text>
       </View>
-      {drilled.map((x) => {
-        const change = changeLabel(x);
-        return (
-          <View key={x.habit} style={[styles.workItem, styles.workDelta]} testID={`week-change-${x.habit}`}>
-            {change.pct ? <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }]}>{change.text}</Text> : <Text style={styles.workWords} numberOfLines={2}>{change.text}</Text>}
-            <Text style={styles.workLabel}>{shortHabit(x.label)}</Text>
+      <View style={styles.workRow}>
+        {drilled.map((x) => {
+          const change = changeLabel(x);
+          return (
+            <View key={x.habit} style={styles.workItem} testID={`week-change-${x.habit}`}>
+              <View style={styles.workValue}>
+                {change.pct ? <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }]}>{change.text}</Text> : <Text style={styles.workWords} numberOfLines={2}>{change.text}</Text>}
+              </View>
+              <Text style={styles.workLabel} numberOfLines={1}>{shortHabit(x.label)}</Text>
+            </View>
+          );
+        })}
+        {control && cw ? (
+          <View style={styles.workItem}>
+            <View style={styles.workValue}>
+              <Text style={cw.word ? styles.workWords : [styles.workNum, styles.workFlat]} numberOfLines={cw.word ? 2 : 1}>{cw.text}</Text>
+            </View>
+            <Text style={styles.workLabel} numberOfLines={1}>{`${shortHabit(control.label)}, the control`}</Text>
           </View>
-        );
-      })}
-      {control ? (
-        <View style={styles.workItem}>
-          <Text style={[styles.workNum, styles.workFlat]}>{control.verdict === 'no change' ? 'Flat' : control.verdict === 'dropped' ? 'Down' : control.verdict === 'rose' ? 'Up' : '–'}</Text>
-          <Text style={[styles.workLabel, styles.workControl]}>{`${shortHabit(control.label)}, the control`}</Text>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -135,15 +142,14 @@ const styles = StyleSheet.create({
   habit: { color: C.text, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   top: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
   rate: { width: 140, textAlign: 'right', color: C.text, fontSize: 52, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 8, fontFamily: F.family },
-  working: { flexDirection: 'row', alignItems: 'center', marginTop: SP.l },
-  workHead: { width: 250 },
-  workItem: { marginLeft: SP.l, flexShrink: 0 },
-  workDelta: { minWidth: 150 },
-  workNum: { color: C.text, fontSize: 56, lineHeight: 68, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
-  workWords: { color: C.dim, width: 170, height: 68, paddingTop: 6, fontSize: T.label, lineHeight: 30, fontWeight: '700', fontFamily: F.family },
+  working: { marginTop: SP.l, paddingVertical: SP.xl },
+  workRow: { flexDirection: 'row', marginTop: SP.s },
+  workItem: { flex: 1, paddingRight: SP.m },
+  workValue: { height: 72, justifyContent: 'flex-end' },
+  workNum: { color: C.text, fontSize: 60, lineHeight: 72, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
+  workWords: { color: C.text, fontSize: 26, lineHeight: 32, fontWeight: '700', marginBottom: 6, fontFamily: F.family },
   workFlat: { color: C.dim },
-  workControl: { maxWidth: 190 },
-  workLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
+  workLabel: { color: C.dim, fontSize: T.label, marginTop: 2, fontFamily: F.family },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: C.dim, fontSize: T.title, textAlign: 'center', fontFamily: F.family },
 });
