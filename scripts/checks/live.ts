@@ -4,12 +4,15 @@
 // cooldown -> nudge.skipped (cooldown) -> 90 s idle -> conversation.ended -> recap.ready; then
 // GET /api/recaps, /api/coach/now and /api/live reflect it; live.window is at most 1 per 3 s and
 // carries no text; the TV, the phone and SSE saw the same sequence; the planted other-speaker line
-// appears nowhere (events, responses, files); a short conversation skips its recap. It leaves live
-// coaching on, as in the fixture story, for the modules that run after it.
+// appears nowhere (events, responses, files); a short conversation skips its recap. Then Bee memory
+// (GET /api/coach/facts: the demo goal, nothing written) and the wrist cue (POST /api/coach/cue: one
+// cue on the replay wrist, a deduped repeat, the gate). It leaves live coaching on, as in the
+// fixture story, for the modules that run after it.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { NUDGE_HOP_ORDER, RECAP_MOMENT_MAX_WORDS, WRIST_TEXT_MAX } from "../../src/hub/contract.js";
+import { BEE_MEMORY_NOTE, CUE_HABITS, NUDGE_HOP_ORDER, RECAP_MOMENT_MAX_WORDS, WRIST_TEXT_MAX } from "../../src/hub/contract.js";
 import { PLANTED_OTHER_MARKER } from "../../src/hub/live/demoScripts.js";
+import { GOAL_TEXT_RE } from "../../src/hub/live/facts.js";
 import type { CheckCtx, CheckResult, Ev } from "./types.js";
 
 const STATE_DIR = "out/contract-check";
@@ -131,6 +134,20 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const onDisk = files.map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
   c(files.includes("recaps.json") && files.includes("nudges.json") && files.includes("settings.json"), `live state persisted under ${dir}/ (${files.join(", ")})`);
   c(!seen.includes(PLANTED_OTHER_MARKER) && !onDisk.includes(PLANTED_OTHER_MARKER) && !/4417/.test(onDisk), "the planted other-speaker line never reaches an event, a response or a file");
+
+  // Bee memory and the wrist cue (packet W): the demo hub writes nothing to Bee
+  console.log("\nv2: Bee memory and the wrist cue (packet W)");
+  const mem = await ctx.get("/api/coach/facts", "GET /api/coach/facts");
+  c(mem.status === 200 && mem.body.status === "demo" && mem.body.enabled === true && mem.body.synthetic === true && mem.body.note === BEE_MEMORY_NOTE && mem.body.goal?.factId === null && GOAL_TEXT_RE.test(mem.body.goal?.text ?? "") && mem.body.insights === null && mem.body.facts === null, "GET /api/coach/facts: demo BeeMemory with the template goal, nothing written, and the note");
+  c((await ctx.post("/api/coach/cue", { inMinutes: 500 })).body?.error === "bad_request", "POST /api/coach/cue: inMinutes 0-180 (400 bad_request)");
+  const cue = await ctx.post("/api/coach/cue", { inMinutes: 0, by: "check" }, "POST /api/coach/cue");
+  const cueText: string = cue.body?.cue?.text ?? "";
+  c(cue.status === 200 && (CUE_HABITS as readonly string[]).includes(cue.body.cue.habit) && cueText.startsWith("[coach] ") && cueText.length <= WRIST_TEXT_MAX && cue.body.wrist?.channel === "replay" && cue.body.wrist.status === "replay" && cue.body.deduped === false && typeof cue.body.narration === "string", "POST /api/coach/cue: one <= 60-char cue for a practised drilled habit, on the replay wrist");
+  const again = await ctx.post("/api/coach/cue", { by: "check" });
+  c(again.body?.deduped === true && again.body.cue?.id === cue.body?.cue?.id, "a repeated cue is deduped: the first cue back, nothing new on the wrist");
+  const pub = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https", host: "bee-coach-demo.ngrok-free.app", "content-type": "application/json" };
+  c((await ctx.raw("/api/coach/cue", { method: "POST", headers: pub, body: "{}" })).status === 403 && (await ctx.raw("/api/coach/facts", { headers: pub })).status === 403, "a tunnel request to /api/coach/facts or /api/coach/cue -> 403 (the gate)");
+  c(!JSON.stringify([mem.body, cue.body, again.body]).includes(PLANTED_OTHER_MARKER), "the planted other-speaker line never reaches Bee memory or a cue");
 
   return { name: "live", ...ctx.counts() };
 }
