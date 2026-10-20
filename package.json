@@ -18,6 +18,7 @@
     "review": "tsx scripts/review.ts",
     "meetings": "tsx scripts/meetings.ts",
     "meetings:score": "tsx scripts/score-meetings.ts",
+    "instrument:check": "tsx scripts/instrument-check.ts",
     "leak-check": "tsx scripts/leak-check.ts",
     "hub": "tsx src/hub/server.ts",
     "contract:check": "tsx scripts/contract-check.ts",
