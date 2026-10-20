@@ -1,0 +1,463 @@
+{
+  "type": "APL",
+  "version": "2023.2",
+  "description": "Speaking Mirror screens for the speech coach skill (src/alexa/apl.ts). One document, five screens chosen by payload.screen.kind: drill, checking, verdict, progress, empty. Every string a person reads comes from the datasource, masked for the screen; colours are the TV's palette (tv/web/src/theme.ts).",
+  "theme": "dark",
+  "resources": [
+    {
+      "description": "Palette: warm charcoal ground, one paper card, lime for the thing to do or a pass, coral for not yet. colorBee is the one colour for checked by Bee (the tag, the tracker's second step, the mark's reflection); change it here only.",
+      "colors": {
+        "bg": "#121211",
+        "surface": "#1d1d1b",
+        "line": "#34332f",
+        "text": "#f4f3ed",
+        "dim": "#abaaa2",
+        "faint": "#7a7972",
+        "paper": "#eeede6",
+        "ink": "#131312",
+        "inkDim": "#5f5e58",
+        "lime": "#d7f26a",
+        "coral": "#f2876e",
+        "colorBee": "#8ccfff",
+        "colorBeeBg": "#1c3447"
+      }
+    },
+    {
+      "description": "Sizes for TV fullscreen (960x540 dp, a 1920x1080 Fire TV) and medium hubs; the overscan-safe inset is 5%.",
+      "dimensions": {
+        "padX": "48dp",
+        "padY": "28dp",
+        "markSize": "48dp",
+        "brandSize": "24dp",
+        "gap": "18dp",
+        "cardPad": "28dp",
+        "radius": "24dp",
+        "kickerSize": "20dp",
+        "sentenceSize": "40dp",
+        "bodySize": "24dp",
+        "hintSize": "22dp",
+        "verdictSize": "84dp",
+        "heroSize": "120dp",
+        "titleSize": "48dp",
+        "stepDot": "20dp",
+        "stepSize": "20dp",
+        "tagSize": "18dp",
+        "drillTop": "40dp"
+      }
+    },
+    {
+      "description": "Large hubs (Echo Show 8 and 10, 1280x800 dp).",
+      "when": "${viewport.height >= 700}",
+      "dimensions": {
+        "padX": "64dp",
+        "padY": "44dp",
+        "markSize": "56dp",
+        "brandSize": "28dp",
+        "gap": "24dp",
+        "cardPad": "36dp",
+        "radius": "32dp",
+        "kickerSize": "24dp",
+        "sentenceSize": "54dp",
+        "bodySize": "30dp",
+        "hintSize": "26dp",
+        "verdictSize": "112dp",
+        "heroSize": "160dp",
+        "titleSize": "60dp",
+        "stepDot": "24dp",
+        "stepSize": "24dp",
+        "tagSize": "22dp",
+        "drillTop": "72dp"
+      }
+    },
+    {
+      "description": "Short hubs (Echo Show 5, 960x480 dp).",
+      "when": "${viewport.height < 520}",
+      "dimensions": {
+        "padY": "18dp",
+        "gap": "12dp",
+        "cardPad": "22dp",
+        "sentenceSize": "34dp",
+        "bodySize": "22dp",
+        "verdictSize": "64dp",
+        "heroSize": "96dp",
+        "titleSize": "40dp",
+        "drillTop": "16dp"
+      }
+    }
+  ],
+  "graphics": {
+    "mark": {
+      "description": "The Speaking Mirror mark, concept G (two voices): a lime speech bubble and its reflection in the Bee colour (Sky) across a mirror bar. Shown at 48 dp or more; smaller, it blurs. The colours come from the document's resources (you: @lime, bee: @colorBee).",
+      "type": "AVG",
+      "version": "1.2",
+      "width": 64,
+      "height": 64,
+      "viewportWidth": 64,
+      "viewportHeight": 64,
+      "items": [
+        {
+          "type": "path",
+          "fill": "${you}",
+          "pathData": "M10.72 37.33L4 45L3.93 29.24A12.5 12.5 0 1 1 10.72 37.33Z"
+        },
+        {
+          "type": "path",
+          "fill": "${you}",
+          "pathData": "M30.5 10.5A1.5 1.5 0 0 1 33.5 10.5L33.5 47.5A1.5 1.5 0 0 1 30.5 47.5Z"
+        },
+        {
+          "type": "path",
+          "fill": "${bee}",
+          "pathData": "M53.28 37.33L60 45L60.07 29.24A12.5 12.5 0 1 0 53.28 37.33Z"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "you",
+          "type": "color"
+        },
+        {
+          "name": "bee",
+          "type": "color"
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "Brand": {
+      "description": "The mark and the product name.",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "items": [
+        {
+          "type": "Container",
+          "direction": "row",
+          "alignItems": "center",
+          "items": [
+            {
+              "type": "VectorGraphic",
+              "source": "mark",
+              "width": "@markSize",
+              "height": "@markSize",
+              "scale": "best-fit",
+              "you": "@lime",
+              "bee": "@colorBee"
+            },
+            {
+              "type": "Text",
+              "text": "${name}",
+              "color": "@text",
+              "fontSize": "@brandSize",
+              "fontWeight": "700",
+              "paddingLeft": "12dp"
+            }
+          ]
+        }
+      ]
+    },
+    "PaperCard": {
+      "description": "The one paper card: a short label and the sentence to say.",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string"
+        },
+        {
+          "name": "sentence",
+          "type": "string"
+        },
+        {
+          "name": "lines",
+          "type": "number",
+          "default": 3
+        }
+      ],
+      "items": [
+        {
+          "type": "Frame",
+          "width": "100%",
+          "backgroundColor": "@paper",
+          "borderRadius": "@radius",
+          "paddingLeft": "@cardPad",
+          "paddingRight": "@cardPad",
+          "paddingTop": "@cardPad",
+          "paddingBottom": "@cardPad",
+          "item": {
+            "type": "Container",
+            "items": [
+              {
+                "type": "Text",
+                "text": "${label}",
+                "color": "@inkDim",
+                "fontSize": "@kickerSize",
+                "fontWeight": "700"
+              },
+              {
+                "type": "Text",
+                "text": "${sentence}",
+                "color": "@ink",
+                "fontSize": "@sentenceSize",
+                "fontWeight": "700",
+                "maxLines": "${lines}",
+                "paddingTop": "8dp"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Tracker": {
+      "description": "Three steps: You said it, Checked by Bee, Graded. Each item is {label, state: done|current|todo, who: you|bee}; Bee's step uses @colorBee.",
+      "parameters": [
+        {
+          "name": "steps",
+          "type": "array"
+        }
+      ],
+      "items": [
+        {
+          "type": "Container",
+          "direction": "row",
+          "alignItems": "center",
+          "data": "${steps}",
+          "items": [
+            {
+              "type": "Container",
+              "direction": "row",
+              "alignItems": "center",
+              "paddingRight": "32dp",
+              "items": [
+                {
+                  "type": "Frame",
+                  "width": "@stepDot",
+                  "height": "@stepDot",
+                  "borderRadius": "@stepDot",
+                  "borderWidth": "3dp",
+                  "borderColor": "${data.state == 'todo' ? @line : (data.who == 'bee' ? @colorBee : @lime)}",
+                  "backgroundColor": "${data.state == 'done' ? (data.who == 'bee' ? @colorBee : @lime) : @bg}"
+                },
+                {
+                  "type": "Text",
+                  "text": "${data.label}",
+                  "color": "${data.state == 'todo' ? @faint : @text}",
+                  "fontSize": "@stepSize",
+                  "fontWeight": "700",
+                  "paddingLeft": "10dp"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "mainTemplate": {
+    "parameters": [
+      "payload"
+    ],
+    "items": [
+      {
+        "type": "Frame",
+        "width": "100vw",
+        "height": "100vh",
+        "backgroundColor": "@bg",
+        "item": {
+          "type": "Container",
+          "width": "100%",
+          "height": "100%",
+          "paddingLeft": "@padX",
+          "paddingRight": "@padX",
+          "paddingTop": "@padY",
+          "paddingBottom": "@padY",
+          "items": [
+            {
+              "type": "Brand",
+              "name": "${payload.screen.brand}"
+            },
+            {
+              "when": "${payload.screen.kind == 'drill' || payload.screen.kind == 'checking'}",
+              "type": "Container",
+              "grow": 1,
+              "justifyContent": "start",
+              "items": [
+                {
+                  "type": "PaperCard",
+                  "label": "${payload.screen.kicker}",
+                  "sentence": "${payload.screen.sentence}"
+                },
+                {
+                  "type": "Container",
+                  "paddingTop": "@gap",
+                  "items": [
+                    {
+                      "type": "Tracker",
+                      "steps": "${payload.screen.steps}"
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.status}",
+                  "color": "@colorBee",
+                  "fontSize": "@bodySize",
+                  "fontWeight": "700",
+                  "paddingTop": "@gap",
+                  "display": "${payload.screen.status ? 'normal' : 'none'}"
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.hint}",
+                  "color": "@dim",
+                  "fontSize": "@hintSize",
+                  "paddingTop": "@gap"
+                }
+              ],
+              "paddingTop": "@drillTop"
+            },
+            {
+              "when": "${payload.screen.kind == 'verdict'}",
+              "type": "Container",
+              "grow": 1,
+              "justifyContent": "center",
+              "items": [
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.headline}",
+                  "color": "${payload.screen.tone == 'pass' ? @lime : (payload.screen.tone == 'fail' ? @coral : @text)}",
+                  "fontSize": "@verdictSize",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.reason}",
+                  "color": "@text",
+                  "fontSize": "@bodySize",
+                  "maxLines": 2,
+                  "paddingTop": "4dp"
+                },
+                {
+                  "type": "Container",
+                  "direction": "row",
+                  "paddingTop": "@gap",
+                  "display": "${payload.screen.checked ? 'normal' : 'none'}",
+                  "items": [
+                    {
+                      "type": "Frame",
+                      "backgroundColor": "@colorBeeBg",
+                      "borderRadius": "999dp",
+                      "paddingLeft": "16dp",
+                      "paddingRight": "16dp",
+                      "paddingTop": "6dp",
+                      "paddingBottom": "6dp",
+                      "item": {
+                        "type": "Text",
+                        "text": "${payload.screen.tag}",
+                        "color": "@colorBee",
+                        "fontSize": "@tagSize",
+                        "fontWeight": "700"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "Container",
+                  "paddingTop": "@gap",
+                  "display": "${payload.screen.sentence ? 'normal' : 'none'}",
+                  "items": [
+                    {
+                      "type": "PaperCard",
+                      "label": "${payload.screen.kicker}",
+                      "sentence": "${payload.screen.sentence}",
+                      "lines": 2
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.hint}",
+                  "color": "@lime",
+                  "fontSize": "@hintSize",
+                  "fontWeight": "700",
+                  "paddingTop": "@gap"
+                }
+              ]
+            },
+            {
+              "when": "${payload.screen.kind == 'progress'}",
+              "type": "Container",
+              "grow": 1,
+              "justifyContent": "center",
+              "items": [
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.hero}",
+                  "color": "@text",
+                  "fontSize": "@heroSize",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.heroCaption}",
+                  "color": "@dim",
+                  "fontSize": "@hintSize",
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.line}",
+                  "color": "@text",
+                  "fontSize": "@bodySize",
+                  "maxLines": 3,
+                  "paddingTop": "@gap"
+                },
+                {
+                  "type": "Text",
+                  "text": "${viewport.mode == 'tv' ? payload.screen.footerTv : payload.screen.footerHub}",
+                  "color": "@faint",
+                  "fontSize": "@hintSize",
+                  "paddingTop": "@gap"
+                }
+              ]
+            },
+            {
+              "when": "${payload.screen.kind == 'empty'}",
+              "type": "Container",
+              "grow": 1,
+              "justifyContent": "center",
+              "items": [
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.headline}",
+                  "color": "@text",
+                  "fontSize": "@titleSize",
+                  "fontWeight": "800",
+                  "maxLines": 2
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.line}",
+                  "color": "@dim",
+                  "fontSize": "@bodySize",
+                  "maxLines": 3,
+                  "paddingTop": "@gap"
+                },
+                {
+                  "type": "Text",
+                  "text": "${payload.screen.hint}",
+                  "color": "@lime",
+                  "fontSize": "@hintSize",
+                  "fontWeight": "700",
+                  "paddingTop": "@gap"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
