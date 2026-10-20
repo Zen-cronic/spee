@@ -13,6 +13,7 @@ import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
 import { listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
+import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
 import { countHabitKey, habitMatches, isRegistered, parseHabitKey, umbrellaOf, vagueMatches } from "./habits.js";
 
 export interface StatLine {
@@ -208,6 +209,68 @@ export interface TransferReport {
   unregistered: { habit: string; drills: number; note: string }[];
   headline: string;
   claim: TransferClaim;
+  firstSignal: FirstSignal[];
+}
+
+// The first signal: one pre-registered drilled habit in the last conversation before its first drill
+// vs the next conversation after it. A same-day glance (the stand-up an hour after the drill), never
+// a verdict: one conversation either side, no interval, and only with enough words on both sides.
+// Drill lines are left out, as in the transfer periods; a conversation with no other words is skipped.
+export type FirstSignalStatus = "measured" | "too-few-words" | "no-next-conversation" | "no-earlier-conversation";
+export interface FirstSignalSide {
+  session: string;
+  date: string; // local date
+  startMs: number;
+  words: number;
+  count: number;
+  per100: number;
+}
+export interface FirstSignal {
+  habit: string;
+  label: string;
+  firstDrillAt: number;
+  status: FirstSignalStatus;
+  before: FirstSignalSide | null; // the last conversation that started before the first drill
+  after: FirstSignalSide | null; // the next conversation that started at or after it
+  deltaPer100: number | null; // after - before, only when "measured"
+  minWords: number; // FIRST_SIGNAL_MIN_WORDS, on each side
+  note: string;
+}
+export const FIRST_SIGNAL_NOTE = "one conversation either side of the first drill: a first signal, not proof (the pre-registered before/after is the test)";
+
+export function firstSignals(ss: StatSession[], drilled: { habit: string; label: string; firstDrillAt: number | null }[], tz?: string): FirstSignal[] {
+  const spoken = ss.filter((s) => enLines([s]).some((l) => wordCount(l.text) > 0));
+  const side = (s: StatSession | undefined, key: string): FirstSignalSide | null => {
+    if (!s) return null;
+    const p = period([s], key, tz);
+    return { session: s.id, date: localDate(s.startMs, tz), startMs: s.startMs, words: p.words, count: p.count, per100: p.per100 };
+  };
+  return drilled
+    .filter((h): h is { habit: string; label: string; firstDrillAt: number } => h.firstDrillAt != null)
+    .map((h) => {
+      const before = side([...spoken].reverse().find((s) => s.startMs < h.firstDrillAt), h.habit);
+      const after = side(spoken.find((s) => s.startMs >= h.firstDrillAt), h.habit);
+      const status: FirstSignalStatus = !after ? "no-next-conversation" : !before ? "no-earlier-conversation" : before.words < FIRST_SIGNAL_MIN_WORDS || after.words < FIRST_SIGNAL_MIN_WORDS ? "too-few-words" : "measured";
+      return { habit: h.habit, label: h.label, firstDrillAt: h.firstDrillAt, status, before, after, deltaPer100: status === "measured" ? r2(after!.per100 - before!.per100) : null, minWords: FIRST_SIGNAL_MIN_WORDS, note: FIRST_SIGNAL_NOTE };
+    });
+}
+
+const f1 = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
+// The first signal as one spoken sentence (the coach's "how am I doing?"), or null when no drilled
+// habit has a next conversation yet. Says "too short to compare" instead of a number.
+export function firstSignalSentence(fs: FirstSignal[]): string | null {
+  const measured = fs.filter((f) => f.status === "measured");
+  if (measured.length) {
+    const parts = measured.map((f, i) => `${habitName(f.label)} ${i ? "from" : "went from"} ${f1(f.before!.per100)} to ${f1(f.after!.per100)}`);
+    return `First signal, from one conversation and not proof: in your next conversation after drilling, ${andList(parts)} per 100 words.`;
+  }
+  const short = fs.find((f) => f.status === "too-few-words");
+  if (short) {
+    const next = short.after!.words < short.minWords;
+    const words = next ? short.after!.words : short.before!.words;
+    return `First signal: ${next ? "your next conversation after" : "your last conversation before"} drilling ${habitName(short.label)} was too short to compare (${words} words; it takes ${short.minWords}).`;
+  }
+  return null;
 }
 
 // What the headline claims, for a screen to word without re-deriving it from the verdicts:
@@ -370,6 +433,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     unregistered,
     headline,
     claim,
+    firstSignal: firstSignals(ss, drilled, opts.tz),
   };
 }
 

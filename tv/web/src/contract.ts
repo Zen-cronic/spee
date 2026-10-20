@@ -332,6 +332,34 @@ export interface TransferResponse {
   // verdicts. "...-control-flat" only when every control showed no change; "all-..." when every
   // drilled habit dropped; "dropped-control-unclear" when the controls cannot be compared.
   claim: TransferClaim;
+  // The first signal per pre-registered drilled habit that has been drilled: the last conversation
+  // before its first drill vs the next one after it. A same-day glance, not the test. Additive:
+  // older hubs omit it.
+  firstSignal?: FirstSignal[];
+}
+// FirstSignal.status: "measured" (both conversations have FIRST_SIGNAL_MIN_WORDS words), "too-few-words"
+// (one side is shorter: say so, never a number), "no-next-conversation" (none since the drill yet),
+// "no-earlier-conversation" (nothing before it to compare).
+export const FIRST_SIGNAL_MIN_WORDS = 100;
+export type FirstSignalStatus = "measured" | "too-few-words" | "no-next-conversation" | "no-earlier-conversation";
+export interface FirstSignalSide {
+  session: string;
+  date: string; // the hub's local date
+  startMs: number;
+  words: number;
+  count: number;
+  per100: number;
+}
+export interface FirstSignal {
+  habit: string;
+  label: string;
+  firstDrillAt: number;
+  status: FirstSignalStatus;
+  before: FirstSignalSide | null;
+  after: FirstSignalSide | null;
+  deltaPer100: number | null; // after - before, only when "measured"
+  minWords: number;
+  note: string;
 }
 // "partly-started": nothing dropped yet, some drilled habit's after period has started (its first
 // drill) and another drilled habit is not drilled yet.

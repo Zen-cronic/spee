@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { countHabitKey, habitKeysOf, parseHabitKey } from "../src/hub/habits.js";
-import { habitRates, loadPrereg, transfer, wordsToSeeHalving, type StatSession, type TransferPrereg } from "../src/hub/stats.js";
+import { firstSignalSentence, habitRates, loadPrereg, transfer, wordsToSeeHalving, type StatSession, type TransferPrereg } from "../src/hub/stats.js";
 import { demoFixtures } from "../scripts/build-demo-fixtures.js";
 
 const sess = (id: string, kind: StatSession["kind"], start: string, texts: string[]): StatSession => ({
@@ -197,5 +197,49 @@ describe("GET /api/stats ranges", () => {
     }
     expect(hub.stats({ kind: "all" }).practice!.attempts).toBe(hub.attempts.length);
     hub.dispose();
+  });
+});
+
+describe("first signal: the next conversation after the first drill", () => {
+  // Tue: a stand-up the morning before, the drill at 10:02, the stand-up at 11:15 (synthetic)
+  const tz = "America/Toronto";
+  const PRE: TransferPrereg = { ...PREREG, drilled: [{ habit: "hedges", why: "" }, { habit: "filler:like", why: "" }] };
+  const drillAt = Date.parse("2026-10-20T10:02:00-04:00");
+  const likeDrill = { at: drillAt, habitKeys: ["filler:like", "fillers"] };
+  const talk = (n: number, likes: number) => [filler(n), ...new Array(likes).fill("It was, like, fine.")];
+  const mon = sess("mon", "conversation", "2026-10-19T09:30:00-04:00", talk(10, 6)); // 120 + 24 words, 6 likes
+  const tue = sess("tue", "conversation", "2026-10-20T11:15:00-04:00", talk(10, 1));
+  const run = (sessions: StatSession[], o: Partial<Parameters<typeof transfer>[0]> = {}) => transfer({ sessions, prereg: PRE, preregPath: "p", drills: [likeDrill], nowMs: Date.now(), tz, ...o }).firstSignal;
+  it("measured: the last conversation before vs the next after, per drilled habit that was drilled", () => {
+    const fs = run([mon, tue]);
+    expect(fs.map((f) => f.habit)).toEqual(["filler:like"]); // hedges not drilled yet: no line
+    expect(fs[0]).toMatchObject({ status: "measured", before: { session: "mon", date: "2026-10-19", count: 6 }, after: { session: "tue", date: "2026-10-20", count: 1 }, minWords: 100 });
+    expect(fs[0]!.deltaPer100).toBeCloseTo(fs[0]!.after!.per100 - fs[0]!.before!.per100, 2);
+    expect(fs[0]!.note).toMatch(/not proof/);
+    expect(firstSignalSentence(fs)).toBe(`First signal, from one conversation and not proof: in your next conversation after drilling, "like" went from ${fs[0]!.before!.per100.toFixed(1)} to ${fs[0]!.after!.per100.toFixed(1)} per 100 words.`);
+  });
+  it("no next conversation yet: no number, and nothing to say", () => {
+    const fs = run([mon]);
+    expect(fs[0]).toMatchObject({ status: "no-next-conversation", after: null, deltaPer100: null });
+    expect(firstSignalSentence(fs)).toBeNull();
+    expect(run([mon], { drills: [] })).toEqual([]);
+  });
+  it("too few words on either side: says so instead of a number", () => {
+    const short = sess("tue", "conversation", "2026-10-20T11:15:00-04:00", ["Yes, like, sure."]);
+    const fs = run([mon, short]);
+    expect(fs[0]).toMatchObject({ status: "too-few-words", deltaPer100: null, after: { words: 3 } });
+    expect(firstSignalSentence(fs)).toBe('First signal: your next conversation after drilling "like" was too short to compare (3 words; it takes 100).');
+    const shortBefore = run([sess("mon", "conversation", "2026-10-19T09:30:00-04:00", ["Like, ok."]), tue]);
+    expect(firstSignalSentence(shortBefore)).toBe('First signal: your last conversation before drilling "like" was too short to compare (2 words; it takes 100).');
+  });
+  it("no conversation before the drill to compare with", () => {
+    expect(run([tue])[0]).toMatchObject({ status: "no-earlier-conversation", before: null, deltaPer100: null });
+  });
+  it("drill lines are not everyday speech: a conversation of drill attempts only is skipped", () => {
+    const drillOnly = sess("drill", "conversation", "2026-10-20T10:01:00-04:00", ["The dashboard loads slowly on Mondays."]);
+    drillOnly.startMs = drillAt + 30_000;
+    const keys = new Set(["drill:0"]);
+    const fs = run([mon, drillOnly, tue], { drillLineKeys: keys });
+    expect(fs[0]!.after!.session).toBe("tue");
   });
 });

@@ -339,9 +339,24 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
  ],
  "unregistered": [ { "habit": "vague", "drills": 3, "note": "drilled but not pre-registered: not reported as a transfer result" } ],
  "headline": "hedges (I guess, I think, maybe, kind of...) and \"like\" as a filler dropped in real speech after drilling; the undrilled control stayed flat",
- "claim": "all-dropped-control-flat"
+ "claim": "all-dropped-control-flat",
+ "firstSignal": [
+  { "habit": "hedges", "label": "hedges (I guess, I think, maybe, kind of...)", "firstDrillAt": 1792080600000, "status": "measured",
+    "before": { "session": "demo-bee-1015", "date": "2026-10-15", "startMs": 1792071600000, "words": 309, "count": 8, "per100": 2.59 },
+    "after":  { "session": "demo-bee-1016", "date": "2026-10-16", "startMs": 1792159800000, "words": 259, "count": 2, "per100": 0.77 },
+    "deltaPer100": -1.82, "minWords": 100,
+    "note": "one conversation either side of the first drill: a first signal, not proof (the pre-registered before/after is the test)" },
+  { "habit": "filler:like", "status": "measured", "before": { "per100": 3.24, "...": "..." }, "after": { "per100": 0.77, "...": "..." }, "deltaPer100": -2.47, "...": "..." }
+ ]
 }
 ```
+
+**First signal:** `firstSignal` (additive) is the same-day glance, one entry per pre-registered drilled habit that has been drilled: the last conversation that started before its first drill against the next one that started at or after it, rates per 100 words, drill lines left out and conversations with no other words skipped. It is not the test: one conversation either side, no interval. `status` decides what a surface may say:
+
+- `measured`: both conversations have at least `minWords` (100) words; `deltaPer100` is after minus before. Say the two rates and that it is one conversation, not proof.
+- `too-few-words`: a side is shorter; say it was too short to compare, never a number (`deltaPer100` is `null`).
+- `no-next-conversation`: no conversation since the drill yet; the TV says the next one shows here.
+- `no-earlier-conversation`: nothing before the drill to compare with.
 
 **Claim:** `claim` is what `headline` says, as a fixed value, so a screen can word it without re-deriving it from the verdicts. It follows the headline's rule: the control "stayed flat" only when at least one control is registered and every control is `no change`.
 

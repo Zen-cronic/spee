@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { createInterface } from "node:readline";
 import WebSocket from "ws";
-import { CONTRACT_VERSION, ROOM_TOPICS, TRANSFER_CLAIMS, V1_TOPICS, V2_TOPICS } from "../src/hub/contract.js";
+import { CONTRACT_VERSION, FIRST_SIGNAL_MIN_WORDS, ROOM_TOPICS, TRANSFER_CLAIMS, V1_TOPICS, V2_TOPICS } from "../src/hub/contract.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 import { PLUGIN_NAMES } from "../src/hub/plugins.js";
 import type { BridgeClient, CheckCtx, CheckResult } from "./checks/types.js";
@@ -275,6 +275,8 @@ const v = (k: string) => tr.body.habits.find((h: any) => h.habit === k)?.verdict
 check(tr.body.synthetic === true && v("hedges") === "dropped" && v("filler:like") === "dropped" && v("restart") === "no change", "transfer: drilled hedges and like dropped, control restarts no change (synthetic)");
 check(tr.body.claim === "all-dropped-control-flat" && /control stayed flat/.test(tr.body.headline), "transfer: claim all-dropped-control-flat, as the headline says (synthetic)");
 check(tr.body.unregistered.some((u: any) => u.habit === "vague"), "transfer refuses unregistered drilled habits (vague listed, not reported as drilled)");
+const fsig = (tr.body.firstSignal ?? []) as any[];
+check(JSON.stringify(fsig.map((f) => [f.habit, f.status])) === JSON.stringify([["hedges", "measured"], ["filler:like", "measured"]]) && fsig.every((f) => f.minWords === FIRST_SIGNAL_MIN_WORDS && f.before.words >= f.minWords && f.after.words >= f.minWords && f.after.startMs >= f.firstDrillAt && f.before.startMs < f.firstDrillAt && /not proof/.test(f.note)), "transfer: firstSignal per drilled habit, the conversation before vs the next after its first drill, labelled not proof (synthetic)");
 check(!tr.body.unregistered.some((u: any) => ["hedge:i guess", "hedges", "filler:like", "fillers"].includes(u.habit)), "transfer: an 'I guess' drill counts under the registered umbrella 'hedges' (not listed as unregistered)");
 const refuse = await get("/api/transfer?habit=vague", "GET /api/transfer?habit=vague");
 check(refuse.status === 422 && refuse.body.error === "not_preregistered", "transfer?habit=vague -> 422 not_preregistered");
