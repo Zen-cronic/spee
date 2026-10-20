@@ -1,7 +1,8 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -222,5 +223,132 @@ describe("Live between conversations", () => {
     // an older hub without `range`: read from the source
     expect(baselineWordsLabel({ source: "bee all Bee conversations (non-drill conversations)" })).toBe("your words so far");
     expect(baselineWordsLabel({ source: "bee week (non-drill conversations)" })).toBe("your words this week");
+  });
+});
+
+// Packet S: the wrist moment, the quiet line, the plan, Bee memory, the round and the early cards.
+describe("nudgeHopsLine names the alarm, not a buzz", () => {
+  const nudge = (o: { total?: number | null; status?: "scheduled" | "failed" | "replay"; alarmAt?: number | null } = {}) => ({
+    hops: { spokenAt: 0, beeAt: 5900, detectedAt: 5950, todoAt: 7400, alarmAt: o.alarmAt === undefined ? 17_400 : o.alarmAt },
+    latencyMs: { bee: 5900, detect: 50, todo: 1450, total: o.total === undefined ? 17_400 : o.total },
+    wrist: { channel: "bee-todo" as const, status: o.status ?? ("scheduled" as const), todoId: "t1", leadMs: 10_000, error: null },
+  });
+  it("you said it, Bee, then the wrist alarm the hub set", () => {
+    expect(nudgeHopsLine(nudge())).toBe("You said it → Bee 5.9 s → wrist alarm 17.4 s");
+    expect(nudgeHops(nudge()).map((h) => h.ms)).toEqual([0, 5900, 17_400]);
+  });
+  it("a wrist call that failed says the alarm was not set", () => {
+    expect(nudgeHopsLine(nudge({ status: "failed", alarmAt: null, total: null }))).toBe("You said it → Bee 5.9 s → wrist alarm not set");
+    expect(nudgeHops(nudge({ status: "failed", alarmAt: null, total: null }))[2]!.ms).toBeNull();
+  });
+  it("never claims a buzz or something on your wrist the hub cannot see", () => {
+    for (const n of [nudge(), nudge({ status: "replay" }), nudge({ status: "failed", alarmAt: null, total: null })]) {
+      const line = nudgeHopsLine(n);
+      expect(line).not.toMatch(/buzz|on your wrist|vibrat/i);
+      expect(line).toMatch(/wrist alarm/);
+    }
+  });
+  it("shows the wrist text without its [coach] tag", () => {
+    expect(nudgeText({ text: '[coach] 4 unsure words in 2 min. Say it plainly.' })).toBe("4 unsure words in 2 min. Say it plainly.");
+  });
+});
+
+describe("skipLine words every NudgeSkipReason and never says Bee", () => {
+  const reasons: NudgeSkipReason[] = ["off", "warmup", "quiet-hours", "drill-active", "cooldown", "rule-cooldown", "cap-hour", "cap-day", "wrist-down"];
+  it("the cooldown line, with when it lifts", () => {
+    expect(skipLine({ reason: "cooldown", retryAfterMs: 117_000 })).toBe("Stayed quiet: cooldown between nudges · again in 2 min");
+    expect(skipLine({ reason: "cooldown", retryAfterMs: 40_000 })).toBe("Stayed quiet: cooldown between nudges · again in 40 s");
+    expect(skipLine({ reason: "off", retryAfterMs: null })).toBe("Stayed quiet: live coaching is off");
+  });
+  it("every reason has its own words, and none credits Bee with the coach's decision", () => {
+    expect(Object.keys(SKIP_LABEL).sort()).toEqual([...reasons].sort());
+    const lines = reasons.map((reason) => skipLine({ reason, retryAfterMs: 60_000 }));
+    expect(new Set(lines).size).toBe(reasons.length);
+    for (const l of lines) {
+      expect(l).toMatch(/^Stayed quiet: \S/);
+      expect(l).not.toMatch(/\bBee\b/);
+      expect(l).not.toMatch(/undefined|held back$/);
+    }
+  });
+  it("the rule line comes from the hub's own thresholds and cooldown", () => {
+    const rules = [{ rule: "hedge-streak" as const, threshold: 4 }, { rule: "like-streak" as const, threshold: 3 }];
+    const mode = { cooldownMs: 180_000, rules: { "hedge-streak": true, "like-streak": true, monologue: true, "fast-rate": false } };
+    expect(nudgeRuleLine(rules, mode, 120_000)).toBe("One wrist nudge when unsure words reach 4 or “like” reaches 3 in 2 min, then quiet for 3 min.");
+    expect(nudgeRuleLine(rules, { ...mode, rules: { ...mode.rules, "like-streak": false } }, 120_000)).toBe("One wrist nudge when unsure words reach 4 in 2 min, then quiet for 3 min.");
+    expect(nudgeRuleLine(undefined, mode, 120_000)).toBeNull();
+  });
+  it("the recap's nudge line", () => {
+    expect(recapNudgeLine({ sent: 1, skipped: 1 })).toBe("1 wrist nudge, then stayed quiet once");
+    expect(recapNudgeLine({ sent: 2, skipped: 0 })).toBe("2 wrist nudges");
+    expect(recapNudgeLine({ sent: 0, skipped: 3 })).toBe("Stayed quiet 3 times: no wrist nudge");
+    expect(recapNudgeLine({ sent: 0, skipped: 0 })).toBeNull();
+  });
+});
+
+describe("planLine says pilot, gives counts per phase, never 'proves'", () => {
+  const period = (sessions: number, words = 1200) => ({ sessions, words, count: 10, per100: 1, ci95: [0, 2] as [number, number], from: "2026-10-12", to: "2026-10-16" });
+  const habit = (key: string, role: "drilled" | "control", before: number, after: number, verdict: TransferHabit["verdict"] = "dropped") => ({ habit: key, label: key, role, verdict, before: period(before), after: period(after) });
+  const t = { prereg: { path: "prereg/x.md", registeredAt: "2026-10-17T12:00:00Z", drilled: ["hedges", "filler:like"], control: ["restart"], basis: "" }, minWordsPerPeriod: 400 };
+  it("a two-tier pilot with the points per phase", () => {
+    const p = planLine({ ...t, habits: [habit("hedges", "drilled", 6, 3), habit("filler:like", "drilled", 6, 2), habit("restart", "control", 9, 3, "no change")] });
+    expect(p.text).toMatch(/^A pilot in two tiers, set Oct 17 before your first practice: two habits you practise against one you don’t\./);
+    expect(p.text).toMatch(/400\+ words each side/);
+    expect(p.points).toBe("Conversations counted, before → since: Unsure words 6 → 3 · Filler “like” 6 → 2 (too few) · Starting over 9 → 3");
+    expect(p.caveat).toMatch(/a pilot, not proof of cause$/);
+    expect(`${p.text} ${p.points} ${p.caveat}`).not.toMatch(/prove|proof that|proven/i);
+  });
+  it("a habit not practised yet has no after phase", () => {
+    const p = planLine({ ...t, habits: [habit("hedges", "drilled", 4, 0, "not drilled yet"), habit("restart", "control", 4, 0, "not drilled yet")] });
+    expect(p.text).toMatch(/^A pilot in one tier,/);
+    expect(p.points).toBe("Conversations counted, before → since: Unsure words 4 → not started · Starting over 4 → not started");
+  });
+});
+
+describe("beeMemoryLine is null when disabled", () => {
+  const mem = (o: Partial<BeeMemoryIn> = {}): BeeMemoryIn => ({ enabled: true, status: "synced", goal: { factId: "f1", text: "Speaking goal (Speaking Mirror): ...", confirmed: true, updatedAt: Date.parse("2026-10-20T15:00:00Z") }, insights: { count: 0, readAt: Date.parse("2026-10-20T15:00:00Z") }, facts: { count: 14, readAt: Date.parse("2026-10-20T15:00:00Z") }, note: "Bee's chat and Alexa+ may not read coach-written facts.", ...o });
+  it("hidden when the hub has it off, or does not report it", () => {
+    expect(beeMemoryLine(mem({ enabled: false }))).toBeNull();
+    expect(beeMemoryLine(mem({ status: "off" }))).toBeNull();
+    expect(beeMemoryLine(null)).toBeNull();
+    expect(beeMemoryLine(undefined)).toBeNull();
+  });
+  it("the goal fact, Bee's counts and the note, never more than the coach wrote", () => {
+    const m = beeMemoryLine(mem())!;
+    expect(m.text).toBe("Your speaking goal is saved in Bee as a confirmed fact, updated Oct 20.");
+    expect(m.counts).toBe("Bee holds 14 facts and 0 insights, read Oct 20");
+    expect(m.caveat).toBe("Bee’s chat and Alexa+ may not read coach-written facts.");
+    expect(beeMemoryLine(mem({ status: "pending" }))!.text).toMatch(/^Saving/);
+    expect(beeMemoryLine(mem({ status: "failed" }))!.text).toMatch(/tries again/);
+    expect(beeMemoryLine(mem({ status: "demo" }))!.text).toBe("Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.");
+    expect(beeMemoryLine(mem({ status: "demo", goal: null, facts: null, insights: null }))).toEqual({ text: "Demo: after a line Bee passes, the coach would save your speaking goal in Bee.", counts: null, caveat: BEE_MEMORY_NOTE });
+    expect(beeMemoryLine(mem({ goal: null }))!.text).toMatch(/^No speaking goal in Bee yet/);
+    expect(beeMemoryLine(mem({ note: "" }))!.caveat).toBe(BEE_MEMORY_NOTE);
+    expect(beeMemoryLine(mem({ facts: null, insights: null }))!.counts).toBeNull();
+  });
+});
+
+describe("before the first practice: the cards never say Practised beside Not practised yet (the phone's rule)", () => {
+  const h = (role: "drilled" | "control", verdict: TransferHabit["verdict"]) => ({ role, verdict, before: { per100: 2, words: 900 } as any, after: { per100: 0, words: 0 } as any });
+  it("a practised habit is still to practise; the one you don't practise starts at your first practice", () => {
+    expect(habitRole(h("drilled", "not drilled yet"))).toBe("To practise");
+    expect(habitPill(h("drilled", "not drilled yet"))).toBeNull(); // "To practise" already says it
+    expect(habitRole(h("control", "not drilled yet"))).toBe("Not practised");
+    expect(habitPill(h("control", "not drilled yet"))).toBe("Starts at your first practice");
+    expect(habitRole(h("drilled", "dropped"))).toBe("Practised");
+    expect(habitPill(h("control", "no change"))).toBe("No change");
+  });
+});
+
+describe("Round over", () => {
+  it("the round's headline, tally and last line", () => {
+    expect(roundHeadline({ cards: 2, passed: 1 })).toBe("1 of 2 lines passed.");
+    expect(roundHeadline({ cards: 1, passed: 1 })).toBe("1 of 1 line passed.");
+    expect(roundHeadline({ cards: 0, passed: 0 })).toBe("No lines this round.");
+    expect(roundTally({ passed: 1, failed: 1, unverified: 0, pending: 1 })).toBe("1 passed, 1 not yet, 1 still with Bee");
+    const g = { pass: false, agreement: "bee-overrules", beeText: "Um, the migration is not done yet.", failure: null };
+    expect(roundLastLine({ graded: g, stage: "graded", previewSource: "phone" })).toBe("The phone heard a pass on your last line; Bee heard “Um, the migration is…”.");
+    expect(roundLastLine({ graded: { ...g, agreement: "agree", pass: true }, stage: "graded", previewSource: "alexa" })).toBe("Last line: passed. Bee heard it.");
+    expect(roundLastLine({ graded: null, stage: "checking", previewSource: null })).toMatch(/still checking/);
+    expect(roundLastLine({ graded: null, stage: "idle", previewSource: null })).toBeNull();
   });
 });

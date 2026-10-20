@@ -1,5 +1,5 @@
-import {initialMirror, mirrorReducer, type MirrorAction, type MirrorState} from '../src/mirror/reducer';
-import {fmtMs, niceMax, topBreakdown, verdictTone} from '../src/mirror/format';
+import {drillPhase, initialMirror, mirrorReducer, type MirrorAction, type MirrorState} from '../src/mirror/reducer';
+import {beeMemoryLine, fmtMs, habitPill, habitRole, niceMax, nudgeHopsLine, skipLine, topBreakdown, verdictTone} from '../src/mirror/format';
 import {PRODUCT_NAME, WORDMARK} from '../src/brand';
 import {MIRROR_CONFIG} from '../src/platform/config';
 import {CONTRACT_VERSION, ROOM_TOPICS} from '../src/contract';
@@ -46,5 +46,26 @@ describe('Vega platform config and display helpers', () => {
     expect(WORDMARK).toBe('SPEAKING MIRROR');
     expect(CONTRACT_VERSION).toBe(2);
     expect(ROOM_TOPICS).toEqual(['practice.meters']);
+  });
+});
+
+describe('the wrist moment and the round on Vega (synced from tv/web)', () => {
+  it('ends a round after an overrule: Round over, not the result again', () => {
+    const card = {id: 'k1', resay: 'x'};
+    const summary = {sessionId: 's1', cards: 1, passed: 0, failed: 1, unverified: 0, pending: 0, beeOverrules: 1, perCard: []};
+    const graded = {attempt: {id: 'a1', cardId: 'k1', status: 'graded', agreement: 'bee-overrules', final: {pass: false, grade: {reasons: []}}}, card};
+    let s = run(initialMirror(), {type: 'event', event: ev(1, 'card.open', {card}), now: 0}, {type: 'event', event: ev(2, 'attempt.graded', graded), now: 1});
+    expect(drillPhase(s.drill)).toBe('result');
+    s = run(s, {type: 'event', event: ev(3, 'session.ended', {summary}), now: 2});
+    expect(drillPhase(s.drill)).toBe('over');
+  });
+  it('words the nudge hops, the quiet line, Bee memory and the early cards the same as the web TV', () => {
+    const nudge = {hops: {spokenAt: 0, beeAt: 5900, detectedAt: 5950, todoAt: 7400, alarmAt: 17400}, latencyMs: {bee: 5900, detect: 50, todo: 1450, total: 17400}, wrist: {channel: 'bee-todo' as const, status: 'scheduled' as const, todoId: null, leadMs: 10000, error: null}};
+    expect(nudgeHopsLine(nudge)).toBe('You said it → Bee 5.9 s → wrist alarm 17.4 s');
+    expect(skipLine({reason: 'cooldown', retryAfterMs: 120000})).toBe('Stayed quiet: cooldown between nudges · again in 2 min');
+    expect(beeMemoryLine({enabled: false, status: 'off', goal: null, insights: null, facts: null, note: ''})).toBeNull();
+    const waiting = {role: 'drilled' as const, verdict: 'not drilled yet' as const, before: {per100: 2, words: 900} as any, after: {per100: 0, words: 0} as any};
+    expect(habitRole(waiting)).toBe('To practise');
+    expect(habitPill({...waiting, role: 'control'})).toBe('Starts at your first practice');
   });
 });

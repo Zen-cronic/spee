@@ -2,7 +2,7 @@
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";
-import { backAction, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
+import { backAction, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 
 const fx = loadFixtureV2();
@@ -340,5 +340,42 @@ describe("stale refetches and older recaps", () => {
     s = run(s, { type: "recap", recap: r, show: true, now: 1 }); // "show my recap" for the older one
     expect(s.recap?.id).toBe(r.id);
     expect(s.latestRecap?.id).toBe("rcp_new");
+  });
+});
+
+describe("Round over (packet S)", () => {
+  const card = { id: "k1", resay: "The migration is not done yet." } as any;
+  const summary = { sessionId: "s1", by: "alexa", cards: 2, attempts: 2, counted: 2, passed: 1, failed: 1, unverified: 0, pending: 0, beeOverrules: 1, perCard: [] } as any;
+  const graded = (agreement: string, pass: boolean) => ({ attempt: { id: "a1", cardId: "k1", status: "graded", agreement, provisional: { source: "phone", text: "x", grade: { pass: !pass, reasons: [] } }, final: { pass, grade: { reasons: [] } }, bee: { text: "Um, the migration is not done yet." } }, card });
+  it("session.ended after an overrule → drillPhase 'over', with the overruled verdict kept beside the tally", () => {
+    let s = run(initialMirror(), { type: "event", event: ev(1, "session.started", { session: { id: "s1", by: "alexa" } }), now: 0 }, { type: "event", event: ev(2, "card.open", { card, sessionId: "s1" }), now: 1 });
+    expect(drillPhase(s.drill)).toBe("line");
+    s = run(s, { type: "event", event: ev(3, "attempt.graded", graded("bee-overrules", false)), now: 2 });
+    expect(drillPhase(s.drill)).toBe("result");
+    s = run(s, { type: "event", event: ev(4, "session.ended", { summary }), now: 3 });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill.graded).toMatchObject({ pass: false, agreement: "bee-overrules" });
+    expect(s.drill.summary?.beeOverrules).toBe(1);
+    // not the same screen as the result before it (the tv-07 duplicate of tv-06)
+    expect(drillPhase(s.drill)).not.toBe("result");
+  });
+  it("an unattempted card closed by the end is over too; a new round starts over at a line", () => {
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "session.ended", { summary }), now: 1 });
+    expect(s.drill.card).toBeNull();
+    expect(drillPhase(s.drill)).toBe("over");
+    s = run(s, { type: "event", event: ev(3, "session.started", { session: { id: "s2", by: "alexa" } }), now: 2 });
+    expect(drillPhase(s.drill)).toBe("idle");
+    s = run(s, { type: "event", event: ev(4, "card.open", { card, sessionId: "s2" }), now: 3 });
+    expect(drillPhase(s.drill)).toBe("line");
+  });
+  it("Bee still checking at the end stays over, and the late verdict lands in it", () => {
+    const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
+    let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 });
+    expect(drillPhase(s.drill)).toBe("checking");
+    s = run(s, { type: "event", event: ev(3, "session.ended", { summary: { ...summary, pending: 1 } }), now: 2 });
+    expect(drillPhase(s.drill)).toBe("over");
+    s = run(s, { type: "event", event: ev(4, "attempt.graded", graded("agree", true)), now: 3 });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill.graded?.pass).toBe(true);
   });
 });
