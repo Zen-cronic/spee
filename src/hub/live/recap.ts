@@ -144,7 +144,9 @@ export function composeRecap(i: RecapInput): { recap: Recap; slots: RecapSlots }
   let headline: string;
   if (worse[0]) {
     const w = worse[0];
-    headline = `${habitTitle(w.key)} ran high: ${rate(w)} per 100 words against your usual ${usual(w)}.${better[0] ? ` ${habitTitle(better[0].key)} ${was(better[0].key as RecapKey)} down.` : ""}`;
+    // With the setting named ("... your usual 1.4 at work.") the headline has no room for the habit that
+    // was down: the TV shows it two lines high, and the rows below already say "Fewer".
+    headline = `${habitTitle(w.key)} ran high: ${rate(w)} per 100 words against your usual ${usual(w)}.${better[0] && !where ? ` ${habitTitle(better[0].key)} ${was(better[0].key as RecapKey)} down.` : ""}`;
   } else if (longTurn) headline = `A long turn: ${slot("longest_turn_min", turnMin)} minutes without a break.${hedges.count === 0 ? " No unsure words." : ""}`;
   else if (better[0]) {
     const b = better[0];
