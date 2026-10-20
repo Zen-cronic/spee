@@ -420,7 +420,7 @@ describe("the read-only spike (npx tsx src/hub/live/factsParse.ts inspect)", () 
     expect(JSON.parse(flines[0]!)).toMatchObject({ ok: false, error: "exit 2" });
   });
   it("jsonShape keeps keys and types only; a key that may be data is not shown", () => {
-    expect(jsonShape({ facts: [{ id: 1, text: "secret", confirmed: true, tags: null }], next_cursor: "abc", "Jordan Lee": 1 })).toEqual({ facts: { array: 1, of: { id: "number", text: "string", confirmed: "boolean", tags: "null" } }, next_cursor: "string", "<key>": "1 key(s) that are not field names" });
+    expect(jsonShape({ facts: [{ id: 1, text: "secret", confirmed: true, tags: null }], next_cursor: "abc", "Jordan Quill": 1 })).toEqual({ facts: { array: 1, of: { id: "number", text: "string", confirmed: "boolean", tags: "null" } }, next_cursor: "string", "<key>": "1 key(s) that are not field names" });
     expect(outputShape("Created.")).toEqual({ json: false, shape: null, lines: 1 });
     expect(JSON.stringify(outputShape(`{"text":"${PLANTED_OTHER_MARKER}"}`))).not.toContain(PLANTED_OTHER_MARKER);
   });

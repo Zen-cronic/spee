@@ -46,7 +46,7 @@ export function loadMaskTerms(dir: string): string[] {
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** One regex for every term, longest first, so "Jordan Lee" wins over "Jordan". Null without terms. */
+/** One regex for every term, longest first, so "Jordan Quill" wins over "Jordan". Null without terms. */
 export function maskRegex(terms: string[]): RegExp | null {
   const alts = [...new Set(terms.map((t) => t.trim().replace(/\s+/g, " ")).filter((t) => t.length >= MASK_MIN_TERM))]
     .sort((a, b) => b.length - a.length)

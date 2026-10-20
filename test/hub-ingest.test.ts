@@ -516,7 +516,7 @@ describe("live ingest: privacy", () => {
     // the coach's own spoken prompt, picked up by the watch and labelled as another speaker, and an
     // enrolled colleague with a name of their own
     const PROMPT = "You can also ask how am I doing.";
-    const theirs: [string, string][] = [["Unknown", PROMPT], ["Sam Lee", `${SECRET}, says Sam.`], ["Sam", `${SECRET} from a first name only.`]];
+    const theirs: [string, string][] = [["Unknown", PROMPT], ["Sam Quill", `${SECRET}, says Sam.`], ["Sam", `${SECRET} from a first name only.`]];
     const base = c.transcriptions[0]!.utterances;
     theirs.forEach(([speaker, text], i) => base.push({ ...base[0]!, id: 200_900 + i, speaker, text, spoken_at: c.start_time + 500_000 + i * 1000 }));
     r.bee.add(c);

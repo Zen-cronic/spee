@@ -1,5 +1,5 @@
 // On-screen masking of private terms (src/hub/mask.ts), with SYNTHETIC terms only ("Acme",
-// "Jordan Lee", "export"): masked in every output path (HTTP JSON, SSE, the bridge WebSocket, the
+// "Jordan Quill", "export"): masked in every output path (HTTP JSON, SSE, the bridge WebSocket, the
 // home page, Alexa speech, MCP tool text, the wrist), unmasked in grading and in persisted files,
 // whole words only, and never in a log line or in health.
 import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -20,17 +20,17 @@ import { HubClient } from "../src/mcp/hubClient.js";
 import { pairHeaders } from "../web/phone/src/take.js";
 import { raw } from "./helpers-http.js";
 
-const TERMS = ["Acme", "Jordan Lee", "export"];
-const TERM_RE = /acme|jordan\s+lee|\bexport\b/i;
+const TERMS = ["Acme", "Jordan Quill", "export"];
+const TERM_RE = /acme|jordan\s+quill|\bexport\b/i;
 const SKILL = "amzn1.ask.skill.00000000-0000-0000-0000-000000000000";
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 describe("maskOut (unit)", () => {
   afterAll(() => setMaskTerms([]));
   it("whole words, case-insensitive, multi-word phrases across spaces, longest first", () => {
-    setMaskTerms(["Acme", "Jordan Lee", "Jordan"]);
-    expect(maskOut("Jordan Lee from ACME and acme's team", "screen")).toBe(`${MASK_SCREEN} from ${MASK_SCREEN} and ${MASK_SCREEN}'s team`);
-    expect(maskOut("Jordan  Lee called Jordan", "speech")).toBe(`${MASK_SPEECH} called ${MASK_SPEECH}`);
+    setMaskTerms(["Acme", "Jordan Quill", "Jordan"]);
+    expect(maskOut("Jordan Quill from ACME and acme's team", "screen")).toBe(`${MASK_SCREEN} from ${MASK_SCREEN} and ${MASK_SCREEN}'s team`);
+    expect(maskOut("Jordan  Quill called Jordan", "speech")).toBe(`${MASK_SPEECH} called ${MASK_SPEECH}`);
     expect(maskOut("Acmeville and Acme2 and preacme stay", "screen")).toBe("Acmeville and Acme2 and preacme stay");
     expect(maskOut("Acme-based, (Acme).", "screen")).toBe(`${MASK_SCREEN}-based, (${MASK_SCREEN}).`);
   });
@@ -39,7 +39,7 @@ describe("maskOut (unit)", () => {
     expect(maskOut("Acmeville and Acme", "screen")).toBe(`${MASK_SCREEN} and ${MASK_SCREEN}`);
   });
   it("parses comment lines, blanks and duplicates; too-short terms are ignored; regex characters are literal", () => {
-    expect(parseMaskTerms("# names\nAcme\n\n  acme  \nJordan   Lee\nab\n#Hidden\n")).toEqual(["Acme", "Jordan Lee"]);
+    expect(parseMaskTerms("# names\nAcme\n\n  acme  \nJordan   Quill\nab\n#Hidden\n")).toEqual(["Acme", "Jordan Quill"]);
     setMaskTerms(["C++ Team", "a.b.c"]);
     expect(maskOut("the C++ Team and axbxc and a.b.c", "screen")).toBe(`the ${MASK_SCREEN} and axbxc and ${MASK_SCREEN}`);
     expect(maskRegex([])).toBeNull();
@@ -63,8 +63,8 @@ describe("maskOut (unit)", () => {
     expect(loadMaskTerms(dir)).toEqual([]);
     writeFileSync(join(dir, "private-terms.local.txt"), "# banned\nAcme\n");
     expect(loadMaskTerms(dir)).toEqual(["Acme"]);
-    writeFileSync(join(dir, "mask-terms.local.txt"), "Jordan Lee\nacme\n");
-    expect(loadMaskTerms(dir)).toEqual(["Acme", "Jordan Lee"]);
+    writeFileSync(join(dir, "mask-terms.local.txt"), "Jordan Quill\nacme\n");
+    expect(loadMaskTerms(dir)).toEqual(["Acme", "Jordan Quill"]);
   });
 });
 
@@ -89,7 +89,7 @@ describe("masking on a demo hub (synthetic terms)", () => {
   beforeAll(async () => {
     const dir = mkdtempSync(join(tmpdir(), "mask-terms-"));
     writeFileSync(join(dir, "private-terms.local.txt"), "# synthetic banned terms\nAcme\n");
-    writeFileSync(join(dir, "mask-terms.local.txt"), "Jordan Lee\nexport\n");
+    writeFileSync(join(dir, "mask-terms.local.txt"), "Jordan Quill\nexport\n");
     stateDir = mkdtempSync(join(tmpdir(), "mask-hub-"));
     vi.spyOn(console, "log").mockImplementation((...a: unknown[]) => void logs.push(a.map(String).join(" ")));
     vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => void logs.push(a.map(String).join(" ")));
@@ -140,10 +140,10 @@ describe("masking on a demo hub (synthetic terms)", () => {
     expect(s.setup.hub.card("demo:hedge-i-guess")!.resay).toBe("The billing export is ready for review today.");
   });
 
-  it("an attempt naming Acme and Jordan Lee: masked in HTTP, SSE and WS; graded and persisted unmasked", async () => {
+  it("an attempt naming Acme and Jordan Quill: masked in HTTP, SSE and WS; graded and persisted unmasked", async () => {
     await post("/api/card/open", { cardId: "demo:hedge-i-guess" });
     await post("/api/demo/scenario", { scenario: "verified" });
-    const said = "The billing export is ready for review today, Jordan Lee from Acme says.";
+    const said = "The billing export is ready for review today, Jordan Quill from Acme says.";
     const a = await post("/api/attempt", { text: said, source: "typed" });
     expect(a.status).toBe(202);
     expect(a.text).not.toMatch(TERM_RE);
@@ -156,10 +156,10 @@ describe("masking on a demo hub (synthetic terms)", () => {
     // grading ran on what was said, not on the mask: the content rule matched the real sentence
     const inner = s.setup.hub.attempts.find((x) => x.id === id)!;
     expect(inner.provisional!.text).toBe(said);
-    expect(inner.bee!.text).toContain("Jordan Lee from Acme");
+    expect(inner.bee!.text).toContain("Jordan Quill from Acme");
     expect(inner.final?.grade.pass).toBe(true);
     // persistence is private and keeps the real text
-    expect(readFileSync(join(stateDir, "attempts.json"), "utf8")).toContain("Jordan Lee from Acme");
+    expect(readFileSync(join(stateDir, "attempts.json"), "utf8")).toContain("Jordan Quill from Acme");
     // everything a screen was sent
     for (const p of ["/api/attempts?limit=50", "/api/session", "/api/events/recent", "/api/stats", "/api/brief", "/api/deck/next"]) expect((await get(p)).text, p).not.toMatch(TERM_RE);
     await sleep(100);
@@ -197,7 +197,7 @@ describe("masking on a demo hub (synthetic terms)", () => {
     expect(r.text).not.toContain(MASK_SCREEN);
     const bodies: string[] = [];
     const send = progressiveSender({ allowed: () => true, fetch: (async (_u: unknown, init: any) => (bodies.push(init.body), new Response(null, { status: 204 }))) as typeof fetch });
-    await send({ ...e, context: { System: { apiEndpoint: "https://api.amazonalexa.com", apiAccessToken: "t" } } } as any, "Checking with Bee for Jordan Lee.");
+    await send({ ...e, context: { System: { apiEndpoint: "https://api.amazonalexa.com", apiAccessToken: "t" } } } as any, "Checking with Bee for Jordan Quill.");
     expect(bodies[0]).toContain(`for ${MASK_SPEECH}`);
     expect(bodies[0]).not.toMatch(TERM_RE);
   });
@@ -206,7 +206,7 @@ describe("masking on a demo hub (synthetic terms)", () => {
     const c = new Client({ name: "mask-test", version: "0.0.0" });
     await c.connect(new StreamableHTTPClientTransport(new URL(`${s.url}/mcp`)));
     try {
-      const r = (await c.callTool({ name: "submit_attempt", arguments: { text: "The billing export is ready for review today, Jordan Lee from Acme says.", card_id: "demo:hedge-i-guess" } })) as any;
+      const r = (await c.callTool({ name: "submit_attempt", arguments: { text: "The billing export is ready for review today, Jordan Quill from Acme says.", card_id: "demo:hedge-i-guess" } })) as any;
       const out = JSON.stringify(r);
       expect(out).toContain(`${MASK_SPEECH} from ${MASK_SPEECH} says`);
       expect(out).not.toMatch(TERM_RE);

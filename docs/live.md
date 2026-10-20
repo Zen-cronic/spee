@@ -288,7 +288,7 @@ The hub can hide names on everything a person sees or hears, so a screen recordi
 
 1. List the names, one per line, in `coach/mask-terms.local.txt` (gitignored; lines starting with `#` are comments). The leak check's `coach/private-terms.local.txt` is masked too, so you only add what is not there already.
 2. Restart the hub (`npm run hub`). It reads both files at start. Check `curl -s localhost:8791/api/health`: `"masking": "on (N terms)"`. The hub never prints, logs or serves the terms themselves.
-3. Film. Each term is matched as a whole word, in any case, and a phrase ("Jordan Lee") across any spaces: "Acme" hides "ACME's" but not "Acmeville" (list that too if needed).
+3. Film. Each term is matched as a whole word, in any case, and a phrase ("Jordan Quill") across any spaces: "Acme" hides "ACME's" but not "Acmeville" (list that too if needed).
 
 What is masked, all in the hub's output path (`src/hub/mask.ts`):
 

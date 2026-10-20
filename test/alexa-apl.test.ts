@@ -226,8 +226,8 @@ describe("screens", () => {
 describe("masking", () => {
   afterEach(() => setMaskTerms([]));
   it("masks every datasource string for a screen (▒▒▒), and the hub's speech pass leaves it so", () => {
-    setMaskTerms(["Jordan Lee", "Acme"]);
-    const d = renderDirective(verdictScreen({ kind: "fail", grade: grade({ checks: failed("content"), missing: ["Acme"] }), next: { resay: "Ask Jordan Lee about Acme." } }));
+    setMaskTerms(["Jordan Quill", "Acme"]);
+    const d = renderDirective(verdictScreen({ kind: "fail", grade: grade({ checks: failed("content"), missing: ["Acme"] }), next: { resay: "Ask Jordan Quill about Acme." } }));
     const s = (d.datasources as { payload: { screen: Screen } }).payload.screen;
     expect(s.sentence).toBe(`Ask ${MASK_SCREEN} about ${MASK_SCREEN}.`);
     expect(s.reason).toBe(`A few words were missing: ${MASK_SCREEN}.`);
