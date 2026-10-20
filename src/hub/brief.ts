@@ -14,13 +14,16 @@ import { habitNameOf, PER_100_GLOSS } from "./habitNames.js";
 export interface CalendarEvent {
   title: string;
   startsAt: number; // epoch ms
+  endsAt?: number; // epoch ms, when the brief gives one (the setting tag uses it: src/hub/settings.ts)
 }
 export type CalendarFn = () => Promise<{ events: CalendarEvent[]; source: string; note?: string }>;
 
 const execFileP = promisify(execFile);
 
-const pickTime = (o: Record<string, unknown>): number | null => {
-  for (const k of ["start", "start_time", "startTime", "start_date", "starts_at", "begin"]) {
+const START_KEYS = ["start", "start_time", "startTime", "start_date", "starts_at", "begin"];
+const END_KEYS = ["end", "end_time", "endTime", "end_date", "ends_at", "finish"];
+const pickTime = (o: Record<string, unknown>, keys: string[] = START_KEYS): number | null => {
+  for (const k of keys) {
     const v = o[k];
     if (typeof v === "number") return v < 1e12 ? v * 1000 : v;
     if (typeof v === "string" && !Number.isNaN(Date.parse(v))) return Date.parse(v);
@@ -46,7 +49,11 @@ export function beeCalendar(bin = process.env.BEE_BIN ?? "bee", timeoutMs = 10_0
       const o = JSON.parse(stdout) as { calendar_events?: unknown[] };
       const events = (o.calendar_events ?? [])
         .map((e) => e as Record<string, unknown>)
-        .map((e) => ({ title: String(e.title ?? e.summary ?? e.name ?? "Calendar event"), startsAt: pickTime(e) }))
+        .map((e) => {
+          const startsAt = pickTime(e);
+          const endsAt = pickTime(e, END_KEYS);
+          return { title: String(e.title ?? e.summary ?? e.name ?? "Calendar event"), startsAt, ...(startsAt != null && endsAt != null && endsAt > startsAt ? { endsAt } : {}) };
+        })
         .filter((e): e is CalendarEvent => e.startsAt != null);
       const value = { events, source: "bee today", note: events.length ? undefined : "Bee's today brief has no calendar events (connect a calendar in the Bee app)" };
       cache = { at: Date.now(), value };

@@ -32,6 +32,10 @@ export interface StatSession {
   lines: StatLine[];
   timeline?: MeetingTimeline;
   synthetic?: boolean;
+  // Distinct speakers heard, the wearer included: a count from the session's counts (SessionStats
+  // `speakers`, else 2 when it has lines that are not the wearer's), never anyone's words.
+  // Undefined when unknown. Used only to guess the conversation's setting (src/hub/settings.ts).
+  speakers?: number;
 }
 
 // Where the running live hub keeps the conversations it picked up itself (src/hub/ingest.ts),
@@ -47,7 +51,8 @@ export function mergeCorpus(byId: Map<string, StatSession>, corpus: RealCorpus |
   for (const s of corpus.sessions ?? []) {
     if (s.skipped) continue;
     if (!byId.has(s.id)) {
-      byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, lines: [] });
+      const speakers = s.speakers ?? (s.totalLines > s.wearerLines ? 2 : s.wearerLines > 0 ? 1 : undefined);
+      byId.set(s.id, { id: s.id, kind: s.kind, startMs: s.startMs, lines: [], ...(speakers ? { speakers } : {}) });
       mine.add(s.id);
     }
   }
@@ -388,7 +393,7 @@ export function wordsToSeeHalving(per100: number): number | null {
   return null;
 }
 
-function period(sessions: StatSession[], key: string, tz?: string): Period {
+export function period(sessions: StatSession[], key: string, tz?: string): Period {
   const texts = enLines(sessions).map((l) => l.text);
   const words = texts.reduce((n, t) => n + wordCount(t), 0);
   const h = parseHabitKey(key)!;

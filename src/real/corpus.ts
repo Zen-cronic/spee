@@ -36,6 +36,9 @@ export interface SessionStats {
   wearerLines: number; // labelled as the wearer
   uncertainLines: number; // of those, flagged by the mislabel detector
   wearerShare: number; // wearerLines / totalLines
+  // Distinct speaker labels on the conversation's lines, the wearer's included (a count only, never
+  // a name). Bee often labels everyone but the wearer "Unknown", so 2 can mean "two or more".
+  speakers?: number;
   skipped?: string;
   realtimeOnly?: boolean; // included from a still-capturing realtime transcript (labels may change on completion)
 }
@@ -154,6 +157,7 @@ export function conversationLines(details: ConversationDetail[], wearer: WearerL
     stat.wearerLines = mine.length;
     stat.uncertainLines = [...verdicts.values()].filter((v) => v.uncertain).length;
     stat.wearerShare = utts.length ? Math.round((mine.length / utts.length) * 1000) / 1000 : 0;
+    stat.speakers = new Set(utts.map((u) => u.speaker)).size;
     sessions.push(stat);
   }
   return { sessions, lines, context };
