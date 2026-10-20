@@ -49,12 +49,13 @@ h1 {
   gap: 10px;
   white-space: nowrap;
 }
+/* the mark, the same on every surface (the TV too): a lime disc with an ink core */
 .mark {
-  width: 12px;
-  height: 12px;
+  flex: none;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: var(--lime);
-  box-shadow: 0 0 0 2px var(--ink);
+  background: radial-gradient(circle, var(--ink) 0 3.4px, var(--lime) 3.9px);
 }
 .sub {
   color: var(--ink-dim);
