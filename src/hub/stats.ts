@@ -25,6 +25,7 @@ export interface StatLine {
   dom: "fr" | "en";
   uncertain: boolean;
   spokenAt?: number | null; // Bee spoken_at (epoch ms), when the source has it
+  spokenEndAt?: number | null; // spokenAt plus the line's duration, when the source has both
 }
 export interface StatSession {
   id: string;
@@ -61,7 +62,10 @@ export function mergeCorpus(byId: Map<string, StatSession>, corpus: RealCorpus |
   for (const l of (corpus.lines ?? []) as WearerLine[]) {
     if (opts.newOnly && !mine.has(l.session)) continue;
     const s = byId.get(l.session);
-    if (s && !s.lines.some((x) => x.key === l.key)) s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain, spokenAt: l.spokenAt ?? null });
+    if (s && !s.lines.some((x) => x.key === l.key)) {
+      const dur = l.start != null && l.end != null && l.end > l.start ? Math.round((l.end - l.start) * 1000) : null;
+      s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain, spokenAt: l.spokenAt ?? null, ...(l.spokenAt != null && dur != null ? { spokenEndAt: l.spokenAt + dur } : {}) });
+    }
   }
   for (const t of timelines) {
     const s = byId.get(t.session);
@@ -319,7 +323,10 @@ export function firstSignals(ss: StatSession[], drilled: { habit: string; label:
 // transcript and an attempt matched on the live stream carries the realtime transcript's ids (two
 // lists with their own ids and their own segmentation), when it was spoken inside the attempt's
 // speech window (with the clock slack) in the same conversation and its words are the attempt's:
-// most of the line is in the attempt's Bee text, or most of that text is in the line.
+// most of the line is in the attempt's Bee text, or most of that text is in the line. "Inside" is an
+// overlap of the line's whole span with the window, not its start: Bee's final transcript can merge
+// a lead-in and the card sentence into one line that starts well before the attempt. A line without
+// a known end is taken to last DRILL_LINE_MS_PER_WORD per word.
 export interface DrillSpan {
   session: string | null; // the Bee conversation id, when known
   fromMs: number;
@@ -332,6 +339,7 @@ export interface DrillLines {
 }
 export const DRILL_LINE_SLACK_MS = 8000; // Bee spoken_at is second-granular, and clocks differ
 export const DRILL_TEXT_MATCH = 0.6;
+export const DRILL_LINE_MS_PER_WORD = 500; // a slow 120 words a minute, so an estimated end errs long
 const drillText = (line: string, attempt: string) => {
   const l = normTokens(line);
   const a = normTokens(attempt);
@@ -341,8 +349,9 @@ const drillText = (line: string, attempt: string) => {
 export function isDrillLine(session: string, l: StatLine, d: DrillLines): boolean {
   if (d.keys.has(l.key)) return true;
   if (l.spokenAt == null) return false;
-  const t = l.spokenAt;
-  return d.spans.some((sp) => (sp.session == null || sp.session === session) && t >= sp.fromMs - DRILL_LINE_SLACK_MS && t <= sp.toMs + DRILL_LINE_SLACK_MS && drillText(l.text, sp.text));
+  const from = l.spokenAt;
+  const to = l.spokenEndAt != null && l.spokenEndAt >= from ? l.spokenEndAt : from + wordCount(l.text) * DRILL_LINE_MS_PER_WORD;
+  return d.spans.some((sp) => (sp.session == null || sp.session === session) && from <= sp.toMs + DRILL_LINE_SLACK_MS && to >= sp.fromMs - DRILL_LINE_SLACK_MS && drillText(l.text, sp.text));
 }
 export function withoutDrillLines(ss: StatSession[], d: DrillLines | undefined): StatSession[] {
   if (!d || (!d.keys.size && !d.spans.length)) return ss;

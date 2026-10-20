@@ -127,4 +127,22 @@ describe("drill lines in the final transcript", () => {
     const s: StatSession = { id: "7", kind: "conversation", startMs: at - 5000, lines: [line("The dashboard loads slowly on Mondays.", at + 1000), { ...line("Okay, see you then.", at + 2000), key: "u:2" }] };
     expect(withoutDrillLines([s], d)[0]!.lines.map((l) => l.text)).toEqual(["Okay, see you then."]);
   });
+
+  it("a line Bee merged with a lead-in, starting well before the attempt, is still a drill line (its span overlaps)", () => {
+    const at = T0 + 30_000;
+    const d = { keys: new Set<string>(), spans: [{ session: "7", fromMs: at + 12_000, toMs: at + 15_000, text: "the export ships on Friday after the review" }] };
+    const text = "Okay so let me try that one again, the export ships on Friday after the review.";
+    const merged = { key: "u:9", text, dom: "en" as const, uncertain: false, spokenAt: at, spokenEndAt: at + 15_000 };
+    expect(isDrillLine("7", merged, d)).toBe(true);
+    // no known end: estimated from its words (16 words, 8 s), which still reaches the window
+    expect(isDrillLine("7", { ...merged, spokenEndAt: null }, d)).toBe(true);
+    // a line that ended long before the attempt is not
+    expect(isDrillLine("7", { ...merged, spokenAt: at - 60_000, spokenEndAt: at - 50_000 }, d)).toBe(false);
+  });
+
+  it("mergeCorpus carries each line's end (spoken_at plus its duration)", () => {
+    const byId = new Map<string, StatSession>();
+    mergeCorpus(byId, { sessions: [{ id: "1", kind: "conversation", startMs: T0, totalLines: 1, wearerLines: 1 }], lines: [{ key: "u:1", session: "1", kind: "conversation", start: 10, end: 14.5, spokenAt: T0 + 10_000, text: "hello there", lang: "en", dom: "en", uncertain: false, mislabelScore: 0, reasons: [] }] } as never);
+    expect(byId.get("1")!.lines[0]).toMatchObject({ spokenAt: T0 + 10_000, spokenEndAt: T0 + 14_500 });
+  });
 });
