@@ -91,7 +91,7 @@ function scripted() {
       case "start_drill":
         return reply(`Say this: "${cards[0]}"`, { session: { id: "ses_1" }, card: { id: "c0", resay: cards[0] }, narration: "" });
       case "submit_attempt":
-        return reply("Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.", { attempt: { id: "att_9", status: "pending_bee" } });
+        return reply("Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.", { attempt: { id: "att_9", status: "pending_bee" } });
       case "get_verdict":
         verdicts++;
         return verdicts === 1

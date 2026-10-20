@@ -560,7 +560,7 @@ export class CoachHub extends EventEmitter {
     const narration: Record<string, string> = {
       idle: "You're not practising right now. Say quiz me to get your first line.",
       card_open: openCard ? `Say this: "${openCard.resay}"` : "",
-      pending_bee: "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
+      pending_bee: "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
       polling: "Bee's live feed was quiet, so I'm checking your conversation directly.",
       graded: last?.final ? (last.final.pass ? "Nice, Bee heard it. That's a pass." : `Not yet: ${failReason(last.final.grade)}. Say it again.`) : "",
       unverified: "Bee didn't catch that one, so it doesn't count. Say it again.",

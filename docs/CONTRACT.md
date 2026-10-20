@@ -52,7 +52,7 @@ card_open --(Bee alone hears the wearer say the card)--> graded (agreement "bee-
 |---|---|---|
 | `idle` | "No drill is running. Start a session to get your first card." / "Bee heard it. That's a pass, so the card is closed. Start a drill for the next one." | no open card (the second line right after Bee passed a lone card; `lastAttempt` is that pass) |
 | `card_open` | `Say this: "<resay>"` | waiting for the user |
-| `pending_bee` | "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment." | preview graded; waiting for Bee's wearer-tagged line |
+| `pending_bee` | "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment." | preview graded; waiting for Bee's wearer-tagged line |
 | `polling` | "Bee's live feed was quiet, so I'm checking your conversation directly." | stream timeout; fallback poll of the conversation through the Bee CLI |
 | `graded` | "Bee heard it. That's a pass." (in a session: "... Say next for the next card.") / "Bee heard it. Not yet: <first failed rule>." | Bee's text graded; the schedule moved |
 | `unverified` | "Bee didn't confirm that one, so it doesn't count. Try it again." | no Bee confirmation; the schedule is unchanged |
@@ -207,7 +207,7 @@ Card fields:
   "bee": null, "final": null, "agreement": null,
   "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)", "box": null
  },
- "narration": "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
+ "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
  "verdictUrl": "/api/attempts/att_mvgyktz3001",
  "retryAfterMs": 15000
 }
@@ -237,7 +237,7 @@ Card fields:
 {
  "mode": "demo", "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
  "state": "pending_bee",
- "narration": "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
+ "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
  "verdictReady": false, "retryAfterMs": 15000,
  "session": { "id": "ses_mvgyktyz000", "by": "alexa", "size": 4, "cardIds": ["demo:vague-referent"], "attemptIds": ["att_mvgyktz3001"], "...": "..." },
  "openCard": { "id": "demo:vague-referent", "resay": "I fixed the invoice retry job this morning.", "...": "..." },
