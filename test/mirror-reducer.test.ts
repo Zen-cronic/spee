@@ -301,3 +301,22 @@ describe("practice meters (room frames, no seq)", () => {
     expect(s.view).toBe("practice");
   });
 });
+
+describe("a lone card closed by Bee's pass", () => {
+  const card = { id: "demo:filler-like", resay: "The dashboard loads slowly on Mondays." } as any;
+  const pass = { id: "att_1", cardId: card.id, status: "graded", counted: true, agreement: "bee-only", provisional: null, bee: { text: card.resay, via: "stream", speakerScore: 0.82, latencyMs: 6000, replay: true }, final: { source: "bee", pass: true, grade: { reasons: [], checks: [] } }, box: { from: 1, to: 2, dueAfter: "2026-10-22" } } as any;
+  const snap = (lastAttempt: unknown, openCard: unknown = null) => ({ type: "hubState", state: { mode: "demo", dataLabel: "x", bootId: "b1", lastSeq: 9, state: "idle", narration: "", verdictReady: false, retryAfterMs: null, session: null, openCard, lastAttempt, deck: null, bee: {} } as any, now: 0 }) as MirrorAction;
+  it("keeps the verdict on screen when hub.state closes the card it just passed", () => {
+    let s = run(initialMirror(), snap(null, card), { type: "event", event: ev(10, "attempt.graded", { attempt: pass, card }), now: 1 });
+    expect(s.drill).toMatchObject({ stage: "graded", graded: { pass: true } });
+    s = run(s, snap(pass));
+    expect(s.drill.card?.id).toBe(card.id);
+    expect(s.drill).toMatchObject({ stage: "graded", graded: { pass: true, boxTo: 2 } });
+  });
+  it("a screen that joins after the close shows no drill; a failed attempt is never kept", () => {
+    expect(run(initialMirror(), snap(pass)).drill).toMatchObject({ card: null, stage: "idle" });
+    const fail = { ...pass, final: { ...pass.final, pass: false } };
+    const s = run(initialMirror(), snap(null, card), { type: "event", event: ev(10, "attempt.graded", { attempt: fail, card }), now: 1 }, snap(fail));
+    expect(s.drill).toMatchObject({ card: null, stage: "idle" });
+  });
+});

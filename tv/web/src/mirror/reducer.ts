@@ -231,6 +231,9 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
   const d: DrillState = { ...emptyDrill(), sessionId: h.session?.id ?? null, card: h.openCard, deck: h.deck, stage: h.openCard ? 'card' : 'idle' };
   const la = h.lastAttempt;
   if (la && h.openCard && la.cardId === h.openCard.id) Object.assign(d, drillFromAttempt(la));
+  // A lone card Bee passed is closed (the hub re-sends hub.state): the snapshot carries that pass, so
+  // the screen showing the card keeps its verdict instead of dropping to "No drill running".
+  else if (la && !h.openCard && !h.session && la.status === 'graded' && la.final?.pass && s.drill.card?.id === la.cardId) Object.assign(d, { card: s.drill.card }, drillFromAttempt(la));
   const restarted = !!h.bootId && !!s.bootId && h.bootId !== s.bootId;
   const floorSeq = typeof h.lastSeq === 'number' && Number.isFinite(h.lastSeq) ? h.lastSeq : restarted ? 0 : Math.max(s.floorSeq, s.lastSeq ?? 0);
   return {
