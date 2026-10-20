@@ -1,8 +1,9 @@
-// The product-voice ledger (scripts/leak-voice.ts): only a phrase the product itself says in a string
-// literal can be approved, the approval is pinned to the file's exact content, and the ledger holds
-// hashes only. Synthetic text only.
+// The product-voice ledger (scripts/leak-voice.ts): only a phrase the product itself says can be
+// approved (another copy file's literal, or this file's own literals from before the recording;
+// never the file as it is now, and never demo data or fixtures), the approval is pinned to the file's
+// exact content, and the ledger holds hashes only. Synthetic text only.
 import { describe, expect, it } from "vitest";
-import { classifyVoice, formatVoiceLedger, literalTexts, parseVoiceLedger, phraseHash, PRODUCT_SOURCE_RE, productPhrases } from "../scripts/leak-voice.js";
+import { classifyVoice, copyPhrasesByOrigin, formatVoiceLedger, isCopyEvidence, literalTexts, parseVoiceLedger, phraseHash, productPhrases, productVoice, voiceOrigin } from "../scripts/leak-voice.js";
 
 const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").split(" ").filter(Boolean);
 const SKILL = `export const SPEECH = { help: "You can also ask how am I doing, or say quiz me.", again: \`Say it again: \${line}. Then ask how did I do.\` };`;
@@ -16,14 +17,40 @@ describe("the product's own phrases", () => {
     expect(said.has("you can also ask how")).toBe(true);
     expect(said.has("ask how did i do")).toBe(true);
     expect(said.has("again then ask how")).toBe(false); // a placeholder breaks the text
-    expect(PRODUCT_SOURCE_RE.test("web/sim/src/router.ts") && PRODUCT_SOURCE_RE.test("web/hub/index.html") && !PRODUCT_SOURCE_RE.test("test/x.test.ts") && !PRODUCT_SOURCE_RE.test("docs/x.md")).toBe(true);
+    expect(["web/sim/src/router.ts", "src/alexa/speech.ts", "src/hub/habitNames.ts", "src/hub/live/recap.ts", "tv/vega/src/views/LiveView.tsx"].every(isCopyEvidence)).toBe(true);
+    expect(["src/hub/demoData.ts", "src/hub/live/demoScripts.ts", "src/hub/contractExamples.ts", "fixtures/demo/sessions.json", "alexa/fixtures/x.json", "test/x.test.ts", "docs/x.md", "src/hub/stats.ts"].some(isCopyEvidence)).toBe(false);
+    expect(voiceOrigin("tv/vega/src/mirror/format.ts")).toBe(voiceOrigin("tv/web/src/mirror/format.ts"));
+  });
+});
+
+describe("what counts as the product's own copy", () => {
+  // the reviewer's case: another speaker's (synthetic) line pasted into a demo-data string literal
+  const PASTED = 'const LINES = ["the zebra orchid passcode is 4417 today"];';
+  const hits = ["the zebra orchid passcode is", "zebra orchid passcode is 4417"];
+  it("a phrase pasted into a literal never vouches for itself, in its own file or in its synced copy", () => {
+    const copy = copyPhrasesByOrigin([{ path: "src/alexa/skill.ts", text: SKILL }], words);
+    const own = productVoice("src/hub/demoData.ts", copy, () => null);
+    expect(classifyVoice("sha  src/hub/demoData.ts", hits, new Map(), own)).toEqual({ approved: [], approvable: [], other: hits });
+    // pasted into a copy file: its own literal is not evidence, nor the tv-sync twin of it
+    const twin = copyPhrasesByOrigin([{ path: "tv/web/src/views/LiveView.tsx", text: PASTED }, { path: "tv/vega/src/views/LiveView.tsx", text: PASTED }], words);
+    expect(classifyVoice("sha  tv/web/src/views/LiveView.tsx", hits, new Map(), productVoice("tv/web/src/views/LiveView.tsx", twin, () => null)).other).toEqual(hits);
+    // demo data is never evidence for another file either (isCopyEvidence filters it before copyPhrasesByOrigin)
+    expect(isCopyEvidence("src/hub/demoData.ts")).toBe(false);
+  });
+  it("another copy file's literal, or this file's literals from before the recording, is evidence", () => {
+    const copy = copyPhrasesByOrigin([{ path: "src/alexa/skill.ts", text: SKILL }], words);
+    expect(productVoice("src/hub/live/engine.ts", copy, () => null)("you can also ask how")).toBe(true);
+    expect(productVoice("src/alexa/skill.ts", copy, () => null)("you can also ask how")).toBe(false); // only itself says it
+    const before = productPhrases([{ path: "src/alexa/skill.ts", text: SKILL }], words);
+    expect(productVoice("src/alexa/skill.ts", copy, () => before)("you can also ask how")).toBe(true);
   });
 });
 
 describe("the ledger", () => {
   const sha = "a".repeat(64);
   const key = `${sha}  src/alexa/skill.ts`;
-  const said = productPhrases([{ path: "src/alexa/skill.ts", text: SKILL }], words);
+  const phrases = productPhrases([{ path: "src/alexa/skill.ts", text: SKILL }], words);
+  const said = (g: string) => phrases.has(g);
   it("approves only the product's phrases, only for that exact file content, and stores hashes only", () => {
     const hits = ["you can also ask how", "the zebra orchid is due"];
     expect(classifyVoice(key, hits, new Map(), said)).toEqual({ approved: [], approvable: ["you can also ask how"], other: ["the zebra orchid is due"] });
@@ -34,7 +61,7 @@ describe("the ledger", () => {
     // the file changed: its sha256 differs, so the hit is flagged again
     expect(classifyVoice(`${"b".repeat(64)}  src/alexa/skill.ts`, ["you can also ask how"], ledger, said).approved).toEqual([]);
     // a phrase the product no longer says is not set aside, even if it was approved before
-    expect(classifyVoice(key, ["you can also ask how"], ledger, new Set()).other).toEqual(["you can also ask how"]);
+    expect(classifyVoice(key, ["you can also ask how"], ledger, () => false).other).toEqual(["you can also ask how"]);
   });
   it("ignores comments, blank and malformed lines", () => {
     expect(parseVoiceLedger("# note\n\nnot a line\nabc  x  y\n").size).toBe(0);
