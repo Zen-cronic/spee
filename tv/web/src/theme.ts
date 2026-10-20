@@ -25,6 +25,7 @@ export const C = {
   lime: '#d7f26a',
   limeInk: '#1a2006',
   limeBg: '#2a3114',
+  limeOnLight: '#55650a', // the mark's lime on paper (olive); --lime-on-light on web/sim and web/hub
   // "checked by Bee", and nothing else: the one place its colour is set (web/phone, web/sim and
   // web/hub use the same values as --bee, --bee-ink, --bee-on-light). Sky, from the logo.
   bee: '#8ccfff', // on the dark ground

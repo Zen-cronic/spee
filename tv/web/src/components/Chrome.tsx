@@ -3,6 +3,7 @@ import { PRODUCT_NAME } from '../brand';
 import { FocusButton } from '../focus';
 import type { ScreenView } from '../mirror/reducer';
 import { C, F, R, SP, T } from '../theme';
+import { BrandMark } from './BrandMark';
 
 export const TAB_LABEL: Record<ScreenView, string> = {
   week: 'Today',
@@ -21,9 +22,7 @@ export function TopBar({ view, onShow, right, rightTone }: { view: ScreenView; o
   return (
     <View style={styles.top}>
       <View style={styles.brandRow}>
-        <View style={styles.brandDot} testID="brand-mark">
-          <View style={styles.brandCore} />
-        </View>
+        <BrandMark size={48} tone="dark" />
         <Text style={styles.brand}>{PRODUCT_NAME}</Text>
       </View>
       <View style={styles.tabs}>
@@ -69,10 +68,9 @@ export function Heading({ kicker, title }: { kicker: string; title: string }) {
 const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center', height: 76 },
   brandRow: { flexDirection: 'row', alignItems: 'center', marginRight: SP.xxl },
-  // the mark, the same on every surface (web/hub, web/sim): a lime disc with an ink core
-  brandDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: C.lime, alignItems: 'center', justifyContent: 'center', marginRight: SP.m },
-  brandCore: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.ink },
-  brand: { flexShrink: 0, color: C.text, fontSize: T.small, fontWeight: '700', fontFamily: F.family },
+  // the mark (BrandMark, the same two voices on every surface) at 48: the views draw on a fixed
+  // 1920x1080 stage scaled to the window (App.tsx Stage), so on the stick it is 48 px at 1080p
+  brand: { flexShrink: 0, color: C.text, fontSize: T.small, fontWeight: '700', fontFamily: F.family, marginLeft: SP.s },
   tabs: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.pill, padding: 6 },
   right: { color: C.dim, fontSize: T.label, fontFamily: F.family },
   footer: { flexDirection: 'row', alignItems: 'center', height: 36, marginTop: SP.m },
