@@ -115,6 +115,9 @@ export interface SessionPlan {
   marks: Partial<Record<Mark, number>>;
   speakers?: number; // distinct speakers heard, the wearer included (a count, as Bee's sessions carry)
   casual?: boolean; // small talk (CASUAL sentences) instead of work talk
+  // The captions of a meeting Bee also heard: the same lines as that Bee conversation, with every
+  // "um" left out, as real captions drop about 30% of them (docs/instrument-check.md).
+  captionsOf?: string;
 }
 
 // Before drilling (Oct 13-15 morning) vs after (Oct 15 afternoon onward). Bee conversations are
@@ -135,9 +138,13 @@ export const PLANS: SessionPlan[] = [
   { id: "demo-bee-1011", kind: "conversation", start: "2026-10-11T12:00:00-04:00", sentences: 20, marks: { iguess: 3, like: 3, restart: 1, vague: 1 }, speakers: 3, casual: true },
   { id: "demo-bee-1017", kind: "conversation", start: "2026-10-17T20:15:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 2 }, speakers: 2, casual: true },
   { id: "demo-bee-1018", kind: "conversation", start: "2026-10-18T11:30:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 1, vague: 1 }, speakers: 3, casual: true },
+  // Synthetic: the 09:35 stand-up's own captions, heard by Bee too (the instrument check's pair).
+  // Last, so it can copy that conversation's lines.
+  { id: "demo-meet-1020", kind: "meeting", start: "2026-10-20T09:36:00-04:00", sentences: 0, marks: {}, captionsOf: "demo-bee-1020" },
 ];
 
 export function buildSessions(): StatSession[] {
+  const built = new Map<string, string[]>();
   return PLANS.map((p, si) => {
     const r = rng(1000 + si);
     const src = p.casual ? CASUAL : CLEAN;
@@ -147,11 +154,13 @@ export function buildSessions(): StatSession[] {
     const marks: Mark[] = [];
     for (const [m, n] of Object.entries(p.marks) as [Mark, number][]) for (let k = 0; k < n; k++) marks.push(m);
     const slots = picked.map((_, i) => i);
-    const text = [...picked];
+    let text = [...picked];
     for (const m of marks) {
       const i = slots.splice(Math.floor(r() * slots.length), 1)[0]!;
       text[i] = apply(text[i]!, m, r);
     }
+    if (p.captionsOf) text = (built.get(p.captionsOf) ?? []).map((t) => t.replace(/^Um, (.)/, (_m, c: string) => c.toUpperCase()));
+    built.set(p.id, text);
     const startMs = Date.parse(p.start);
     const lines = text.map((t, i) => ({ key: `${p.kind === "meeting" ? "m" : "u"}:${p.id}:${i}`, text: t, dom: "en" as const, uncertain: false }));
     let timeline: MeetingTimeline | undefined;

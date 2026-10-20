@@ -21,6 +21,7 @@ import type { AppMsg, PeerInfo } from "tv-voice-bridge";
 import { buildBrief } from "./brief.js";
 import { parseHabitKey } from "./habits.js";
 import { parseRange, parseSource } from "./stats.js";
+import { instrumentReport } from "./instrument.js";
 import { demoSetup, liveSetup, type Setup } from "./setup.js";
 import { DEMO_SCENARIOS, type DemoScenario } from "./demoData.js";
 import type { HubEvent, ProvisionalSource } from "./core.js";
@@ -501,6 +502,8 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
         }
         return send(res, 200, t);
       }
+      case "GET /api/instrument":
+        return send(res, 200, instrumentReport(hub.sessions, { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }));
       case "GET /api/brief":
         return send(res, 200, await buildBrief(hub, setup.calendar));
       case "GET /api/events/recent":

@@ -517,7 +517,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     generatedAt: new Date(opts.nowMs).toISOString(),
     synthetic: !!prereg.synthetic || ss.some((s) => s.synthetic),
     source,
-    sources: sourceBreakdown(ss),
+    sources: sourceBreakdown(ss, opts.tz),
     prereg: { path: opts.preregPath, registeredAt: prereg.registered_at, drilled: prereg.drilled.map((h) => h.habit), control: prereg.control.map((h) => h.habit), basis: prereg.basis },
     minWordsPerPeriod: minWords,
     method:
@@ -531,12 +531,16 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
 }
 
 // The compact "drilled habit vs the next real session" view for /api/stats.
-export function sourceBreakdown(ss: StatSession[]) {
-  const out: Record<string, { sessions: number; words: number; label: string }> = {};
+// Per source kind: sessions, words, and the first and last local date (`from`, `to`).
+export function sourceBreakdown(ss: StatSession[], tz?: string) {
+  const out: Record<string, { sessions: number; words: number; label: string; from: string | null; to: string | null }> = {};
   for (const s of ss) {
-    const o = (out[s.kind] ??= { sessions: 0, words: 0, label: SOURCE_LABEL[s.kind] ?? s.kind });
+    const o = (out[s.kind] ??= { sessions: 0, words: 0, label: SOURCE_LABEL[s.kind] ?? s.kind, from: null, to: null });
     o.sessions++;
     o.words += enLines([s]).reduce((n, l) => n + wordCount(l.text), 0);
+    const d = localDate(s.startMs, tz);
+    if (!o.from || d < o.from) o.from = d;
+    if (!o.to || d > o.to) o.to = d;
   }
   return out;
 }

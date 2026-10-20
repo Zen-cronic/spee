@@ -640,7 +640,7 @@ export class CoachHub extends EventEmitter {
       synthetic: this.mode === "demo",
       range: range.kind === "session" ? (range.label ?? `session:${range.id}`) : range.kind,
       source,
-      sources: sourceBreakdown(ss),
+      sources: sourceBreakdown(ss, this.tz),
       sessions: ss.map((s) => ({ id: s.id, kind: s.kind, date: localDate(s.startMs, this.tz), words: habitRates([s]).words, synthetic: !!s.synthetic })),
       habits: habitRates(ss),
       talk: talkSummary(ss),

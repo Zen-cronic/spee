@@ -252,6 +252,9 @@ export interface SourceCount {
   sessions: number;
   words: number;
   label: string;
+  // The first and last local date of this source's sessions. Additive: older hubs omit them.
+  from?: string | null;
+  to?: string | null;
 }
 export interface Period {
   sessions: number;
@@ -362,6 +365,35 @@ export interface FirstSignal {
   after: FirstSignalSide | null;
   deltaPer100: number | null; // after - before, only when "measured"
   minWords: number;
+  note: string;
+}
+// GET /api/instrument (additive): Bee and meeting captions on the meetings both heard, as
+// aggregates. `agree` per habit is null until the pooled pairs have INSTRUMENT_MIN_WORDS words on
+// each side. "practised-agree": the two pre-registered practised habits (hedges, filler:like) are
+// within INSTRUMENT_TOLERANCE on both; only then may a screen say captions and Bee agree on them.
+export const INSTRUMENT_HABITS = ["hedges", "filler:like", "restart", "um-uh", "fillers"] as const;
+export const INSTRUMENT_MIN_WORDS = 200;
+export const INSTRUMENT_TOLERANCE = { per100: 0.3, relative: 0.15 } as const;
+export const INSTRUMENT_CLAIMS = ["practised-agree", "practised-differ", "too-little-data", "no-pairs"] as const;
+export type InstrumentClaim = (typeof INSTRUMENT_CLAIMS)[number];
+export interface InstrumentHabit {
+  habit: (typeof INSTRUMENT_HABITS)[number]; // a habit key, or "um-uh" ("um" and "uh" together)
+  captionsPer100: number;
+  beePer100: number;
+  agree: boolean | null;
+}
+export interface InstrumentResponse {
+  dataLabel: string;
+  synthetic: boolean;
+  generatedAt: string;
+  pairs: number; // meetings heard by both
+  from: string | null; // local dates of the paired meetings
+  to: string | null;
+  words: { captions: number; bee: number };
+  minWords: number;
+  tolerance: { per100: number; relative: number };
+  habits: InstrumentHabit[];
+  claim: InstrumentClaim;
   note: string;
 }
 // "partly-started": nothing dropped yet, some drilled habit's after period has started (its first
