@@ -15,11 +15,11 @@
     "fixtures": "fixtures/demo",
     "stateDir": "out/contract-check",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "now": "2026-10-20T17:30:00.250Z",
+    "now": "2026-10-20T17:30:00.257Z",
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400034,
+     "lastEventAt": 1792517400036,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -43,9 +43,11 @@
        "/api/live",
        "/api/recaps",
        "/api/coach",
-       "/api/demo/live"
+       "/api/demo/live",
+       "/api/settings",
+       "/api/sessions"
       ],
-      "owner": "packet A",
+      "owner": "live coaching",
       "status": "ready",
       "routes": [
        "GET /api/live",
@@ -53,7 +55,11 @@
        "GET /api/recaps",
        "GET /api/recaps/<id>",
        "GET /api/coach/now",
-       "POST /api/demo/live"
+       "GET /api/coach/facts",
+       "POST /api/coach/cue",
+       "POST /api/demo/live",
+       "GET /api/settings",
+       "POST /api/sessions/<id>/setting"
       ],
       "topics": [
        "conversation.started",
@@ -64,14 +70,14 @@
        "recap.ready",
        "live.mode"
       ],
-      "note": "wrist: replay; principles: template; recap phrasing: template"
+      "note": "wrist: replay; principles: template; recap phrasing: template; Bee facts: demo; cues: on"
      },
      {
       "name": "mirror",
       "prefixes": [
        "/api/demo/mirror"
       ],
-      "owner": "packet B",
+      "owner": "practice mirror",
       "status": "ready",
       "routes": [
        "POST /api/demo/mirror"
@@ -90,21 +96,21 @@
        "/p/",
        "/sim/"
       ],
-      "owner": "lead",
+      "owner": "hub",
       "status": "ready",
       "routes": [
        "GET /tv/*",
        "GET /p/*",
        "GET /sim/*"
       ],
-      "note": "/tv/ built; /p/ built; /sim/ built"
+      "note": "/tv/ not built (npm run tv:web:build); /p/ built; /sim/ not built (npm run web:build)"
      },
      {
       "name": "alexa",
       "prefixes": [
        "/alexa"
       ],
-      "owner": "packet C",
+      "owner": "Alexa skill",
       "status": "ready",
       "routes": [
        "POST /alexa"
@@ -116,7 +122,7 @@
       "prefixes": [
        "/mcp"
       ],
-      "owner": "packet C",
+      "owner": "MCP server",
       "status": "ready",
       "routes": [
        "POST /mcp",
@@ -132,21 +138,23 @@
       "GET /p/*",
       "GET /sim/*",
       "/mcp (Authorization: Bearer $MCP_TOKEN)",
-      "/ws upgrade (pair token as subprotocol k.<base64url> or ?k=)"
+      "/ws upgrade (pair token as subprotocol k.<base64url> or ?k=)",
+      "GET /api/stats, /api/transfer, /api/recaps (pair token as x-pair-token: <base64url>)"
      ],
      "pairToken": "env",
      "mcpToken": "env"
-    }
+    },
+    "masking": "off"
    }
   },
   "WS hub.state": {
    "topic": "hub.state",
    "payload": {
     "seq": 0,
-    "at": 1792517400042,
+    "at": 1792517400047,
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvfyxhza5ceb4944",
+    "bootId": "boot_mvh88khfc63fab8c",
     "lastSeq": 0,
     "state": "idle",
     "narration": "You're not practising right now. Say quiz me to get your first line.",
@@ -187,7 +195,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400034,
+     "lastEventAt": 1792517400036,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -211,9 +219,9 @@
    "status": 200,
    "response": {
     "session": {
-     "id": "ses_mvgyktz4000",
+     "id": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "size": 4,
      "cardIds": [
@@ -266,17 +274,17 @@
    "status": 202,
    "response": {
     "attempt": {
-     "id": "att_mvgyktz8001",
+     "id": "att_mvgyktzf001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400260,
+     "createdAt": 1792517400267,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400260,
+      "speechEndAt": 1792517400267,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -348,10 +356,11 @@
      "final": null,
      "agreement": null,
      "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
-     "box": null
+     "box": null,
+     "openingSeq": 1
     },
-    "narration": "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
-    "verdictUrl": "/api/attempts/att_mvgyktz8001",
+    "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
+    "verdictUrl": "/api/attempts/att_mvgyktzf001",
     "retryAfterMs": 500
    }
   },
@@ -361,23 +370,23 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvfyxhza5ceb4944",
+    "bootId": "boot_mvh88khfc63fab8c",
     "lastSeq": 3,
     "state": "pending_bee",
-    "narration": "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
+    "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
     "verdictReady": false,
     "retryAfterMs": 500,
     "session": {
-     "id": "ses_mvgyktz4000",
+     "id": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "size": 4,
      "cardIds": [
       "demo:vague-referent"
      ],
      "attemptIds": [
-      "att_mvgyktz8001"
+      "att_mvgyktzf001"
      ]
     },
     "openCard": {
@@ -413,17 +422,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgyktz8001",
+     "id": "att_mvgyktzf001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400260,
+     "createdAt": 1792517400267,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400260,
+      "speechEndAt": 1792517400267,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -495,7 +504,8 @@
      "final": null,
      "agreement": null,
      "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
-     "box": null
+     "box": null,
+     "openingSeq": 1
     },
     "deck": {
      "date": "2026-10-20",
@@ -529,7 +539,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 1,
-     "lastEventAt": 1792517400034,
+     "lastEventAt": 1792517400036,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -544,9 +554,9 @@
     },
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "cards": 1,
      "attempts": 1,
@@ -573,7 +583,7 @@
    "topic": "card.open",
    "payload": {
     "seq": 2,
-    "at": 1792517400257,
+    "at": 1792517400264,
     "card": {
      "id": "demo:vague-referent",
      "kind": "error",
@@ -607,7 +617,7 @@
      "synthetic": true
     },
     "by": "alexa",
-    "sessionId": "ses_mvgyktz4000",
+    "sessionId": "ses_mvgyktzb000",
     "deck": {
      "date": "2026-10-20",
      "total": 6,
@@ -636,19 +646,19 @@
    "topic": "attempt.provisional",
    "payload": {
     "seq": 3,
-    "at": 1792517400263,
+    "at": 1792517400269,
     "attempt": {
-     "id": "att_mvgyktz8001",
+     "id": "att_mvgyktzf001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400260,
+     "createdAt": 1792517400267,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400260,
+      "speechEndAt": 1792517400267,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -720,7 +730,8 @@
      "final": null,
      "agreement": null,
      "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
-     "box": null
+     "box": null,
+     "openingSeq": 1
     },
     "card": {
      "id": "demo:vague-referent",
@@ -760,13 +771,13 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 4,
-    "at": 1792517400385,
-    "attemptId": "att_mvgyktz8001",
+    "at": 1792517400393,
+    "attemptId": "att_mvgyktzf001",
     "cardId": "demo:vague-referent",
     "status": "verified",
     "via": "stream",
     "speakerScore": 0.82,
-    "latencyMs": 124,
+    "latencyMs": 125,
     "beeText": "I fixed the invoice retry job this morning.",
     "replay": true,
     "reason": "Bee tagged the wearer saying it"
@@ -776,19 +787,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 5,
-    "at": 1792517400387,
+    "at": 1792517400394,
     "attempt": {
-     "id": "att_mvgyktz8001",
+     "id": "att_mvgyktzf001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400260,
-     "settledAt": 1792517400386,
+     "createdAt": 1792517400267,
+     "settledAt": 1792517400393,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400260,
+      "speechEndAt": 1792517400267,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -863,9 +874,12 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 124,
+      "latencyMs": 125,
       "coverage": 1,
       "replay": true,
+      "spokenFromMs": 1792517397000,
+      "spokenToMs": 1792517400200,
+      "conversationId": "99000001",
       "gradedText": "I fixed the invoice retry job this morning.",
       "extraText": ""
      },
@@ -947,7 +961,8 @@
       "to": 2,
       "dueAfter": "2026-10-22",
       "scheduled": true
-     }
+     },
+     "openingSeq": 1
     },
     "card": {
      "id": "demo:vague-referent",
@@ -1009,7 +1024,7 @@
    "topic": "stats.updated",
    "payload": {
     "seq": 6,
-    "at": 1792517400399,
+    "at": 1792517400409,
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "practiceToday": {
      "attempts": 1,
@@ -1019,11 +1034,11 @@
      "beeOverrules": 0
     },
     "weekPer100": {
-     "words": 1400,
-     "hedges": 1.43,
-     "vague": 0.64,
-     "fillers": 2.43,
-     "restarts": 0.86
+     "words": 1834,
+     "hedges": 1.2,
+     "vague": 0.55,
+     "fillers": 2.07,
+     "restarts": 0.82
     },
     "transferHeadline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same",
     "deck": {
@@ -1056,23 +1071,23 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvfyxhza5ceb4944",
+    "bootId": "boot_mvh88khfc63fab8c",
     "lastSeq": 6,
     "state": "graded",
     "narration": "Nice, Bee heard it. That's a pass. Say next for the next line.",
     "verdictReady": true,
     "retryAfterMs": null,
     "session": {
-     "id": "ses_mvgyktz4000",
+     "id": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "size": 4,
      "cardIds": [
       "demo:vague-referent"
      ],
      "attemptIds": [
-      "att_mvgyktz8001"
+      "att_mvgyktzf001"
      ]
     },
     "openCard": {
@@ -1108,17 +1123,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgyktz8001",
+     "id": "att_mvgyktzf001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400260,
-     "settledAt": 1792517400386,
+     "createdAt": 1792517400267,
+     "settledAt": 1792517400393,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400260,
+      "speechEndAt": 1792517400267,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1193,9 +1208,12 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 124,
+      "latencyMs": 125,
       "coverage": 1,
       "replay": true,
+      "spokenFromMs": 1792517397000,
+      "spokenToMs": 1792517400200,
+      "conversationId": "99000001",
       "gradedText": "I fixed the invoice retry job this morning.",
       "extraText": ""
      },
@@ -1277,7 +1295,8 @@
       "to": 2,
       "dueAfter": "2026-10-22",
       "scheduled": true
-     }
+     },
+     "openingSeq": 1
     },
     "deck": {
      "date": "2026-10-20",
@@ -1311,7 +1330,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400382,
+     "lastEventAt": 1792517400387,
      "counters": {
       "events": 3,
       "utterances": 1,
@@ -1326,9 +1345,9 @@
     },
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "cards": 1,
      "attempts": 1,
@@ -1410,19 +1429,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 10,
-    "at": 1792517400571,
+    "at": 1792517400595,
     "attempt": {
-     "id": "att_mvgyku4g002",
+     "id": "att_mvgyku51002",
      "cardId": "demo:vague-status",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400448,
-     "settledAt": 1792517400570,
+     "createdAt": 1792517400469,
+     "settledAt": 1792517400594,
      "provisional": {
       "source": "phone",
       "text": "The migration is not done yet: two of the three checks pass.",
-      "speechEndAt": 1792517400447,
+      "speechEndAt": 1792517400469,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1504,6 +1523,9 @@
       "latencyMs": 122,
       "coverage": 1,
       "replay": true,
+      "spokenFromMs": 1792517395000,
+      "spokenToMs": 1792517399800,
+      "conversationId": "99000001",
       "gradedText": "Um, the migration is not done yet: two of the three checks pass.",
       "extraText": ""
      },
@@ -1591,7 +1613,8 @@
       "to": 1,
       "dueAfter": "2026-10-20",
       "scheduled": true
-     }
+     },
+     "openingSeq": 2
     },
     "card": {
      "id": "demo:vague-status",
@@ -1657,7 +1680,7 @@
    "name": "attempt.provisional",
    "ok": true,
    "payload": {
-    "attemptId": "att_mvgyku4g002",
+    "attemptId": "att_mvgyku51002",
     "cardId": "demo:vague-status",
     "status": "pending_bee",
     "provisionalPass": true
@@ -1666,19 +1689,19 @@
    "hops": [
     {
      "hop": "speech.end",
-     "at": 1792517400447
+     "at": 1792517400469
     },
     {
      "hop": "mic.send",
-     "at": 1792517400447
+     "at": 1792517400469
     },
     {
      "hop": "hub.recv",
-     "at": 1792517400448
+     "at": 1792517400469
     },
     {
      "hop": "hub.intent",
-     "at": 1792517400449
+     "at": 1792517400471
     }
    ]
   },
@@ -1686,8 +1709,8 @@
    "topic": "attempt.status",
    "payload": {
     "seq": 14,
-    "at": 1792517401232,
-    "attemptId": "att_mvgyku8e003",
+    "at": 1792517401236,
+    "attemptId": "att_mvgyku91003",
     "cardId": "demo:hedge-i-guess",
     "status": "polling",
     "reason": "no tagged line on the live stream within 30 s: checking the conversation with the Bee CLI"
@@ -1697,13 +1720,13 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 15,
-    "at": 1792517401234,
-    "attemptId": "att_mvgyku8e003",
+    "at": 1792517401238,
+    "attemptId": "att_mvgyku91003",
     "cardId": "demo:hedge-i-guess",
     "status": "verified",
     "via": "poll",
     "speakerScore": null,
-    "latencyMs": 644,
+    "latencyMs": 625,
     "beeText": "The billing export is ready for review today.",
     "replay": true,
     "reason": "Bee's transcript (poll) labels the wearer saying it"
@@ -1715,16 +1738,16 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvfyxhza5ceb4944",
+    "bootId": "boot_mvh88khfc63fab8c",
     "lastSeq": 21,
     "state": "unverified",
     "narration": "Bee didn't catch that one, so it doesn't count. Say it again.",
     "verdictReady": true,
     "retryAfterMs": null,
     "session": {
-     "id": "ses_mvgyktz4000",
+     "id": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "size": 4,
      "cardIds": [
@@ -1733,10 +1756,10 @@
       "demo:hedge-i-guess"
      ],
      "attemptIds": [
-      "att_mvgyktz8001",
-      "att_mvgyku4g002",
-      "att_mvgyku8e003",
-      "att_mvgykuqk004"
+      "att_mvgyktzf001",
+      "att_mvgyku51002",
+      "att_mvgyku91003",
+      "att_mvgykur2004"
      ]
     },
     "openCard": {
@@ -1768,17 +1791,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgykuqk004",
+     "id": "att_mvgykur2004",
      "cardId": "demo:hedge-i-guess",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "unverified",
      "counted": false,
-     "createdAt": 1792517401244,
-     "settledAt": 1792517402234,
+     "createdAt": 1792517401262,
+     "settledAt": 1792517402238,
      "provisional": {
       "source": "alexa",
       "text": "The billing export is ready for review today.",
-      "speechEndAt": 1792517401244,
+      "speechEndAt": 1792517401262,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1831,7 +1854,8 @@
      "final": null,
      "agreement": null,
      "reason": "not counted: Bee heard it but never tagged the wearer (tag timeout)",
-     "box": null
+     "box": null,
+     "openingSeq": 3
     },
     "deck": {
      "date": "2026-10-20",
@@ -1865,7 +1889,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517401353,
+     "lastEventAt": 1792517401371,
      "counters": {
       "events": 6,
       "utterances": 3,
@@ -1880,9 +1904,9 @@
     },
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "cards": 3,
      "attempts": 4,
@@ -1925,8 +1949,8 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 20,
-    "at": 1792517402234,
-    "attemptId": "att_mvgykuqk004",
+    "at": 1792517402239,
+    "attemptId": "att_mvgykur2004",
     "cardId": "demo:hedge-i-guess",
     "status": "unverified",
     "via": null,
@@ -2212,17 +2236,17 @@
    "status": 202,
    "response": {
     "attempt": {
-     "id": "att_mvgykvui007",
+     "id": "att_mvgykvuw007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517402682,
+     "createdAt": 1792517402696,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402682,
+      "speechEndAt": 1792517402696,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2290,29 +2314,30 @@
      "final": null,
      "agreement": null,
      "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
-     "box": null
+     "box": null,
+     "openingSeq": 6
     },
-    "narration": "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
-    "verdictUrl": "/api/attempts/att_mvgykvui007",
+    "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
+    "verdictUrl": "/api/attempts/att_mvgykvuw007",
     "retryAfterMs": 500
    }
   },
   "GET /api/attempts/<id> (pending)": {
-   "request": "GET /api/attempts/att_mvgykvui007",
+   "request": "GET /api/attempts/att_mvgykvuw007",
    "status": 200,
    "response": {
     "attempt": {
-     "id": "att_mvgykvui007",
+     "id": "att_mvgykvuw007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517402682,
+     "createdAt": 1792517402696,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402682,
+      "speechEndAt": 1792517402696,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2380,7 +2405,8 @@
      "final": null,
      "agreement": null,
      "reason": "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
-     "box": null
+     "box": null,
+     "openingSeq": 6
     },
     "status": "pending_bee",
     "verdictReady": false,
@@ -2389,21 +2415,21 @@
    }
   },
   "GET /api/attempts/<id> (graded)": {
-   "request": "GET /api/attempts/att_mvgykvui007",
+   "request": "GET /api/attempts/att_mvgykvuw007",
    "status": 200,
    "response": {
     "attempt": {
-     "id": "att_mvgykvui007",
+     "id": "att_mvgykvuw007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517402682,
-     "settledAt": 1792517403025,
+     "createdAt": 1792517402696,
+     "settledAt": 1792517403042,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402682,
+      "speechEndAt": 1792517402696,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2474,9 +2500,12 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 342,
+      "latencyMs": 343,
       "coverage": 1,
       "replay": true,
+      "spokenFromMs": 1792517398000,
+      "spokenToMs": 1792517402000,
+      "conversationId": "99000001",
       "gradedText": "The release is blocked on the API key from finance.",
       "extraText": "How did I do?"
      },
@@ -2554,7 +2583,8 @@
       "to": 1,
       "dueAfter": "2026-10-21",
       "scheduled": false
-     }
+     },
+     "openingSeq": 6
     },
     "status": "graded",
     "verdictReady": true,
@@ -2566,19 +2596,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 34,
-    "at": 1792517403026,
+    "at": 1792517403042,
     "attempt": {
-     "id": "att_mvgykvui007",
+     "id": "att_mvgykvuw007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517402682,
-     "settledAt": 1792517403025,
+     "createdAt": 1792517402696,
+     "settledAt": 1792517403042,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402682,
+      "speechEndAt": 1792517402696,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2649,9 +2679,12 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 342,
+      "latencyMs": 343,
       "coverage": 1,
       "replay": true,
+      "spokenFromMs": 1792517398000,
+      "spokenToMs": 1792517402000,
+      "conversationId": "99000001",
       "gradedText": "The release is blocked on the API key from finance.",
       "extraText": "How did I do?"
      },
@@ -2729,7 +2762,8 @@
       "to": 1,
       "dueAfter": "2026-10-21",
       "scheduled": false
-     }
+     },
+     "openingSeq": 6
     },
     "card": {
      "id": "demo:hedge-stack",
@@ -2793,10 +2827,10 @@
    "status": 200,
    "response": {
     "summary": {
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
-     "endedAt": 1792517403048,
+     "startedAt": 1792517400263,
+     "endedAt": 1792517403062,
      "cards": 4,
      "attempts": 7,
      "counted": 6,
@@ -2846,11 +2880,11 @@
    "topic": "session.started",
    "payload": {
     "seq": 1,
-    "at": 1792517400256,
+    "at": 1792517400263,
     "session": {
-     "id": "ses_mvgyktz4000",
+     "id": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
+     "startedAt": 1792517400263,
      "endedAt": null,
      "size": 4,
      "cardIds": [],
@@ -2862,12 +2896,12 @@
    "topic": "session.ended",
    "payload": {
     "seq": 36,
-    "at": 1792517403048,
+    "at": 1792517403062,
     "summary": {
-     "sessionId": "ses_mvgyktz4000",
+     "sessionId": "ses_mvgyktzb000",
      "by": "alexa",
-     "startedAt": 1792517400256,
-     "endedAt": 1792517403048,
+     "startedAt": 1792517400263,
+     "endedAt": 1792517403062,
      "cards": 4,
      "attempts": 7,
      "counted": 6,
@@ -2923,9 +2957,11 @@
     "source": "bee",
     "sources": {
      "conversation": {
-      "sessions": 5,
-      "words": 1400,
-      "label": "Bee (Apple Watch) conversation"
+      "sessions": 7,
+      "words": 1834,
+      "label": "Bee (Apple Watch) conversation",
+      "from": "2026-10-14",
+      "to": "2026-10-20"
      }
     },
     "sessions": [
@@ -2951,6 +2987,20 @@
       "synthetic": true
      },
      {
+      "id": "demo-bee-1017",
+      "kind": "conversation",
+      "date": "2026-10-17",
+      "words": 214,
+      "synthetic": true
+     },
+     {
+      "id": "demo-bee-1018",
+      "kind": "conversation",
+      "date": "2026-10-18",
+      "words": 220,
+      "synthetic": true
+     },
+     {
       "id": "demo-bee-1019",
       "kind": "conversation",
       "date": "2026-10-19",
@@ -2966,59 +3016,59 @@
      }
     ],
     "habits": {
-     "words": 1400,
-     "lines": 122,
+     "words": 1834,
+     "lines": 162,
      "fillers": {
-      "count": 34,
-      "per100": 2.43,
+      "count": 38,
+      "per100": 2.07,
       "ci95": [
-       1.68,
-       3.39
+       1.47,
+       2.84
       ],
       "breakdown": {
-       "like": 25,
+       "like": 29,
        "um": 9
       }
      },
      "hedges": {
-      "count": 20,
-      "per100": 1.43,
+      "count": 22,
+      "per100": 1.2,
       "ci95": [
-       0.87,
-       2.21
+       0.75,
+       1.82
       ],
       "breakdown": {
-       "i guess": 15,
+       "i guess": 17,
        "i think": 5
       }
      },
      "vague": {
-      "count": 9,
-      "per100": 0.64,
+      "count": 10,
+      "per100": 0.55,
       "ci95": [
-       0.29,
-       1.22
+       0.26,
+       1
       ],
       "breakdown": {
        "and stuff": 5,
-       "getting there": 3,
+       "getting there": 4,
        "or something like that": 1
       }
      },
      "restarts": {
-      "count": 12,
-      "per100": 0.86,
+      "count": 15,
+      "per100": 0.82,
       "ci95": [
-       0.44,
-       1.5
+       0.46,
+       1.35
       ]
      },
      "trailingOff": {
-      "count": 0,
-      "per100": 0,
+      "count": 3,
+      "per100": 0.16,
       "ci95": [
-       0,
-       0.26
+       0.03,
+       0.48
       ]
      },
      "yeahTics": {
@@ -3026,7 +3076,7 @@
       "per100": 0,
       "ci95": [
        0,
-       0.26
+       0.2
       ]
      }
     },
@@ -3186,7 +3236,7 @@
      {
       "habit": "vague",
       "label": "vague answers (that thing, pretty much done, and stuff)",
-      "firstDrillAt": 1792517400260,
+      "firstDrillAt": 1792517400267,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3209,7 +3259,7 @@
      {
       "habit": "hedge:kind of",
       "label": "unsure words (\"kind of\")",
-      "firstDrillAt": 1792517402682,
+      "firstDrillAt": 1792517402696,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3232,7 +3282,7 @@
      {
       "habit": "hedge:maybe",
       "label": "unsure words (\"maybe\")",
-      "firstDrillAt": 1792517402682,
+      "firstDrillAt": 1792517402696,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3265,17 +3315,35 @@
     "source": "all",
     "sources": {
      "conversation": {
-      "sessions": 6,
-      "words": 1716,
-      "label": "Bee (Apple Watch) conversation"
+      "sessions": 10,
+      "words": 2601,
+      "label": "Bee (Apple Watch) conversation",
+      "from": "2026-10-10",
+      "to": "2026-10-20"
      },
      "meeting": {
       "sessions": 2,
       "words": 267,
-      "label": "meeting captions (secondary source)"
+      "label": "meeting captions (secondary source)",
+      "from": "2026-10-14",
+      "to": "2026-10-19"
      }
     },
     "sessions": [
+     {
+      "id": "demo-bee-1010",
+      "kind": "conversation",
+      "date": "2026-10-10",
+      "words": 223,
+      "synthetic": true
+     },
+     {
+      "id": "demo-bee-1011",
+      "kind": "conversation",
+      "date": "2026-10-11",
+      "words": 228,
+      "synthetic": true
+     },
      {
       "id": "demo-bee-1013",
       "kind": "conversation",
@@ -3312,6 +3380,20 @@
       "synthetic": true
      },
      {
+      "id": "demo-bee-1017",
+      "kind": "conversation",
+      "date": "2026-10-17",
+      "words": 214,
+      "synthetic": true
+     },
+     {
+      "id": "demo-bee-1018",
+      "kind": "conversation",
+      "date": "2026-10-18",
+      "words": 220,
+      "synthetic": true
+     },
+     {
       "id": "demo-meet-1019",
       "kind": "meeting",
       "date": "2026-10-19",
@@ -3334,59 +3416,59 @@
      }
     ],
     "habits": {
-     "words": 1983,
-     "lines": 172,
+     "words": 2868,
+     "lines": 252,
      "fillers": {
-      "count": 51,
-      "per100": 2.57,
+      "count": 61,
+      "per100": 2.13,
       "ci95": [
-       1.91,
-       3.38
+       1.63,
+       2.73
       ],
       "breakdown": {
-       "like": 40,
+       "like": 50,
        "um": 11
       }
      },
      "hedges": {
-      "count": 30,
-      "per100": 1.51,
+      "count": 38,
+      "per100": 1.32,
       "ci95": [
-       1.02,
-       2.16
+       0.94,
+       1.82
       ],
       "breakdown": {
-       "i guess": 24,
+       "i guess": 32,
        "i think": 6
       }
      },
      "vague": {
-      "count": 14,
-      "per100": 0.71,
+      "count": 16,
+      "per100": 0.56,
       "ci95": [
-       0.39,
-       1.18
+       0.32,
+       0.91
       ],
       "breakdown": {
+       "or something like that": 5,
        "and stuff": 6,
-       "or something like that": 4,
-       "getting there": 4
+       "getting there": 5
       }
      },
      "restarts": {
-      "count": 16,
-      "per100": 0.81,
+      "count": 22,
+      "per100": 0.77,
       "ci95": [
-       0.46,
-       1.31
+       0.48,
+       1.16
       ]
      },
      "trailingOff": {
-      "count": 0,
-      "per100": 0,
+      "count": 6,
+      "per100": 0.21,
       "ci95": [
-       0,
-       0.18
+       0.08,
+       0.46
       ]
      },
      "yeahTics": {
@@ -3394,7 +3476,7 @@
       "per100": 0,
       "ci95": [
        0,
-       0.18
+       0.13
       ]
      }
     },
@@ -3564,7 +3646,7 @@
      {
       "habit": "vague",
       "label": "vague answers (that thing, pretty much done, and stuff)",
-      "firstDrillAt": 1792517400260,
+      "firstDrillAt": 1792517400267,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3587,7 +3669,7 @@
      {
       "habit": "hedge:kind of",
       "label": "unsure words (\"kind of\")",
-      "firstDrillAt": 1792517402682,
+      "firstDrillAt": 1792517402696,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3610,7 +3692,7 @@
      {
       "habit": "hedge:maybe",
       "label": "unsure words (\"maybe\")",
-      "firstDrillAt": 1792517402682,
+      "firstDrillAt": 1792517402696,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3633,19 +3715,28 @@
     ]
    }
   },
-  "GET /api/transfer": {
-   "request": "GET /api/transfer",
+  "GET /api/transfer?source=all": {
+   "request": "GET /api/transfer?source=all",
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.062Z",
+    "generatedAt": "2026-10-20T17:30:03.087Z",
     "synthetic": true,
-    "source": "bee",
+    "source": "all",
     "sources": {
      "conversation": {
-      "sessions": 6,
-      "words": 1716,
-      "label": "Bee (Apple Watch) conversation"
+      "sessions": 10,
+      "words": 2601,
+      "label": "Bee (Apple Watch) conversation",
+      "from": "2026-10-10",
+      "to": "2026-10-20"
+     },
+     "meeting": {
+      "sessions": 2,
+      "words": 267,
+      "label": "meeting captions (secondary source)",
+      "from": "2026-10-14",
+      "to": "2026-10-19"
      }
     },
     "prereg": {
@@ -3661,7 +3752,7 @@
      "basis": "SYNTHETIC DEMO pre-registration (invented, mirrors prereg/transfer.json): two drilled habits and one control habit that is deliberately never drilled"
     },
     "minWordsPerPeriod": 400,
-    "method": "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
+    "method": "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once: from Bee when Bee heard most of it, else from the captions; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
     "habits": [
      {
       "habit": "hedges",
@@ -3671,33 +3762,33 @@
       "cutoverAt": 1792080600000,
       "cutoverSource": "this habit's first drill attempt",
       "before": {
-       "sessions": 3,
-       "words": 930,
-       "count": 23,
-       "per100": 2.47,
+       "sessions": 6,
+       "words": 1519,
+       "count": 31,
+       "per100": 2.04,
        "ci95": [
-        1.57,
-        3.71
+        1.39,
+        2.9
        ],
-       "from": "2026-10-13",
+       "from": "2026-10-10",
        "to": "2026-10-15"
       },
       "after": {
-       "sessions": 3,
-       "words": 786,
-       "count": 5,
-       "per100": 0.64,
+       "sessions": 6,
+       "words": 1349,
+       "count": 7,
+       "per100": 0.52,
        "ci95": [
         0.21,
-        1.48
+        1.07
        ],
        "from": "2026-10-16",
        "to": "2026-10-20"
       },
-      "deltaPer100": -1.83,
+      "deltaPer100": -1.52,
       "verdict": "dropped",
-      "detail": "95% intervals do not overlap (before 1.57-3.71, after 0.21-1.48 per 100 words)",
-      "wordsNeededPerPeriod": 2050
+      "detail": "95% intervals do not overlap (before 1.39-2.9, after 0.21-1.07 per 100 words)",
+      "wordsNeededPerPeriod": 2400
      },
      {
       "habit": "filler:like",
@@ -3707,33 +3798,33 @@
       "cutoverAt": 1792080900000,
       "cutoverSource": "this habit's first drill attempt",
       "before": {
-       "sessions": 3,
-       "words": 930,
-       "count": 28,
-       "per100": 3.01,
+       "sessions": 6,
+       "words": 1519,
+       "count": 38,
+       "per100": 2.5,
        "ci95": [
-        2,
-        4.35
+        1.77,
+        3.43
        ],
-       "from": "2026-10-13",
+       "from": "2026-10-10",
        "to": "2026-10-15"
       },
       "after": {
-       "sessions": 3,
-       "words": 786,
-       "count": 6,
-       "per100": 0.76,
+       "sessions": 6,
+       "words": 1349,
+       "count": 12,
+       "per100": 0.89,
        "ci95": [
-        0.28,
-        1.66
+        0.46,
+        1.55
        ],
        "from": "2026-10-16",
        "to": "2026-10-20"
       },
-      "deltaPer100": -2.25,
+      "deltaPer100": -1.61,
       "verdict": "dropped",
-      "detail": "95% intervals do not overlap (before 2-4.35, after 0.28-1.66 per 100 words)",
-      "wordsNeededPerPeriod": 1650
+      "detail": "95% intervals do not overlap (before 1.77-3.43, after 0.46-1.55 per 100 words)",
+      "wordsNeededPerPeriod": 1950
      },
      {
       "habit": "restart",
@@ -3743,33 +3834,364 @@
       "cutoverAt": 1792080600000,
       "cutoverSource": "the earliest first drill of any pre-registered drilled habit",
       "before": {
-       "sessions": 3,
-       "words": 930,
-       "count": 7,
-       "per100": 0.75,
+       "sessions": 6,
+       "words": 1519,
+       "count": 11,
+       "per100": 0.72,
        "ci95": [
-        0.3,
-        1.55
+        0.36,
+        1.3
        ],
-       "from": "2026-10-13",
+       "from": "2026-10-10",
        "to": "2026-10-15"
       },
       "after": {
-       "sessions": 3,
-       "words": 786,
-       "count": 7,
-       "per100": 0.89,
+       "sessions": 6,
+       "words": 1349,
+       "count": 11,
+       "per100": 0.82,
        "ci95": [
-        0.36,
-        1.84
+        0.41,
+        1.46
        ],
        "from": "2026-10-16",
        "to": "2026-10-20"
       },
-      "deltaPer100": 0.14,
+      "deltaPer100": 0.1,
       "verdict": "no change",
-      "detail": "no detectable change: the 95% intervals overlap (before 0.3-1.55, after 0.36-1.84 per 100 words)",
-      "wordsNeededPerPeriod": 6500
+      "detail": "no detectable change: the 95% intervals overlap (before 0.36-1.3, after 0.41-1.46 per 100 words)",
+      "wordsNeededPerPeriod": 6750
+     }
+    ],
+    "unregistered": [
+     {
+      "habit": "vague",
+      "drills": 3,
+      "note": "drilled but not pre-registered: not reported as a transfer result"
+     }
+    ],
+    "headline": "Unsure words and filler \"like\" dropped in your real conversations since you started practising; the one you didn't practise stayed the same",
+    "claim": "all-dropped-control-flat",
+    "firstSignal": [
+     {
+      "habit": "hedges",
+      "label": "unsure words (I guess, I think, maybe, kind of...)",
+      "firstDrillAt": 1792080600000,
+      "status": "measured",
+      "before": {
+       "session": "demo-bee-1015",
+       "date": "2026-10-15",
+       "startMs": 1792071600000,
+       "words": 309,
+       "count": 8,
+       "per100": 2.59
+      },
+      "after": {
+       "session": "demo-bee-1016",
+       "date": "2026-10-16",
+       "startMs": 1792159800000,
+       "words": 259,
+       "count": 2,
+       "per100": 0.77
+      },
+      "deltaPer100": -1.82,
+      "minWords": 100,
+      "note": "one conversation either side of the first drill: a first signal, not proof (the pre-registered before/after is the test)"
+     },
+     {
+      "habit": "filler:like",
+      "label": "filler \"like\"",
+      "firstDrillAt": 1792080900000,
+      "status": "measured",
+      "before": {
+       "session": "demo-bee-1015",
+       "date": "2026-10-15",
+       "startMs": 1792071600000,
+       "words": 309,
+       "count": 10,
+       "per100": 3.24
+      },
+      "after": {
+       "session": "demo-bee-1016",
+       "date": "2026-10-16",
+       "startMs": 1792159800000,
+       "words": 259,
+       "count": 2,
+       "per100": 0.77
+      },
+      "deltaPer100": -2.47,
+      "minWords": 100,
+      "note": "one conversation either side of the first drill: a first signal, not proof (the pre-registered before/after is the test)"
+     }
+    ]
+   }
+  },
+  "GET /api/instrument": {
+   "request": "GET /api/instrument",
+   "status": 200,
+   "response": {
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "synthetic": true,
+    "generatedAt": "2026-10-20T17:30:03.094Z",
+    "pairs": 1,
+    "from": "2026-10-13",
+    "to": "2026-10-13",
+    "words": {
+     "captions": 314,
+     "bee": 316
+    },
+    "minWords": 200,
+    "minCount": 20,
+    "enoughWords": 1000,
+    "tolerance": {
+     "per100": 0.3,
+     "relative": 0.15
+    },
+    "habits": [
+     {
+      "habit": "hedges",
+      "captionsPer100": 2.55,
+      "beePer100": 2.53,
+      "captions": {
+       "count": 8,
+       "ci95": [
+        1.1,
+        5.02
+       ]
+      },
+      "bee": {
+       "count": 8,
+       "ci95": [
+        1.09,
+        4.99
+       ]
+      },
+      "agree": null
+     },
+     {
+      "habit": "filler:like",
+      "captionsPer100": 2.87,
+      "beePer100": 2.85,
+      "captions": {
+       "count": 9,
+       "ci95": [
+        1.31,
+        5.44
+       ]
+      },
+      "bee": {
+       "count": 9,
+       "ci95": [
+        1.3,
+        5.41
+       ]
+      },
+      "agree": null
+     },
+     {
+      "habit": "restart",
+      "captionsPer100": 0.64,
+      "beePer100": 0.63,
+      "captions": {
+       "count": 2,
+       "ci95": [
+        0.07,
+        2.3
+       ]
+      },
+      "bee": {
+       "count": 2,
+       "ci95": [
+        0.07,
+        2.29
+       ]
+      },
+      "agree": null
+     },
+     {
+      "habit": "um-uh",
+      "captionsPer100": 0,
+      "beePer100": 0.63,
+      "captions": {
+       "count": 0,
+       "ci95": [
+        0,
+        1.17
+       ]
+      },
+      "bee": {
+       "count": 2,
+       "ci95": [
+        0.07,
+        2.29
+       ]
+      },
+      "agree": null
+     },
+     {
+      "habit": "fillers",
+      "captionsPer100": 2.87,
+      "beePer100": 3.48,
+      "captions": {
+       "count": 9,
+       "ci95": [
+        1.31,
+        5.44
+       ]
+      },
+      "bee": {
+       "count": 11,
+       "ci95": [
+        1.74,
+        6.23
+       ]
+      },
+      "agree": null
+     }
+    ],
+    "claim": "too-little-data",
+    "note": "the same meetings heard by Bee and by the meeting's captions, Bee's lines cut to each meeting's time, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only. 1 of the 1 have synthetic captions copied from Bee's own lines, so the two are not compared."
+   }
+  },
+  "GET /api/transfer": {
+   "request": "GET /api/transfer",
+   "status": 200,
+   "response": {
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "generatedAt": "2026-10-20T17:30:03.104Z",
+    "synthetic": true,
+    "source": "bee",
+    "sources": {
+     "conversation": {
+      "sessions": 10,
+      "words": 2601,
+      "label": "Bee (Apple Watch) conversation",
+      "from": "2026-10-10",
+      "to": "2026-10-20"
+     }
+    },
+    "prereg": {
+     "path": "fixtures/demo/prereg-transfer.json",
+     "registeredAt": "2026-10-12T13:00:00.000Z",
+     "drilled": [
+      "hedges",
+      "filler:like"
+     ],
+     "control": [
+      "restart"
+     ],
+     "basis": "SYNTHETIC DEMO pre-registration (invented, mirrors prereg/transfer.json): two drilled habits and one control habit that is deliberately never drilled"
+    },
+    "minWordsPerPeriod": 400,
+    "method": "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once: from Bee when Bee heard most of it, else from the captions; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
+    "habits": [
+     {
+      "habit": "hedges",
+      "label": "unsure words (I guess, I think, maybe, kind of...)",
+      "role": "drilled",
+      "firstDrillAt": 1792080600000,
+      "cutoverAt": 1792080600000,
+      "cutoverSource": "this habit's first drill attempt",
+      "before": {
+       "sessions": 5,
+       "words": 1381,
+       "count": 29,
+       "per100": 2.1,
+       "ci95": [
+        1.41,
+        3.02
+       ],
+       "from": "2026-10-10",
+       "to": "2026-10-15"
+      },
+      "after": {
+       "sessions": 5,
+       "words": 1220,
+       "count": 7,
+       "per100": 0.57,
+       "ci95": [
+        0.23,
+        1.18
+       ],
+       "from": "2026-10-16",
+       "to": "2026-10-20"
+      },
+      "deltaPer100": -1.53,
+      "verdict": "dropped",
+      "detail": "95% intervals do not overlap (before 1.41-3.02, after 0.23-1.18 per 100 words)",
+      "wordsNeededPerPeriod": 2400
+     },
+     {
+      "habit": "filler:like",
+      "label": "filler \"like\"",
+      "role": "drilled",
+      "firstDrillAt": 1792080900000,
+      "cutoverAt": 1792080900000,
+      "cutoverSource": "this habit's first drill attempt",
+      "before": {
+       "sessions": 5,
+       "words": 1381,
+       "count": 34,
+       "per100": 2.46,
+       "ci95": [
+        1.7,
+        3.44
+       ],
+       "from": "2026-10-10",
+       "to": "2026-10-15"
+      },
+      "after": {
+       "sessions": 5,
+       "words": 1220,
+       "count": 10,
+       "per100": 0.82,
+       "ci95": [
+        0.39,
+        1.51
+       ],
+       "from": "2026-10-16",
+       "to": "2026-10-20"
+      },
+      "deltaPer100": -1.64,
+      "verdict": "dropped",
+      "detail": "95% intervals do not overlap (before 1.7-3.44, after 0.39-1.51 per 100 words)",
+      "wordsNeededPerPeriod": 2050
+     },
+     {
+      "habit": "restart",
+      "label": "starting over (the the, I I)",
+      "role": "control",
+      "firstDrillAt": null,
+      "cutoverAt": 1792080600000,
+      "cutoverSource": "the earliest first drill of any pre-registered drilled habit",
+      "before": {
+       "sessions": 5,
+       "words": 1381,
+       "count": 10,
+       "per100": 0.72,
+       "ci95": [
+        0.35,
+        1.33
+       ],
+       "from": "2026-10-10",
+       "to": "2026-10-15"
+      },
+      "after": {
+       "sessions": 5,
+       "words": 1220,
+       "count": 10,
+       "per100": 0.82,
+       "ci95": [
+        0.39,
+        1.51
+       ],
+       "from": "2026-10-16",
+       "to": "2026-10-20"
+      },
+      "deltaPer100": 0.1,
+      "verdict": "no change",
+      "detail": "no detectable change: the 95% intervals overlap (before 0.35-1.33, after 0.39-1.51 per 100 words)",
+      "wordsNeededPerPeriod": 6750
      }
     ],
     "unregistered": [
@@ -3860,14 +4282,16 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.067Z",
+    "generatedAt": "2026-10-20T17:30:03.115Z",
     "synthetic": true,
     "source": "bee",
     "sources": {
      "conversation": {
-      "sessions": 6,
-      "words": 1716,
-      "label": "Bee (Apple Watch) conversation"
+      "sessions": 10,
+      "words": 2601,
+      "label": "Bee (Apple Watch) conversation",
+      "from": "2026-10-10",
+      "to": "2026-10-20"
      }
     },
     "prereg": {
@@ -3883,7 +4307,7 @@
      "basis": "SYNTHETIC DEMO pre-registration (invented, mirrors prereg/transfer.json): two drilled habits and one control habit that is deliberately never drilled"
     },
     "minWordsPerPeriod": 400,
-    "method": "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
+    "method": "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once: from Bee when Bee heard most of it, else from the captions; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
     "habits": [
      {
       "habit": "hedges",
@@ -3893,33 +4317,33 @@
       "cutoverAt": 1792080600000,
       "cutoverSource": "this habit's first drill attempt",
       "before": {
-       "sessions": 3,
-       "words": 930,
-       "count": 23,
-       "per100": 2.47,
+       "sessions": 5,
+       "words": 1381,
+       "count": 29,
+       "per100": 2.1,
        "ci95": [
-        1.57,
-        3.71
+        1.41,
+        3.02
        ],
-       "from": "2026-10-13",
+       "from": "2026-10-10",
        "to": "2026-10-15"
       },
       "after": {
-       "sessions": 3,
-       "words": 786,
-       "count": 5,
-       "per100": 0.64,
+       "sessions": 5,
+       "words": 1220,
+       "count": 7,
+       "per100": 0.57,
        "ci95": [
-        0.21,
-        1.48
+        0.23,
+        1.18
        ],
        "from": "2026-10-16",
        "to": "2026-10-20"
       },
-      "deltaPer100": -1.83,
+      "deltaPer100": -1.53,
       "verdict": "dropped",
-      "detail": "95% intervals do not overlap (before 1.57-3.71, after 0.21-1.48 per 100 words)",
-      "wordsNeededPerPeriod": 2050
+      "detail": "95% intervals do not overlap (before 1.41-3.02, after 0.23-1.18 per 100 words)",
+      "wordsNeededPerPeriod": 2400
      }
     ],
     "unregistered": [
@@ -3990,7 +4414,7 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.069Z",
+    "generatedAt": "2026-10-20T17:30:03.122Z",
     "event": {
      "title": "Team stand-up (demo)",
      "startsAt": "2026-10-20T18:00:00.000Z",
@@ -4002,9 +4426,9 @@
     "topHabit": {
      "key": "hedges",
      "label": "unsure words",
-     "per100": 1.43,
-     "count": 20,
-     "words": 1400,
+     "per100": 1.2,
+     "count": 22,
+     "words": 1834,
      "range": "week",
      "source": "bee"
     },
@@ -4036,7 +4460,7 @@
      },
      "synthetic": true
     },
-    "nudge": "Team stand-up (demo) in 30 min. The habit to watch this week: unsure words (1.43 out of every 100 words you said). Warm up: say \"The billing export is ready for review today.\" once, cleanly."
+    "nudge": "Team stand-up (demo) in 30 min. The habit to watch this week: unsure words (1.2 out of every 100 words you said). Warm up: say \"The billing export is ready for review today.\" once, cleanly."
    }
   },
   "GET /api/deck/next": {
@@ -4102,17 +4526,17 @@
    "response": {
     "attempts": [
      {
-      "id": "att_mvgykvui007",
+      "id": "att_mvgykvuw007",
       "cardId": "demo:hedge-stack",
-      "sessionId": "ses_mvgyktz4000",
+      "sessionId": "ses_mvgyktzb000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402682,
-      "settledAt": 1792517403025,
+      "createdAt": 1792517402696,
+      "settledAt": 1792517403042,
       "provisional": {
        "source": "alexa",
        "text": "The release is blocked on the API key from finance.",
-       "speechEndAt": 1792517402682,
+       "speechEndAt": 1792517402696,
        "grade": {
         "graderVersion": 1,
         "pass": true,
@@ -4183,9 +4607,12 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 342,
+       "latencyMs": 343,
        "coverage": 1,
        "replay": true,
+       "spokenFromMs": 1792517398000,
+       "spokenToMs": 1792517402000,
+       "conversationId": "99000001",
        "gradedText": "The release is blocked on the API key from finance.",
        "extraText": "How did I do?"
       },
@@ -4263,20 +4690,21 @@
        "to": 1,
        "dueAfter": "2026-10-21",
        "scheduled": false
-      }
+      },
+      "openingSeq": 6
      },
      {
-      "id": "att_mvgykvqh006",
+      "id": "att_mvgykvqv006",
       "cardId": "demo:hedge-i-guess",
-      "sessionId": "ses_mvgyktz4000",
+      "sessionId": "ses_mvgyktzb000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402537,
-      "settledAt": 1792517402658,
+      "createdAt": 1792517402551,
+      "settledAt": 1792517402674,
       "provisional": {
        "source": "typed",
        "text": "I guess the billing export is ready for review today.",
-       "speechEndAt": 1792517402537,
+       "speechEndAt": 1792517402551,
        "grade": {
         "graderVersion": 1,
         "pass": false,
@@ -4336,9 +4764,12 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 120,
+       "latencyMs": 122,
        "coverage": 1,
        "replay": true,
+       "spokenFromMs": 1792517398000,
+       "spokenToMs": 1792517402000,
+       "conversationId": "99000001",
        "gradedText": "I guess the billing export is ready for review today.",
        "extraText": ""
       },
@@ -4405,15 +4836,16 @@
        "to": 1,
        "dueAfter": "2026-10-20",
        "scheduled": true
-      }
+      },
+      "openingSeq": 5
      },
      {
-      "id": "att_mvgykvq7005",
+      "id": "att_mvgykvq6005",
       "cardId": "demo:vague-status",
-      "sessionId": "ses_mvgyktz4000",
+      "sessionId": "ses_mvgyktzb000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402527,
+      "createdAt": 1792517402526,
       "settledAt": 1792517402528,
       "provisional": null,
       "bee": {
@@ -4423,9 +4855,12 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 727,
+       "latencyMs": 726,
        "coverage": null,
        "replay": true,
+       "spokenFromMs": 1792517397000,
+       "spokenToMs": 1792517401800,
+       "conversationId": "99000001",
        "gradedText": "The migration is not done yet: two of the three checks pass.",
        "extraText": ""
       },
@@ -4511,7 +4946,8 @@
        "to": 2,
        "dueAfter": "2026-10-22",
        "scheduled": true
-      }
+      },
+      "openingSeq": 4
      }
     ]
    }
@@ -4553,10 +4989,11 @@
     "drillActive": false,
     "baseline": {
      "source": "bee week (non-drill conversations; synthetic)",
-     "words": 1400,
-     "hedgesPer100": 1.43,
-     "likesPer100": 1.79,
-     "fillersPer100": 2.43,
+     "range": "week",
+     "words": 1834,
+     "hedgesPer100": 1.2,
+     "likesPer100": 1.58,
+     "fillersPer100": 2.07,
      "wpm": 140
     },
     "wrist": {
@@ -4584,9 +5021,9 @@
    "response": {
     "mode": {
      "enabled": true,
-     "since": 1792517406403,
-     "expiresAt": 1792521006403,
-     "changedAt": 1792517406403,
+     "since": 1792517406475,
+     "expiresAt": 1792521006475,
+     "changedAt": 1792517406475,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -4609,7 +5046,7 @@
       "today": 0
      }
     },
-    "narration": "Live coaching is on for 60 minutes. I'll tap your wrist if a habit keeps coming up."
+    "narration": "Live coaching is on for 60 minutes. I'll set a reminder on your wrist if a habit keeps coming up."
    }
   },
   "POST /api/demo/live (story)": {
@@ -4682,12 +5119,12 @@
      {
       "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
       "synthetic": true,
-      "id": "rcp_mvgyl2zu02",
+      "id": "rcp_mvgyl30u02",
       "conversationId": "demo-0000-4000-8000-000000000101",
-      "startedAt": 1792517406425,
-      "endedAt": 1792517409956,
+      "startedAt": 1792517406497,
+      "endedAt": 1792517410028,
       "durationMs": 3531,
-      "createdAt": 1792517411946,
+      "createdAt": 1792517411982,
       "replay": true,
       "metrics": {
        "wearerWords": 225,
@@ -4732,16 +5169,17 @@
          "baselinePer100": 0.86,
          "verdict": "typical"
         }
-       ]
+       ],
+       "baselineSetting": "work"
       },
-      "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4. Filler \"like\" was down.",
+      "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
       "moment": {
        "text": "I guess we could maybe ship the export on Friday.",
-       "at": 1792517407724,
+       "at": 1792517407796,
        "habit": "hedges",
        "rephrase": "We could ship the export on Friday."
       },
-      "narration": "That conversation ran about 3 minutes. You used 9 unsure words, 4.2 out of every 100 words you said against your usual 1.4, and your pace held at 140 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
+      "narration": "That conversation ran about 3 minutes. You used 9 unsure words, 4.2 out of every 100 words you said against your usual 1.4 at work, and your pace held at 140 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
       "wristText": "[coach] Recap: more unsure words than usual, pace steady",
       "phrasing": "template",
       "nudges": {
@@ -4751,23 +5189,32 @@
       "delivery": {
        "wrist": "replay",
        "todoId": null
+      },
+      "setting": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
       }
      }
     ]
    }
   },
   "GET /api/recaps/<id>": {
-   "request": "GET /api/recaps/rcp_mvgyl2zu02",
+   "request": "GET /api/recaps/rcp_mvgyl30u02",
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "id": "rcp_mvgyl2zu02",
+    "id": "rcp_mvgyl30u02",
     "conversationId": "demo-0000-4000-8000-000000000101",
-    "startedAt": 1792517406425,
-    "endedAt": 1792517409956,
+    "startedAt": 1792517406497,
+    "endedAt": 1792517410028,
     "durationMs": 3531,
-    "createdAt": 1792517411946,
+    "createdAt": 1792517411982,
     "replay": true,
     "metrics": {
      "wearerWords": 225,
@@ -4812,16 +5259,17 @@
        "baselinePer100": 0.86,
        "verdict": "typical"
       }
-     ]
+     ],
+     "baselineSetting": "work"
     },
-    "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4. Filler \"like\" was down.",
+    "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
     "moment": {
      "text": "I guess we could maybe ship the export on Friday.",
-     "at": 1792517407724,
+     "at": 1792517407796,
      "habit": "hedges",
      "rephrase": "We could ship the export on Friday."
     },
-    "narration": "That conversation ran about 3 minutes. You used 9 unsure words, 4.2 out of every 100 words you said against your usual 1.4, and your pace held at 140 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
+    "narration": "That conversation ran about 3 minutes. You used 9 unsure words, 4.2 out of every 100 words you said against your usual 1.4 at work, and your pace held at 140 words a minute. Try it without the unsure words: \"We could ship the export on Friday.\"",
     "wristText": "[coach] Recap: more unsure words than usual, pace steady",
     "phrasing": "template",
     "nudges": {
@@ -4831,6 +5279,15 @@
     "delivery": {
      "wrist": "replay",
      "todoId": null
+    },
+    "setting": {
+     "setting": "work",
+     "source": "auto",
+     "confidence": "high",
+     "reasons": [
+      "work-hours",
+      "speakers"
+     ]
     }
    }
   },
@@ -4840,14 +5297,14 @@
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "generatedAt": 1792517411957,
+    "generatedAt": 1792517411995,
     "basis": "recap",
-    "narration": "Your last conversation ran high on unsure words: 9, or 4.2 out of every 100 words you said, against your usual 1.4. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler \"like\" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.4 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.",
+    "narration": "Your last conversation ran high on unsure words: 9, or 4.2 out of every 100 words you said, against your usual 1.4 at work. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler \"like\" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.2 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.",
     "mode": {
      "enabled": true,
-     "since": 1792517406403,
-     "expiresAt": 1792521006403,
-     "changedAt": 1792517406403,
+     "since": 1792517406475,
+     "expiresAt": 1792521006475,
+     "changedAt": 1792517406475,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -4872,19 +5329,20 @@
     },
     "live": null,
     "lastRecap": {
-     "id": "rcp_mvgyl2zu02",
-     "endedAt": 1792517409956,
-     "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4. Filler \"like\" was down."
+     "id": "rcp_mvgyl30u02",
+     "endedAt": 1792517410028,
+     "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
+     "setting": "work"
     },
     "week": {
-     "words": 1400,
-     "hedgesPer100": 1.43,
-     "likesPer100": 1.79,
-     "vaguePer100": 0.64,
+     "words": 1834,
+     "hedgesPer100": 1.2,
+     "likesPer100": 1.58,
+     "vaguePer100": 0.55,
      "topHabit": {
       "key": "hedges",
       "label": "unsure words",
-      "per100": 1.43
+      "per100": 1.2
      }
     },
     "drills": {
@@ -4902,9 +5360,9 @@
     "synthetic": true,
     "mode": {
      "enabled": true,
-     "since": 1792517406403,
-     "expiresAt": 1792521006403,
-     "changedAt": 1792517406403,
+     "since": 1792517406475,
+     "expiresAt": 1792521006475,
+     "changedAt": 1792517406475,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -4931,10 +5389,11 @@
     "drillActive": false,
     "baseline": {
      "source": "bee week (non-drill conversations; synthetic)",
-     "words": 1400,
-     "hedgesPer100": 1.43,
-     "likesPer100": 1.79,
-     "fillersPer100": 2.43,
+     "range": "week",
+     "words": 1834,
+     "hedgesPer100": 1.2,
+     "likesPer100": 1.58,
+     "fillersPer100": 2.07,
      "wpm": 140
     },
     "wrist": {
@@ -4946,7 +5405,7 @@
      "pendingTodos": 0
     },
     "lastNudge": {
-     "id": "ndg_mvgykzzj00",
+     "id": "ndg_mvgyl01i00",
      "conversationId": "demo-0000-4000-8000-000000000101",
      "rule": "hedge-streak",
      "text": "[coach] 4 unsure words in 2 minutes. Say it plainly.",
@@ -4957,20 +5416,20 @@
       "unit": "count",
       "over": true,
       "windowMs": 120000,
-      "expected": 1.47
+      "expected": 1.24
      },
      "hops": {
-      "spokenAt": 1792517407927,
-      "beeAt": 1792517408047,
-      "detectedAt": 1792517408047,
-      "todoAt": 1792517408077,
-      "alarmAt": 1792517408277
+      "spokenAt": 1792517407999,
+      "beeAt": 1792517408118,
+      "detectedAt": 1792517408118,
+      "todoAt": 1792517408148,
+      "alarmAt": 1792517408348
      },
      "latencyMs": {
-      "bee": 120,
+      "bee": 119,
       "detect": 0,
       "todo": 30,
-      "total": 350
+      "total": 349
      },
      "wrist": {
       "channel": "replay",
@@ -4983,7 +5442,7 @@
     },
     "recentNudges": [
      {
-      "id": "ndg_mvgykzzj00",
+      "id": "ndg_mvgyl01i00",
       "conversationId": "demo-0000-4000-8000-000000000101",
       "rule": "hedge-streak",
       "text": "[coach] 4 unsure words in 2 minutes. Say it plainly.",
@@ -4994,20 +5453,20 @@
        "unit": "count",
        "over": true,
        "windowMs": 120000,
-       "expected": 1.47
+       "expected": 1.24
       },
       "hops": {
-       "spokenAt": 1792517407927,
-       "beeAt": 1792517408047,
-       "detectedAt": 1792517408047,
-       "todoAt": 1792517408077,
-       "alarmAt": 1792517408277
+       "spokenAt": 1792517407999,
+       "beeAt": 1792517408118,
+       "detectedAt": 1792517408118,
+       "todoAt": 1792517408148,
+       "alarmAt": 1792517408348
       },
       "latencyMs": {
-       "bee": 120,
+       "bee": 119,
        "detect": 0,
        "todo": 30,
-       "total": 350
+       "total": 349
       },
       "wrist": {
        "channel": "replay",
@@ -5021,13 +5480,13 @@
     ],
     "recentSkips": [
      {
-      "id": "skp_mvgyl0zj01",
+      "id": "skp_mvgyl11j01",
       "conversationId": "demo-0000-4000-8000-000000000101",
       "rule": "hedge-streak",
       "reason": "cooldown",
       "detail": "a nudge went out 1 min 5 s ago; nudges are at least 3 min apart",
-      "at": 1792517409343,
-      "retryAfterMs": 2304,
+      "at": 1792517409415,
+      "retryAfterMs": 2303,
       "evidence": {
        "rule": "hedge-streak",
        "value": 3,
@@ -5035,12 +5494,12 @@
        "unit": "count",
        "over": true,
        "windowMs": 120000,
-       "expected": 0.9
+       "expected": 0.76
       },
       "replay": true
      }
     ],
-    "lastRecapId": "rcp_mvgyl2zu02"
+    "lastRecapId": "rcp_mvgyl30u02"
    }
   },
   "POST /api/live/mode (off)": {
@@ -5053,9 +5512,9 @@
    "response": {
     "mode": {
      "enabled": false,
-     "since": 1792517406403,
+     "since": 1792517406475,
      "expiresAt": null,
-     "changedAt": 1792517414759,
+     "changedAt": 1792517414790,
      "by": "check",
      "reason": "off",
      "rules": {
@@ -5081,12 +5540,418 @@
     "narration": "Live coaching is off. You'll still get a recap after each conversation."
    }
   },
+  "GET /api/settings": {
+   "request": "GET /api/settings",
+   "status": 200,
+   "response": {
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "synthetic": true,
+    "generatedAt": "2026-10-20T17:30:14.801Z",
+    "source": "bee",
+    "note": "a secondary view: the setting of each conversation, so like is compared with like; the pre-registered before and after (GET /api/transfer) does not use it",
+    "minWords": 400,
+    "workHours": {
+     "start": "09:00",
+     "end": "18:00",
+     "days": "Mon-Fri",
+     "tz": "America/Toronto"
+    },
+    "sessions": [
+     {
+      "id": "demo-bee-1010",
+      "kind": "conversation",
+      "date": "2026-10-10",
+      "startMs": 1791675000000,
+      "words": 223,
+      "tag": {
+       "setting": "casual",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "weekend"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1011",
+      "kind": "conversation",
+      "date": "2026-10-11",
+      "startMs": 1791734400000,
+      "words": 228,
+      "tag": {
+       "setting": "casual",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "weekend"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1013",
+      "kind": "conversation",
+      "date": "2026-10-13",
+      "startMs": 1791900300000,
+      "words": 316,
+      "tag": {
+       "setting": "meeting",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "paired-captions"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1014",
+      "kind": "conversation",
+      "date": "2026-10-14",
+      "startMs": 1791985800000,
+      "words": 305,
+      "tag": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1015",
+      "kind": "conversation",
+      "date": "2026-10-15",
+      "startMs": 1792071600000,
+      "words": 309,
+      "tag": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1016",
+      "kind": "conversation",
+      "date": "2026-10-16",
+      "startMs": 1792159800000,
+      "words": 259,
+      "tag": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1017",
+      "kind": "conversation",
+      "date": "2026-10-17",
+      "startMs": 1792282500000,
+      "words": 214,
+      "tag": {
+       "setting": "casual",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "weekend"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1018",
+      "kind": "conversation",
+      "date": "2026-10-18",
+      "startMs": 1792337400000,
+      "words": 220,
+      "tag": {
+       "setting": "casual",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "weekend"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1019",
+      "kind": "conversation",
+      "date": "2026-10-19",
+      "startMs": 1792437600000,
+      "words": 271,
+      "tag": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
+      }
+     },
+     {
+      "id": "demo-bee-1020",
+      "kind": "conversation",
+      "date": "2026-10-20",
+      "startMs": 1792503300000,
+      "words": 256,
+      "tag": {
+       "setting": "work",
+       "source": "auto",
+       "confidence": "high",
+       "reasons": [
+        "work-hours",
+        "speakers"
+       ]
+      }
+     }
+    ],
+    "rates": [
+     {
+      "setting": "meeting",
+      "name": "Meeting",
+      "sessions": 1,
+      "words": 316,
+      "enough": false,
+      "per100": {
+       "hedges": null,
+       "filler:like": null,
+       "vague": null,
+       "restart": null
+      }
+     },
+     {
+      "setting": "work",
+      "name": "Work talk",
+      "sessions": 5,
+      "words": 1400,
+      "enough": true,
+      "per100": {
+       "hedges": 1.43,
+       "filler:like": 1.79,
+       "vague": 0.64,
+       "restart": 0.86
+      }
+     },
+     {
+      "setting": "casual",
+      "name": "Casual",
+      "sessions": 4,
+      "words": 885,
+      "enough": true,
+      "per100": {
+       "hedges": 0.9,
+       "filler:like": 1.13,
+       "vague": 0.23,
+       "restart": 0.68
+      }
+     }
+    ],
+    "practised": [
+     {
+      "habit": "hedges",
+      "label": "unsure words (I guess, I think, maybe, kind of...)",
+      "cutoverAt": 1792080600000,
+      "bySetting": [
+       {
+        "setting": "meeting",
+        "name": "Meeting",
+        "before": {
+         "sessions": 1,
+         "words": 316,
+         "count": 8,
+         "per100": 2.53
+        },
+        "after": {
+         "sessions": 0,
+         "words": 0,
+         "count": 0,
+         "per100": 0
+        },
+        "enough": false,
+        "deltaPer100": null
+       },
+       {
+        "setting": "work",
+        "name": "Work talk",
+        "before": {
+         "sessions": 2,
+         "words": 614,
+         "count": 15,
+         "per100": 2.44
+        },
+        "after": {
+         "sessions": 3,
+         "words": 786,
+         "count": 5,
+         "per100": 0.64
+        },
+        "enough": true,
+        "deltaPer100": -1.8
+       },
+       {
+        "setting": "casual",
+        "name": "Casual",
+        "before": {
+         "sessions": 2,
+         "words": 451,
+         "count": 6,
+         "per100": 1.33
+        },
+        "after": {
+         "sessions": 2,
+         "words": 434,
+         "count": 2,
+         "per100": 0.46
+        },
+        "enough": true,
+        "deltaPer100": -0.87
+       }
+      ]
+     },
+     {
+      "habit": "filler:like",
+      "label": "filler \"like\"",
+      "cutoverAt": 1792080900000,
+      "bySetting": [
+       {
+        "setting": "meeting",
+        "name": "Meeting",
+        "before": {
+         "sessions": 1,
+         "words": 316,
+         "count": 9,
+         "per100": 2.85
+        },
+        "after": {
+         "sessions": 0,
+         "words": 0,
+         "count": 0,
+         "per100": 0
+        },
+        "enough": false,
+        "deltaPer100": null
+       },
+       {
+        "setting": "work",
+        "name": "Work talk",
+        "before": {
+         "sessions": 2,
+         "words": 614,
+         "count": 19,
+         "per100": 3.09
+        },
+        "after": {
+         "sessions": 3,
+         "words": 786,
+         "count": 6,
+         "per100": 0.76
+        },
+        "enough": true,
+        "deltaPer100": -2.33
+       },
+       {
+        "setting": "casual",
+        "name": "Casual",
+        "before": {
+         "sessions": 2,
+         "words": 451,
+         "count": 6,
+         "per100": 1.33
+        },
+        "after": {
+         "sessions": 2,
+         "words": 434,
+         "count": 4,
+         "per100": 0.92
+        },
+        "enough": true,
+        "deltaPer100": -0.41
+       }
+      ]
+     }
+    ],
+    "line": "By setting · Unsure words: meeting: too little speech · work talk 2.4 → 0.6 · casual 1.3 → 0.5"
+   }
+  },
+  "POST /api/sessions/<id>/setting": {
+   "request": "POST /api/sessions/demo-0000-4000-8000-000000000101/setting",
+   "body": {
+    "setting": "meeting"
+   },
+   "status": 200,
+   "response": {
+    "id": "demo-0000-4000-8000-000000000101",
+    "tag": {
+     "setting": "meeting",
+     "source": "you",
+     "confidence": "high",
+     "reasons": [
+      "you"
+     ]
+    },
+    "recapIds": [
+     "rcp_mvgyl30u02"
+    ]
+   }
+  },
+  "GET /api/coach/facts": {
+   "request": "GET /api/coach/facts",
+   "status": 200,
+   "response": {
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "synthetic": true,
+    "note": "Bee's chat and Alexa+ may not read coach-written facts.",
+    "enabled": true,
+    "status": "demo",
+    "goal": {
+     "factId": null,
+     "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 8 lines passed, checked by Bee.",
+     "confirmed": false,
+     "updatedAt": 1792517403042
+    },
+    "insights": null,
+    "facts": null
+   }
+  },
+  "POST /api/coach/cue": {
+   "request": "POST /api/coach/cue",
+   "body": {
+    "inMinutes": 0,
+    "by": "check"
+   },
+   "status": 200,
+   "response": {
+    "cue": {
+     "id": "cue_mvgyl58800",
+     "habit": "filler:like",
+     "text": "[coach] If you need a second: pause, don't say \"like\".",
+     "alarmAt": 1792517415070,
+     "by": "check"
+    },
+    "wrist": {
+     "channel": "replay",
+     "status": "replay",
+     "todoId": null,
+     "error": null
+    },
+    "deduped": false,
+    "narration": "Demo cue, no Bee call: the wrist alarm would go off at 1:30 PM. If you need a second: pause, don't say \"like\"."
+   }
+  },
   "practice.summary (from the phone)": {
-   "seq": 50,
-   "at": 1792517415772,
+   "seq": 52,
+   "at": 1792517415919,
    "summary": {
     "takeId": "take_check_mirror_1",
-    "room": "P6EZ",
+    "room": "6B57",
     "from": "phone-1",
     "startedAt": 1792518000000,
     "endedAt": 1792518030000,
@@ -5145,7 +6010,7 @@
    "request": "POST /api/demo/mirror",
    "body": {
     "script": "practice-take",
-    "room": "P6EZ"
+    "room": "6B57"
    },
    "status": 202,
    "response": {
