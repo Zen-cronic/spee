@@ -67,7 +67,7 @@ card_open --(Bee alone hears the wearer say the card)--> graded (agreement "bee-
 
 ### Two-turn voice drill (Alexa's 8 s limit)
 
-On a real device (iPhone Alexa app, Canada, 2026-10-16), Bee's wearer-tagged line arrived **15 to 19 s** after the user spoke. Bee merged the drill sentence with the next words into one utterance, and an Alexa custom skill must answer within 8 s. So the drill is **asynchronous and takes two turns**:
+On a real device (iPhone Alexa app, Canada, 2026-10-16), Bee merged the drill sentence with the next words into one utterance. A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn. So the drill is **asynchronous and takes two turns**:
 
 1. **Turn 1.** The user says the card, and Alexa's skill sends its transcript with `POST /api/attempt {source:"alexa", text}`. The hub returns **202 at once** with `status: "pending_bee"`, `verdictUrl: "/api/attempts/<id>"`, `retryAfterMs` and `narration` ("Got it. I'm checking with Bee... Ask me how you did in a moment."). Alexa's transcript is kept as `provisional` only.
 2. **Turn 2.** The user asks "how did I do?", and the skill calls `GET /api/attempts/<id>` (the verdict).
@@ -77,7 +77,7 @@ On a real device (iPhone Alexa app, Canada, 2026-10-16), Bee's wearer-tagged lin
 
 Bee may merge the attempt with what was said before or after it ("... from finance. How did I do?"). Matching therefore uses coverage, so extra words don't hurt. Before grading, whole sentences that contain no word of the target are cut. `attempt.bee.gradedText` is what was graded and `attempt.bee.extraText` is what was cut. A sentence that contains any target word is kept whole, so a habit inside it ("Um, the ...") is still graded. The cut applies to the content and required-word rules only: the habit and filler rules also read the sentence right before and right after the graded span, so a hedge or filler said as its own sentence ("... this morning. I guess.", "Maybe. The deploy ...", "Um. The ...") still fails the attempt. Curly apostrophes count like straight ones. If Bee did not punctuate the merge, the whole line is graded.
 
-Timings: measured live on 2026-10-16. A `new-utterance` arrives 4.3 to 14.7 s after the speaker stops (median 5.4 s), and `tagged-utterance` follows about 0.5 s later.
+Timings: Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it. The `tagged-utterance` follows the `new-utterance` by about 0.5 s.
 
 | Timing | Live value | Demo |
 |---|---|---|
@@ -631,7 +631,7 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
   | `did_it_transfer` | `GET /api/transfer` |
   | `pre_meeting_brief` | `GET /api/brief` |
 
-- **Waiting for Bee: two turns.** Alexa must answer within 8 s, and Bee's line takes 5 to 20 s.
+- **Waiting for Bee: two turns.** A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn.
   - `submit_attempt` returns at once with `narration` and the attempt id. End the turn there and keep the session open.
   - The next turn ("how did I do?") calls `get_verdict(attempt_id)`, which maps to `GET /api/attempts/<id>`. When `verdictReady` is false, narrate the waiting line and invite the user to ask again after `retryAfterMs`.
   - Never block a turn waiting for Bee. Worst case, the verdict is ready about 45 s after speech end (stream at 30 s, poll, then give up).
@@ -1256,9 +1256,9 @@ The hops come in this order (`NUDGE_HOP_ORDER`):
 2. `beeAt`: Bee's wearer tag for that line reached the hub.
 3. `detectedAt`: the rule fired and the policy allowed it.
 4. `todoAt`: `bee todos create` returned.
-5. `alarmAt`: the to-do's alarm, when the Watch buzzes.
+5. `alarmAt`: the to-do's alarm time (the hub cannot see the buzz itself).
 
-`latencyMs` gives the differences: `bee` = `beeAt` − `spokenAt`, `detect`, `todo`, and `total` = `alarmAt` − `spokenAt`. In this example: Bee 5.9 s, detection 40 ms, the to-do 1.45 s and a 10 s alarm lead, so the Watch buzzes **17.4 s** after Ada stopped speaking. If the wrist call failed, `todoAt` and `alarmAt` are null and `wrist.status` is `"failed"`.
+`latencyMs` gives the differences: `bee` = `beeAt` − `spokenAt`, `detect`, `todo`, and `total` = `alarmAt` − `spokenAt`. In this example: Bee 5.9 s, detection 40 ms, the to-do 1.45 s and a 10 s alarm lead, so the wrist alarm is set for **17.4 s** after Ada stopped speaking. If the wrist call failed, `todoAt` and `alarmAt` are null and `wrist.status` is `"failed"`.
 
 <!-- fixture: events-live.json#/events/4/payload -->
 ```json

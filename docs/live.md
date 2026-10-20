@@ -6,6 +6,8 @@ The live engine turns Bee's live stream into three kinds of feedback:
 - a **recap** after every conversation;
 - an on-demand answer to **"how am I doing?"** (`GET /api/coach/now`, used by Alexa and MCP).
 
+**Latency.** Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it. A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn.
+
 The payloads are frozen in [`CONTRACT.md`](CONTRACT.md) (v2) and [`src/hub/contract.ts`](../src/hub/contract.ts). This page covers how the engine produces them, the defaults, and how to run it on real devices.
 
 ## Data flow
@@ -284,9 +286,8 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
    2. Talk with someone for at least a minute. The warm-up is 60 s, and quiet hours run from 22:00 to 08:00.
    3. Then use about 4 hedges within 2 minutes ("I guess", "maybe", "I think", "kind of").
 5. **Expected timings:**
-   - Bee's tagged line reaches the hub about 5.4 to 6 s after you stop speaking (range 4.3 to 14.7 s).
-   - Detection takes milliseconds; the to-do create takes about 1 to 2 s.
-   - The alarm fires 10 s later, so the **Watch buzzes about 17 to 20 s** after the line that completed the streak (up to about 30 s on a slow Bee line).
+   - Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it.
+   - The hops: Bee's tag, then detection (milliseconds), the to-do create (about 1 to 2 s) and the 10 s alarm lead. On a slow Bee line the alarm can come up to about 30 s after the line.
    - The TV live view shows the hops. `GET /api/live` shows `lastNudge.hops` and `latencyMs`.
    - A second streak within 3 min is `nudge.skipped` (cooldown).
 6. **End the conversation:** stop talking for 90 s, or stop the Bee recording. Stopping the recording ends it 20 s after Bee's `update-conversation`.
