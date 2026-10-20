@@ -1022,7 +1022,7 @@ The coach's one goal fact in Bee, and Bee's insight and fact counts (`BeeMemory`
 - `"demo"`: nothing is written; `goal` is the text the coach would write (`factId: null`).
 - `"pending"`: on, no confirmed goal fact yet (it is written after the first Bee-verified pass).
 - `"synced"`: the goal fact exists in Bee, confirmed, with this text.
-- `"failed"`: the last write failed, or the facts breaker is open (3 failed calls, 30 min). Live coaching is not affected.
+- `"failed"`: the last write failed, a create Bee does not list yet or never listed (looked for at most 5 times, never made again), or the facts breaker is open (3 failed calls, 30 min). Live coaching is not affected.
 
 `goal.text` is template text only (numbers, the fixed habit names, the transfer verdicts; `GOAL_TEXT_RE`). `insights` and `facts` are counts read every 6 h, never their text. `note` is always `BEE_MEMORY_NOTE`. When the memory changes the hub re-sends `stats.updated`.
 

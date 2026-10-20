@@ -15,10 +15,12 @@
 //
 // Idempotent. The ledger (<stateDir>/live/facts.json) records the intent before every create, so a
 // restart or a create that timed out never makes a second fact: the coach looks for its own text in
-// `bee facts list` first and adopts the fact it finds. A create that exited 0 without an id is never
-// made again. Every call, the goal's and the count read's, runs on one chain: serialized, 1.5 s
-// apart, 10 s timeout each. Its own breaker (3 consecutive failed calls open it for 30 min) never
-// touches the wrist, so live coaching carries on.
+// `bee facts list` (up to COUNT_PAGES pages) and adopts the fact it finds. A create whose outcome is
+// not known is never made again: it is looked for at most LOOKS_MAX times, further apart each time,
+// never on stats.updated, and then the status stays "failed" until the operator clears it. Every
+// call, the goal's and the count read's, runs on one chain: serialized, 1.5 s apart, 10 s timeout
+// each. Its own breaker (3 consecutive failed calls open it for 30 min) never touches the wrist, so
+// live coaching carries on.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -39,6 +41,8 @@ export const STATS_DEBOUNCE_MS = 5_000;
 export const FACT_TEXT_MAX = 2000; // Bee's limit for a fact's text
 export const COUNT_LIMIT = 100;
 export const COUNT_PAGES = 5;
+export const LOOK_FIRST_MS = 60_000; // a create of unknown outcome is looked for again after 1, 2, 4 and 8 min
+export const LOOKS_MAX = 5; // looks for it, the first right after the create; then the coach stops looking
 
 export type FactsMode = "off" | "demo" | "live";
 type Log = (event: string, data?: Record<string, unknown>) => void;
@@ -103,12 +107,15 @@ interface GoalEntry {
   updatedAt: number;
 }
 // A create whose result is not known yet. "unknown": it may have landed (a timeout, or the hub
-// stopped during the call); "landed": the CLI exited 0 without printing an id, so it exists.
+// stopped during the call); "landed": the CLI exited 0 without printing an id, so it exists. Either
+// way it is never created again, only looked for (a ledger from before `looks` looks at once).
 interface PendingCreate {
   text: string;
   verdictKey: string;
   at: number;
   outcome: "unknown" | "landed";
+  looks?: number; // how many times the coach looked for it in Bee's lists
+  nextLookAt?: number | null; // when the next look is due; null: it stopped looking (status "failed")
 }
 interface FactsLedger {
   goal: GoalEntry | null;
@@ -117,7 +124,7 @@ interface FactsLedger {
   facts: { count: number; readAt: number } | null;
 }
 
-export type SyncReason = "pass" | "stats" | "tick" | "start";
+export type SyncReason = "pass" | "stats" | "tick" | "start" | "look";
 
 export interface BeeFactsOptions {
   hub: CoachHub;
@@ -136,6 +143,8 @@ export interface BeeFactsOptions {
   countsFirstMs?: number;
   statsDebounceMs?: number;
   updateMinMs?: number;
+  lookFirstMs?: number;
+  looksMax?: number;
   onChange?: () => void; // the Bee memory changed (the plugin re-sends stats.updated so screens refetch)
 }
 
@@ -163,6 +172,7 @@ export class BeeFacts {
   private lastCallEnd = -Infinity;
   private timers: NodeJS.Timeout[] = [];
   private statsTimer: NodeJS.Timeout | null = null;
+  private lookTimer: NodeJS.Timeout | null = null;
   private unsubscribe: (() => void) | null = null;
   private stopped = false;
   private saveFailed = false;
@@ -207,7 +217,8 @@ export class BeeFacts {
       return { ...base, enabled: true, status: "demo", goal: d ? { factId: null, text: d.text, confirmed: false, updatedAt: last?.settledAt ?? null } : null, insights: null, facts: null };
     }
     const L = this.ledger;
-    const status: BeeMemory["status"] = this.circuitOpenUntil() != null || this.goalError ? "failed" : L.goal && L.goal.confirmed && !L.pendingCreate ? "synced" : "pending";
+    const gaveUp = L.pendingCreate?.nextLookAt === null; // a create Bee never listed: not made again
+    const status: BeeMemory["status"] = this.circuitOpenUntil() != null || this.goalError || gaveUp ? "failed" : L.goal && L.goal.confirmed && !L.pendingCreate ? "synced" : "pending";
     const goal = L.goal ? { factId: L.goal.factId, text: L.goal.text, confirmed: L.goal.confirmed, updatedAt: L.goal.updatedAt } : L.pendingCreate ? { factId: null, text: L.pendingCreate.text, confirmed: false, updatedAt: null } : null;
     return { ...base, enabled: true, status, goal, insights: L.insights, facts: L.facts };
   }
@@ -231,6 +242,7 @@ export class BeeFacts {
     this.unsubscribe?.();
     for (const t of this.timers) clearTimeout(t);
     if (this.statsTimer) clearTimeout(this.statsTimer);
+    if (this.lookTimer) clearTimeout(this.lookTimer);
     this.timers = [];
   }
 
@@ -303,14 +315,59 @@ export class BeeFacts {
     }
   }
 
-  // The coach's own goal fact in Bee's lists, matched by its exact text (a new fact is unconfirmed).
-  private async findOwn(text: string): Promise<ParsedFact | null> {
+  // The coach's own goal fact in Bee's lists, matched by its exact text (a new fact is unconfirmed),
+  // following each list's cursor for up to COUNT_PAGES pages, as the count read does. `read`: both
+  // lists answered, so a miss means Bee does not list it.
+  private async findOwn(text: string): Promise<{ hit: ParsedFact | null; read: boolean }> {
+    let read = true;
     for (const extra of [["--unconfirmed"], []]) {
-      const out = await this.call(["facts", "list", ...extra, "--limit", String(COUNT_LIMIT), "--json"]).catch(() => null);
-      const hit = out == null ? null : parseFactList(out).items.find((f) => sameFactText(f.text, text));
-      if (hit) return hit;
+      let cursor: string | null = null;
+      for (let page = 0; page < COUNT_PAGES; page++) {
+        const out = await this.call(["facts", "list", ...extra, "--limit", String(COUNT_LIMIT), ...(cursor ? ["--cursor", cursor] : []), "--json"]).catch(() => null);
+        if (out == null) {
+          read = false;
+          break;
+        }
+        const l = parseFactList(out);
+        const hit = l.items.find((f) => sameFactText(f.text, text));
+        if (hit) return { hit, read: true };
+        if (!l.cursor || l.items.length < COUNT_LIMIT) break;
+        cursor = l.cursor;
+      }
     }
-    return null;
+    return { hit: null, read };
+  }
+
+  // A look for a create of unknown outcome: at a restart, else once its time has come (a pass, the
+  // tick or the look timer). Never on stats.updated, and never after the coach stopped looking.
+  private lookDue(p: PendingCreate, reason: SyncReason): boolean {
+    if (p.nextLookAt === null || reason === "stats") return false;
+    return reason === "start" || reason === "look" || this.now() >= (p.nextLookAt ?? 0);
+  }
+
+  // Bee does not list it: look again later (twice as long each time), or stop after LOOKS_MAX looks.
+  // Only a look that read Bee's lists counts (a Bee outage never uses them up). It is never created
+  // again either way.
+  private notListed(p: PendingCreate, read: boolean) {
+    const what = p.outcome === "landed" ? "create printed no fact id" : "create timed out";
+    const max = this.o.looksMax ?? LOOKS_MAX;
+    const looks = (p.looks ?? 0) + (read ? 1 : 0);
+    p.looks = looks;
+    if (looks >= max) {
+      p.nextLookAt = null;
+      return this.fail(`${what} and Bee never listed it (${looks} looks); the coach stopped looking and never creates it again`);
+    }
+    const wait = (this.o.lookFirstMs ?? LOOK_FIRST_MS) * 2 ** Math.max(0, looks - 1);
+    p.nextLookAt = this.now() + wait;
+    this.scheduleLook(wait);
+    return this.fail(`${what} and ${read ? `Bee does not list it yet (look ${looks} of ${max})` : "Bee's lists could not be read"}; it is never created again`);
+  }
+
+  private scheduleLook(ms: number) {
+    if (this.stopped) return;
+    if (this.lookTimer) clearTimeout(this.lookTimer);
+    this.lookTimer = setTimeout(() => ((this.lookTimer = null), void this.sync("look")), ms);
+    this.lookTimer.unref?.();
   }
 
   private fail(reason: string) {
@@ -320,6 +377,8 @@ export class BeeFacts {
   }
 
   private adopt(f: ParsedFact, p: PendingCreate, how: "created" | "adopted") {
+    if (this.lookTimer) clearTimeout(this.lookTimer);
+    this.lookTimer = null;
     const now = this.now();
     this.ledger.goal = { factId: f.id, text: p.text, verdictKey: p.verdictKey, confirmed: f.confirmed === true, createdAt: now, updatedAt: now };
     this.ledger.pendingCreate = null;
@@ -332,16 +391,14 @@ export class BeeFacts {
     const L = this.ledger;
     const before = JSON.stringify(this.memory());
     try {
-      // 1. A create whose result is not known: look for it before anything else.
+      // 1. A create whose result is not known: nothing else happens until Bee lists it. Look for it
+      // when a look is due; it is never created again.
       if (L.pendingCreate && !L.goal) {
         const p = L.pendingCreate;
-        const hit = await this.findOwn(p.text);
-        if (hit) this.adopt(hit, p, "adopted");
-        else if (p.outcome === "landed" || reason !== "pass") return this.fail("a create may have landed without an id; it is not created again until Bee lists it");
-        else {
-          L.pendingCreate = null; // it timed out and never showed up: it did not land
-          this.log("facts.goal.not-landed", {});
-        }
+        if (!this.lookDue(p, reason)) return;
+        const { hit, read } = await this.findOwn(p.text);
+        if (!hit) return this.notListed(p, read);
+        this.adopt(hit, p, "adopted");
       }
       const draft = composeGoal(this.o.hub);
       // 2. No goal fact yet: only a Bee-verified pass creates it.
@@ -361,20 +418,20 @@ export class BeeFacts {
             L.pendingCreate = null;
             return this.fail(`create failed: ${err}`);
           }
-          const hit = await this.findOwn(text);
-          if (!hit) return this.fail("create timed out and Bee does not list it yet; checked again on the next pass");
+          const { hit, read } = await this.findOwn(text);
+          if (!hit) return this.notListed(p, read);
           this.adopt(hit, p, "adopted");
           out = "";
         }
         if (out) {
           const parsed = parseFact(out);
           if (!parsed) this.log("facts.create.unreadable", { output: outputShape(out) }); // keys and types only
-          const f = parsed ?? (await this.findOwn(text));
-          if (!f) {
+          const found = parsed ? { hit: parsed, read: true } : await this.findOwn(text);
+          if (!found.hit) {
             p.outcome = "landed";
-            return this.fail("create printed no fact id and Bee does not list it yet; it is not created again");
+            return this.notListed(p, found.read);
           }
-          this.adopt(f, p, "created");
+          this.adopt(found.hit, p, "created");
         }
       }
       const g = L.goal;
@@ -479,6 +536,7 @@ export class BeeFacts {
 
   describe(): string {
     if (this.o.mode !== "live") return this.o.mode;
-    return `live (${this.memory().status}${this.circuitOpenUntil() != null ? ", circuit open" : ""})`;
+    const gaveUp = this.ledger.pendingCreate?.nextLookAt === null;
+    return `live (${this.memory().status}${gaveUp ? ": Bee never listed the goal create, so it is not made again; see docs/live.md" : ""}${this.circuitOpenUntil() != null ? ", circuit open" : ""})`;
   }
 }

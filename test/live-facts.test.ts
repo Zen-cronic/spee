@@ -3,7 +3,7 @@
 // Bee-verified pass, the same id updated, restarts and timed-out creates that never make a second
 // fact, the breaker that leaves live coaching alone, counts only, and a planted marker that never
 // reaches Bee, the ledger, the route or the logs. No real Bee call is ever made here.
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,7 +11,7 @@ import { BEE_MEMORY_NOTE, type Attempt } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
 import type { LiveEngine } from "../src/hub/live/engine.js";
-import { assertGoalText, BeeFacts, beePass, composeGoal, factsModeFor, GOAL_TEXT_RE, UPDATE_MIN_MS, type BeeFactsOptions } from "../src/hub/live/facts.js";
+import { assertGoalText, BeeFacts, beePass, composeGoal, factsModeFor, GOAL_TEXT_RE, LOOK_FIRST_MS, LOOKS_MAX, UPDATE_MIN_MS, type BeeFactsOptions } from "../src/hub/live/facts.js";
 import { INSPECT_CALLS, inspect, jsonShape, outputShape, parseFact, parseFactList, parseInsightCount } from "../src/hub/live/factsParse.js";
 import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type ExecFn } from "../src/hub/live/wrist.js";
@@ -277,18 +277,125 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(r.f.calls.filter((c) => c.args[1] === "create")).toHaveLength(1);
     expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null, confirmed: false } });
   });
-  it("a create that timed out and never showed up is made again on the next pass, once", async () => {
-    let first = true;
-    const bee = fakeBee({ hook: (a) => (a[1] === "create" && first ? ((first = false), timeoutErr("facts create")) : null) });
-    const r = rig(bee);
+  it("a create that timed out and never shows up is never made again: looked for at most 5 times, further apart, then failed", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : null) }); // it did not land
+    const logs: { event: string; data?: Record<string, unknown> }[] = [];
+    const r = rig(bee, { logs });
+    const looks = () => bee.factCalls().filter((c) => c === "facts list --unconfirmed").length;
     pass(r.h);
     await r.f.settle();
+    expect(bee.factCalls()).toEqual(["facts create --text", "facts list --unconfirmed", "facts list --limit"]); // look 1, at once
+    expect(r.ledger().pendingCreate).toMatchObject({ outcome: "unknown", looks: 1, nextLookAt: expect.any(Number) });
+    expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null } });
+    pass(r.h); // before the next look is due: no call at all
+    await r.f.settle();
+    expect(looks()).toBe(1);
+    for (let i = 2; i <= LOOKS_MAX; i++) {
+      r.advance(LOOK_FIRST_MS * 2 ** (i - 2));
+      pass(r.h);
+      await r.f.settle();
+      expect(looks(), `look ${i}`).toBe(i);
+    }
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: LOOKS_MAX, nextLookAt: null });
+    expect(r.f.describe()).toBe("live (failed: Bee never listed the goal create, so it is not made again; see docs/live.md)");
+    expect(logs.filter((l) => l.event === "facts.goal.failed").at(-1)?.data?.error).toMatch(/stopped looking and never creates it again/);
+    r.advance(6 * 3600_000);
+    pass(r.h);
+    await r.f.sync("stats");
+    await r.f.tick(); // the counts only
+    expect(looks()).toBe(LOOKS_MAX);
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+    expect(bee.facts).toHaveLength(0);
+    expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null, confirmed: false } });
+    // a restart keeps it: no look, no create, still failed
+    r.f.stop();
+    const b = rig(bee, { dir: r.dir, hub: r.h });
+    pass(r.h);
+    await b.f.settle();
+    expect(looks()).toBe(LOOKS_MAX);
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+    expect(b.f.memory().status).toBe("failed");
+  });
+  it("a look that could not read Bee's lists does not count toward the 5", async () => {
+    let down = true;
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });
+    const r = rig(bee, { breakerThreshold: 99 });
+    pass(r.h);
+    await r.f.settle();
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 0, nextLookAt: expect.any(Number) });
     expect(r.f.memory().status).toBe("failed");
+    down = false;
+    r.advance(LOOK_FIRST_MS);
     pass(r.h);
     await r.f.settle();
-    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(2);
-    expect(bee.facts).toHaveLength(1);
-    expect(r.f.memory()).toMatchObject({ status: "synced", goal: { factId: "901" } });
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 1, nextLookAt: expect.any(Number) });
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+  });
+  it("the look follows Bee's list past its first page (the cursor), and adopts the fact it finds there", async () => {
+    const others = Array.from({ length: 100 }, (_, i) => ({ id: 100 + i, text: `Invented fact ${i}`, confirmed: true }));
+    const bee = fakeBee({ others, hook: (a) => (a[1] === "create" ? "timeout-landed" : null) });
+    const lists: string[][] = [];
+    const paged: ExecFn = async (f, a, o) => {
+      if (a[1] === "list") lists.push(a);
+      if (a[1] === "create") {
+        try {
+          return await bee.exec(f, a, o);
+        } finally {
+          bee.facts.at(-1)!.confirmed = true; // Bee confirmed it at once, so it sits after 100 others
+        }
+      }
+      if (a[0] === "facts" && a[1] === "list" && !a.includes("--unconfirmed")) {
+        const all = bee.facts.filter((x) => x.confirmed);
+        return { stdout: JSON.stringify(a.includes("--cursor") ? { facts: all.slice(100) } : { facts: all.slice(0, 100), next_cursor: "c2" }) };
+      }
+      return bee.exec(f, a, o);
+    };
+    const r = rig({ ...bee, exec: paged });
+    pass(r.h);
+    await r.f.settle();
+    expect(r.f.calls.map((c) => c.args.join(" "))).toEqual(["facts create", "facts list", "facts list", "facts list"]);
+    expect(lists).toEqual([
+      ["facts", "list", "--unconfirmed", "--limit", "100", "--json"],
+      ["facts", "list", "--limit", "100", "--json"],
+      ["facts", "list", "--limit", "100", "--cursor", "c2", "--json"],
+    ]);
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+    expect(r.f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+  });
+  it("while a create is stuck, stats.updated never looks for it: no list call, no ledger write, no log line", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "landed-no-id" : null) });
+    const blind: ExecFn = async (f, a, o) => (a[1] === "list" ? { stdout: "[]" } : bee.exec(f, a, o));
+    const logs: { event: string; data?: Record<string, unknown> }[] = [];
+    const r = rig({ ...bee, exec: blind }, { logs, statsDebounceMs: 1 });
+    pass(r.h);
+    await r.f.settle();
+    const n = r.f.calls.length;
+    const lines = logs.length;
+    const ledgerIno = statSync(join(r.dir, "live", "facts.json")).ino; // each save renames a new file in
+    for (let i = 0; i < 5; i++) {
+      r.advance(UPDATE_MIN_MS);
+      r.h.publish("stats.updated", {});
+      await new Promise((res) => setTimeout(res, 5));
+      await r.f.sync("stats");
+    }
+    expect(r.f.calls.length).toBe(n);
+    expect(logs.length).toBe(lines);
+    expect(statSync(join(r.dir, "live", "facts.json")).ino).toBe(ledgerIno);
+    expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null } });
+  });
+  it("the look timer looks again without a pass, then stops", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : null) });
+    const h = hub();
+    const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-look-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9, lookFirstMs: 5, looksMax: 3 });
+    f.start();
+    stops.push(() => f.stop());
+    pass(h);
+    await f.settle();
+    for (let i = 0; i < 40 && bee.factCalls().filter((c) => c === "facts list --unconfirmed").length < 3; i++) await new Promise((r) => setTimeout(r, 10));
+    await f.settle();
+    expect(bee.factCalls().filter((c) => c === "facts list --unconfirmed")).toHaveLength(3);
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+    expect(f.memory().status).toBe("failed");
   });
   it("a fact deleted in the Bee app is forgotten, and the next pass writes one goal fact again", async () => {
     const bee = fakeBee();
