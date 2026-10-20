@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
-import { changeLabel, controlWord, fmt1, habitTitle, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
+import { changeLabel, controlWord, fmt1, habitRole, habitTitle, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
 import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
 
 /**
@@ -115,7 +115,7 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
                 <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }, !change.pct && styles.workNone]}>{change.pct ? change.text : '—'}</Text>
               </View>
               <HabitLabel habit={x.habit} label={x.label} />
-              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : shortWords(x.verdict, change.text)}</Text>
+              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : x.verdict === 'not drilled yet' ? habitRole(x) : shortWords(x.verdict, change.text)}</Text>
             </View>
           );
         })}
@@ -133,7 +133,7 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
   );
 }
 
-/** Today's one-word-ish status under a dash (Progress says it in full): it must fit a third of the card on one line. */
+/** Today's one-word-ish status under a dash (Progress says it in full): it must fit a third of the card on one line. A practised habit not started yet says "To practise", as on Progress. */
 const SHORT: Record<string, string> = { 'too little data': 'Needs speech', 'not drilled yet': 'Not started' };
 const shortWords = (verdict: string, text: string): string => SHORT[verdict] ?? text;
 

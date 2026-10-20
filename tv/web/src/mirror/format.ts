@@ -1,6 +1,6 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { ConversationEnded, ConversationSetting, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, SettingTag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
-import { CONVERSATION_SETTINGS, SETTING_NAME } from '../contract';
+import type { BeeMemory, ConversationEnded, ConversationSetting, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, LiveMode, Nudge, NudgeHops, NudgeRule, NudgeSkipped, NudgeSkipReason, PracticeFlag, RuleState, SessionSummary, SettingTag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
+import { BEE_MEMORY_NOTE as HUB_BEE_MEMORY_NOTE, CONVERSATION_SETTINGS, SETTING_NAME } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -63,17 +63,89 @@ export const RULE_LABEL: Record<NudgeRule, string> = {
   'fast-rate': 'Talking fast',
 };
 
+/** Why the coach held a nudge back, in plain words (the coach decides; Bee only hears). */
 export const SKIP_LABEL: Record<NudgeSkipReason, string> = {
   off: 'live coaching is off',
   warmup: 'first minute of the conversation',
   'quiet-hours': 'quiet hours',
   'drill-active': 'a practice line is open',
   cooldown: 'cooldown between nudges',
-  'rule-cooldown': 'cooldown for this rule',
-  'cap-hour': 'hourly cap reached',
-  'cap-day': 'daily cap reached',
-  'wrist-down': 'wrist channel down',
+  'rule-cooldown': 'same nudge sent recently',
+  'cap-hour': 'hourly limit reached',
+  'cap-day': 'daily limit reached',
+  'wrist-down': 'wrist link down',
 };
+
+/** A wait in whole minutes from a minute up ("2 min"), else seconds ("40 s"). */
+export function fmtWait(ms: number): string {
+  if (!(ms > 0)) return '0 s';
+  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))} s`;
+  return `${Math.round(ms / 60_000)} min`;
+}
+
+/**
+ * A held-back nudge as Live shows it: "Stayed quiet: cooldown between nudges · again in 2 min".
+ * The coach stayed quiet, so the line never credits Bee with the decision.
+ */
+export function skipLine(s: Pick<NudgeSkipped, 'reason' | 'retryAfterMs'>): string {
+  const again = s.retryAfterMs !== null && s.retryAfterMs > 0 ? ` · again in ${fmtWait(s.retryAfterMs)}` : '';
+  return `Stayed quiet: ${SKIP_LABEL[s.reason] ?? 'held back'}${again}`;
+}
+
+/**
+ * A nudge's three hops from the end of your line, as the hub measured them: Bee tagging the line,
+ * then the wrist alarm the hub set (its alarm time; the hub cannot see the Watch, so never a buzz).
+ * `ms` is from the end of your line; null for an alarm that was not set.
+ */
+export interface HopStop {
+  key: 'spoken' | 'bee' | 'alarm';
+  label: string;
+  ms: number | null;
+}
+export function nudgeHops(n: Pick<Nudge, 'latencyMs' | 'wrist' | 'hops'>): HopStop[] {
+  const set = n.wrist.status !== 'failed' && n.hops.alarmAt !== null && n.latencyMs.total !== null;
+  return [
+    { key: 'spoken', label: 'You said it', ms: 0 },
+    { key: 'bee', label: `Bee ${fmtMs(n.latencyMs.bee)}`, ms: n.latencyMs.bee },
+    { key: 'alarm', label: set ? `wrist alarm ${fmtMs(n.latencyMs.total)}` : 'wrist alarm not set', ms: set ? n.latencyMs.total : null },
+  ];
+}
+/** The nudge card's line: "You said it → Bee 5.9 s → wrist alarm 17.4 s". */
+export function nudgeHopsLine(n: Pick<Nudge, 'latencyMs' | 'wrist' | 'hops'>): string {
+  return nudgeHops(n)
+    .map((h) => h.label)
+    .join(' → ');
+}
+/** The wrist text without its "[coach] " tag, as the Watch shows it. */
+export const nudgeText = (n: Pick<Nudge, 'text'>): string => curly(n.text.replace(/^\[[^\]]*\]\s*/, ''));
+
+/**
+ * When Live nudges, from the hub's own policy and thresholds: "One wrist nudge when unsure words
+ * reach 4 in 2 min, then quiet for 3 min." Null without the thresholds.
+ */
+export function nudgeRuleLine(rules: Pick<RuleState, 'rule' | 'threshold'>[] | undefined, mode: Pick<LiveMode, 'cooldownMs' | 'rules'> | null, windowMs: number | null | undefined): string | null {
+  const on = (r: NudgeRule) => mode?.rules?.[r] !== false;
+  const hedge = rules?.find((r) => r.rule === 'hedge-streak');
+  const like = rules?.find((r) => r.rule === 'like-streak');
+  const parts = [hedge && on('hedge-streak') ? `unsure words reach ${hedge.threshold}` : null, like && on('like-streak') ? `“like” reaches ${like.threshold}` : null].filter(Boolean);
+  if (!parts.length || !mode) return null;
+  const win = windowMs ? ` in ${fmtWait(windowMs)}` : '';
+  return `One wrist nudge when ${parts.join(' or ')}${win}, then quiet for ${fmtWait(mode.cooldownMs)}.`;
+}
+
+/** The recap's nudge line: "1 wrist nudge, then stayed quiet once"; null when neither happened. */
+export function recapNudgeLine(n: { sent: number; skipped: number } | null | undefined): string | null {
+  if (!n || (!n.sent && !n.skipped)) return null;
+  const times = (k: number) => (k === 1 ? 'once' : k === 2 ? 'twice' : `${k} times`);
+  if (!n.sent) return `Stayed quiet ${times(n.skipped)}: no wrist nudge`;
+  const sent = `${n.sent} wrist nudge${n.sent === 1 ? '' : 's'}`;
+  return n.skipped ? `${sent}, then stayed quiet ${times(n.skipped)}` : sent;
+}
+
+/** What a number on Live covers: "this week" for the usual rates, or "so far" when the week is too quiet. */
+export function usualWindow(b: Pick<LiveBaseline, 'source'> & { range?: LiveBaseline['range'] }): string {
+  return baselineWordsLabel(b) === 'your words this week' ? 'this week' : 'so far';
+}
 
 export type Tone = 'good' | 'bad' | 'neutral' | 'wait' | 'bee';
 
@@ -243,6 +315,112 @@ export function periodRate(p: Pick<TransferHabit['after'], 'words' | 'per100'> |
 export function transferRates(h: Pick<TransferHabit, 'verdict' | 'before' | 'after'>, minWords: number): { before: string | null; after: string | null } {
   const started = h.verdict !== 'not drilled yet';
   return { before: periodRate(h.before, minWords), after: periodRate(h.after, minWords, started) };
+}
+
+/** What the two numbers of a Progress card cover (said under them, so no number is without its window). */
+export const BEFORE_WINDOW = 'before your first practice';
+export const AFTER_WINDOW = 'since then';
+
+/**
+ * A Progress card's role line. Before the first practice a practised habit is still "To practise",
+ * never "Practised" beside a "Not practised yet" pill (the phone's Progress tab uses the same rule).
+ */
+export function habitRole(h: Pick<TransferHabit, 'role' | 'verdict'>): 'Practised' | 'To practise' | 'Not practised' {
+  if (h.role !== 'drilled') return 'Not practised';
+  return h.verdict === 'not drilled yet' ? 'To practise' : 'Practised';
+}
+/**
+ * A Progress card's pill: the verdict in words. Before the first practice a practised habit has
+ * none ("To practise" already says it), and the one you don't practise starts at your first practice.
+ */
+export function habitPill(h: Pick<TransferHabit, 'role' | 'verdict' | 'before' | 'after'>): string | null {
+  if (h.verdict === 'not drilled yet') return h.role !== 'drilled' ? 'Starts at your first practice' : null;
+  return verdictWords(h);
+}
+
+const NUMBER_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
+const numberWord = (n: number) => NUMBER_WORD[n] ?? String(n);
+/** Fewer conversations than this in a phase is not enough to read (WWC: 3 or more points per phase). */
+export const MIN_POINTS = 3;
+/**
+ * The plan row of Progress's Details: what the check is (a two-tier pilot: each practised habit
+ * is a tier, the one you don't practise is the comparison), the rule for a change, and the points
+ * per phase (one point per Bee conversation, before your first practice → since). It never claims
+ * proof: the caveat says it is a pilot, not proof of cause.
+ */
+export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod'> & { habits: Pick<TransferHabit, 'habit' | 'label' | 'role' | 'verdict' | 'before' | 'after'>[] }): { text: string; points: string; caveat: string } {
+  const drilled = t.habits.filter((h) => h.role === 'drilled');
+  const control = t.habits.filter((h) => h.role !== 'drilled');
+  const tiers = drilled.length;
+  const text = `A pilot in ${numberWord(tiers)} tier${tiers === 1 ? '' : 's'}, set ${fmtDate(t.prereg.registeredAt)} before your first practice: ${numberWord(tiers)} habit${tiers === 1 ? '' : 's'} you practise against ${numberWord(control.length)} you don’t. A change counts only with ${fmtWords(t.minWordsPerPeriod)}+ words each side and a clear gap.`;
+  const n = (k: number) => (k < MIN_POINTS ? `${k} (too few)` : String(k));
+  const phase = (h: (typeof t.habits)[number]) => `${habitTitle(h.habit, h.label)} ${n(h.before.sessions)} → ${h.verdict === 'not drilled yet' ? 'not started' : n(h.after.sessions)}`;
+  const points = `Conversations counted, before → since: ${[...drilled, ...control].map(phase).join(' · ')}`;
+  return { text, points, caveat: `one point per conversation, at least ${MIN_POINTS} a phase to read · a pilot, not proof of cause` };
+}
+
+/**
+ * Bee memory, as the hub reports it (GET /api/coach/facts): the coach's one goal fact in Bee and
+ * Bee's fact and insight counts. Null when the hub has it off (or does not report it), so the row
+ * hides. Counts only: no fact text but the coach's own goal.
+ */
+export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'>;
+/** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
+export const BEE_MEMORY_NOTE = HUB_BEE_MEMORY_NOTE.replace(/'/g, '’');
+const dayOf = (ms: number | null | undefined) => (ms === null || ms === undefined || !Number.isFinite(ms) ? null : fmtDate(new Date(ms).toISOString()));
+export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string; counts: string | null; caveat: string } | null {
+  if (!m || !m.enabled || m.status === 'off') return null;
+  const updated = dayOf(m.goal?.updatedAt);
+  const saved = m.goal?.confirmed ? 'saved in Bee as a confirmed fact' : 'saved in Bee, not confirmed yet';
+  const text =
+    m.status === 'pending'
+      ? 'Saving your speaking goal to Bee…'
+      : m.status === 'failed'
+        ? 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
+        : m.status === 'demo'
+          ? m.goal
+            ? 'Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.'
+            : 'Demo: after a line Bee passes, the coach would save your speaking goal in Bee.'
+          : m.goal
+            ? `Your speaking goal is ${saved}${updated ? `, updated ${updated}` : ''}.`
+            : 'No speaking goal in Bee yet: it is saved after your first line Bee passes.';
+  const read = dayOf(m.facts?.readAt ?? m.insights?.readAt);
+  const counts = m.facts || m.insights ? `Bee holds ${[m.facts ? `${m.facts.count} fact${m.facts.count === 1 ? '' : 's'}` : null, m.insights ? `${m.insights.count} insight${m.insights.count === 1 ? '' : 's'}` : null].filter(Boolean).join(' and ')}${read ? `, read ${read}` : ''}` : null;
+  return { text, counts, caveat: m.note?.trim() ? m.note.trim().replace(/'/g, '’') : BEE_MEMORY_NOTE };
+}
+
+/** The Round over headline: "1 of 2 lines passed." (a line is a card opened this round). */
+export function roundHeadline(s: Pick<SessionSummary, 'cards' | 'passed'>): string {
+  const cards = Math.max(s.cards, s.passed);
+  if (!cards) return 'No lines this round.';
+  return `${s.passed} of ${cards} line${cards === 1 ? '' : 's'} passed.`;
+}
+/** The Round over tally in words: "1 passed, 1 not yet" (zero parts left out; Bee's calls are tagged on the last line). */
+export function roundTally(s: Pick<SessionSummary, 'passed' | 'failed' | 'unverified' | 'pending'>): string {
+  return sessionTally('Round', { passed: s.passed, failed: s.failed, unverified: s.unverified, pending: s.pending }).replace(/^Round: /, '').replace(/\.$/, '');
+}
+
+/** The first few words of what Bee heard, quoted: "“Um, the migration is not…”". */
+export function shortQuote(text: string | null | undefined, words = 4): string {
+  const w = (text ?? '').trim().replace(/[.!?]+$/, '').split(/\s+/).filter(Boolean);
+  return `“${w.slice(0, words).join(' ')}${w.length > words ? '…' : ''}”`;
+}
+
+/**
+ * The Round over line about the last line: its result in one sentence, Bee's call with the start
+ * of what Bee heard, or that Bee is still checking it (its verdict lands here after the round).
+ */
+export function roundLastLine(d: { graded: { pass: boolean; agreement: string | null; beeText: string | null; failure: GradeFailure | null } | null; stage: string; previewSource: string | null }): string | null {
+  const g = d.graded;
+  if (g) {
+    const who = PREVIEW_BY[d.previewSource ?? ''] ?? 'The preview';
+    // shown under a "Bee's call" tag, so the sentence starts with who previewed it
+    if (g.agreement === 'bee-overrules') return g.pass ? `${who} heard a miss on your last line; Bee heard ${shortQuote(g.beeText)} and passed it.` : `${who} heard a pass on your last line; Bee heard ${shortQuote(g.beeText)}.`;
+    return g.pass ? 'Last line: passed. Bee heard it.' : `Last line: not yet. ${plainReason(g.failure) ?? 'So close'}.`;
+  }
+  if (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified') return 'Bee is still checking your last line. Its result lands here.';
+  if (d.stage === 'unverified') return 'Bee didn’t catch your last line, so it doesn’t count yet.';
+  return null;
 }
 
 /**

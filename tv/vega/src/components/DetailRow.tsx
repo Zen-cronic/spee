@@ -20,15 +20,15 @@ export function DetailRow({ tag, text, caveat, children, testID, first }: { tag:
 }
 
 export const DETAIL = StyleSheet.create({
-  text: { color: C.text, fontSize: T.small, lineHeight: 38, fontFamily: F.family },
-  dim: { color: C.dim, fontSize: T.small, lineHeight: 38, fontFamily: F.family },
+  text: { color: C.text, fontSize: T.small, lineHeight: 36, fontFamily: F.family },
+  dim: { color: C.dim, fontSize: T.small, lineHeight: 36, fontFamily: F.family },
 });
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: SP.m, borderTopWidth: 1, borderColor: C.rule },
+  row: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 14, borderTopWidth: 1, borderColor: C.rule },
   first: { borderTopWidth: 0 },
-  tag: { width: 300, color: C.dim, fontSize: T.small, lineHeight: 38, fontWeight: '700', fontFamily: F.family },
+  tag: { width: 300, color: C.dim, fontSize: T.small, lineHeight: 36, fontWeight: '700', fontFamily: F.family },
   body: { flex: 1 },
-  text: { color: C.text, fontSize: T.small, lineHeight: 38, fontFamily: F.family },
-  caveat: { color: C.faint, fontSize: T.label, lineHeight: 32, fontFamily: F.family },
+  text: { color: C.text, fontSize: T.small, lineHeight: 36, fontFamily: F.family },
+  caveat: { color: C.faint, fontSize: T.label, lineHeight: 30, fontFamily: F.family },
 });

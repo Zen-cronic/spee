@@ -2,9 +2,12 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { SettingChip } from '../components/SettingChip';
 import type { Recap } from '../contract';
 import { useDebug } from '../debug';
-import { curly, fmt1, fmtInt, fmtMs, fmtPct, habitTitle } from '../mirror/format';
+import { curly, fmt1, fmtInt, fmtMs, fmtPct, habitTitle, recapNudgeLine } from '../mirror/format';
 import { useEnter } from '../motion';
-import { C, F, R, SP, T } from '../theme';
+import { C, F, R, SAFE, SP, T } from '../theme';
+
+/** The screen's body on the 1920x1080 stage: below the tab bar (76) and its 28 px gap, above the data label (36 + 20). */
+const BODY = { top: SAFE.y + 76 + 28, bottom: SAFE.y + 36 + 20 };
 
 const VERDICT: Record<string, { word: string; bg: string; ink: string }> = {
   better: { word: 'Fewer', bg: C.lime, ink: C.limeInk },
@@ -21,7 +24,11 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
   const debug = useDebug();
   const enter = useEnter(recap.id, 40, 360);
   const m = recap.metrics;
-  const wrist = recap.delivery.wrist === 'scheduled' ? 'Also sent to your wrist.' : recap.delivery.wrist === 'replay' ? 'Sent to your wrist (replay).' : null;
+  // what reached the wrist: the hub sets alarms, it cannot see the Watch, so never "buzzed"
+  // (a replay says so in the footer's "Bee replay (demo)")
+  const wrist = recap.delivery.wrist === 'scheduled' || recap.delivery.wrist === 'replay' ? 'recap set as a wrist alarm' : null;
+  const nudges = recapNudgeLine(recap.nudges);
+  const ambient = [nudges, wrist].filter(Boolean).join(' · ');
   return (
     <View style={styles.scrim} testID="recap-overlay">
       <Animated.View style={[styles.card, enter]}>
@@ -63,7 +70,16 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
             </View>
           ) : null}
         </View>
-        <Text style={styles.foot}>{[wrist, recap.setting ? 'Right changes the setting' : null, 'OK or Back to close'].filter(Boolean).join('   ·   ')}</Text>
+        <View style={styles.footRow}>
+          {ambient ? (
+            <View style={styles.ambient} testID="recap-wrist">
+              <View style={styles.ambientDot} />
+              <Text style={styles.ambientText} numberOfLines={1}>{ambient.replace(/^./, (c) => c.toUpperCase())}</Text>
+            </View>
+          ) : null}
+          <View style={{ flex: 1 }} />
+          <Text style={styles.foot} numberOfLines={1}>{[recap.setting ? 'Right changes the setting' : null, 'OK or Back to close'].filter(Boolean).join(' · ')}</Text>
+        </View>
         {debug ? <Text style={styles.debug}>{`${m.wearerWords} words · longest turn ${fmtMs(m.longestMonologueMs)} · nudges ${recap.nudges.sent} sent, ${recap.nudges.skipped} held · phrasing ${recap.phrasing} · wrist ${recap.delivery.wrist}${recap.replay ? ' · replay' : ''}`}</Text> : null}
       </Animated.View>
     </View>
@@ -80,18 +96,20 @@ function Metric({ big, label }: { big: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,10,9,0.86)', alignItems: 'center', justifyContent: 'center' },
-  card: { width: 1560, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
+  // over the screen's body only: the tabs stay readable above it and the data label below it, and
+  // no word of the screen under it shows cut at its edges (the sheet is the content width)
+  scrim: { position: 'absolute', left: 0, right: 0, top: BODY.top, bottom: BODY.bottom, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
+  card: { width: 1920 - SAFE.x * 2, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.l },
   kickerRow: { flexDirection: 'row', alignItems: 'center' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   headline: { color: C.ink, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.s, fontFamily: F.family },
-  body: { flexDirection: 'row', marginTop: SP.xl },
+  body: { flexDirection: 'row', marginTop: SP.l },
   left: { flex: 1, marginRight: SP.xxl },
-  metrics: { flexDirection: 'row', marginBottom: SP.l },
+  metrics: { flexDirection: 'row', marginBottom: SP.m },
   metric: { flex: 1 },
-  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', fontFamily: F.family },
+  metricBig: { color: C.ink, fontSize: 104, lineHeight: 116, fontWeight: '700', fontFamily: F.family },
   metricLabel: { color: C.inkDim, fontSize: T.body, fontFamily: F.family },
-  habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
+  habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
   habitLabel: { flex: 1, color: C.ink, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   habitNum: { color: C.inkDim, fontSize: T.body, marginRight: SP.l, fontFamily: F.family },
   pill: { borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, width: 150, alignItems: 'center' },
@@ -102,6 +120,10 @@ const styles = StyleSheet.create({
   tryBlock: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l, marginTop: SP.l },
   tryKicker: { color: C.lime, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
   rephrase: { color: C.lime, fontSize: T.h2, lineHeight: 56, fontWeight: '700', letterSpacing: -0.5, marginTop: SP.xs, fontFamily: F.family },
-  foot: { color: C.inkFaint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
+  footRow: { flexDirection: 'row', alignItems: 'center', marginTop: SP.m },
+  ambient: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  ambientDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.coral, marginRight: SP.s },
+  ambientText: { flexShrink: 1, color: C.inkDim, fontSize: T.label, fontFamily: F.family },
+  foot: { color: C.inkFaint, fontSize: T.label, marginLeft: SP.l, fontFamily: F.family },
   debug: { color: C.inkFaint, fontSize: 20, marginTop: SP.xs, fontFamily: F.mono },
 });

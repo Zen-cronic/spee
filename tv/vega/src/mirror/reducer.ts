@@ -160,6 +160,20 @@ export function drillSteps(d: Pick<DrillState, 'stage' | 'provisional' | 'verifi
   };
 }
 
+/**
+ * What Live's drill panel shows: no line yet, a line to say, Bee checking, the result, or the
+ * round over (the session ended: its tally, with the last line's result kept beside it, and a
+ * verdict Bee settles after the end still lands there).
+ */
+export type DrillPhase = 'idle' | 'line' | 'checking' | 'result' | 'over';
+export function drillPhase(d: Pick<DrillState, 'card' | 'stage' | 'summary'>): DrillPhase {
+  if (d.summary) return 'over';
+  if (!d.card) return 'idle';
+  if (d.stage === 'graded' || d.stage === 'unverified') return 'result';
+  if (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified') return 'checking';
+  return 'line';
+}
+
 const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });
 const emptyPractice = (): PracticeSlice => ({ takeId: null, from: null, latest: null, history: [], caption: null, lastFrameAt: null, frames: 0, summary: null });
 

@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { InstrumentResponse, SettingsResponse, TransferHabit, TransferResponse } from '../contract';
 import { BySettingLine } from '../components/BySetting';
 import { CaptionsLine } from '../components/CaptionsLine';
-import { DetailRow } from '../components/DetailRow';
+import { DETAIL, DetailRow } from '../components/DetailRow';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
 import { FocusButton } from '../focus';
-import { fmtDate, fmtWords, habitTitle, transferRates, transferTitle, verdictWords } from '../mirror/format';
+import { AFTER_WINDOW, BEFORE_WINDOW, beeMemoryLine, habitPill, habitRole, habitTitle, planLine, transferRates, transferTitle, type BeeMemoryIn } from '../mirror/format';
 import { C, F, habitHue, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -20,7 +20,7 @@ import { Empty } from './WeekView';
  * Everything secondary (the plan, the first signal, meeting captions, by setting) sits behind one
  * Details button (Down from the tabs, then OK), each row with its own caveat.
  */
-export function TransferView({ transfer, captions, settings }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null }; settings?: SettingsResponse | null }) {
+export function TransferView({ transfer, captions, settings, memory }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null }; settings?: SettingsResponse | null; memory?: BeeMemoryIn | null }) {
   const debug = useDebug();
   const [details, setDetails] = useState(false);
   if (!transfer) return <Empty text="Loading your progress…" />;
@@ -39,10 +39,11 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
       </View>
       {details ? (
         <View style={styles.details} testID="transfer-details">
-          <DetailRow first tag="The plan" text={`Set ${fmtDate(transfer.prereg.registeredAt)}, before you first practised. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words each side and a clear gap.`} />
+          <PlanRow transfer={transfer} />
           <FirstSignalLines signals={transfer.firstSignal} />
           <CaptionsLine all={captions?.all ?? null} instrument={captions?.instrument ?? null} />
           <BySettingLine line={settings?.line} />
+          <BeeMemoryRow memory={memory ?? null} />
         </View>
       ) : (
         <View style={styles.cards}>
@@ -60,31 +61,56 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
   );
 }
 
+/** The plan: a two-tier pilot, its rule for a change, and the conversations counted per phase. */
+function PlanRow({ transfer }: { transfer: TransferResponse }) {
+  const p = planLine(transfer);
+  return (
+    <DetailRow first testID="plan" tag="The plan" text={p.text} caveat={p.caveat}>
+      <Text style={DETAIL.dim} numberOfLines={1} testID="plan-points">{p.points}</Text>
+    </DetailRow>
+  );
+}
+
+/** Bee memory, only when the hub reports it on: the coach's goal fact in Bee and Bee's counts. */
+function BeeMemoryRow({ memory }: { memory: BeeMemoryIn | null }) {
+  const m = beeMemoryLine(memory);
+  if (!m) return null;
+  return (
+    <DetailRow testID="bee-memory" tag="Bee memory" text={m.text} caveat={[m.counts, m.caveat].filter(Boolean).join(' · ')} />
+  );
+}
+
 function HabitCard({ h, minWords, last }: { h: TransferHabit; minWords: number; last: boolean }) {
-  const drilled = h.role === 'drilled';
   const good = h.verdict === 'dropped';
   const bad = h.verdict === 'rose';
   const hue = habitHue(h.habit);
   const r = transferRates(h, minWords);
+  const pill = habitPill(h);
   return (
     <View style={[styles.card, { backgroundColor: hue.tint }, last && { marginRight: 0 }]} testID={`transfer-${h.habit}`}>
       <View style={[styles.band, { backgroundColor: hue.hue }]} />
       <Text style={styles.habit} numberOfLines={1}>{habitTitle(h.habit, h.label)}</Text>
-      <Text style={styles.role}>{drilled ? 'Practised' : 'Not practised'}</Text>
+      <Text style={styles.role}>{habitRole(h)}</Text>
       <View style={styles.nums}>
-        <View>
+        <View style={styles.beforeCol}>
           <Text style={[styles.before, !r.before && styles.none]}>{r.before ?? '–'}</Text>
-          <Text style={styles.numLabel}>before</Text>
         </View>
         <Text style={styles.arrow}>→</Text>
         <View>
           {/* no number yet: a short dash at the before numeral's size and baseline, never a bar the width of "0.0" */}
-          <Text style={[styles.after, r.after ? { color: hue.hue } : styles.afterNone]}>{r.after ?? '–'}</Text>
-          <Text style={styles.numLabel}>now</Text>
+          {/* the outcome sets its weight: the habit's hue only for a drop, a quiet numeral for anything else */}
+          <Text style={[styles.after, r.after ? (good ? { color: hue.hue } : styles.afterQuiet) : styles.afterNone]}>{r.after ?? '–'}</Text>
         </View>
       </View>
-      <View testID={`verdict-${h.habit}`} style={[styles.pill, good ? styles.pillGood : bad ? styles.pillBad : styles.pillWait]}>
-        <Text style={[styles.pillText, { color: good ? C.limeInk : bad ? C.coralInk : C.text }]}>{verdictWords(h)}</Text>
+      {/* every number says its window: the before column is fixed, so the labels line up under their numbers */}
+      <View style={styles.numLabels}>
+        <Text style={[styles.numLabel, styles.beforeCol]} numberOfLines={2}>{BEFORE_WINDOW}</Text>
+        <View style={styles.arrowGap} />
+        <Text style={styles.numLabel} numberOfLines={1}>{AFTER_WINDOW}</Text>
+      </View>
+      {/* no pill on a habit still to practise: an empty slot of the same size keeps the cards' numbers level */}
+      <View testID={`verdict-${h.habit}`} style={[styles.pill, good ? styles.pillGood : bad ? styles.pillBad : styles.pillWait, pill === null && styles.pillNone]}>
+        <Text style={[styles.pillText, { color: good ? C.limeInk : bad ? C.coralInk : C.text }]}>{pill ?? ' '}</Text>
       </View>
     </View>
   );
@@ -101,19 +127,25 @@ const styles = StyleSheet.create({
   band: { position: 'absolute', left: 0, right: 0, top: 0, height: 10 },
   habit: { color: C.text, fontSize: T.h2, fontWeight: '700', fontFamily: F.family },
   role: { color: C.dim, fontSize: T.body, marginTop: 4, fontFamily: F.family },
-  nums: { flexDirection: 'row', alignItems: 'flex-end', marginTop: SP.xl },
+  // one row height whatever the numeral's size, so the cards' titles stay level
+  nums: { flexDirection: 'row', alignItems: 'flex-end', minHeight: 156, marginTop: SP.xl },
   // numerals: no negative letter spacing (Vega draws a sliver beside the first glyph)
   before: { color: C.dim, fontSize: 84, lineHeight: 96, fontWeight: '600', fontFamily: F.family },
+  beforeCol: { width: 170 },
+  numLabels: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 2 },
+  arrowGap: { width: 56 + SP.m * 2 },
   none: { color: C.faint },
-  arrow: { color: C.faint, fontSize: 56, marginHorizontal: SP.m, marginBottom: 44, fontFamily: F.family },
+  arrow: { width: 56, textAlign: 'center', color: C.faint, fontSize: 56, marginHorizontal: SP.m, marginBottom: 14, fontFamily: F.family },
   after: { fontSize: 148, lineHeight: 156, fontWeight: '700', fontFamily: F.family },
   afterNone: { color: C.faint, fontSize: 84, lineHeight: 96, minWidth: 120 },
-  numLabel: { color: C.dim, fontSize: T.label, fontFamily: F.family },
+  afterQuiet: { color: C.text, fontSize: 112, lineHeight: 124 },
+  numLabel: { color: C.dim, fontSize: T.label, lineHeight: 30, fontFamily: F.family },
   pill: { alignSelf: 'flex-start', borderRadius: R.pill, paddingHorizontal: SP.l, paddingVertical: SP.s, marginTop: SP.l },
   pillGood: { backgroundColor: C.lime },
   pillBad: { backgroundColor: C.coral },
   // undecided (needs more speech, not practised yet, no change): a quiet outlined pill, never a verdict colour
   pillWait: { backgroundColor: 'rgba(255,240,220,0.08)', borderWidth: 2, borderColor: 'rgba(255,240,220,0.28)', paddingVertical: SP.s - 2 },
+  pillNone: { opacity: 0 },
   pillText: { fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   details: { flex: 1, marginTop: SP.l, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xl, paddingVertical: SP.m },
   // a small inset: the focused button grows a little and must not touch the clip edge

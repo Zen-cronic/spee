@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { BridgeClient } from 'tv-voice-bridge';
 import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, StatsResponse, TransferResponse } from '../contract';
-import { nextSetting } from './format';
+import { nextSetting, type BeeMemoryIn } from './format';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
 import { createSettingSender } from './settingSender';
 
@@ -49,6 +49,8 @@ export function useMirror(cfg: MirrorConfig) {
   // Secondary, labelled: the same before/after with meeting captions, and the Bee-vs-captions check.
   const [captions, setCaptions] = useState<{ all: TransferResponse | null; instrument: InstrumentResponse | null }>({ all: null, instrument: null });
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  // Bee memory (GET /api/coach/facts): the coach's goal fact in Bee and Bee's counts; null hides the row
+  const [memory, setMemory] = useState<BeeMemoryIn | null>(null);
   const [rttMs, setRttMs] = useState<number | null>(null);
   const clientRef = useRef<BridgeClient | null>(null);
   const meterBuf = useRef<PracticeMeters[]>([]);
@@ -106,6 +108,8 @@ export function useMirror(cfg: MirrorConfig) {
     void Promise.all([getJson<TransferResponse>(`${cfg.httpBase}/api/transfer?source=all`), getJson<InstrumentResponse>(`${cfg.httpBase}/api/instrument`)]).then(([all, instrument]) => alive && setCaptions({ all, instrument }));
     // the per-setting view: secondary, so an older hub without it just leaves the strip hidden
     void getJson<SettingsResponse>(`${cfg.httpBase}/api/settings`).then((r) => alive && r && setSettings(r));
+    // optional too: a hub without it (404), or with it off, leaves the Bee memory row hidden
+    void getJson<BeeMemoryIn>(`${cfg.httpBase}/api/coach/facts`).then((r) => alive && setMemory(r && typeof r.enabled === 'boolean' ? r : null));
     return () => {
       alive = false;
     };
@@ -168,7 +172,7 @@ export function useMirror(cfg: MirrorConfig) {
 
   const show = useCallback((view: ScreenView) => dispatch({ type: 'show', view }), []);
   const dismissRecap = useCallback(() => dispatch({ type: 'dismissRecap' }), []);
-  return { state, status, code, joinUrl, mics, partial, stats, transfer, captions, settings, rttMs, show, dismissRecap, cycleSetting };
+  return { state, status, code, joinUrl, mics, partial, stats, transfer, captions, settings, memory, rttMs, show, dismissRecap, cycleSetting };
 }
 
 export type Mirror = ReturnType<typeof useMirror>;
