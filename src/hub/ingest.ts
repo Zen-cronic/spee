@@ -24,7 +24,7 @@
 // waits a growing backoff before it is tried again, and the list poll takes the newest first, so a
 // few that always fail never starve a newer one. A conversation fetched before Bee has labelled its
 // final transcript (realtime only, or no wearer line yet) is not stored: it is fetched again on a
-// later event or poll, a bounded number of times. A failure is logged once per kind, and nothing here
+// later event or poll, after its backoff, a bounded number of times. A failure is logged once per kind, and nothing here
 // ever throws into the hub.
 import { join } from "node:path";
 import type { ConversationDetail, ConversationSummary, Me } from "../bee/schemas.js";
@@ -188,10 +188,11 @@ export class LiveIngest {
     if (c.state === "CAPTURING" && c.endMs == null) return;
     if (this.done.has(id) || this.o.known().has(id)) return;
     const now = this.o.clock();
-    // A later COMPLETED event fetches a conversation that was not ready at once; one that failed
-    // waits for its backoff.
+    // A COMPLETED event fetches at once, unless the conversation failed or was not ready on an earlier
+    // fetch: then it waits for its backoff, so the burst of COMPLETED events Bee can send while it
+    // finishes (summary, title, labels) does not use up the not-ready tries in minutes.
     const r = this.retries.get(id);
-    const due = Math.max(c.state === COMPLETED ? now : now + this.t.recheckMs[0]!, r && r.failures ? r.retryAt : now);
+    const due = Math.max(c.state === COMPLETED ? now : now + this.t.recheckMs[0]!, r && (r.failures || r.notReady) ? r.retryAt : now);
     if (p) p.dueAt = Math.min(p.dueAt, due);
     else this.pending.set(c.id, { id: c.id, since: now, dueAt: due, tries: 0, deleted: false, failures: 0 });
   }

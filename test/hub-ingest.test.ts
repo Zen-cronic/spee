@@ -232,7 +232,7 @@ describe("live ingest: a finished conversation becomes a stats session", () => {
     expect(r.bee.calls.filter((c) => c === "get 302")).toHaveLength(INGEST_TIMINGS.deletedFailures);
   });
 
-  it("a conversation fetched before Bee labelled it is fetched again on the next COMPLETED event", async () => {
+  it("a conversation fetched before Bee labelled it is fetched again on a later COMPLETED event, after its backoff", async () => {
     const r = rig({ poll: false });
     const labelled = conversation(200, T_DRILL + 3600_000);
     // first fetch: COMPLETED, but only the realtime transcript (every speaker "Unknown")
@@ -243,10 +243,16 @@ describe("live ingest: a finished conversation becomes a stats session", () => {
     await r.ingest.tick();
     expect(r.bee.calls).toEqual(["get 200"]);
     expect(r.hub.sessions.map((s) => s.id)).not.toContain("200");
-    // Bee has the labelled final transcript now and says COMPLETED again
+    // Bee sends COMPLETED again and again while it finishes: none of them fetches before the backoff
+    for (let i = 0; i < 8; i++) {
+      r.advance(30_000);
+      r.hub.ingestBee(r.ended(200, "COMPLETED"));
+      await r.ingest.tick();
+    }
+    expect(r.bee.calls).toEqual(["get 200"]);
+    // Bee has the labelled final transcript now; the queued event fetches it once the backoff is over
     r.bee.add(labelled);
-    r.advance(60_000);
-    r.hub.ingestBee(r.ended(200, "COMPLETED"));
+    r.advance(INGEST_TIMINGS.retryBaseMs - 8 * 30_000);
     await r.ingest.tick();
     expect(r.bee.calls).toEqual(["get 200", "get 200"]);
     expect(hedges(r.hub).status).toBe("measured");
