@@ -111,11 +111,21 @@ describe("transfer", () => {
     expect(both.claim).toBe("dropped-control-dropped");
     expect(both.headline).toMatch(/the one you didn't practise dropped too/);
     // A drop with no control to compare (none registered, or the control was drilled).
-    expect(run({ prereg: { ...PREREG, control: [] } }).claim).toBe("dropped-control-unclear");
+    const none = run({ prereg: { ...PREREG, control: [] } });
+    expect(none.claim).toBe("dropped-control-unclear");
+    expect(none.headline).toMatch(/there's no habit you left unpractised to compare it with$/);
     const drilledControl = run({ drills: [drill, { at: drill.at, habitKeys: ["restart"] }] });
     expect(drilledControl.habits.find((h) => h.role === "control")!.verdict).toBe("invalid");
     expect(drilledControl.claim).toBe("dropped-control-unclear");
     expect(drilledControl.headline).not.toMatch(/stayed flat/);
+    expect(drilledControl.headline).toMatch(/the one you didn't practise was practised too, so it can't be compared$/);
+    // the control went up, with plenty of words: never "not enough speech"
+    const rising = sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(40).fill("So we we did it, and then we we really did.")]);
+    const up = run({ sessions: [before, rising] });
+    expect(up.habits.find((h) => h.role === "control")!.verdict).toBe("rose");
+    expect(up.claim).toBe("dropped-control-unclear");
+    expect(up.headline).toMatch(/the one you didn't practise went up$/);
+    expect(up.headline).not.toMatch(/enough speech/);
     expect(run({ drills: [] }).claim).toBe("not-drilled-yet");
     // Only "like" drilled so far (hedges not yet): its after period has started, and the headline says
     // so instead of "not drilled yet". It holds while "like" has too little data, as on the first day.

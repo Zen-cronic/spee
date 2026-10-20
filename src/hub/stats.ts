@@ -351,6 +351,15 @@ export function firstSignalSentence(fs: FirstSignal[]): string | null {
   return null;
 }
 
+// Why a drop can't be set against the control ("dropped-control-unclear"), in the headline's words:
+// no control registered, a control that was practised, one that went up, or too little speech.
+function unclearControl(control: TransferHabit[]): string {
+  if (!control.length) return "; there's no habit you left unpractised to compare it with";
+  if (control.some((h) => h.verdict === "invalid")) return "; the one you didn't practise was practised too, so it can't be compared";
+  if (control.some((h) => h.verdict === "rose")) return "; the one you didn't practise went up";
+  return "; there isn't enough speech yet to compare the one you didn't practise";
+}
+
 // What the headline claims, for a screen to word without re-deriving it from the verdicts:
 // "dropped-control-flat" only when a drilled habit dropped and every control showed no change
 // ("all-dropped-control-flat" when every drilled habit dropped); "dropped-control-dropped" when a
@@ -493,7 +502,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
   // Worded for a person; `claim` above is what it may say.
   const names = andList(dropped.map((h) => habitName(h.label)));
   const headline = dropped.length
-    ? `${names[0]!.toUpperCase()}${names.slice(1)} dropped in your real conversations since you started practising${flat ? "; the one you didn't practise stayed the same" : controlDropped ? "; but the one you didn't practise dropped too, so it may not be the practice" : "; there isn't enough speech yet to compare the one you didn't practise"}`
+    ? `${names[0]!.toUpperCase()}${names.slice(1)} dropped in your real conversations since you started practising${flat ? "; the one you didn't practise stayed the same" : controlDropped ? "; but the one you didn't practise dropped too, so it may not be the practice" : unclearControl(control)}`
     : claim === "partly-started"
       ? `Counting from your first practice: ${andList(started.map((h) => `${habitName(h.label)} since ${monthDay(localDate(h.cutoverAt!, opts.tz))}`))}; ${andList(notYet.map((h) => habitName(h.label)))} not practised yet`
       : claim === "not-drilled-yet"

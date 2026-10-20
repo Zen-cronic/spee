@@ -244,8 +244,12 @@ export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & 
       return { lead: dropped, rest: 'The one you didn’t practise stayed flat.' };
     case 'dropped-control-dropped':
       return { lead: dropped, rest: 'So did the one you didn’t practise: not proof.' };
-    case 'dropped-control-unclear':
-      return { lead: dropped, rest: 'The unpractised one needs more speech.' };
+    case 'dropped-control-unclear': {
+      // the hub's reason, from the control's own verdict: none registered, practised, went up, or too little speech
+      const control = (t.habits ?? []).filter((h) => h.role === 'control');
+      const rest = t.habits && !control.length ? 'There’s no unpractised one to compare.' : control.some((h) => h.verdict === 'invalid') ? 'The unpractised one was practised too.' : control.some((h) => h.verdict === 'rose') ? 'The unpractised one went up.' : 'The unpractised one needs more speech.';
+      return { lead: dropped, rest };
+    }
     case 'partly-started': {
       // nothing dropped yet: some practised habits are measured from their first practice, others not practised yet
       const drilled = (t.habits ?? []).filter((h) => h.role === 'drilled');
