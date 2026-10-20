@@ -180,7 +180,7 @@ describe("screens", () => {
     expect(s.steps.map((x) => [x.label, x.state, x.who])).toEqual([
       ["You said it", "current", "you"],
       ["Checked by Bee", "todo", "bee"],
-      ["Graded", "todo", "you"],
+      ["Result", "todo", "you"],
     ]);
   });
   it("checking: the tracker on step 2 and Bee is checking", () => {

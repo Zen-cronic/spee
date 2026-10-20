@@ -213,7 +213,7 @@
       ]
     },
     "Tracker": {
-      "description": "Three steps: You said it, Checked by Bee, Graded. Each item is {label, state: done|current|todo, who: you|bee}; Bee's step uses @colorBee.",
+      "description": "Three steps: You said it, Checked by Bee, Result. Each item is {label, state: done|current|todo, who: you|bee}; Bee's step uses @colorBee.",
       "parameters": [
         {
           "name": "steps",

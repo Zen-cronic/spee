@@ -73,7 +73,7 @@ export const SCREEN_TEXT = {
   thenAsk: "Then ask: how did I do?",
   checking: "Bee is checking…",
   checkedByBee: "Checked by Bee",
-  steps: ["You said it", "Checked by Bee", "Graded"],
+  steps: ["You said it", "Checked by Bee", "Result"], // the same words as the TV's Live tracker (test/claims.test.ts)
   passed: "Passed.",
   notYet: "Not yet.",
   notCounted: "Not counted.",

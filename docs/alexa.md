@@ -82,7 +82,7 @@ On a device with a screen (Fire TV, Echo Show), Alexa shows its own card with ju
 
   | Screen | When | What it shows (datasource `payload.screen`) |
   |---|---|---|
-  | `drill` | Launch, "quiz me", next | "Say this:" (or "Next, say:") and the line on the paper card (`kicker`, `sentence`); the tracker on step 1 (`steps`: You said it, Checked by Bee, Graded); "Then ask: how did I do?" (`hint`) |
+  | `drill` | Launch, "quiz me", next | "Say this:" (or "Next, say:") and the line on the paper card (`kicker`, `sentence`); the tracker on step 1 (`steps`: You said it, Checked by Bee, Result, the same words as the TV's Live tracker); "Then ask: how did I do?" (`hint`) |
   | `checking` | after the attempt, and an early "how did I do?" | the same layout; the tracker on step 2; "Bee is checking…" (`status`). The open line comes from `GET /api/session` (one more loopback call, made only for a screen) |
   | `verdict` | Bee's verdict | "Passed." in lime, "Not yet." in coral, or "Not counted." (`headline`, `tone`); the reason in the TV's own words (`reason`: `plainReason(gradeFailure(grade))`, the same as the TV's practice screen); the "Checked by Bee" tag (`checked`, `tag`); the next line or the same line again (`kicker`, `sentence`), or what to do (`hint`) |
   | `progress` | "how am I doing" | one number (`hero`: the week's top habit per 100 words, else the lines due, else the week's words) with its caption (`heroCaption`), the first sentence of the coach narration (`line`), and "Open Speaking Mirror on this TV for details" (`footerTv`; on a hub, `footerHub`: "...on your TV...") |
