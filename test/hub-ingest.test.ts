@@ -426,6 +426,18 @@ describe("live ingest: failures never stop the hub", () => {
     expect(gets.length).toBeLessThan(poison.length * 6);
   });
 
+  it("a queued conversation the hub already has by then is not fetched: no CLI call, and the entry goes", async () => {
+    const r = rig({ poll: false });
+    r.hub.ingestBee(r.ended(200, "PROCESSING"));
+    expect(r.ingest.status().pending).toBe(1);
+    // the hub gets it another way before the re-fetch (an earlier ingest, an offline file)
+    r.hub.addSessions([{ id: "200", kind: "conversation", startMs: T_DRILL + 3600_000, lines: [] }]);
+    r.advance(INGEST_TIMINGS.recheckMs[0]!);
+    await r.ingest.tick();
+    expect(r.bee.calls).toEqual([]);
+    expect(r.ingest.status().pending).toBe(0);
+  });
+
   it("a write that fails is logged once; the session still counts in memory", async () => {
     const r = rig();
     writeFileSync(join(r.dir, "live"), "a file where the live/ directory should be");

@@ -293,6 +293,11 @@ export class LiveIngest {
 
   private async fetch(id: number, via: "stream" | "poll") {
     const p = this.pending.get(id);
+    // Already in (the list poll, an offline file): no CLI call, and the stream's entry goes.
+    if (this.done.has(String(id)) || this.o.known().has(String(id))) {
+      this.pending.delete(id);
+      return;
+    }
     let c: ConversationDetail | null;
     try {
       c = await this.call("get", () => this.o.src.conversation(id), `get:${id}`);
