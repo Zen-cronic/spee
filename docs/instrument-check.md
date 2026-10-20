@@ -11,7 +11,7 @@ Bee is the input of record for the pre-registered check: it counts Bee conversat
 
 ## Result on real data (one meeting: the 2026-10-19 weekly stand-up)
 
-These figures came from the first version of the check, which paired the meeting with the nearest-starting Bee conversation and counted all of it. Rerun the check to get the figures cut to the meeting's time.
+Rechecked on 2026-10-20 with the overlap pairing, which cuts Bee's lines to the meeting's start and end: the counts are unchanged, because the Bee recording and the meeting covered the same span. Starting over (the control) read 4 in captions and 9 in Bee (0.59 against 1.29 per 100; intervals overlap).
 
 | One meeting | Captions | Bee |
 |---|---|---|
@@ -32,7 +32,7 @@ Counts and 95% intervals behind two of those rows (one meeting):
 ## What it means
 
 - On this one meeting, unsure words came out alike (11 against 11) and filler "like" nearly alike (5.47 against 5.44 per 100). With counts this small, the intervals are wide (about half the rate either way), so that is consistent with captions being a fair second source for the practised habits, not proof of it.
-- On this one meeting, captions showed fewer "um" and "uh" (4.7 against 6.7 per 100), but the intervals overlap, so one meeting does not show a real gap. If there is one, it could be captions leaving fillers out, or Bee adding some (another voice labelled as yours, or talk outside the meeting, which the first version did not cut). A before and after that mixed the two could still show a drop in filler words that is only the transcriber, which is why the pre-registration keeps Bee as the one instrument and captions appear only with `source=all`.
+- On this one meeting, captions showed fewer "um" and "uh" (4.7 against 6.7 per 100), but the intervals overlap, so one meeting does not show a real gap. If there is one, it could be captions leaving fillers out, or Bee adding some (another voice labelled as yours). A before and after that mixed the two could still show a drop in filler words that is only the transcriber, which is why the pre-registration keeps Bee as the one instrument and captions appear only with `source=all`.
 - With `source=all`, a meeting that Bee also heard counts once, from Bee: its caption session is left out, so the same speech is not counted twice.
 - Rerun the check whenever another meeting is both captioned and heard by Bee.
 
