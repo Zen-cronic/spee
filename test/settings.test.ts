@@ -151,6 +151,19 @@ describe("per-setting view", () => {
     expect(book.tagSession("w2")).toMatchObject({ setting: "work", source: "auto" });
   });
 
+  it("a stats session is tagged with its end too, as its live recap is (calendar overlap)", () => {
+    const hub = smallHub();
+    // Bee joined desk talk and a calendar meeting into one conversation, 13:30-14:40; event 14:00-14:30
+    const s0 = at("2026-10-20T13:30:00-04:00");
+    const e0 = at("2026-10-20T14:40:00-04:00");
+    hub.sessions = [...hub.sessions, { id: "j1", kind: "conversation", startMs: s0, endMs: e0, lines: [], speakers: 2, synthetic: true }];
+    const book = new SettingsBook({ hub, stateDir: null });
+    book.noteCalendar([{ startsAt: at("2026-10-20T14:00:00-04:00"), endsAt: at("2026-10-20T14:30:00-04:00") }]);
+    const live = book.tagConversation({ conversationId: "uuid-j1", startedAt: s0, endedAt: e0, otherLines: 3 });
+    expect(live.setting).toBe("meeting");
+    expect(book.tagSession("j1")).toMatchObject({ setting: "meeting", reasons: ["calendar"] });
+  });
+
   it("the pre-registered transfer is identical with and without settings data", () => {
     const hub = smallHub();
     const before = JSON.stringify(hub.transfer());

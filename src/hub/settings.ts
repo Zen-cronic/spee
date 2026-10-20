@@ -77,7 +77,7 @@ export function localClock(ms: number, tz?: string): { day: number; min: number 
 export interface TagInput {
   kind: "conversation" | "meeting" | "voice_note";
   startMs: number;
-  endMs?: number | null; // known for a live conversation; a stats session has only its start
+  endMs?: number | null; // a live conversation's end, or a stats session's (Bee's end_time) when known
   speakers?: number | null; // distinct speakers, the wearer included
   pairedWithCaptions?: boolean;
 }
@@ -256,8 +256,9 @@ export class SettingsBook {
     const paired = new Set([...mp.pairs, ...mp.skipped].flatMap((p) => p.bee));
     const tags = new Map<string, SettingTag>();
     for (const s of ss) {
-      const o = this.overrideFor(s.id, s.startMs);
-      tags.set(s.id, o ? this.youTag(o) : autoSetting({ kind: s.kind, startMs: s.startMs, speakers: s.speakers, pairedWithCaptions: paired.has(s.id) }, this.tagOpts()));
+      // The end too, as for a live conversation (autoForConversation), so both tag it the same way.
+      const o = this.overrideFor(s.id, s.startMs, s.endMs);
+      tags.set(s.id, o ? this.youTag(o) : autoSetting({ kind: s.kind, startMs: s.startMs, endMs: s.endMs, speakers: s.speakers, pairedWithCaptions: paired.has(s.id) }, this.tagOpts()));
     }
     this.cache = { sessions: ss, version: this.version, tags };
     return tags;
