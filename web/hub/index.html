@@ -19,6 +19,7 @@
         --dim-on-dark: #abaaa2;
         --lime: #d7f26a;
         --lime-ink: #1a2006;
+        --lime-on-light: #55650a; /* the mark's lime on the light page (olive; the TV's C.limeOnLight) */
         --bee: #8ccfff;
         --bee-on-light: #1a6aab;
         --warn: #c9a13a;
@@ -46,13 +47,19 @@
         font-weight: 700;
         font-size: 17px;
       }
-      /* the mark, the same on every surface (the TV too): a lime disc with an ink core */
+      /* the mark, the same on every surface (the TV too): two voices, your bubble and its reflection
+         (checked by Bee) across a mirror bar; the 32 px small master in the light tone */
       .mark {
         flex: none;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: radial-gradient(circle, var(--ink) 0 3.4px, var(--lime) 3.9px);
+        display: block;
+        width: 32px;
+        height: 32px;
+      }
+      .mark .you {
+        fill: var(--lime-on-light);
+      }
+      .mark .bee {
+        fill: var(--bee-on-light);
       }
       header .where {
         margin-left: auto;
@@ -235,7 +242,7 @@
     </style>
   </head>
   <body>
-    <header><span class="mark"></span>Speaking Mirror <span class="where">Running on this machine</span></header>
+    <header><svg class="mark" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path class="you" d="M5 8H7A5 5 0 0 1 12 13V18H5A5 5 0 0 1 0 13V13A5 5 0 0 1 5 8Z" /><path class="you" d="M16 6H16A2 2 0 0 1 18 8V24A2 2 0 0 1 16 26H16A2 2 0 0 1 14 24V8A2 2 0 0 1 16 6Z" /><path class="bee" d="M20 14H27A5 5 0 0 1 32 19V19A5 5 0 0 1 27 24H25A5 5 0 0 1 20 19V14Z" /></svg>Speaking Mirror <span class="where">Running on this machine</span></header>
     <main>
       <div class="hero">
         <h1>Your speaking coach is ready.</h1>

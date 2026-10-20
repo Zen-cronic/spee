@@ -13,6 +13,7 @@
   --on-dark-dim: #abaaa2;
   --lime: #d7f26a;
   --lime-ink: #1a2006;
+  --lime-on-light: #55650a; /* the mark's lime on the light page (olive; the TV's C.limeOnLight) */
   --bee: #8ccfff; /* on dark (the event log) */
   --bee-ink: #0c2233;
   --bee-on-light: #1a6aab; /* a bee mark on the light page */
@@ -50,13 +51,19 @@ h1 {
   gap: 10px;
   white-space: nowrap;
 }
-/* the mark, the same on every surface (the TV too): a lime disc with an ink core */
+/* the mark, the same on every surface (the TV too): two voices, your bubble and its reflection
+   (checked by Bee) across a mirror bar; the 32 px small master in the light tone */
 .mark {
   flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--ink) 0 3.4px, var(--lime) 3.9px);
+  display: block;
+  width: 32px;
+  height: 32px;
+}
+.mark .you {
+  fill: var(--lime-on-light);
+}
+.mark .bee {
+  fill: var(--bee-on-light);
 }
 .sub {
   color: var(--ink-dim);

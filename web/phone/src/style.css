@@ -15,10 +15,12 @@ main { max-width: 520px; margin: 0 auto; padding: 14px 16px 40px; }
 p { margin: 8px 0 0; }
 h1 { font-size: 30px; line-height: 1.1; letter-spacing: -0.02em; margin: 12px 0 0; }
 
-/* Header: the shared mark (a lime disc with an ink core) and the wordmark */
+/* Header: the shared mark (two voices: your bubble and its reflection, checked by Bee, across a mirror bar; the 24 px small master on dark) and the wordmark */
 header { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 44px; margin-bottom: 8px; }
-.brand-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.mark { flex: none; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle, var(--ink) 0 3.4px, var(--lime) 3.9px); }
+.brand-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mark { flex: none; display: block; width: 24px; height: 24px; }
+.mark .you { fill: var(--lime); }
+.mark .bee { fill: var(--bee); }
 .brand { font-weight: 700; font-size: 17px; white-space: nowrap; }
 .pill { flex: none; font-size: 13px; padding: 6px 12px; border-radius: 999px; background: var(--surface); color: var(--dim); white-space: nowrap; }
 .pill::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); margin-right: 7px; vertical-align: 1px; }
