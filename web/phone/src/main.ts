@@ -9,7 +9,7 @@
 import { BridgeClient, normalizeCode, type IntentMsg } from "tv-voice-bridge";
 import type { CardView, HubState, PracticeSummary } from "../../../src/hub/contract.js";
 import { startCapture, captureSupported, type Capture } from "./audio.js";
-import { WORDMARK } from "./brand.js";
+import { PRODUCT_NAME } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
 import { dictation, listen, speechCtor, type Listener } from "./speech.js";
@@ -26,6 +26,7 @@ if (join.k) {
   history.replaceState(null, "", `${location.pathname}${q.toString() ? `?${q}` : ""}`);
 }
 const TAKE_MAX_MS = 120_000;
+const FLAG_WORD: Record<string, string> = { quiet: "too quiet", loud: "too loud", monotone: "a flat melody", fast: "fast", slow: "slow", "few-pauses": "few pauses" };
 
 let client: BridgeClient | null = null;
 let room: string | null = null;
@@ -49,9 +50,10 @@ function show(mode: Mode | "join") {
 // Drill
 
 function renderCard() {
-  $("card-kicker").textContent = card ? `DRILL · ${card.habit?.label ?? card.type}` : "NO CARD OPEN";
-  $("card-said").textContent = card?.said ?? "";
-  $("card-fix").textContent = card ? `Say: ${card.resay || card.fix}` : "Start a drill: the TV and Alexa follow along.";
+  // the TV's words: "Instead of “that thing”, say" over the line itself (no strike-through copy of it)
+  $("card-kicker").textContent = card ? (card.said ? `Instead of “${card.said}”, say` : "Say") : "No line open";
+  $("card-said").textContent = "";
+  $("card-fix").textContent = card ? card.resay || card.fix : "Tap Start, or say “Alexa, ask Speech Coach to quiz me”.";
 }
 
 const stages: string[] = [];
@@ -72,7 +74,9 @@ function onEvent(topic: string, p: Record<string, any>) {
     const h = p as unknown as HubState;
     card = h.openCard;
     renderCard();
-    $("foot").textContent = h.dataLabel && /synthetic/i.test(h.dataLabel) ? `${h.dataLabel}. Bee is the input of record.` : "Bee is the input of record: phone text is a provisional preview until Bee confirms it.";
+    const synthetic = !!h.dataLabel && /synthetic/i.test(h.dataLabel);
+    $("foot").textContent = synthetic ? `${h.dataLabel}. Bee checks every line you say; your phone’s text is only a preview.` : "Bee checks every line you say; your phone’s text is only a preview.";
+    $("foot").classList.toggle("synthetic", synthetic);
     return;
   }
   if (topic === "card.open") {
@@ -111,14 +115,23 @@ function onEvent(topic: string, p: Record<string, any>) {
     if (early.length > 20) early.shift();
     return;
   }
-  if (topic === "attempt.status") stage("wait", "Checking with Bee (stream timed out, asking the Bee CLI)…");
-  if (topic === "attempt.verified") stage(p.status === "verified" ? "bee" : "bad", p.status === "verified" ? `Verified by Bee (speaker ${p.speakerScore ?? "–"}, ${p.latencyMs ?? "–"} ms)` : `Not verified: ${p.reason}`);
+  if (topic === "attempt.status") stage("wait", "Still checking with Bee…");
+  if (topic === "attempt.verified") stage(p.status === "verified" ? "bee" : "bad", p.status === "verified" ? "Bee heard you" : "Bee didn’t catch that one. Say it again.");
   if (topic === "attempt.graded") {
     const a = p.attempt;
-    stage(a.final?.pass ? "ok" : "bad", `Graded from Bee: ${a.final?.pass ? "PASS" : "FAIL"}${a.agreement === "bee-overrules" ? " (Bee overrules the preview)" : ""}`);
+    stage(a.final?.pass ? "ok" : "bad", `${a.final?.pass ? "Passed" : "Not yet"}${a.agreement === "bee-overrules" ? ": Bee’s call, not the preview’s" : ""}`);
     const why = (a.final?.grade?.reasons ?? []).find((r: string) => r.startsWith("FAIL"));
-    if (why) stage("dim", why);
+    if (why) stage("dim", plainWhy(why));
   }
+}
+
+// The grader's first failed rule in plain words ("FAIL fillers: 1 filler (\"um\"); allowed 0" -> "Bee heard a filler word: “um”").
+function plainWhy(reason: string): string {
+  const m = /^FAIL (\w+):\s*(.*)$/.exec(reason);
+  if (!m) return reason;
+  const quoted = [...m[2]!.matchAll(/"([^"]+)"/g)].map((q) => `“${q[1]}”`).slice(0, 2).join(" and ");
+  const lead: Record<string, string> = { fillers: "Bee heard a filler word", habit: "The old habit was still there", content: "A few words were missing", required: "A key word was missing", nonempty: "Bee heard nothing" };
+  return lead[m[1]!] ? `${lead[m[1]!]}${quoted ? `: ${quoted}` : ""}` : m[2]!;
 }
 
 const ATTEMPT_TOPICS = new Set(["attempt.status", "attempt.verified", "attempt.graded"]);
@@ -129,13 +142,13 @@ function onIntent(m: IntentMsg) {
   const p = (m.payload ?? {}) as Record<string, any>;
   if (m.name === "attempt.provisional") {
     myAttempt = p.attemptId ?? null;
-    stage(p.provisionalPass ? "ok" : "bad", `Preview: ${p.provisionalPass ? "pass" : "fail"} (provisional)`, true);
-    stage("wait", "Waiting for Bee to hear you…");
+    stage("dim", `Your phone heard ${p.provisionalPass ? "a pass" : "a miss"} (only a preview)`, true);
+    stage("wait", "Checking with Bee…");
     const mine = early.filter(([, p]) => (p.attempt?.id ?? p.attemptId) === myAttempt);
     early.length = 0;
     for (const [topic, p] of mine) onEvent(topic, p);
-  } else if (m.name === "attempt.rejected") stage("bad", `Not sent: ${p.message ?? p.error ?? "open a card first"}`, true);
-  else if (m.name === "practice.summary") $("take-state").textContent = m.ok ? `The TV has the summary (event ${p.seq}).` : `The hub refused the summary: ${p.message ?? p.error}`;
+  } else if (m.name === "attempt.rejected") stage("bad", p.error === "no_open_card" || !(p.message ?? p.error) ? "No line is open yet. Tap Start first." : `Not sent: ${p.message ?? p.error}`, true);
+  else if (m.name === "practice.summary") $("take-state").textContent = m.ok ? "Your take is on the TV." : `The TV didn’t get your take: ${p.message ?? p.error}`;
 }
 
 function sendUtterance(text: string, speechEndAt: number) {
@@ -206,10 +219,10 @@ let take: Take | null = null;
 
 function renderMeters(f: MeterCore, caption: string | null) {
   $("meters").hidden = false;
-  $("m-vol").textContent = `${f.rmsDbfs.toFixed(0)} dBFS · ${f.band}`;
-  $("m-pitch").textContent = f.pitchHz ? `${Math.round(f.pitchHz)} Hz · ${f.pitchRangeSt.toFixed(1)} st${f.monotone ? " · flat" : ""}` : `– · ${f.pitchRangeSt.toFixed(1)} st`;
-  $("m-rate").textContent = f.wpm === null ? "–" : `${f.wpm} wpm`;
-  $("m-pause").textContent = `${f.pause.count}${f.pause.active ? " · pausing" : ""}`;
+  $("m-vol").textContent = f.band === "quiet" ? "A bit quiet" : f.band === "loud" ? "A bit loud" : "Good";
+  $("m-pitch").textContent = f.monotone ? "Flat" : `${f.pitchRangeSt.toFixed(1)} semitones`;
+  $("m-rate").textContent = f.wpm === null ? "–" : `${f.wpm} a minute`;
+  $("m-pause").textContent = `${f.pause.count}${f.pause.active ? " · now" : ""}`;
   $("m-caption").textContent = caption ?? "";
 }
 
@@ -256,7 +269,7 @@ async function startTake() {
     return;
   }
   if (!speechFirst) startSpeech();
-  $("take-state").textContent = `Recording nothing, metering everything. Mic at ${t.cap.sampleRate} Hz.${t.speechError ? ` Captions off (${t.speechError}).` : ""}`;
+  $("take-state").textContent = `Listening. Nothing is recorded.${t.speechError ? " Captions are off on this phone." : ""}`;
   t.timer = setTimeout(() => {
     if (take === t) void stopTake(); // never a newer take
   }, TAKE_MAX_MS);
@@ -279,10 +292,10 @@ async function stopTake() {
   client.sendApp("practice.summary", s, { track: true, startedAt: now() });
   const r = $("take-result");
   r.hidden = false;
-  r.innerHTML = `<div class="kicker">TAKE · ${(s.durationMs / 1000).toFixed(0)} s</div>
-    <div>${s.volume.meanDbfs} dBFS mean · pitch ${s.pitch.medianHz ?? "–"} Hz, range ${s.pitch.rangeSt} st · ${s.rate.wpm ?? "–"} wpm · ${s.pauses.count} pause${s.pauses.count === 1 ? "" : "s"}</div>
-    <div class="${s.flags.length ? "warn" : "dim"}">${s.flags.length ? `Flags: ${s.flags.join(", ")}` : "Nothing flagged."}</div>
-    <div class="dim small">Phone-measured and provisional.${words ? ` ${words} words recognized.` : " No words recognized (captions off or silent)."}</div>`;
+  r.innerHTML = `<div class="kicker">Take finished · ${(s.durationMs / 1000).toFixed(0)} s</div>
+    <div class="lead">${s.rate.wpm ?? "–"} words a minute · ${s.pitch.monotone ? "a flat melody" : "a lively melody"} · ${s.pauses.count} pause${s.pauses.count === 1 ? "" : "s"}</div>
+    <div class="${s.flags.length ? "warn" : "ok"}">${s.flags.length ? `To work on: ${esc(s.flags.map((f) => FLAG_WORD[f] ?? f).join(", "))}` : "Nice take."}</div>
+    <div class="dim small">Measured on this phone.${words ? ` ${words} words heard.` : ""}</div>`;
 }
 
 // Mic check
@@ -300,7 +313,7 @@ function renderCheck() {
   el.className = `card verdict ${pass ? "pass" : pending ? "wait" : "fail"}`;
   const howto = p1?.pass ? "Practice mode will show live captions with the meters." : p2?.pass ? "Works when the mic starts first: practice mode will use that order on this phone for this session." : p1 && p2 ? "Practice mode will still show the meters, without captions." : "Run part 2 as well.";
   const list = (p: MicPhase & MicVerdict | undefined, name: string) => (p ? `<li><b>${name}: ${p.pass ? "PASS" : "FAIL"}</b>${p.reasons.length ? ` (${esc(p.reasons.join("; "))})` : ` (${p.speechResults} speech results, mic span ${p.levelSpanDb.toFixed(0)} dB)`}</li>` : "");
-  el.innerHTML = `<div class="big-verdict">${pass ? "PASS" : pending ? "NOT YET" : "FAIL"}</div><div>${esc(howto)}</div><ul>${list(p1, "Part 1, speech then mic")}${list(p2, "Part 2, mic then speech")}</ul>`;
+  el.innerHTML = `<div class="big-verdict">${pass ? "Works" : pending ? "Part 2 next" : "Doesn’t work"}</div><div>${esc(howto)}</div><ul>${list(p1, "Part 1, speech then mic")}${list(p2, "Part 2, mic then speech")}</ul>`;
   if (p1 && !p1.pass && p2?.pass) speechFirst = false;
   $("check-copy").hidden = false;
   $("check-copy").onclick = () => void navigator.clipboard?.writeText(reportText(env, parts)).then(() => ($("check-state").textContent = "Copied."));
@@ -317,7 +330,7 @@ function setupCheck() {
     const i = parts.findIndex((p) => p.order === order);
     if (i >= 0) parts.splice(i, 1);
     parts.push(r);
-    $("check-state").textContent = `${order === "speech-then-mic" ? "Part 1" : "Part 2"} done: ${r.pass ? "PASS" : "FAIL"}.`;
+    $("check-state").textContent = `${order === "speech-then-mic" ? "Part 1" : "Part 2"} done: ${r.pass ? "it works" : "it didn’t work"}.`;
     $<HTMLButtonElement>("check-1").disabled = false;
     $<HTMLButtonElement>("check-2").disabled = false;
     btn.classList.remove("primary");
@@ -345,12 +358,12 @@ async function connect(code: string) {
   // The bridge client keeps retrying after a failed first connect, so a later `open` leaves the join view.
   client.on("open", () => {
     room = client?.code ?? code;
-    setConn(`paired · ${room}`, "ok");
+    setConn(`Paired · ${room}`, "ok");
     if (!$("join").hidden) show("drill");
   });
-  client.on("close", () => setConn("reconnecting…", "bad"));
+  client.on("close", () => setConn("Reconnecting…", "bad"));
   client.on("repair", () => {
-    setConn("TV gone · scan the new QR", "bad");
+    setConn("TV gone · scan its new code", "bad");
     client?.close();
     show("join");
   });
@@ -361,7 +374,7 @@ async function connect(code: string) {
     room = w.code;
     show("drill");
   } catch (err) {
-    setConn("not paired", "bad");
+    setConn("Not paired", "bad");
     show("join");
     $("join").insertAdjacentHTML("beforeend", `<p class="warn">${esc((err as Error).message)}. Check the code on the TV${location.protocol === "https:" ? " and use the TV's QR link (it carries the pair token)" : ""}.</p>`);
   }
@@ -369,7 +382,7 @@ async function connect(code: string) {
 
 function setup() {
   document.title = "Speaking Mirror";
-  document.querySelectorAll(".brand").forEach((el) => (el.textContent = WORDMARK));
+  document.querySelectorAll(".brand").forEach((el) => (el.textContent = PRODUCT_NAME));
   setupDrillVoice();
   setupCheck();
   renderCard();
@@ -394,7 +407,7 @@ function setup() {
   };
   if (join.code) void connect(normalizeCode(join.code));
   else {
-    setConn("not paired");
+    setConn("Not paired");
     show("join");
   }
 }

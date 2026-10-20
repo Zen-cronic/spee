@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <meta name="theme-color" content="#0b1430" />
+    <meta name="theme-color" content="#17130f" />
     <meta name="referrer" content="no-referrer" />
     <title>Speaking Mirror</title>
     <link rel="icon" href="data:," />
@@ -12,42 +12,42 @@
   <body>
     <main id="app">
       <header>
-        <div class="brand">SPEAKING MIRROR</div>
-        <div id="conn" class="pill">connecting…</div>
+        <div class="brand-row"><span class="mark" aria-hidden="true"></span><span class="brand">Speaking Mirror</span></div>
+        <div id="conn" class="pill">Connecting…</div>
       </header>
 
       <section id="join" hidden>
-        <h1>Join the mirror</h1>
-        <p class="dim">Enter the 4-character code on the TV, or scan its QR code.</p>
+        <h1>Pair with your TV</h1>
+        <p class="dim">Scan the QR code on the TV’s Pair phone tab, or enter its 4-character code.</p>
         <input id="code-input" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="HJ3H" />
         <button id="join-btn" class="primary">Join</button>
-        <p class="dim small">The mic check works without joining: <button id="check-only" class="link">open the mic check</button></p>
+        <p class="dim small">No TV handy? <button id="check-only" class="link">Check this phone’s mic</button></p>
       </section>
 
       <nav id="tabs" hidden>
-        <button data-mode="drill" class="on">Drill</button>
-        <button data-mode="practice">Practice</button>
+        <button data-mode="drill" class="on">Practice line</button>
+        <button data-mode="practice">Voice</button>
         <button data-mode="check">Mic check</button>
       </nav>
 
       <section id="drill" hidden>
         <div class="card">
-          <div class="kicker" id="card-kicker">NO CARD OPEN</div>
+          <div class="kicker" id="card-kicker">No line open</div>
           <div class="said" id="card-said"></div>
-          <div class="fix" id="card-fix">Start a drill: the TV and Alexa follow along.</div>
+          <div class="fix" id="card-fix">Tap Start, or say “Alexa, ask Speech Coach to quiz me”.</div>
         </div>
         <div class="row">
-          <button id="drill-start" class="primary">Start drill</button>
-          <button id="drill-next">Next card</button>
+          <button id="drill-start" class="primary">Start</button>
+          <button id="drill-next">Next line</button>
           <button id="drill-end" class="ghost">End</button>
         </div>
         <div class="card voice">
-          <button id="mic" class="mic" aria-label="Tap to talk">●</button>
+          <button id="mic" class="mic" aria-label="Tap to talk"><svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
           <div class="voice-side">
-            <div id="mic-state" class="dim">Tap and say the sentence. Bee grades what it heard.</div>
+            <div id="mic-state" class="dim">Tap the mic and say the line. Bee checks what it heard.</div>
             <div id="interim" class="interim"></div>
             <form id="text-form">
-              <input id="utterance" placeholder="…or type it" autocomplete="off" />
+              <input id="utterance" placeholder="Or type it" autocomplete="off" aria-label="Type the line" />
               <button class="ghost" type="submit">Send</button>
             </form>
           </div>
@@ -57,15 +57,16 @@
 
       <section id="practice" hidden>
         <div class="card">
-          <div class="kicker">PRACTICE · ON THIS PHONE</div>
-          <p class="dim">Talk for about 30 seconds. The phone measures volume, pitch, rate and pauses and sends only the numbers to the TV. Nothing is recorded.</p>
+          <div class="kicker">Voice practice</div>
+          <p class="lead">Talk for about 30 seconds and watch the TV.</p>
+          <p class="dim">Your phone sends only the numbers: volume, melody, pace and pauses. Nothing is recorded.</p>
           <button id="take" class="primary big">Start take</button>
           <div id="take-state" class="dim small"></div>
         </div>
         <div class="card meters" id="meters" hidden>
           <div class="meter"><span class="lbl">Volume</span><span id="m-vol">–</span></div>
-          <div class="meter"><span class="lbl">Pitch</span><span id="m-pitch">–</span></div>
-          <div class="meter"><span class="lbl">Rate</span><span id="m-rate">–</span></div>
+          <div class="meter"><span class="lbl">Melody</span><span id="m-pitch">–</span></div>
+          <div class="meter"><span class="lbl">Pace</span><span id="m-rate">–</span></div>
           <div class="meter"><span class="lbl">Pauses</span><span id="m-pause">–</span></div>
           <div class="caption" id="m-caption"></div>
         </div>
@@ -74,8 +75,9 @@
 
       <section id="check" hidden>
         <div class="card">
-          <div class="kicker">MIC CHECK</div>
-          <p class="dim">Can this phone run speech recognition and the mic meters at the same time? Two short parts, about 8 seconds each. Count out loud during each part. Nothing is sent anywhere.</p>
+          <div class="kicker">Mic check</div>
+          <p class="lead">Can this phone show captions and meters at once?</p>
+          <p class="dim">Two short parts, about 8 seconds each. Count out loud during each one. Nothing is sent anywhere.</p>
           <div id="env" class="small"></div>
           <button id="check-1" class="primary big">Part 1: speech, then mic</button>
           <button id="check-2" class="big" disabled>Part 2: mic, then speech</button>
@@ -85,7 +87,7 @@
         <button id="check-copy" class="ghost" hidden>Copy the result</button>
       </section>
 
-      <p class="dim small" id="foot">Bee is the input of record: phone text is a provisional preview until Bee confirms it.</p>
+      <p class="foot" id="foot">Bee checks every line you say; your phone’s text is only a preview.</p>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>
