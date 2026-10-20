@@ -179,6 +179,20 @@ interface SettingsFile {
   overrides: Record<string, Override>;
 }
 const MATCH_SLACK_MS = 2 * 60_000;
+// Two spans are one conversation when they overlap by at least SAME_SHARE of the shorter one (less
+// MATCH_SLACK_MS for clock differences, but always some overlap). A span without an end is a point:
+// it must fall inside the other span, give or take MATCH_SLACK_MS.
+const SAME_SHARE = 0.5;
+export function sameConversation(a: [number, number], b: [number, number]): boolean {
+  const la = a[1] - a[0];
+  const lb = b[1] - b[0];
+  if (la <= 0 || lb <= 0) {
+    const [p, span] = la <= 0 ? [a[0], b] : [b[0], a];
+    return p >= span[0] - MATCH_SLACK_MS && p <= span[1] + MATCH_SLACK_MS;
+  }
+  const overlap = Math.min(a[1], b[1]) - Math.max(a[0], b[0]);
+  return overlap > 0 && overlap >= SAME_SHARE * Math.min(la, lb) - MATCH_SLACK_MS;
+}
 
 export interface LiveConversation {
   conversationId: string;
@@ -283,20 +297,28 @@ export class SettingsBook {
     const ov = this.file.overrides;
     if (ov[id]) return [id, ov[id]!];
     // A recap's conversation (uuid) and the stats session Bee completes later (numeric id) are the
-    // same conversation: matched by time, both ways.
-    const end = endMs ?? startMs;
+    // same conversation: matched by time, both ways. A choice stored under a stats session's id is
+    // that session's own (matched by id), so it never moves to another stats session; and a match by
+    // time needs the two spans to be mostly the same time (sameConversation), not merely adjacent.
+    const byId = this.sessionsById();
+    const selfIsStats = byId.has(id);
     let best: [string, Override] | null = null;
     for (const [k, v] of Object.entries(ov)) {
       if (k === id) continue;
+      const ks = byId.get(k);
+      if (selfIsStats && ks) continue;
       let hit = false;
-      if (v.startMs != null) hit = startMs >= v.startMs - MATCH_SLACK_MS && startMs <= (v.endMs ?? v.startMs) + MATCH_SLACK_MS;
-      else {
-        const s = this.o.hub.sessions.find((x) => x.id === k);
-        hit = !!s && endMs != null && s.startMs >= startMs - MATCH_SLACK_MS && s.startMs <= end + MATCH_SLACK_MS;
-      }
+      if (v.startMs != null) hit = sameConversation([startMs, endMs ?? startMs], [v.startMs, v.endMs ?? v.startMs]);
+      else hit = !!ks && endMs != null && sameConversation([startMs, endMs], [ks.startMs, ks.endMs ?? ks.startMs]);
       if (hit && (!best || v.at > best[1].at)) best = [k, v];
     }
     return best;
+  }
+  private byId: { sessions: StatSession[]; map: Map<string, StatSession> } | null = null;
+  private sessionsById(): Map<string, StatSession> {
+    const ss = this.o.hub.sessions;
+    if (this.byId?.sessions !== ss) this.byId = { sessions: ss, map: new Map(ss.map((s) => [s.id, s])) };
+    return this.byId.map;
   }
 
   private youTag(o: Override): SettingTag {

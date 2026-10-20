@@ -15,7 +15,7 @@ import { DEFAULT_THRESHOLDS } from "../src/hub/live/principles.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
-import { autoSetting, localClock, nextSetting, parseWorkHours, rewordRecapSetting, SettingsBook } from "../src/hub/settings.js";
+import { autoSetting, localClock, nextSetting, parseWorkHours, rewordRecapSetting, sameConversation, SettingsBook } from "../src/hub/settings.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { mergeCorpus, type StatSession } from "../src/hub/stats.js";
 import { raw } from "./helpers-http.js";
@@ -112,6 +112,37 @@ function smallHub() {
   hub.drillEvents = () => [{ at: at("2026-10-15T12:00:00-04:00"), habitKeys: ["hedges", "filler:like"] }];
   return hub;
 }
+
+describe("a choice stays on its own conversation", () => {
+  const at = (x: string) => Date.parse(`2026-10-19T${x}:00-04:00`);
+  const line = (k: string, t: number) => ({ key: k, text: "the export ships on friday after the review", dom: "en" as const, uncertain: false, spokenAt: t });
+  const S: StatSession = { id: "S", kind: "conversation", startMs: at("13:00"), endMs: at("13:58"), lines: [line("u:1", at("13:01"))], speakers: 3 };
+  const K: StatSession = { id: "K", kind: "conversation", startMs: at("13:59") + 30_000, endMs: at("14:20"), lines: [line("u:2", at("14:00"))], speakers: 2 };
+  const book = () => new SettingsBook({ hub: { sessions: [S, K], clock: () => at("15:00"), tz: "America/Toronto" } as never, stateDir: null });
+  it("set on one stats session by its id, it never moves to the conversation just before", () => {
+    const b = book();
+    const before = b.tagSession("S");
+    b.set("K", "casual");
+    expect(b.tagSession("K")).toMatchObject({ setting: "casual", source: "you" });
+    expect(b.tagSession("S")).toEqual(before);
+  });
+  it("the live conversation and the stats session Bee completes later still match, both ways; an adjacent one does not", () => {
+    const b = book();
+    b.set("live-uuid", "meeting", { startMs: at("13:00") + 20_000, endMs: at("13:57") });
+    expect(b.tagSession("S")).toMatchObject({ setting: "meeting", source: "you" });
+    expect(b.tagSession("K")!.source).toBe("auto");
+    const c = book();
+    c.set("K", "casual");
+    expect(c.tagConversation({ conversationId: "live-k", startedAt: K.startMs + 10_000, endedAt: at("14:19"), otherLines: 1 })).toMatchObject({ setting: "casual", source: "you" });
+    expect(c.tagConversation({ conversationId: "live-s", startedAt: at("13:00"), endedAt: at("13:58"), otherLines: 1 }).source).toBe("auto");
+  });
+  it("same conversation: mostly the same time, or a point inside the other span", () => {
+    expect(sameConversation([0, 60_000 * 58], [60_000 * 59.5, 60_000 * 80])).toBe(false);
+    expect(sameConversation([0, 60_000 * 20], [60_000, 60_000 * 25])).toBe(true);
+    expect(sameConversation([0, 60_000 * 20], [60_000 * 19, 60_000 * 60])).toBe(false); // one minute shared
+    expect(sameConversation([60_000 * 21, 60_000 * 21], [0, 60_000 * 20])).toBe(true); // within the slack
+  });
+});
 
 describe("a recap re-worded after a setting change", () => {
   const habits = [
