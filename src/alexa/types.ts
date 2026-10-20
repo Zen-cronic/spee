@@ -29,6 +29,8 @@ export interface AlexaRequestEnvelope {
       // "Alexa.Presentation.APL" is listed only by a device with a screen (src/alexa/apl.ts)
       device?: { deviceId?: string; supportedInterfaces?: Record<string, unknown> };
     };
+    // Screen devices describe their display (src/alexa/device.ts logs it once per kind of device)
+    Viewport?: { mode?: string; shape?: string; pixelWidth?: number; pixelHeight?: number; dpi?: number };
   };
   request: {
     type: "LaunchRequest" | "IntentRequest" | "SessionEndedRequest" | string;

@@ -13,6 +13,7 @@ import { ssml } from "./speech.js";
 import { maskOut } from "../hub/mask.js";
 import type { AlexaRequestEnvelope } from "./types.js";
 import { signatureVerifier, type SigResult } from "./signature.js";
+import { deviceRecorder } from "./device.js";
 import { isAlexaApiEndpoint, resolveSkillId, verifyAlexaRequest } from "./verify.js";
 
 export const ALEXA_PREFIXES = ["/alexa"];
@@ -74,6 +75,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
   let configError: string | null = null;
   const now = opts.now ?? (() => Date.now());
   const progressive = progressiveSender({ allowed: opts.apiEndpointAllowed, fetch: opts.fetch });
+  const newDevice = deviceRecorder();
   const sigOpt = opts.verifySignature ?? process.env.ALEXA_VERIFY_SIGNATURE?.trim() !== "0";
   const checkSignature = typeof sigOpt === "function" ? sigOpt : sigOpt ? signatureVerifier() : null;
   const loadSkillId = () => {
@@ -126,6 +128,8 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
         ctx.log("alexa.rejected", { reason: v.reason, public: ctx.isPublic(req) });
         return ctx.json(res, 400, { error: "alexa_rejected", message: v.reason }), true;
       }
+      const device = newDevice(body as unknown as AlexaRequestEnvelope);
+      if (device) ctx.log("alexa.device", { ...device });
       const deps: SkillDeps = {
         hub: (hub ??= new HubClient(() => ctx.selfUrl())),
         now,
