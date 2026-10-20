@@ -12,7 +12,7 @@ export function PairingView({ code, joinUrl, status, mics }: { code: string | nu
     <View style={styles.wrap} testID="view-pairing">
       <View style={styles.left}>
         <Text style={styles.h1}>Pair your phone.</Text>
-        <Text style={styles.sub}>It becomes your microphone for drills and practice.</Text>
+        <Text style={styles.sub}>Your phone becomes the microphone when you practise.</Text>
         <View style={styles.statusRow}>
           <View style={[styles.dot, { backgroundColor: mics ? C.lime : C.faint }]} />
           <Text style={[styles.status, mics ? { color: C.text } : null]}>{statusText}</Text>

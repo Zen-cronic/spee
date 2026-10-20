@@ -18,9 +18,10 @@ export function fmtDay(ymd: string | null | undefined): string {
   return `${DAYS[d.getUTCDay()]} ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 
-// The drill session's tally line on the TV ("Session over: …" / "Last session: …").
+// The practice tally line on the TV ("Last time: 2 passed, 1 not yet."). Zero parts are left out.
 export function sessionTally(prefix: string, s: { passed: number; failed: number; unverified: number; pending?: number; beeOverrules?: number }): string {
-  return `${prefix}: ${s.passed} passed, ${s.failed} failed, ${s.unverified} unverified${s.pending ? `, ${s.pending} still with Bee` : ''}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ''}.`;
+  const parts = [`${s.passed} passed`, s.failed ? `${s.failed} not yet` : null, s.unverified ? `${s.unverified} Bee didn’t catch` : null, s.pending ? `${s.pending} still with Bee` : null, s.beeOverrules ? `${s.beeOverrules} decided by Bee` : null];
+  return `${prefix}: ${parts.filter(Boolean).join(', ')}.`;
 }
 
 // The BEE OVERRULES caption. Bee and the preview disagree in either direction, so the caption
@@ -28,8 +29,8 @@ export function sessionTally(prefix: string, s: { passed: number; failed: number
 const PREVIEW_BY: Record<string, string> = { phone: 'The phone', alexa: 'Alexa', mcp: 'The assistant', typed: 'The typed preview' };
 export function overruleText(previewSource: string | null | undefined, beePass: boolean, beeText: string | null | undefined): string {
   const who = PREVIEW_BY[previewSource ?? ''] ?? 'The preview';
-  const heard = `"${beeText ?? ''}"`;
-  return beePass ? `${who} heard a fail. Bee heard ${heard} and passed it: Bee is what counts.` : `${who} heard a pass. Bee heard ${heard} and that is what counts.`;
+  const heard = `"${(beeText ?? '').trim().replace(/[.!?]+$/, '')}"`;
+  return beePass ? `${who} heard a miss, but Bee heard ${heard} and passed it. Bee has the final say.` : `${who} heard a pass, but Bee heard ${heard}. Bee has the final say.`;
 }
 
 /** 0 -> "0 s", 40 -> "40 ms", 17390 -> "17.4 s", 48000 -> "48 s", 74000 -> "1 min 14 s". */
@@ -55,17 +56,17 @@ export function fmtDate(iso: string | null | undefined): string {
 }
 
 export const RULE_LABEL: Record<NudgeRule, string> = {
-  'hedge-streak': 'Hedge streak',
-  'like-streak': '"Like" streak',
-  monologue: 'Long monologue',
-  'fast-rate': 'Fast rate',
+  'hedge-streak': 'Unsure words',
+  'like-streak': 'Filler “like”',
+  monologue: 'Long turn',
+  'fast-rate': 'Talking fast',
 };
 
 export const SKIP_LABEL: Record<NudgeSkipReason, string> = {
   off: 'live coaching is off',
   warmup: 'first minute of the conversation',
   'quiet-hours': 'quiet hours',
-  'drill-active': 'a drill is running',
+  'drill-active': 'a practice line is open',
   cooldown: 'cooldown between nudges',
   'rule-cooldown': 'cooldown for this rule',
   'cap-hour': 'hourly cap reached',
@@ -99,12 +100,34 @@ export const HOP_LABEL: Record<keyof NudgeHops, string> = {
   alarmAt: 'Watch buzz',
 };
 
+/**
+ * What a person reads for each habit key the hub sends (stats, transfer, recap, first signal). The
+ * keys stay the hub's; only these words are shown. Kept equal to src/hub/habitNames.ts
+ * (test/habit-names.test.ts), so the TV can name a habit from its key alone.
+ */
+export const HABIT_NAME: Record<string, string> = {
+  hedges: 'unsure words',
+  'filler:like': 'filler "like"',
+  fillers: 'filler words',
+  vague: 'vague answers',
+  restart: 'starting over',
+  restarts: 'starting over',
+};
+
+/** A habit's display title from its key ('hedges' -> 'Unsure words'); the hub's label when the key is unknown. */
+export function habitTitle(key: string | null | undefined, label?: string | null): string {
+  const k = key ?? '';
+  const name = HABIT_NAME[k] ?? (k.startsWith('hedge:') ? HABIT_NAME.hedges : k.startsWith('filler:') ? `filler "${k.slice(7)}"` : null);
+  if (!name) return shortHabit(label ?? k);
+  return curly(name[0]!.toUpperCase() + name.slice(1));
+}
+
 /** The habit rows of the week view, in the contract's order: clarity first, then fillers. */
 export const WEEK_HABITS: { key: 'hedges' | 'vague' | 'fillers' | 'restarts'; label: string }[] = [
-  { key: 'hedges', label: 'Hedges' },
-  { key: 'vague', label: 'Vague answers' },
-  { key: 'fillers', label: 'Fillers' },
-  { key: 'restarts', label: 'Restarts' },
+  { key: 'hedges', label: habitTitle('hedges') },
+  { key: 'vague', label: habitTitle('vague') },
+  { key: 'fillers', label: habitTitle('fillers') },
+  { key: 'restarts', label: habitTitle('restarts') },
 ];
 
 /** Top entries of a breakdown map: {"i guess": 15, "i think": 5} -> '"i guess" 15 · "i think" 5'. */
@@ -141,7 +164,7 @@ export function curly(text: string): string {
   return text.replace(/"([^"]*)"/g, '“$1”');
 }
 
-/** A habit's short display name: 'hedges (I guess, I think...)' -> 'Hedges', '"like" as a filler' -> '“Like”'. */
+/** A habit's short display name from a hub label: 'unsure words (I guess...)' -> 'Unsure words', 'filler "like"' -> 'Filler “like”'. */
 export function shortHabit(label: string): string {
   const s = label.replace(/\s*\(.*$/, '').replace(/ as a filler$/, '').trim();
   const i = s.search(/[a-z]/i);
@@ -168,7 +191,7 @@ export function plainReason(f: GradeFailure | null): string | null {
     case 'habit':
       return q.length ? `You still said ${q.slice(0, 2).join(' and ')}` : 'The old habit was still there';
     case 'fillers':
-      return q.length ? `Bee heard ${q.slice(0, 2).join(' and ')}` : 'Bee heard a filler';
+      return q.length ? `Bee heard ${q.slice(0, 2).join(' and ')}` : 'Bee heard a filler word';
     case 'content':
       return f.words.length ? `A few words were missing: ${f.words.slice(0, 3).join(', ')}` : 'It didn’t match the sentence';
     case 'required':
@@ -184,7 +207,7 @@ export function verdictWords(h: Pick<TransferHabit, 'verdict' | 'before' | 'afte
   if (h.verdict === 'dropped') return pct === null ? 'Dropped' : `Down ${Math.abs(pct)}%`;
   if (h.verdict === 'rose') return pct === null ? 'Rose' : `Up ${Math.abs(pct)}%`;
   if (h.verdict === 'too little data') return 'Needs more speech';
-  if (h.verdict === 'not drilled yet') return 'Not drilled yet';
+  if (h.verdict === 'not drilled yet') return 'Not practised yet';
   if (h.verdict === 'invalid') return 'Not counted';
   return 'No change';
 }
@@ -200,7 +223,7 @@ export function changeLabel(h: Pick<TransferHabit, 'verdict' | 'before' | 'after
 }
 
 const WORKING: TransferClaim[] = ['all-dropped-control-flat', 'dropped-control-flat'];
-/** True only when the hub's headline says a drilled habit dropped and the control stayed flat. */
+/** True only when the hub's claim is that a practised habit dropped and the one not practised stayed flat. */
 export const transferWorking = (claim: TransferClaim | null | undefined): boolean => !!claim && WORKING.includes(claim);
 
 /**
@@ -208,30 +231,33 @@ export const transferWorking = (claim: TransferClaim | null | undefined): boolea
  * so the big type never wraps a lone word). The habits named as dropped are the hub's own "dropped"
  * verdicts; the hub's full headline is the fallback for a claim this screen does not know.
  */
-export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & { habits?: Pick<TransferHabit, 'role' | 'verdict' | 'label'>[] }): { lead: string; rest: string | null } {
-  const names = (t.habits ?? []).filter((h) => h.role === 'drilled' && h.verdict === 'dropped').map((h) => shortHabit(h.label));
-  const dropped = names.length ? `${names.join(' and ')} dropped.` : 'A drilled habit dropped.';
+type TitleHabit = Pick<TransferHabit, 'role' | 'verdict' | 'label'> & { habit?: string };
+const nameOf = (h: TitleHabit) => habitTitle(h.habit, h.label);
+const lower = (s: string) => s.replace(/[A-Za-z]/, (c) => c.toLowerCase());
+export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & { habits?: TitleHabit[] }): { lead: string; rest: string | null } {
+  const names = (t.habits ?? []).filter((h) => h.role === 'drilled' && h.verdict === 'dropped').map(nameOf);
+  const dropped = names.length ? `${[names[0], ...names.slice(1).map(lower)].join(' and ')} dropped.` : 'A habit you practised dropped.';
   switch (t.claim) {
     case 'all-dropped-control-flat':
-      return { lead: 'The habits you drilled dropped.', rest: 'The one you didn’t, didn’t.' };
+      return { lead: names.length ? dropped : 'The habits you practised dropped.', rest: 'The one you didn’t practise didn’t.' };
     case 'dropped-control-flat':
-      return { lead: dropped, rest: 'The habit you never drilled stayed flat.' };
+      return { lead: dropped, rest: 'The one you didn’t practise stayed flat.' };
     case 'dropped-control-dropped':
-      return { lead: dropped, rest: 'So did the control, so it may not be the drill.' };
+      return { lead: dropped, rest: 'So did the one you didn’t practise: not proof.' };
     case 'dropped-control-unclear':
-      return { lead: dropped, rest: 'The control needs more speech to compare.' };
+      return { lead: dropped, rest: 'The unpractised one needs more speech.' };
     case 'partly-started': {
-      // nothing dropped yet: some drilled habits are measured from their first drill, others not drilled
+      // nothing dropped yet: some practised habits are measured from their first practice, others not practised yet
       const drilled = (t.habits ?? []).filter((h) => h.role === 'drilled');
-      const started = drilled.filter((h) => h.verdict !== 'not drilled yet').map((h) => shortHabit(h.label));
-      const waiting = drilled.filter((h) => h.verdict === 'not drilled yet').map((h) => shortHabit(h.label));
+      const started = drilled.filter((h) => h.verdict !== 'not drilled yet').map(nameOf);
+      const waiting = drilled.filter((h) => h.verdict === 'not drilled yet').map(nameOf);
       if (!started.length || !waiting.length) return { lead: curly(t.headline), rest: null };
-      return { lead: `Measuring ${started.join(' and ')} since ${started.length === 1 ? 'its first drill' : 'their first drills'}.`, rest: `${waiting.join(' and ')}: not drilled yet.` };
+      return { lead: `Measuring ${started.map(lower).join(' and ')} now.`, rest: `${[waiting[0], ...waiting.slice(1).map(lower)].join(' and ')}: not practised yet.` };
     }
     case 'not-drilled-yet':
-      return { lead: 'Not drilled yet.', rest: 'Progress counts from your first drill.' };
+      return { lead: 'Nothing practised yet.', rest: 'Progress counts from your first practice line.' };
     case 'no-drop-yet':
-      return { lead: 'No drilled habit has dropped yet.', rest: null };
+      return { lead: 'Nothing has dropped yet.', rest: 'Keep practising: it takes a few conversations.' };
     default:
       return { lead: curly(t.headline), rest: null };
   }
@@ -270,36 +296,39 @@ export function gradeFailure(g: Partial<GradeResult> | null | undefined): GradeF
 /** Said after every first-signal number: one conversation is a glance, never the result. */
 export const FIRST_SIGNAL_CAVEAT = 'one conversation, not proof';
 
+type SignalIn = Pick<FirstSignal, 'label' | 'status' | 'before' | 'after' | 'minWords'> & { habit?: string };
+
 /**
  * Progress's first-signal line, at most one so the cards above keep their room. Every measured
- * habit is on it with its two rates ("Hedges 2.6 → 0.8 · “Like” 3.2 → 0.8 per 100 words in your
- * next conversation"); with none measured, the first habit too short to compare, else one with
- * nothing before it, else "Next conversation after your drill shows here". Null before any drill.
+ * habit is on it with its two rates ("Your next conversation: Unsure words 2.6 → 0.8 · Filler
+ * “like” 3.2 → 0.8", the unit is the cards' own); with none measured, the first habit too short to
+ * compare, else one with nothing before it, else "Your next conversation shows here". Null before
+ * any practice.
  */
-export function firstSignalLine(fs: Pick<FirstSignal, 'label' | 'status' | 'before' | 'after' | 'minWords'>[] | undefined): { text: string; measured: boolean } | null {
+export function firstSignalLine(fs: SignalIn[] | undefined): { text: string; measured: boolean } | null {
   if (!fs?.length) return null;
   const measured = fs.filter((f) => f.status === 'measured');
-  if (measured.length) return { text: `${measured.map((f) => `${shortHabit(f.label)} ${fmt1(f.before?.per100)} → ${fmt1(f.after?.per100)}`).join(' · ')} per 100 words in your next conversation`, measured: true };
+  if (measured.length) return { text: `Your next conversation: ${measured.map((f) => `${habitTitle(f.habit, f.label)} ${fmt1(f.before?.per100)} → ${fmt1(f.after?.per100)}`).join(' · ')}`, measured: true };
   const other = fs.find((f) => f.status === 'too-few-words') ?? fs.find((f) => f.status === 'no-earlier-conversation');
-  return other ? firstSignalText(other) : { text: 'Next conversation after your drill shows here', measured: false };
+  return other ? firstSignalText(other) : { text: 'Your next conversation after practising shows here', measured: false };
 }
 
 /**
- * One drilled habit's first signal on Progress, from the hub's status (never re-derived): the two
+ * One practised habit's first signal on Progress, from the hub's status (never re-derived): the two
  * rates only when the hub measured them, else what is missing in words.
  */
-export function firstSignalText(f: Pick<FirstSignal, 'label' | 'status' | 'before' | 'after' | 'minWords'>): { text: string; measured: boolean } {
-  const name = shortHabit(f.label);
+export function firstSignalText(f: SignalIn): { text: string; measured: boolean } {
+  const name = habitTitle(f.habit, f.label);
   switch (f.status) {
     case 'measured':
       return { text: `${name} ${fmt1(f.before?.per100)} → ${fmt1(f.after?.per100)} per 100 words in your next conversation`, measured: true };
     case 'too-few-words': {
       const next = (f.after?.words ?? 0) < f.minWords;
-      return { text: `${name}: ${next ? 'your next conversation' : 'the conversation before your drill'} was too short to compare (${fmtInt(next ? f.after?.words : f.before?.words)} words)`, measured: false };
+      return { text: `${name}: ${next ? 'your next conversation' : 'the conversation before you practised'} was too short to compare (${fmtInt(next ? f.after?.words : f.before?.words)} words)`, measured: false };
     }
     case 'no-earlier-conversation':
-      return { text: `${name}: no conversation before your drill to compare`, measured: false };
+      return { text: `${name}: no conversation before you practised to compare`, measured: false };
     default:
-      return { text: `${name}: your next conversation after the drill shows here`, measured: false };
+      return { text: `${name}: your next conversation after practising shows here`, measured: false };
   }
 }

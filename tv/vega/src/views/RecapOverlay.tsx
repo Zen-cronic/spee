@@ -1,13 +1,13 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import type { Recap } from '../contract';
 import { useDebug } from '../debug';
-import { curly, fmt1, fmtInt, fmtMs, fmtPct, shortHabit } from '../mirror/format';
+import { curly, fmt1, fmtInt, fmtMs, fmtPct, habitTitle } from '../mirror/format';
 import { useEnter } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
 const VERDICT: Record<string, { word: string; bg: string; ink: string }> = {
-  better: { word: 'Better', bg: C.lime, ink: C.limeInk },
-  worse: { word: 'Worse', bg: C.coral, ink: C.coralInk },
+  better: { word: 'Fewer', bg: C.lime, ink: C.limeInk },
+  worse: { word: 'More', bg: C.coral, ink: C.coralInk },
 };
 
 /**
@@ -35,7 +35,7 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
               const v = VERDICT[h.verdict];
               return (
                 <View key={h.key} style={styles.habit}>
-                  <Text style={styles.habitLabel} numberOfLines={1}>{shortHabit(h.label)}</Text>
+                  <Text style={styles.habitLabel} numberOfLines={1}>{habitTitle(h.key, h.label)}</Text>
                   <Text style={styles.habitNum}>{h.baselinePer100 === null ? `${fmt1(h.per100)} per 100 words` : `${fmt1(h.per100)}, usually ${fmt1(h.baselinePer100)}`}</Text>
                   <View style={[styles.pill, { backgroundColor: v?.bg ?? 'rgba(0,0,0,0.08)' }]}>
                     <Text style={[styles.pillText, { color: v?.ink ?? C.inkDim }]}>{v?.word ?? (h.verdict === 'no-baseline' ? 'New' : 'As usual')}</Text>
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   left: { flex: 1, marginRight: SP.xxl },
   metrics: { flexDirection: 'row', marginBottom: SP.l },
   metric: { flex: 1 },
-  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -3, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },
+  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
   metricLabel: { color: C.inkDim, fontSize: T.body, fontFamily: F.family },
   habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
   habitLabel: { flex: 1, color: C.ink, fontSize: T.body, fontWeight: '600', fontFamily: F.family },

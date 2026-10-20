@@ -5,7 +5,7 @@ import type { ScreenView } from '../mirror/reducer';
 import { C, F, R, SP, T } from '../theme';
 
 export const TAB_LABEL: Record<ScreenView, string> = {
-  week: 'Home',
+  week: 'Today',
   transfer: 'Progress',
   drill: 'Live',
   live: 'Live',

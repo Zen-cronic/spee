@@ -1,7 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { changeLabel, fmtDay, fmtMs, gradeFailure, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
+import { changeLabel, fmtDay, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -27,15 +27,16 @@ describe("fmtDay", () => {
 
 describe("overruleText (review M42)", () => {
   it("follows Bee's verdict in both directions", () => {
-    expect(overruleText("alexa", true, "the deploy finished")).toBe('Alexa heard a fail. Bee heard "the deploy finished" and passed it: Bee is what counts.');
-    expect(overruleText("phone", false, "um the deploy")).toBe('The phone heard a pass. Bee heard "um the deploy" and that is what counts.');
+    expect(overruleText("alexa", true, "the deploy finished.")).toBe('Alexa heard a miss, but Bee heard "the deploy finished" and passed it. Bee has the final say.');
+    expect(overruleText("phone", false, "um the deploy")).toBe('The phone heard a pass, but Bee heard "um the deploy". Bee has the final say.');
     expect(overruleText(undefined, false, null)).toMatch(/^The preview heard a pass/);
   });
 });
 
 describe("sessionTally", () => {
-  it("names attempts still with Bee", () => {
-    expect(sessionTally("Session over", { passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
+  it("names lines still with Bee and leaves out zero parts", () => {
+    expect(sessionTally("Last time", { passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Last time: 0 passed, 1 still with Bee.");
+    expect(sessionTally("Last time", { passed: 2, failed: 1, unverified: 1, beeOverrules: 1 })).toBe("Last time: 2 passed, 1 not yet, 1 Bee didn’t catch, 1 decided by Bee.");
   });
 });
 
@@ -63,13 +64,21 @@ describe("plainReason: the drill verdict says what Bee heard, never the card's l
   });
 });
 
-describe("pctChange, shortHabit, topWord", () => {
+describe("pctChange, shortHabit, habitTitle, topWord", () => {
   it("whole-number change, short names, the top word", () => {
     expect(pctChange(2.47, 0.64)).toBe(-74);
     expect(pctChange(0, 1)).toBeNull();
     expect(pctChange(null, 1)).toBeNull();
     expect(shortHabit("hedges (I guess, I think, maybe, kind of...)")).toBe("Hedges");
     expect(shortHabit('"like" as a filler')).toBe("“Like”");
+    expect(shortHabit("unsure words (I guess, I think, maybe, kind of...)")).toBe("Unsure words");
+    expect(shortHabit('filler "like"')).toBe("Filler “like”");
+    // a habit is named from its key, whatever label the hub sent
+    expect(habitTitle("hedges", "hedges (I guess)")).toBe("Unsure words");
+    expect(habitTitle("filler:like")).toBe("Filler “like”");
+    expect(habitTitle("restart")).toBe("Starting over");
+    expect(habitTitle("hedge:i guess")).toBe("Unsure words");
+    expect(habitTitle("yeah-tic", '"and yeah" / "so yeah" endings')).toBe("“And yeah” / “so yeah” endings");
     expect(topWord({ "i guess": 15, "i think": 5 })).toBe("“I guess”");
     expect(topWord({})).toBeNull();
   });
@@ -83,18 +92,21 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     for (const claim of ["dropped-control-unclear", "dropped-control-dropped", "not-drilled-yet", "no-drop-yet", undefined] as const) {
       expect(transferWorking(claim)).toBe(false);
       // never the "drilled habits dropped, the control didn't" line
-      if (claim) expect(transferTitle({ claim, headline: "x" }).rest).not.toBe("The one you didn’t, didn’t.");
+      if (claim) expect(transferTitle({ claim, headline: "x" }).rest).not.toBe("The one you didn’t practise didn’t.");
     }
-    expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x" })).toEqual({ lead: "The habits you drilled dropped.", rest: "The one you didn’t, didn’t." });
+    expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x" })).toEqual({ lead: "The habits you practised dropped.", rest: "The one you didn’t practise didn’t." });
     const habits = [
       { role: "drilled", verdict: "dropped", label: "hedges (I guess, I think, maybe, kind of...)" },
       { role: "drilled", verdict: "invalid", label: '"like" as a filler' },
       { role: "control", verdict: "dropped", label: "restarts" },
     ] as never;
-    expect(transferTitle({ claim: "dropped-control-flat", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "The habit you never drilled stayed flat." });
-    expect(transferTitle({ claim: "dropped-control-dropped", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "So did the control, so it may not be the drill." });
-    expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits }).rest).toBe("The control needs more speech to compare.");
-    expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "No drilled habit has dropped yet.", rest: null });
+    expect(transferTitle({ claim: "dropped-control-flat", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "The one you didn’t practise stayed flat." });
+    expect(transferTitle({ claim: "dropped-control-dropped", headline: "x", habits })).toEqual({ lead: "Hedges dropped.", rest: "So did the one you didn’t practise: not proof." });
+    expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits }).rest).toBe("The unpractised one needs more speech.");
+    expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "Nothing has dropped yet.", rest: "Keep practising: it takes a few conversations." });
+    // named from the key when the hub sends one
+    const keyed = [{ habit: "hedges", role: "drilled", verdict: "dropped", label: "unsure words (I guess, I think, maybe, kind of...)" }, { habit: "filler:like", role: "drilled", verdict: "dropped", label: 'filler "like"' }] as never;
+    expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x", habits: keyed }).lead).toBe("Unsure words and filler “like” dropped.");
   });
   it("partly started: the habit measured since its drill, and the one not drilled yet; never a drop", () => {
     const habits = [
@@ -104,7 +116,7 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     ] as never;
     const headline = 'After period started for "like" on Oct 19; hedges not drilled yet';
     const t = transferTitle({ claim: "partly-started", headline, habits });
-    expect(t).toEqual({ lead: "Measuring “Like” since its first drill.", rest: "Hedges: not drilled yet." });
+    expect(t).toEqual({ lead: "Measuring “like” now.", rest: "Hedges: not practised yet." });
     expect(t.lead.length).toBeLessThanOrEqual(40);
     expect(transferWorking("partly-started")).toBe(false);
     // without the habits to name, the hub's own headline
@@ -123,14 +135,14 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
   });
 });
 
-describe("Since drilling on Home: a percent only for a decided change", () => {
+describe("Since you started, on Today: a percent only for a decided change", () => {
   const h = (verdict: string, before: number, after: number) => ({ verdict, before: { per100: before }, after: { per100: after } }) as never;
   it("words, as on Progress, for anything the hub has not decided; never \u2212 0%", () => {
     expect(changeLabel(h("dropped", 2.47, 0.64))).toEqual({ text: "−74%", pct: true });
     expect(changeLabel(h("rose", 1, 1.12))).toEqual({ text: "+12%", pct: true });
     expect(changeLabel(h("too little data", 2.47, 0.9))).toEqual({ text: "Needs more speech", pct: false });
     expect(changeLabel(h("no change", 1, 1.001))).toEqual({ text: "No change", pct: false });
-    expect(changeLabel(h("not drilled yet", 1, 0))).toEqual({ text: "Not drilled yet", pct: false });
+    expect(changeLabel(h("not drilled yet", 1, 0))).toEqual({ text: "Not practised yet", pct: false });
     expect(changeLabel(h("invalid", 1, 0.2))).toEqual({ text: "Not counted", pct: false });
     expect(changeLabel(h("dropped", 1, 0.998)).text).toBe("0%");
     expect(verdictWords(h("dropped", 2.47, 0.64))).toBe("Down 74%");
@@ -146,18 +158,20 @@ describe("first signal on Progress: numbers only when the hub measured them, alw
   });
   it("too few words, no next conversation, nothing before: words instead of a number", () => {
     expect(firstSignalText({ ...like, status: "too-few-words", before: side(309, 5.4), after: side(60, 0) })).toEqual({ text: "“Like”: your next conversation was too short to compare (60 words)", measured: false });
-    expect(firstSignalText({ ...like, status: "too-few-words", before: side(40, 5.4), after: side(300, 1) }).text).toBe("“Like”: the conversation before your drill was too short to compare (40 words)");
-    expect(firstSignalText({ ...like, status: "no-next-conversation", before: side(309, 5.4), after: null })).toEqual({ text: "“Like”: your next conversation after the drill shows here", measured: false });
-    expect(firstSignalText({ ...like, status: "no-earlier-conversation", before: null, after: side(300, 1) }).text).toBe("“Like”: no conversation before your drill to compare");
+    expect(firstSignalText({ ...like, status: "too-few-words", before: side(40, 5.4), after: side(300, 1) }).text).toBe("“Like”: the conversation before you practised was too short to compare (40 words)");
+    expect(firstSignalText({ ...like, status: "no-next-conversation", before: side(309, 5.4), after: null })).toEqual({ text: "“Like”: your next conversation after practising shows here", measured: false });
+    expect(firstSignalText({ ...like, status: "no-earlier-conversation", before: null, after: side(300, 1) }).text).toBe("“Like”: no conversation before you practised to compare");
+    expect(firstSignalText({ ...like, habit: "filler:like", status: "measured", before: side(309, 5.43), after: side(259, 2.1) }).text).toBe("Filler “like” 5.4 → 2.1 per 100 words in your next conversation");
   });
   it("one line on Progress: every measured habit on it; else one status; nothing before any drill", () => {
     const hedges = { label: "hedges (I guess, I think, maybe, kind of...)", minWords: 100 };
     type Who = { label: string; minWords: number };
     const m = (x: Who, b: number, a: number) => ({ ...x, status: "measured" as const, before: side(309, b), after: side(259, a) });
     const wait = (x: Who) => ({ ...x, status: "no-next-conversation" as const, before: side(309, 2), after: null });
-    expect(firstSignalLine([m(hedges, 2.59, 0.77), m(like, 3.24, 0.77)])).toEqual({ text: "Hedges 2.6 → 0.8 · “Like” 3.2 → 0.8 per 100 words in your next conversation", measured: true });
-    expect(firstSignalLine([wait(hedges), m(like, 5.4, 2.1)])).toEqual({ text: "“Like” 5.4 → 2.1 per 100 words in your next conversation", measured: true });
-    expect(firstSignalLine([wait(hedges), wait(like)])).toEqual({ text: "Next conversation after your drill shows here", measured: false });
+    expect(firstSignalLine([m(hedges, 2.59, 0.77), m(like, 3.24, 0.77)])).toEqual({ text: "Your next conversation: Hedges 2.6 → 0.8 · “Like” 3.2 → 0.8", measured: true });
+    expect(firstSignalLine([wait(hedges), m(like, 5.4, 2.1)])).toEqual({ text: "Your next conversation: “Like” 5.4 → 2.1", measured: true });
+    expect(firstSignalLine([wait(hedges), wait(like)])).toEqual({ text: "Your next conversation after practising shows here", measured: false });
+    expect(firstSignalLine([m({ ...hedges, habit: "hedges" } as Who, 2.59, 0.77)])!.text).toBe("Your next conversation: Unsure words 2.6 → 0.8");
     expect(firstSignalLine([wait(hedges), { ...like, status: "too-few-words", before: side(309, 5), after: side(60, 0) }])!.text).toMatch(/too short to compare \(60 words\)$/);
     expect(firstSignalLine([])).toBeNull();
     expect(firstSignalLine(undefined)).toBeNull();

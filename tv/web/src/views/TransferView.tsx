@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { TransferHabit, TransferResponse } from '../contract';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
-import { fmt1, fmtDate, fmtWords, shortHabit, transferTitle, verdictWords } from '../mirror/format';
+import { fmt1, fmtDate, fmtWords, habitTitle, transferTitle, verdictWords } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -20,7 +20,7 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
   const title = transferTitle(transfer);
   return (
     <View style={styles.wrap} testID="view-transfer">
-      <Text style={styles.kicker}>Since your first drill · real speech, from Bee</Text>
+      <Text style={styles.kicker}>Since you started practising · your real conversations, heard by Bee</Text>
       <Text style={styles.title} numberOfLines={1}>{title.lead}</Text>
       {title.rest ? <Text style={[styles.title, styles.titleRest]} numberOfLines={1}>{title.rest}</Text> : null}
       <View style={styles.cards}>
@@ -32,7 +32,7 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
         ))}
       </View>
       <FirstSignalLines signals={transfer.firstSignal} />
-      <Text style={styles.note} numberOfLines={1}>{`Plan registered ${fmtDate(transfer.prereg.registeredAt)}, before any drill. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and clear statistical separation.`}</Text>
+      <Text style={styles.note} numberOfLines={1}>{`Plan set ${fmtDate(transfer.prereg.registeredAt)}, before your first practice. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and a clear gap between them.`}</Text>
       {debug ? <Text style={styles.debug} numberOfLines={2}>{transfer.habits.map((x) => `${x.habit} ${x.before.ci95.join('–')} → ${x.after.ci95.join('–')} (${x.before.words}/${x.after.words} w)`).join('  ·  ')}{transfer.unregistered.length ? `  ·  unregistered: ${transfer.unregistered.map((u) => u.habit).join(', ')}` : ''}</Text> : null}
     </View>
   );
@@ -44,8 +44,8 @@ function HabitCard({ h }: { h: TransferHabit }) {
   const bad = h.verdict === 'rose';
   return (
     <View style={[styles.card, drilled ? styles.paper : styles.dark]} testID={`transfer-${h.habit}`}>
-      <Text style={[styles.habit, { color: drilled ? C.ink : C.text }]}>{shortHabit(h.label)}</Text>
-      <Text style={[styles.role, { color: drilled ? C.inkDim : C.dim }]}>{drilled ? 'Drilled' : 'Never drilled, the control'}</Text>
+      <Text style={[styles.habit, { color: drilled ? C.ink : C.text }]}>{habitTitle(h.habit, h.label)}</Text>
+      <Text style={[styles.role, { color: drilled ? C.inkDim : C.dim }]}>{drilled ? 'Practised' : 'The one you didn’t practise'}</Text>
       <View style={{ flex: 1 }} />
       <View style={styles.nums}>
         <View>
@@ -70,23 +70,23 @@ const styles = StyleSheet.create({
   kicker: { color: C.dim, fontSize: T.small, fontFamily: F.family },
   title: { color: C.text, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.xs, fontFamily: F.family },
   titleRest: { color: C.dim, marginTop: 0 },
-  cards: { flex: 1, flexDirection: 'row', marginTop: SP.xl },
-  card: { flex: 1, borderRadius: R.l, paddingHorizontal: SP.xl, paddingVertical: SP.xl, marginRight: SP.l },
+  cards: { flex: 1, flexDirection: 'row', marginTop: SP.l },
+  card: { flex: 1, borderRadius: R.l, paddingHorizontal: SP.xl, paddingVertical: SP.l, marginRight: SP.l },
   paper: { backgroundColor: C.paper },
   dark: { backgroundColor: C.surface, marginRight: 0 },
   habit: { fontSize: T.h2, fontWeight: '700', fontFamily: F.family },
   role: { fontSize: T.body, marginTop: 4, fontFamily: F.family },
   nums: { flexDirection: 'row', alignItems: 'flex-end' },
-  before: { fontSize: 88, lineHeight: 100, fontWeight: '600', letterSpacing: -2, paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
+  before: { fontSize: 88, lineHeight: 100, fontWeight: '600', letterSpacing: -1, fontFamily: F.family },
   arrow: { fontSize: 56, marginHorizontal: SP.m, marginBottom: 46, fontFamily: F.family },
-  after: { fontSize: 150, lineHeight: 162, fontWeight: '700', letterSpacing: -5, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },
+  after: { fontSize: 136, lineHeight: 146, fontWeight: '700', letterSpacing: -2, fontFamily: F.family },
   numLabel: { fontSize: T.label, fontFamily: F.family },
-  pill: { alignSelf: 'flex-start', borderRadius: R.pill, paddingHorizontal: SP.l, paddingVertical: SP.s, marginTop: SP.l },
+  pill: { alignSelf: 'flex-start', borderRadius: R.pill, paddingHorizontal: SP.l, paddingVertical: SP.s, marginTop: SP.m },
   pillGood: { backgroundColor: C.lime },
   pillBad: { backgroundColor: C.coral },
   pillInk: { backgroundColor: C.ink },
   pillDark: { backgroundColor: C.surface2 },
   pillText: { fontSize: T.body, fontWeight: '700', fontFamily: F.family },
-  note: { color: C.faint, fontSize: T.label, marginTop: SP.l, fontFamily: F.family },
+  note: { color: C.faint, fontSize: T.label, marginTop: SP.m, fontFamily: F.family },
   debug: { color: C.faint, fontSize: 20, marginTop: SP.xs, fontFamily: F.mono },
 });
