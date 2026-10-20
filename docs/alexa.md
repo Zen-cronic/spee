@@ -1,6 +1,6 @@
-# Alexa skill, MCP server and simulator (packet C)
+# Alexa skill, MCP server and simulator
 
-Three voice surfaces share one hub and one contract ([CONTRACT.md](CONTRACT.md), v2):
+Speaking Mirror's Alexa skill is called Speech Coach (invocation name "speech coach"). Three voice surfaces share one hub and one contract ([CONTRACT.md](CONTRACT.md), v2):
 
 - **`POST /alexa`**: the custom skill endpoint for the development skill "speech coach".
 - **`/mcp`**: a stateless Streamable HTTP MCP server, with the tools an Alexa+ model would call.
@@ -32,7 +32,7 @@ All three reach the hub through one loopback client, [`src/mcp/hubClient.ts`](..
 | `alexa/fixtures/*.json` | Synthetic request envelopes, one per intent (placeholder ids) |
 | `scripts/alexa-deploy.ts` | `npm run alexa:deploy`: points the existing dev skill at `PUBLIC_BASE_URL/alexa` |
 | `web/sim/` | The simulator (Vite, `base: "/sim/"`, built to `dist/web/sim`) |
-| `scripts/checks/alexa.ts`, `scripts/checks/mcp.ts` | The packet's `npm run contract:check` modules |
+| `scripts/checks/alexa.ts`, `scripts/checks/mcp.ts` | The Alexa and MCP modules of `npm run contract:check` |
 | `test/alexa-*.test.ts`, `test/mcp-*.test.ts` | Unit and in-process HTTP tests |
 
 ## Alexa intents
@@ -60,7 +60,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 - a drill sentence that merely contains such a word ("The next release ships Friday.") stays an attempt;
 - a sentence with "how did I do" run on in one breath is graded without the tail, and the verdict comes on the next turn.
 
-**Timing.** The real-device spike measured Bee's wearer-tagged line at 15 to 19 s after speech, and Alexa must answer within 8 s. So the drill takes two turns. The attempt turn answers at once (contract check: 3 to 5 ms). An early "how did I do?" is answered within 6.5 s plus one hub call (tests: under 7 s on a fake clock; contract check: about 0.6 s with the demo replay).
+**Timing.** A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn. Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it. The attempt turn answers at once (contract check: 3 to 5 ms). An early "how did I do?" is answered within 6.5 s plus one hub call (tests: under 7 s on a fake clock; contract check: about 0.6 s with the demo replay).
 
 **Progressive response.** Sent as `VoicePlayer.Speak` to `{apiEndpoint}/v1/directives`, and only to `https://api[.eu|.fe].amazonalexa.com`. A forged request cannot point the hub at another host.
 
@@ -178,20 +178,14 @@ These steps were prepared and not run here: they need the operator's tunnel. The
 ## Known limits
 
 - **Signature verification** is on by default for public requests (see above), but it has not yet been run against Amazon's live certificate chain. With `ALEXA_VERIFY_SIGNATURE=0`, anyone who knows both the tunnel URL and the skill id could drive the skill and hear card sentences.
-- **Progressive responses** depend on Alexa's `apiAccessToken` and were not exercised on a device in this packet. The spike proved the two-turn flow without them.
+- **Progressive responses** depend on Alexa's `apiAccessToken` and have not been exercised on a device yet. The real-device spike proved the two-turn flow without them.
 - **`end_drill` and Stop** report the last session's summary when no session is running. The MCP tool maps 1:1 to `POST /api/session/end`, which returns it; Alexa checks `GET /api/session` first and just says "Bye."
 - **Speech recognition in the simulator** is the browser's own and is provisional, exactly like Alexa's transcript.
 
-## Contract change requests
+## Open notes on the contract docs
 
-These are for the lead; packet C did not edit the frozen files.
-
-1. **`test/hub-plugins.test.ts`, "every planned v2 route answers 501 not_implemented from its owner's stub".**
-   - The test now fails: `/api/demo/mirror` answers 202, from packet B. Once B's row is fixed, it will fail on `POST /alexa` (now 400 `alexa_rejected` for `{}`) and `/mcp` (POST 406 without the MCP `Accept` header, GET and DELETE 405).
-   - The "health" test in the same file expects the `live` plugin to report `stub`, which packet A changed.
-   - Suggested change: replace the rows with "every v2 route is owned (never `not_found`)" and accept `ready` statuses.
-2. **`docs/CONTRACT.md`, the v1 "Phase 3: Alexa+ MCP server" tool table.** It still lists `how_did_i_do(range) -> GET /api/stats` and omits the v2 tools. `MCP_TOOLS` names it `habit_stats` and adds `how_am_i_doing`, `live_coach` and `last_recap`. Suggest pointing that table at the v2 MCP section.
-3. **`docs/CONTRACT.md`, the Alexa intent table.** Two behaviours could be written down there:
+1. **`docs/CONTRACT.md`, the v1 "Phase 3: Alexa+ MCP server" tool table.** It still lists `how_did_i_do(range) -> GET /api/stats` and omits the v2 tools. `MCP_TOOLS` names it `habit_stats` and adds `how_am_i_doing`, `live_coach` and `last_recap`; the v2 MCP section is the current list.
+2. **`docs/CONTRACT.md`, the Alexa intent table.** Two behaviours are not written down there yet:
    - Stop and Cancel read `GET /api/session` before `POST /api/session/end`.
    - HowDidIDo on a pass also calls `POST /api/session/next`.
-4. **`scripts/contract-check.ts`, packet module order.** The alexa module drills the last due demo cards, and the mcp module then needs one. The alexa module leaves one card due on purpose by letting Bee fail it, and both modules fall back to a practice card when nothing is due. A `POST /api/demo/reset` (demo only), or a few more due cards in the demo deck, would remove that coupling.
+3. **`scripts/contract-check.ts`, module order.** The alexa module drills the last due demo cards, and the mcp module then needs one. The alexa module leaves one card due on purpose by letting Bee fail it, and both modules fall back to a practice card when nothing is due. A `POST /api/demo/reset` (demo only), or a few more due cards in the demo deck, would remove that coupling.
