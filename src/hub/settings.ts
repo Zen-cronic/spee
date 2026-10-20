@@ -16,7 +16,7 @@
 import { join } from "node:path";
 import { localDate } from "../real/deck.js";
 import { pairMeetings } from "../real/instruments.js";
-import { wordCount } from "../real/text.js";
+import { countedLines, wordCount } from "../real/text.js";
 import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import type { CalendarFn } from "./brief.js";
 import { CONVERSATION_SETTINGS, SETTING_NAME, type ConversationSetting, type SettingBeforeAfter, type SettingRates, type SettingReason, type SettingsResponse, type SettingTag } from "./contract.js";
@@ -411,7 +411,7 @@ export class SettingsBook {
       note: SETTINGS_NOTE,
       minWords,
       workHours: { start: hhmm(this.workHours.startMin), end: hhmm(this.workHours.endMin), days: this.workHours.days.join(",") === "1,2,3,4,5" ? "Mon-Fri" : this.workHours.days.join(","), tz: tz ?? null },
-      sessions: inSrc.map((s) => ({ id: s.id, kind: s.kind, date: localDate(s.startMs, tz), startMs: s.startMs, words: s.lines.filter((l) => !l.uncertain && l.dom === "en").reduce((n, l) => n + wordCount(l.text), 0), tag: tags.get(s.id)! })),
+      sessions: inSrc.map((s) => ({ id: s.id, kind: s.kind, date: localDate(s.startMs, tz), startMs: s.startMs, words: countedLines(s.lines).reduce((n, l) => n + wordCount(l.text), 0), tag: tags.get(s.id)! })),
       rates,
       practised,
       line,
