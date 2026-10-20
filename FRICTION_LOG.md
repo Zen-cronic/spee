@@ -23,6 +23,10 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 | FL-9 | Bee transcription, API | Transcripts carry no confidence and take no custom vocabulary | Medium | worked around |
 | FL-10 | Bee to-dos, Apple Watch | A to-do alarm reaches the Watch only while Bee records and the iPhone is locked | Medium | worked around |
 | FL-11 | Bee CLI | The facts and insights JSON is untyped and undocumented | Low | worked around |
+| FL-12 | Alexa on Fire TV | "Alexa, quiz me" starts Alexa's own quiz, not the skill | Low | worked around |
+| FL-13 | Alexa on Fire TV | A speech-only skill response covers the app with a plain "Speech Coach" card | Medium | worked around (not yet seen on the TV) |
+| FL-14 | Alexa Skills Kit | "How did I do" lands in the catch-all slot, not its own intent | Medium | worked around |
+| FL-15 | Alexa Skills Kit | The 8 s response limit is shorter than Bee's line, so a drill takes two turns | Medium | worked around |
 
 ---
 
@@ -212,3 +216,54 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Severity:** Low
 - **Workaround used:** readers that accept the likely shapes ([`src/hub/live/factsParse.ts`](src/hub/live/factsParse.ts)), confirmed by the spike. The spike ran in seconds; the readers were part of the feature build (not timed).
 - **Actionable suggestion:** publish a JSON example and a schema (or ship TypeScript types in `@beeai/cli`) for every `--json` command, and say which Bee surfaces read developer-written facts.
+
+## Alexa
+
+### FL-12: "Alexa, quiz me" on a Fire TV starts Alexa's own quiz instead of the enabled development skill (Alexa on Fire TV)
+- **Date:** 2026-10-20 14:19 EDT (observed once, not re-checked)
+- **Task attempted:** start a drill by voice from the Fire TV, with the Speech Coach development skill enabled for testing on the same Amazon account as the Fire TV.
+- **Steps taken:**
+  1. The Speaking Mirror app on the stick showed the prompt "Alexa, quiz me".
+  2. Said "Alexa, quiz me" to the Fire TV.
+- **Expected result (our assumption):** with "quiz me" as a sample of the skill's `StartDrillIntent`, the enabled skill would answer.
+- **Actual result:** Alexa started its own quiz. A custom skill answers only when it is named, so our prompt was wrong.
+- **Severity:** Low
+- **Workaround used:** the TV now says "Alexa, ask Speech Coach to quiz me" (a one-line copy change, committed the same afternoon).
+- **Actionable suggestion:** let a development-stage skill test name-free routing on the developer's own devices, or have Alexa offer "Did you mean Speech Coach?" when an enabled skill has an exact sample match.
+
+### FL-13: On a Fire TV, a speech-only skill response replaces the app on screen with a plain "Speech Coach" card for a few seconds (Alexa on Fire TV / APL)
+- **Date:** 2026-10-20 14:26 EDT (observed once, not re-checked)
+- **Task attempted:** run a voice drill while Speaking Mirror stays on the TV, so that the viewer sees the drill in the TV app.
+- **Steps taken:**
+  1. Speaking Mirror running on the stick.
+  2. "Alexa, ask Speech Coach to quiz me." The skill answered with speech and a reprompt, and no APL directive.
+- **Expected result:** the app stays visible behind Alexa, or the Fire TV docs say what a speech-only response shows.
+- **Actual result:** the screen showed only the text "Speech Coach" while the skill spoke and listened, and the app came back only a few seconds later.
+- **Severity:** Medium
+- **Workaround used (about 35 min, from the go-ahead at 14:27 to the first commits at 15:01):** every turn with something to show now sends an `Alexa.Presentation.APL.RenderDocument` with one of five Speaking Mirror screens ([`alexa/apl/speaking-mirror.json`](alexa/apl/speaking-mirror.json)), only when `supportedInterfaces` lists `Alexa.Presentation.APL`, and a response that ends the session sets `settings.idleTimeout` to 6 s. Redeployed to the development skill (both locales `SUCCEEDED`). Not yet seen on the Fire TV: the hub now logs one `alexa.device` line per kind of device, to record what the Fire TV reports ([docs/alexa.md](docs/alexa.md), "Screens (APL)").
+- **Actionable suggestion:** document on the APL and Fire TV pages what a speech-only skill response shows on Fire TV and for how long, and give a skill a way to keep the foreground app visible during a voice exchange.
+
+### FL-14: Inside a skill session, "how did I do" arrives in the catch-all slot instead of its own intent (Alexa Skills Kit)
+- **Date:** 2026-10-16 15:06–15:12 EDT (a spike on the Alexa iPhone app; observed once, not re-checked)
+- **Task attempted:** a two-intent turn design. A catch-all `AttemptIntent` takes any sentence the user repeats (a custom slot, sample `{attempt}`), and `HowDidIDoIntent` (samples "how did i do", "did i pass") asks for the verdict.
+- **Steps taken:**
+  1. "Alexa, open speech coach", then said the drill sentence.
+  2. Said "how did I do".
+  3. Read the request the endpoint received.
+- **Expected result:** an exact sample of `HowDidIDoIntent` routes to `HowDidIDoIntent`.
+- **Actual result:** the request arrived as `AttemptIntent`, with "how did I do" as the slot value.
+- **Severity:** Medium
+- **Workaround used:** whole-utterance rescue rules ([`src/alexa/route.ts`](src/alexa/route.ts)) move "how did I do", "how am I doing", "next", "stop", "quiz me", "help" and the live-coaching commands back to their intents, while a drill sentence that merely contains such a word ("The next release ships Friday.") stays an attempt. Time not recorded separately.
+- **Actionable suggestion:** document how a lone-slot sample competes with exact samples of other intents, prefer an exact sample match over a catch-all, and publish a recommended pattern for a free-text answer turn.
+
+### FL-15: A custom skill must answer within 8 s, but Bee's line for the same attempt arrives later, so a drill verdict takes two turns (Alexa Skills Kit)
+- **Date:** 2026-10-16 15:06–15:12 EDT (the spike); the lag figures are FL-8's
+- **Task attempted:** grade a spoken drill line from Bee's own wearer-tagged transcript, not from Alexa's, and speak the verdict in the same turn.
+- **Steps taken:**
+  1. "Alexa, open speech coach" → the skill read a drill line → the user repeated it.
+  2. The endpoint watched `bee stream` for the wearer-tagged line for up to 6.5 s, under Alexa's 8 s limit.
+- **Expected result:** a way to answer after the line arrives: a longer limit for a skill that declares it, or a supported follow-up in the open session.
+- **Actual result:** Bee missed the 6.5 s window. Its tagged line arrived 3.4 s into the user's next turn ("how did I do"). A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn.
+- **Severity:** Medium
+- **Workaround used:** a two-turn drill: "Got it, checking with Bee. Ask me how you did in about 15 seconds." An early "how did I do?" sends a progressive response ("Checking with Bee.") and polls every 600 ms for at most 6.5 s ([`src/alexa/skill.ts`](src/alexa/skill.ts)). The progressive response has not yet run on a device. Time not recorded separately (it shaped the skill design).
+- **Actionable suggestion:** a documented asynchronous result pattern for custom skills (deliver one short spoken result into the open session within a bounded time), or a longer limit for a skill that declares it.
