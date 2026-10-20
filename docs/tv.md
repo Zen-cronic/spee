@@ -8,7 +8,7 @@ Packet B of the coach hub (contract v2, [`docs/CONTRACT.md`](CONTRACT.md)). The 
 - the live conversation, with its wrist nudges and their latency hops;
 - the phone's practice meters, live.
 
-The phone page at `/p/<code>#k=…` is its microphone, with three modes: drill, practice and a mic check.
+The phone page at `/p/<code>#k=…` is its microphone, with three modes (drill, practice and a mic check), and it shows your progress (the Progress tab).
 
 Everything below runs on synthetic demo data unless the hub runs live. Every screen shows the hub's `dataLabel` whenever the data is synthetic.
 
@@ -165,6 +165,15 @@ Check installs with the component name `com.beecoach.mirror.main`: `is-app-insta
 
 - **Drill.** Reuses the patterns of the shell's phone page (`connect`, `setupVoice`, `sendUtterance`). Web Speech produces a `transcript.final` over the bridge, which becomes a provisional attempt, and interim words go out as `transcript.partial` so the TV shows "hearing: …". The page then follows its own attempt: preview, checking with Bee, verified by Bee, graded from Bee, and "Bee overrules". It has a typed fallback and Start/Next/End drill buttons (`session.*` app frames).
 - **Practice.** `getUserMedia` runs with automatic gain control, noise suppression and echo cancellation off. Audio reaches JS through an AudioWorklet (ScriptProcessor as a fallback) and goes into `prosody.ts`, which sends `practice.meters` at 10 Hz and a tracked `practice.summary` at the end. Speech recognition runs alongside for the caption and a word count; if it fails, the meters still run without captions. A take stops after 2 minutes at most.
+- **Progress.** The TV's own reads, phone-sized, in the tab order Practice line · Voice · Progress · Mic check:
+  - today's practice from the socket (`hub.state` and `stats.updated`);
+  - this week's rates (`GET /api/stats?range=week`);
+  - the pre-registered before and after per habit, with the hub's verdict pills and a dash for a period with too little speech, and the first signal with its caveat (`GET /api/transfer`);
+  - the last 3 recaps' headlines with when and where (`GET /api/recaps?limit=3`; never the wearer's quote);
+  - Details: the plan, and each side's words and dates.
+
+  Its wording is the TV's (`tv/web/src/mirror/format.ts`, imported by `web/phone/src/progress.ts`), with one difference: before the first practice, a practised habit's card says only "To practise" (no pill), and the unpractised one "Starts at your first practice".
+  The page sends the pair token from the QR in `x-pair-token`, so the reads pass the gate through the tunnel (`src/hub/gate.ts` `PAIRED_READS`). It fetches when the tab opens, again after `stats.updated` or `recap.ready` while the tab shows (otherwise on the next open), and after a reconnect. It never polls and stores nothing. A phone joined with the code alone (no `#k=`) is told to scan the QR.
 - **Mic check.** Covered in the next section.
 
 ### DSP (`web/phone/src/dsp.ts`, `prosody.ts`; pure, also used by the hub's demo take)
