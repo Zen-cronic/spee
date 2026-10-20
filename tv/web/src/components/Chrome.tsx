@@ -76,7 +76,8 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.pill, padding: 6 },
   right: { color: C.dim, fontSize: T.label, fontFamily: F.family },
   footer: { flexDirection: 'row', alignItems: 'center', height: 36, marginTop: SP.m },
-  synthDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.amber, marginRight: SP.s },
+  // neutral, not amber: the words say synthetic, and amber stays only for a lost hub connection (no habit hue is near it then)
+  synthDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, borderColor: C.faint, marginRight: SP.s },
   synthetic: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   real: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   replay: { color: C.faint, fontSize: T.label, marginLeft: SP.l, fontFamily: F.family },

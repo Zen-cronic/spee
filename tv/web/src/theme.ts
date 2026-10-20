@@ -7,7 +7,7 @@ import { F } from './platform/fonts';
  *
  * Warm espresso ground and cream paper. Meaning colours, never decoration: lime for "the thing to
  * do / better / pass", coral for "not yet" or a wrist nudge, the bee colour (C.bee) only for "checked by Bee",
- * amber only for a lost hub connection or synthetic data. Each habit has its own hue (HABIT_HUE),
+ * amber only for a lost hub connection (always with the words). Each habit has its own hue (HABIT_HUE),
  * the same on every screen, so a habit is recognisable by colour as well as by its name.
  */
 export const C = {
@@ -26,13 +26,13 @@ export const C = {
   limeInk: '#1a2006',
   limeBg: '#2a3114',
   // "checked by Bee", and nothing else: the one place its colour is set (web/phone, web/sim and
-  // web/hub use the same values as --bee, --bee-ink). Lavender for now.
-  bee: '#bbaef7', // on the dark ground
-  beeInk: '#1d1640', // text on a solid bee pill
-  beeBg: '#2b2748', // a bee-tinted pill on the dark ground (text: bee)
-  beeWash: 'rgba(187,174,247,0.35)', // a bee-tinted band on paper
-  beeOnLight: '#bbaef7', // a bee mark (dot, ring) on paper
-  beeTextOnLight: '#1d1640', // bee text on paper
+  // web/hub use the same values as --bee, --bee-ink, --bee-on-light). Sky, from the logo.
+  bee: '#8ccfff', // on the dark ground
+  beeInk: '#0c2233', // text on a solid bee pill
+  beeBg: '#1c3447', // a bee-tinted pill on the dark ground (text: bee)
+  beeWash: '#dcecf9', // a bee-tinted pill or band on paper (text: beeTextOnLight)
+  beeOnLight: '#1a6aab', // a bee mark (dot, ring) on paper
+  beeTextOnLight: '#16609c', // bee text on paper or on beeWash
   coral: '#f2876e',
   coralInk: '#2e0f08',
   coralBg: '#3d2219',
@@ -57,10 +57,10 @@ export interface Hue {
   deep: string;
 }
 export const HABIT_HUE: Record<string, Hue> = {
-  hedges: { hue: '#8ccaff', tint: '#1c2833', deep: '#1d5c94' },
+  hedges: { hue: '#e8c897', tint: '#33291b', deep: '#7a5a22' },
   'filler:like': { hue: '#6fdcc4', tint: '#152e28', deep: '#0e6857' },
   fillers: { hue: '#6fdcc4', tint: '#152e28', deep: '#0e6857' },
-  vague: { hue: '#e2c9a0', tint: '#33291c', deep: '#7a5a26' },
+  vague: { hue: '#a89c8c', tint: '#2a2622', deep: '#5c544a' },
   restart: { hue: '#f5a8d0', tint: '#36202c', deep: '#97306a' },
   restarts: { hue: '#f5a8d0', tint: '#36202c', deep: '#97306a' },
 };
