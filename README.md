@@ -32,6 +32,8 @@ Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a 
 - **Alexa+ third-party add-ons are partner-gated**, so the Alexa surface is a classic custom skill (tested in the Alexa iPhone app) plus an MCP server any MCP client can use; `/sim/` is that client in a browser, with a keyword router standing in for Alexa+'s model.
 - **No audio is stored by Bee**, so tone and pitch exist only in phone practice mode; Bee-based coaching works from words and timing.
 
+- **Bee vs meeting captions.** On a meeting both heard, unsure words and filler "like" read the same on both, while captions drop about 30% of "um" and "uh" (`docs/instrument-check.md`, `npm run instrument:check`).
+
 ## How it fits together
 
 ```mermaid
