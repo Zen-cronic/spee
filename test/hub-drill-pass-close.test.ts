@@ -143,6 +143,35 @@ describe("a session adopts the card that is already open", () => {
     expect(r.hub.sessionState().lastAttempt).toBeNull();
     r.hub.dispose();
   });
+  it("an attempt the phone sent before the session joins it: Bee's pass counts and a one-card session is done", () => {
+    const r = rig();
+    const opened = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    const a = r.hub.submit({ text: opened.resay, source: "phone", speechEndAt: r.at() + 3000 }) as Attempt;
+    r.advance(3000);
+    const { session, card } = r.hub.startSession({ by: "alexa", size: 1 });
+    expect(card?.id).toBe(LIKE);
+    expect(session.attemptIds).toEqual([a.id]);
+    // start_drill's narration is the card, not "checking with Bee"
+    expect(r.hub.sessionState()).toMatchObject({ state: "card_open", narration: `Say this: "${opened.resay}"` });
+    r.say(opened.resay, -4000);
+    expect(r.hub.attempts.find((x) => x.id === a.id)).toMatchObject({ sessionId: session.id, status: "graded", final: { pass: true } });
+    expect(r.hub.sessionState()).toMatchObject({ state: "graded" });
+    const n = r.hub.nextInSession();
+    expect(n).toMatchObject({ done: true, card: null });
+    expect(n.summary).toMatchObject({ cards: 1, attempts: 1, passed: 1 });
+    r.hub.dispose();
+  });
+  it("an adopted card with an earlier failed attempt starts again at 'Say this'", () => {
+    const r = rig();
+    const opened = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    r.say(STRAY, 10_000);
+    expect(r.graded().map((x) => x.final?.pass)).toEqual([false]);
+    r.advance(20_000);
+    r.hub.startSession({ by: "mcp" });
+    const st = r.hub.sessionState();
+    expect(st).toMatchObject({ state: "card_open", narration: `Say this: "${opened.resay}"`, lastAttempt: null });
+    r.hub.dispose();
+  });
 });
 
 describe("openings are told apart by id, not by time", () => {

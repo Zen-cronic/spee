@@ -97,7 +97,8 @@ export class CoachHub extends EventEmitter {
   sessions: StatSession[];
   prereg: TransferPrereg | null;
   readonly verifier: BeeVerifier;
-  // `seq` tells openings apart: an attempt records the one it was made in.
+  // `seq` tells openings apart (an attempt records the one it was made in); `openedAt` is also where
+  // the voice flow's verdict view starts, so a card a session adopts starts again at "Say this".
   open: { cardId: string; openedAt: number; by: string; seq: number } | null = null;
   private openings = 0;
   // The lone card (no session) Bee just passed, closed by that pass: hub.state keeps showing its
@@ -456,8 +457,10 @@ export class CoachHub extends EventEmitter {
 
   // A card already open outside a session (the TV, the phone or the API opened it) becomes the
   // session's first card instead of being replaced: the wearer may be saying it right now, and Bee
-  // keeps matching lines against that opening. card.open is sent again so the screens show it under
-  // the session.
+  // keeps matching lines against that opening. An attempt on it still with Bee joins the session, so
+  // its verdict counts there. The voice flow's view starts again at the session (openedAt), so
+  // start_drill says "Say this", not an earlier attempt's verdict. card.open is sent again so the
+  // screens show it under the session.
   startSession(opts: { by?: string; size?: number } = {}): { session: DrillSession; card: CardView | null } {
     const adopt = !this.session && this.open && this.card(this.open.cardId) ? this.card(this.open.cardId)! : null;
     this.passedClose = null;
@@ -469,6 +472,12 @@ export class CoachHub extends EventEmitter {
     let card: CardView | null;
     if (adopt) {
       this.session.cardIds.push(adopt.id);
+      for (const a of this.attempts)
+        if (a.sessionId === null && this.inOpening(a) && (a.status === "pending_bee" || a.status === "polling")) {
+          a.sessionId = this.session.id;
+          this.session.attemptIds.push(a.id);
+        }
+      this.open!.openedAt = now;
       card = this.view(adopt);
       this.publish("card.open", { card, by: this.session.by, sessionId: this.session.id, deck: this.deckSummary() });
     } else card = this.openCard({ by: this.session.by });
@@ -526,8 +535,9 @@ export class CoachHub extends EventEmitter {
 
   // What a voice UI should narrate now.
   sessionState() {
-    // An attempt shows when it was made in this opening.
-    const shown = (a: Attempt) => this.inOpening(a);
+    // An attempt shows when it was made in this opening and made (or settled) since the view began.
+    const from = this.open?.openedAt ?? Infinity;
+    const shown = (a: Attempt) => this.inOpening(a) && (a.createdAt >= from || (a.settledAt != null && a.settledAt >= from));
     const last = this.open ? [...this.attempts].reverse().find(shown) : undefined;
     const openCard = this.open ? this.card(this.open.cardId) : undefined;
     let state: "idle" | "card_open" | AttemptStatus = this.open ? "card_open" : "idle";
