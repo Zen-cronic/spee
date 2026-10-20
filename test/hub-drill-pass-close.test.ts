@@ -51,7 +51,7 @@ describe("a passed card stops collecting attempts", () => {
     const st = r.hub.sessionState();
     expect(st.openCard).toBeNull();
     expect(st.lastAttempt?.final?.pass).toBe(true);
-    expect(st.narration).toMatch(/pass, so the card is closed/);
+    expect(st.narration).toMatch(/That's a pass\. Say quiz me for your next line/);
     expect(r.hub.drillActive()).toBe(false); // live nudges are not held back by a finished card
     // the wearer goes on talking: the stray line is everyday speech, not a second, failed attempt
     r.say(STRAY, 15_000);
@@ -87,7 +87,7 @@ describe("a passed card stops collecting attempts", () => {
     expect(r.graded().map((a) => a.final?.pass)).toEqual([true]);
     expect(r.hub.open?.cardId).toBe(card!.id); // awaits "next" (the voice flows advance on the verdict)
     expect(r.changed).toEqual([]);
-    expect(r.hub.sessionState()).toMatchObject({ state: "graded", narration: "Bee heard it. That's a pass. Say next for the next card." });
+    expect(r.hub.sessionState()).toMatchObject({ state: "graded", narration: "Nice, Bee heard it. That's a pass. Say next for the next line." });
     r.say(card!.resay.replace(/\.$/, ", like, you know."), 15_000);
     expect(r.graded()).toHaveLength(1);
     const n = r.hub.nextInSession();

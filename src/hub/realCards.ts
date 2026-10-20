@@ -25,14 +25,14 @@ export function habitCards(sessions: StatSession[], opts: { source?: SourceSel; 
     const base = { id: `${kind === "hedge" ? "HEDGE" : "FILLER_LIKE"}:${x.l.key}:${x.i}`, kind: kind === "hedge" ? ("error" as const) : ("filler" as const), lang: "en" as const, type: kind === "hedge" ? "EN_HEDGE_STACK" : "EN_FILLERS", key: x.l.key, session: x.s.id, said: x.text, fix, resay: fix, line: x.l.text };
     return {
       ...base,
-      why: kind === "hedge" ? `You hedged (${targets.map((t) => `"${t}"`).join(", ")}). Say it as a statement.` : `"like" as a filler ${countHabitKey("filler:like", x.text)}x. Pause silently instead.`,
+      why: kind === "hedge" ? `Unsure words (${targets.map((t) => `"${t}"`).join(", ")}). Say it plainly, as a statement.` : `"Like" ${countHabitKey("filler:like", x.text)} times. Pause instead.`,
       score: kind === "hedge" ? 4 : 3,
       box: 1,
       due: opts.today,
       added: opts.today,
       relapses: 0,
       lastSeenSession: x.s.id,
-      habit: { kind, targets, label: kind === "hedge" ? `hedges: ${targets.map((t) => `"${t}"`).join(", ")}` : `"like" as a filler` },
+      habit: { kind, targets, label: kind === "hedge" ? `unsure words (${targets.map((t) => `"${t}"`).join(", ")})` : `filler "like"` },
       mustSay: deriveMustSay({ ...base, why: "", score: 0, box: 1, due: "", added: "", relapses: 0, lastSeenSession: "" }),
     };
   };

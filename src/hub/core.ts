@@ -18,6 +18,7 @@ import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWi
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, type DrillEvent, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
+import { failReason } from "./failReason.js";
 
 export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed";
 export type AttemptStatus = "pending_bee" | "polling" | "graded" | "unverified";
@@ -517,18 +518,18 @@ export class CoachHub extends EventEmitter {
     let state: "idle" | "card_open" | AttemptStatus = this.open ? "card_open" : "idle";
     if (this.open && last && last.createdAt >= this.open.openedAt) state = last.status;
     const narration: Record<string, string> = {
-      idle: "No drill is running. Start a session to get your first card.",
+      idle: "You're not practising right now. Say quiz me to get your first line.",
       card_open: openCard ? `Say this: "${openCard.resay}"` : "",
       pending_bee: "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment.",
       polling: "Bee's live feed was quiet, so I'm checking your conversation directly.",
-      graded: last?.final ? (last.final.pass ? "Bee heard it. That's a pass." : `Bee heard it. Not yet: ${last.final.grade.checks.find((c) => !c.ok)?.detail ?? "try again"}.`) : "",
-      unverified: "Bee didn't confirm that one, so it doesn't count. Try it again.",
+      graded: last?.final ? (last.final.pass ? "Nice, Bee heard it. That's a pass." : `Not yet: ${failReason(last.final.grade)}. Say it again.`) : "",
+      unverified: "Bee didn't catch that one, so it doesn't count. Say it again.",
     };
     const lastShown = last && this.open && last.createdAt >= this.open.openedAt ? last : null;
     // The lone card Bee just passed is closed; its verdict stays the last attempt until a card opens.
     const passed = !this.open && !this.session && this.passedClose ? (this.attempts.find((a) => a.id === this.passedClose!.attemptId) ?? null) : null;
-    if (passed) narration.idle = "Bee heard it. That's a pass, so the card is closed. Start a drill for the next one.";
-    else if (state === "graded" && this.session && last?.final?.pass) narration.graded += " Say next for the next card.";
+    if (passed) narration.idle = "Nice, Bee heard it. That's a pass. Say quiz me for your next line.";
+    else if (state === "graded" && this.session && last?.final?.pass) narration.graded += " Say next for the next line.";
     return {
       state,
       narration: narration[state] ?? "",
@@ -565,8 +566,8 @@ export class CoachHub extends EventEmitter {
     const narr: Record<AttemptStatus, string> = {
       pending_bee: "Bee hasn't sent that line yet. Ask me again in a few seconds.",
       polling: "Bee's live feed was quiet, so I'm checking your conversation directly. Ask again in a few seconds.",
-      graded: a.final?.pass ? "Bee heard it. That's a pass." : `Bee heard it. Not yet: ${a.final?.grade.checks.find((c) => !c.ok)?.detail ?? "try again"}.`,
-      unverified: "Bee didn't confirm that one, so it doesn't count. Try it again.",
+      graded: a.final?.pass ? "Nice, Bee heard it. That's a pass." : `Not yet: ${a.final ? failReason(a.final.grade) : "try again"}. Say it again.`,
+      unverified: "Bee didn't catch that one, so it doesn't count. Say it again.",
     };
     return { attempt: a, status: a.status, verdictReady: a.status === "graded" || a.status === "unverified", retryAfterMs: this.retryAfterMs(a), narration: narr[a.status] };
   }

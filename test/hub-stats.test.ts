@@ -47,7 +47,7 @@ describe("transfer", () => {
     expect(h.before.count).toBe(12);
     expect(h.after.count).toBe(0);
     expect(t.habits.find((x) => x.habit === "restart")).toMatchObject({ role: "control", verdict: "no change", cutoverSource: expect.stringContaining("earliest") });
-    expect(t.headline).toMatch(/dropped.*control stayed flat/);
+    expect(t.headline).toMatch(/dropped.*the one you didn't practise stayed the same/);
   });
   it("drill sentences Bee heard are not counted as everyday speech (review M2)", () => {
     // the after period is mostly drill lines (hedge-free card sentences): without the exclusion they
@@ -107,7 +107,7 @@ describe("transfer", () => {
     const both = run({ sessions: [before, calm] });
     expect(both.habits.find((h) => h.role === "control")!.verdict).toBe("dropped");
     expect(both.claim).toBe("dropped-control-dropped");
-    expect(both.headline).toMatch(/control dropped too/);
+    expect(both.headline).toMatch(/the one you didn't practise dropped too/);
     // A drop with no control to compare (none registered, or the control was drilled).
     expect(run({ prereg: { ...PREREG, control: [] } }).claim).toBe("dropped-control-unclear");
     const drilledControl = run({ drills: [drill, { at: drill.at, habitKeys: ["restart"] }] });
@@ -122,7 +122,7 @@ describe("transfer", () => {
     const partly = run({ prereg: heroes, drills: [{ at: likeAt, habitKeys: ["filler:like", "fillers"] }], tz: "America/Toronto" });
     expect(partly.habits.filter((h) => h.role === "drilled").map((h) => [h.habit, h.verdict])).toEqual([["hedges", "not drilled yet"], ["filler:like", "too little data"]]);
     expect(partly.claim).toBe("partly-started");
-    expect(partly.headline).toBe('After period started for "like" on Oct 19; hedges not drilled yet');
+    expect(partly.headline).toBe('Counting from your first practice: filler "like" since Oct 19; unsure words not practised yet');
     // a drop still outranks it (the claim follows the drop)
     expect(run({ prereg: heroes, drills: [{ at: drill.at, habitKeys: ["hedge:i guess", "hedges"] }] }).claim).toBe("dropped-control-flat");
     const nothing = run({ sessions: [before, sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(12).fill("I guess we we shipped it.")])] });
@@ -216,7 +216,7 @@ describe("first signal: the next conversation after the first drill", () => {
     expect(fs[0]).toMatchObject({ status: "measured", before: { session: "mon", date: "2026-10-19", count: 6 }, after: { session: "tue", date: "2026-10-20", count: 1 }, minWords: 100 });
     expect(fs[0]!.deltaPer100).toBeCloseTo(fs[0]!.after!.per100 - fs[0]!.before!.per100, 2);
     expect(fs[0]!.note).toMatch(/not proof/);
-    expect(firstSignalSentence(fs)).toBe(`First signal, from one conversation and not proof: in your next conversation after drilling, "like" went from ${fs[0]!.before!.per100.toFixed(1)} to ${fs[0]!.after!.per100.toFixed(1)} per 100 words.`);
+    expect(firstSignalSentence(fs)).toBe(`First signal, from one conversation and not proof: in your next conversation after practising, filler "like" went from ${fs[0]!.before!.per100.toFixed(1)} to ${fs[0]!.after!.per100.toFixed(1)} per 100 words.`);
   });
   it("no next conversation yet: no number, and nothing to say", () => {
     const fs = run([mon]);
@@ -228,9 +228,9 @@ describe("first signal: the next conversation after the first drill", () => {
     const short = sess("tue", "conversation", "2026-10-20T11:15:00-04:00", ["Yes, like, sure."]);
     const fs = run([mon, short]);
     expect(fs[0]).toMatchObject({ status: "too-few-words", deltaPer100: null, after: { words: 3 } });
-    expect(firstSignalSentence(fs)).toBe('First signal: your next conversation after drilling "like" was too short to compare (3 words; it takes 100).');
+    expect(firstSignalSentence(fs)).toBe('First signal: your next conversation after practising filler "like" was too short to compare (3 words; it takes 100).');
     const shortBefore = run([sess("mon", "conversation", "2026-10-19T09:30:00-04:00", ["Like, ok."]), tue]);
-    expect(firstSignalSentence(shortBefore)).toBe('First signal: your last conversation before drilling "like" was too short to compare (2 words; it takes 100).');
+    expect(firstSignalSentence(shortBefore)).toBe('First signal: your last conversation before practising filler "like" was too short to compare (2 words; it takes 100).');
   });
   it("no conversation before the drill to compare with", () => {
     expect(run([tue])[0]).toMatchObject({ status: "no-earlier-conversation", before: null, deltaPer100: null });

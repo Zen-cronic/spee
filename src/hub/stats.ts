@@ -280,13 +280,13 @@ export function firstSignalSentence(fs: FirstSignal[]): string | null {
   const measured = fs.filter((f) => f.status === "measured");
   if (measured.length) {
     const parts = measured.map((f, i) => `${habitName(f.label)} ${i ? "from" : "went from"} ${f1(f.before!.per100)} to ${f1(f.after!.per100)}`);
-    return `First signal, from one conversation and not proof: in your next conversation after drilling, ${andList(parts)} per 100 words.`;
+    return `First signal, from one conversation and not proof: in your next conversation after practising, ${andList(parts)} per 100 words.`;
   }
   const short = fs.find((f) => f.status === "too-few-words");
   if (short) {
     const next = short.after!.words < short.minWords;
     const words = next ? short.after!.words : short.before!.words;
-    return `First signal: ${next ? "your next conversation after" : "your last conversation before"} drilling ${habitName(short.label)} was too short to compare (${words} words; it takes ${short.minWords}).`;
+    return `First signal: ${next ? "your next conversation after" : "your last conversation before"} practising ${habitName(short.label)} was too short to compare (${words} words; it takes ${short.minWords}).`;
   }
   return null;
 }
@@ -302,7 +302,7 @@ export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // "2026-10-19" -> "Oct 19"
 const monthDay = (ymd: string) => `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
-// A habit's name inside a sentence: 'hedges (I guess, ...)' -> 'hedges', '"like" as a filler' -> '"like"'.
+// A habit's name inside a sentence: 'unsure words (I guess, ...)' -> 'unsure words', 'filler "like"' stays.
 export const habitName = (label: string) => label.replace(/\s*\(.*$/, "").replace(/ as a filler$/, "").trim();
 const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 
@@ -431,13 +431,15 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
         ? "partly-started"
         : "not-drilled-yet"
       : "no-drop-yet";
+  // Worded for a person; `claim` above is what it may say.
+  const names = andList(dropped.map((h) => habitName(h.label)));
   const headline = dropped.length
-    ? `${dropped.map((h) => h.label).join(" and ")} dropped in real speech after drilling${flat ? "; the undrilled control stayed flat" : controlDropped ? "; but the undrilled control dropped too, so the drop may not be the drill" : "; the control has too little data to compare"}`
+    ? `${names[0]!.toUpperCase()}${names.slice(1)} dropped in your real conversations since you started practising${flat ? "; the one you didn't practise stayed the same" : controlDropped ? "; but the one you didn't practise dropped too, so it may not be the practice" : "; there isn't enough speech yet to compare the one you didn't practise"}`
     : claim === "partly-started"
-      ? `After period started for ${andList(started.map((h) => `${habitName(h.label)} on ${monthDay(localDate(h.cutoverAt!, opts.tz))}`))}; ${andList(notYet.map((h) => habitName(h.label)))} not drilled yet`
+      ? `Counting from your first practice: ${andList(started.map((h) => `${habitName(h.label)} since ${monthDay(localDate(h.cutoverAt!, opts.tz))}`))}; ${andList(notYet.map((h) => habitName(h.label)))} not practised yet`
       : claim === "not-drilled-yet"
-        ? "Not drilled yet: the after period starts at the first drill"
-        : "No drilled habit has dropped measurably yet";
+        ? "Not practised yet: the before and after starts with your first practice"
+        : "Nothing you've practised has dropped clearly yet";
   return {
     generatedAt: new Date(opts.nowMs).toISOString(),
     synthetic: !!prereg.synthetic || ss.some((s) => s.synthetic),

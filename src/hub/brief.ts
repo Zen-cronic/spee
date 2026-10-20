@@ -9,6 +9,7 @@ import { dueCards } from "./scheduler.js";
 import { habitOf } from "./cards.js";
 import type { CoachHub } from "./core.js";
 import type { HabitKind } from "./habits.js";
+import { habitNameOf, PER_100_GLOSS } from "./habitNames.js";
 
 export interface CalendarEvent {
   title: string;
@@ -77,10 +78,10 @@ export async function buildBrief(hub: CoachHub, calendar: CalendarFn) {
   const want = top ? HABIT_FOR[top.key] : undefined;
   const warm = due.find((c) => habitOf(c).kind === want) ?? hub.deck.cards.find((c) => habitOf(c).kind === want) ?? due[0] ?? null;
   const mins = next ? Math.round((next.startsAt - now) / 60_000) : null;
-  const label: Record<string, string> = { hedges: "hedging", vague: "vague answers", fillers: "fillers", restarts: "restarts" };
+  const label: Record<string, string> = { hedges: habitNameOf("hedges"), vague: habitNameOf("vague"), fillers: habitNameOf("fillers"), restarts: habitNameOf("restarts") };
   const nudge = [
     next ? `${next.title} in ${mins} min.` : "No meeting on your calendar soon.",
-    top ? `Your top habit this ${range === "week" ? "week" : "period"}: ${label[top.key]} (${top.per100} per 100 words).` : "Not enough of your speech yet to pick a habit.",
+    top ? `The habit to watch this ${range === "week" ? "week" : "time"}: ${label[top.key]} (${top.per100} ${PER_100_GLOSS}).` : "Bee hasn't heard enough of you yet to pick a habit.",
     warm ? `Warm up: say "${warm.resay}" once, cleanly.` : "",
   ]
     .filter(Boolean)

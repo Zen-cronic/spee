@@ -76,17 +76,17 @@ export function parseHabitKey(key: string): Habit | null {
   const target = rest.join(":").trim().toLowerCase();
   switch (kind) {
     case "fillers":
-      return { kind: "filler", targets: [], label: "fillers (um, uh, like, you know)" };
+      return { kind: "filler", targets: [], label: "filler words (um, uh, like, you know)" };
     case "filler":
-      return target ? { kind: "filler", targets: [target], label: `"${target}" as a filler` } : null;
+      return target ? { kind: "filler", targets: [target], label: `filler "${target}"` } : null;
     case "hedges":
-      return { kind: "hedge", targets: [], label: "hedges (I guess, I think, maybe, kind of...)" };
+      return { kind: "hedge", targets: [], label: "unsure words (I guess, I think, maybe, kind of...)" };
     case "hedge":
-      return target ? { kind: "hedge", targets: [target], label: `the hedge "${target}"` } : null;
+      return target ? { kind: "hedge", targets: [target], label: `unsure words ("${target}")` } : null;
     case "vague":
       return { kind: "vague", targets: [], label: "vague answers (that thing, pretty much done, and stuff)" };
     case "restart":
-      return { kind: "restart", targets: [], label: "restarts (the the, I I)" };
+      return { kind: "restart", targets: [], label: "starting over (the the, I I)" };
     case "trailing":
       return { kind: "trailing", targets: [], label: "trailing off mid-sentence" };
     case "yeah-tic":

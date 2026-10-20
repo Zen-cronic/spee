@@ -29,7 +29,7 @@ describe("an attempt left waiting for Bee by a hub restart", () => {
     expect(v.attempt.counted).toBe(false);
     expect(v.verdictReady).toBe(true);
     expect(v.retryAfterMs).toBeNull();
-    expect(v.narration).toMatch(/Try it again/);
+    expect(v.narration).toMatch(/Say it again/);
     expect(v.attempt.reason).toMatch(/hub restarted/);
     // Settled attempts are left as they were.
     expect(second.attempts.filter((x) => x.status === "pending_bee" || x.status === "polling")).toHaveLength(0);
