@@ -21,6 +21,9 @@ All three reach the hub through one loopback client, [`src/mcp/hubClient.ts`](..
 | `src/alexa/route.ts` | Intent routing and the catch-all rescue |
 | `src/alexa/skill.ts` | `handleAlexa`: a pure handler (hub client, clock, sleep and progressive sender injected) |
 | `src/alexa/speech.ts` | Short lines: at most 2 sentences, quoted card sentences kept whole, SSML escaping, spoken fail reasons |
+| `src/alexa/apl.ts` | Screens for devices with a display: the APL support check, one builder per screen (its datasource), the RenderDocument directive, and the TV's fail-reason words |
+| `alexa/apl/speaking-mirror.json` | The APL document: five screens, the palette as resources, the mark as a vector graphic |
+| `scripts/apl-preview.ts` | `npm run alexa:apl:preview -- --png`: an approximate HTML/PNG preview of every screen (out/apl-preview/) |
 | `src/alexa/signature.ts` | Request signature verification (stretch; opt-in) |
 | `src/alexa/plugin.ts` | `createAlexaPlugin`: `POST /alexa` |
 | `alexa/skill-package/` | `skill.json` (endpoint placeholder, `Wildcard` certificate) and the en-CA and en-US interaction models (generic sample values only, never deck sentences) |
@@ -69,6 +72,31 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 3. RSA-SHA256 of the raw body.
 
 Loopback and LAN requests (tests, the contract check, the simulator on this machine) are never signature-checked. `ALEXA_VERIFY_SIGNATURE=0` turns the check off for public requests too; use that only for a local fixture run, never with a tunnel up. The hub logs `alexa.signature-off` at startup when it is off. The check is tested with a throwaway CA. It has not yet run against Amazon's live chain: if the first real request fails, the `alexa.rejected` log line gives the reason. A failed chain download is cached for 60 s, and at most 8 chains are kept.
+
+## Screens (APL)
+
+On a device with a screen (Fire TV, Echo Show), Alexa shows its own card with just "Speech Coach" while the skill speaks and listens, unless the skill sends a document. So every turn that has something to show also sends an `Alexa.Presentation.APL.RenderDocument` directive with a Speaking Mirror screen. The speech, the reprompts, the hub calls and the two-turn timing do not change. Amazon's guidance for screen devices is followed throughout ([APL for screen devices](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-for-screen-devices.html), [Configure your skill with the APL interface](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-support-for-your-skill.html), [Select the viewport profiles](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-select-the-viewport-profiles-your-skill-supports.html), [RenderDocument](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-interface.html)).
+
+- **Only for screens.** The manifest declares `ALEXA_PRESENTATION_APL` in `apis.custom.interfaces`. The directive goes out only when the request's `context.System.device.supportedInterfaces` lists `Alexa.Presentation.APL`. A voice-only device, or one with only a character display (`Alexa.Presentation.APLT`, an Echo Dot with clock), gets exactly the response it got before.
+- **One document, five screens.** `alexa/apl/speaking-mirror.json` (APL `2023.2`) is sent inline (`document.type: "APL"`). `payload.screen.kind` picks the screen, and the directive's token names it (`speakingMirror.<kind>`):
+
+  | Screen | When | What it shows (datasource `payload.screen`) |
+  |---|---|---|
+  | `drill` | Launch, "quiz me", next | "Say this:" (or "Next, say:") and the line on the paper card (`kicker`, `sentence`); the tracker on step 1 (`steps`: You said it, Checked by Bee, Graded); "Then ask: how did I do?" (`hint`) |
+  | `checking` | after the attempt, and an early "how did I do?" | the same layout; the tracker on step 2; "Bee is checking…" (`status`). The open line comes from `GET /api/session` (one more loopback call, made only for a screen) |
+  | `verdict` | Bee's verdict | "Passed." in lime, "Not yet." in coral, or "Not counted." (`headline`, `tone`); the reason in the TV's own words (`reason`: `plainReason(gradeFailure(grade))`, the same as the TV's practice screen); the "Checked by Bee" tag (`checked`, `tag`); the next line or the same line again (`kicker`, `sentence`), or what to do (`hint`) |
+  | `progress` | "how am I doing" | one number (`hero`: the week's top habit per 100 words, else the lines due, else the week's words) with its caption (`heroCaption`), the first sentence of the coach narration (`line`), and "Open Speaking Mirror on this TV for details" (`footerTv`; on a hub, `footerHub`: "...on your TV...") |
+  | `empty` | caught up, no line, not practising, nothing to check, the round's end, live coaching on or off, the transfer headline, help with no line open, the hub away | `headline`, `line`, `hint` |
+
+  Every field is present on every screen (empty when unused), so each binding resolves. Help and fallback with a line open send no document, so the line's screen stays up. Stop sends none.
+- **Masked for the screen.** The builders put every string a person reads through `maskDeep(..., "screen")`, so a private term shows as `▒▒▒`. The hub's JSON writer then masks the `/alexa` body for speech; the screen's marks are left as they are.
+- **Colours and type.** The palette is the TV's (`tv/web/src/theme.ts`; a test keeps them equal), defined once as document resources. `@colorBee` is the only colour for "checked by Bee": the tag, the "Bee is checking…" line, the tracker's Bee step and the mark's reflection. Change it there to recolour Bee everywhere. The datasource carries words and states, never colours.
+- **The mark.** Concept G, "two voices": a lime speech bubble and its reflection across a mirror bar, as an AVG `VectorGraphic` (paths only; the fills are `@lime` and `@colorBee`), drawn at 48 dp or more (smaller, it blurs).
+- **Viewports.** Declared: TV fullscreen (`tvLandscapeXLarge`, 960x540 dp, which is a 1920x1080 Fire TV) and the landscape hubs small (Echo Show 5, 960x480), medium (960x600) and large (Echo Show 8 and 10, 1280x800). Sizes come from dimension resources chosen by `viewport.height`. Round and portrait hubs and the extra-large hub are not declared, so Alexa scales and letterboxes the nearest declared layout there. The TV layout keeps a 5% inset for overscan, and its smallest type is 18 dp (36 px at 1080p).
+- **Leaving quickly.** A response that ends the session (a one-shot "how am I doing", the round's end) sets `settings.idleTimeout` to 6 s, so the TV goes back to what it was showing. In an open session the device keeps the screen while it listens, as it did with the plain card. This has not yet been checked on the real Fire TV.
+- **Preview.** `npm run alexa:apl:preview -- --png` writes an approximate HTML render and a headless-Chrome PNG of each screen for Fire TV 1080p, Echo Show 8 and Echo Show 5 to `out/apl-preview/` (gitignored). It is a small interpreter for the parts of APL this document uses, labelled "APPROXIMATE PREVIEW" on every image; fonts and line breaks differ from a device. For a device-accurate look, paste the document and a datasource from the preview into the developer console's APL authoring tool.
+- **Tests.** `test/alexa-apl.test.ts`: the manifest declares the interface; the directive appears only for an APL device (not voice-only, not APLT); each screen's datasource; masking; the document's shape (type, version, `mainTemplate` taking `payload`, every `payload.screen.*` and `data.*` binding present, every `@resource` and component defined, no colour literal outside the palette, the mark at 48 dp or more); the reason words equal the TV's for every rule; and a full drill against the demo hub, also over HTTP.
+- **Deploying.** The manifest change reaches the dev skill with the usual `npm run alexa:deploy` (step 4 of the real-device run below). The document is sent in each response, so nothing else needs uploading.
 
 ## MCP tools
 

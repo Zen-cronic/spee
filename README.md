@@ -48,7 +48,7 @@ flowchart LR
 
 - **Bee (Watch + `bee` CLI)** is the input of record: `bee stream` delivers wearer-tagged lines for habits, live nudges and every drill grade, and Bee to-dos with alarms are the wrist nudges.
 - **The hub** holds all state. It verifies each attempt against Bee (`src/hub/bee.ts`), grades it deterministically (`src/hub/grade.ts`), runs the live coach and recaps (`src/hub/live/`), and serves every surface from one port behind a public-access gate (`src/hub/gate.ts`).
-- **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
+- **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"), and on a Fire TV or Echo Show each turn shows a Speaking Mirror screen (APL: the line, Bee's check, the verdict) instead of Alexa's plain card ([`docs/alexa.md`](docs/alexa.md), "Screens (APL)"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
 - **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
 - **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge. Its microphone needs https (the `ngrok http` link above); over LAN `http://` it is typing only.
 
