@@ -5,6 +5,8 @@
 //             -> practice.meters at 10 Hz to the TV, then practice.summary. Interim Web Speech words
 //             ride along as the caption. Nothing is recorded or stored.
 //   Mic check can Web Speech and getUserMedia run at once on this phone? (src/miccheck.ts)
+//   Progress  today's practice, this week, the before and after and the last recaps: the TV's own
+//             reads, with the pair token in a header (src/progressView.ts)
 // Privacy: no localStorage or sessionStorage; the pair token stays in memory.
 import { BridgeClient, normalizeCode, type IntentMsg } from "tv-voice-bridge";
 import type { CardView, HubState, PracticeSummary } from "../../../src/hub/contract.js";
@@ -12,6 +14,7 @@ import { startCapture, captureSupported, type Capture } from "./audio.js";
 import { PRODUCT_NAME } from "./brand.js";
 import { envReport, reportText, runPhase } from "./miccheck.js";
 import { ProsodyEngine, type MeterCore } from "./prosody.js";
+import { createProgress } from "./progressView.js";
 import { dictation, listen, speechCtor, type Listener } from "./speech.js";
 import { captionOf, countWords, meterFrame, newTakeId, parseJoin, sessionOverLine, speechLang, takeSummary, wsProtocols, wsUrl, type MicPhase, type MicVerdict } from "./take.js";
 
@@ -40,12 +43,28 @@ function setConn(text: string, cls = "") {
   el.className = `pill ${cls}`;
 }
 
-type Mode = "drill" | "practice" | "check";
+type Mode = "drill" | "practice" | "progress" | "check";
 function show(mode: Mode | "join") {
-  for (const id of ["join", "drill", "practice", "check"]) $(id).hidden = id !== mode;
+  for (const id of ["join", "drill", "practice", "progress", "check"]) $(id).hidden = id !== mode;
   $("tabs").hidden = mode === "join";
-  document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+  document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((b) => {
+    b.classList.toggle("on", b.dataset.mode === mode);
+    if (b.dataset.mode === mode) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  if (mode === "progress") progress.open();
+  else progress.hide();
 }
+
+const progress = createProgress({
+  root: $("progress"),
+  token: () => join.k,
+  hubNow: () => client?.now() ?? Date.now(),
+  onPractise: () => {
+    show("drill");
+    window.scrollTo(0, 0);
+  },
+});
 
 // Drill
 
@@ -70,6 +89,7 @@ function renderStages() {
 }
 
 function onEvent(topic: string, p: Record<string, any>) {
+  progress.onEvent(topic, p);
   if (topic === "hub.state") {
     const h = p as unknown as HubState;
     card = h.openCard;
@@ -356,12 +376,18 @@ async function connect(code: string) {
     : undefined) as unknown as ConstructorParameters<typeof BridgeClient>[0]["WebSocketImpl"];
   client = new BridgeClient({ url: wsUrl(location.protocol, location.host), role: "mic", code, name: "phone", WebSocketImpl });
   // The bridge client keeps retrying after a failed first connect, so a later `open` leaves the join view.
+  let dropped = false;
   client.on("open", () => {
+    if (dropped) progress.onReconnect();
+    dropped = false;
     room = client?.code ?? code;
     setConn(`Paired · ${room}`, "ok");
     if (!$("join").hidden) show("drill");
   });
-  client.on("close", () => setConn("Reconnecting…", "bad"));
+  client.on("close", () => {
+    dropped = true;
+    setConn("Reconnecting…", "bad");
+  });
   client.on("repair", () => {
     setConn("TV gone · scan its new code", "bad");
     client?.close();

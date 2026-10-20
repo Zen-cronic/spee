@@ -10,6 +10,6 @@ export default defineConfig({
   base: "/p/",
   publicDir: "../public",
   resolve: { conditions: ["source", ...defaultClientConditions] },
-  server: { port: 5184, strictPort: true, proxy: { "/ws": { target: "ws://localhost:8791", ws: true } } },
+  server: { port: 5184, strictPort: true, proxy: { "/ws": { target: "ws://localhost:8791", ws: true }, "/api": "http://localhost:8791" } },
   build: { outDir: "../../dist/web/phone", emptyOutDir: true },
 });
