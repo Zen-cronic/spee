@@ -9,8 +9,10 @@
 // a monologue nudges once per run.
 //
 // The wrist text is generated from the rule and its numbers only: it never quotes a transcript.
-import { WRIST_TEXT_MAX, type CoachThresholds, type NudgeRule } from "../contract.js";
+import { WRIST_TEXT_MAX, type CoachThresholds, type CUE_HABITS, type NudgeRule } from "../contract.js";
 import type { RuleEvidence, Thresholds } from "./window.js";
+
+export type CueHabit = (typeof CUE_HABITS)[number];
 
 export function windowThresholds(t: CoachThresholds): Thresholds {
   return { hedges: t.hedges, like: t.like, monologue: t.monologue, rate: { wpmFast: t.rate.wpmFast } };
@@ -45,6 +47,13 @@ export function nudgeText(e: RuleEvidence): string {
   }
   return clipWrist(t);
 }
+
+// The if-then wrist cues (POST /api/coach/cue, live/cue.ts): one fixed line per drilled habit a cue
+// may name (CUE_HABITS). Fixed text, never a calendar title or a transcript line; each <= WRIST_TEXT_MAX.
+export const CUE_TEXT: Record<CueHabit, string> = {
+  hedges: '[coach] If asked for status: result first, no "I guess".',
+  "filler:like": `[coach] If you need a second: pause, don't say "like".`,
+};
 
 export function clipWrist(t: string): string {
   const s = t.startsWith("[coach] ") ? t : `[coach] ${t}`;

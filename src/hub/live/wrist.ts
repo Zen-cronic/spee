@@ -1,4 +1,4 @@
-// The wrist: how a nudge or a recap reaches the wearer.
+// The wrist: how a nudge, a recap or an if-then cue reaches the wearer.
 //
 // BeeTodoWrist creates a Bee to-do with an alarm a few seconds ahead
 // (`bee todos create --text "[coach] ..." --alarm-at <iso> --json`). Verified 2026-10-16: the alarm
@@ -12,7 +12,7 @@
 //   - Circuit breaker: 3 consecutive failed creates open it for 10 min (the live engine then
 //     turns live mode off with reason "wrist-down").
 //   - Ledger: <stateDir>/live/todos.json (ids, generated text, alarm times; never transcript text).
-//   - Cleanup: a nudge to-do is deleted 10 min after its alarm; a recap to-do is completed (it
+//   - Cleanup: a nudge or cue to-do is deleted 10 min after its alarm; a recap to-do is completed (it
 //     shows ticked in the Bee app) 30 min after its alarm. At startup and every hour, any open
 //     "[coach]" to-do whose alarm passed more than 30 min ago and that the ledger does not track
 //     is deleted.
@@ -24,6 +24,7 @@ import { trackChild } from "../processGuards.js";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { promisify } from "node:util";
 import { WRIST_TEXT_MAX, type WristChannel, type WristStatus } from "../contract.js";
+import { CUE_TEXT } from "./rules.js";
 
 export const DEFAULT_LEAD_MS = Number(process.env.NUDGE_ALARM_LEAD_S ?? 10) * 1000 || 10_000;
 export const MIN_GAP_MS = 1500;
@@ -37,10 +38,12 @@ export const STALE_MS = 30 * 60_000;
 export const SWEEP_EVERY_MS = 60 * 60_000;
 export const REPLAY_TODO_MS = 1450; // a measured create round trip, for the replay hops
 
+export type WristKind = "nudge" | "recap" | "cue";
 export interface WristRequest {
-  kind: "nudge" | "recap";
-  refId: string; // the nudge or recap id
+  kind: WristKind;
+  refId: string; // the nudge, recap or cue id
   text: string; // generated "[coach] ..." text, <= WRIST_TEXT_MAX
+  alarmAt?: number; // a later alarm (a cue "in N minutes"); never sooner than the lead
 }
 export interface WristResult {
   channel: WristChannel;
@@ -65,6 +68,7 @@ export interface Wrist {
 // The wrist texts the coach generates (src/hub/live/rules.ts nudgeText, recap.ts, scripts/wrist-probe.ts),
 // current wording first, then the earlier wording (to-dos created before the rewording still match).
 const MIN = "[\\d.]+ (?:minutes?|min)";
+const literal = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const GENERATED_WRIST_RE = new RegExp(
   "^\\[coach\\] (?:" +
     [
@@ -78,6 +82,7 @@ export const GENERATED_WRIST_RE = new RegExp(
       "\\d+ words a minute\\. Slow down\\.",
       "Recap: .+",
       "probe \\d+s",
+      ...Object.values(CUE_TEXT).map((t) => literal(t.slice("[coach] ".length))),
     ].join("|") +
     ")$",
 );
@@ -107,7 +112,8 @@ export class ReplayWrist implements Wrist {
       this.timers.add(t);
     });
     const todoAt = this.opts.clock();
-    return { channel: "replay", status: "replay", todoId: null, todoAt, alarmAt: todoAt + Math.round(this.leadMs * this.opts.pace), leadMs: this.leadMs, error: null };
+    const alarmAt = Math.max(todoAt + Math.round(this.leadMs * this.opts.pace), req.alarmAt ?? 0);
+    return { channel: "replay", status: "replay", todoId: null, todoAt, alarmAt, leadMs: this.leadMs, error: null };
   }
   status(): WristStatus {
     return { channel: "replay", healthy: true, failures: 0, circuitOpenUntil: null, leadMs: this.leadMs, pendingTodos: 0 };
@@ -136,7 +142,7 @@ export const defaultExec: ExecFn = async (file, args, opts) => {
 
 export interface TodoEntry {
   todoId: string;
-  kind: "nudge" | "recap";
+  kind: WristKind;
   refId: string;
   text: string; // generated coach text only
   createdAt: number;
@@ -212,7 +218,7 @@ export function parseTodoList(stdout: string): ListedTodo[] {
   }
 }
 
-const errText = (e: unknown) => {
+export const errText = (e: unknown) => {
   const x = e as { killed?: boolean; signal?: string; code?: unknown; message?: string };
   if (x?.killed || x?.signal === "SIGTERM") return "timeout";
   return (x?.message ?? String(e)).split("\n")[0]!.slice(0, 160);
@@ -392,7 +398,7 @@ export class BeeTodoWrist implements Wrist {
       let last = "";
       for (let i = 0; i < attempts; i++) {
         if (this.circuitOpenUntil() != null) return this.fail(`wrist circuit open after ${this.failures} failures`);
-        const alarm = Math.ceil((this.clock() + this.leadMs) / 1000) * 1000;
+        const alarm = Math.ceil(Math.max(this.clock() + this.leadMs, req.alarmAt ?? 0) / 1000) * 1000;
         // The create may have landed without us knowing its id: adopt it from the list rather than
         // create a duplicate alarm.
         const adopt = async () => {
@@ -433,9 +439,9 @@ export class BeeTodoWrist implements Wrist {
   private created(req: WristRequest, id: string, alarmAt: number): WristResult {
     this.failures = 0;
     const now = this.clock();
-    const cleanup = req.kind === "nudge" ? "delete" : "complete";
+    const cleanup = req.kind === "recap" ? "complete" : "delete";
     this.createdIds.add(id);
-    this.ledger.push({ todoId: id, kind: req.kind, refId: req.refId, text: req.text, createdAt: now, alarmAt, cleanup, cleanupAt: alarmAt + (req.kind === "nudge" ? NUDGE_CLEANUP_MS : RECAP_CLEANUP_MS), state: "pending", attempts: 0 });
+    this.ledger.push({ todoId: id, kind: req.kind, refId: req.refId, text: req.text, createdAt: now, alarmAt, cleanup, cleanupAt: alarmAt + (req.kind === "recap" ? RECAP_CLEANUP_MS : NUDGE_CLEANUP_MS), state: "pending", attempts: 0 });
     this.saveLedger();
     this.log("wrist.todo.created", { kind: req.kind, refId: req.refId, todoId: id, alarmAt });
     return { channel: "bee-todo", status: "scheduled", todoId: id, todoAt: now, alarmAt, leadMs: this.leadMs, error: null };
@@ -451,7 +457,7 @@ export class BeeTodoWrist implements Wrist {
     this.log("wrist.todo.gone", { todoId, kind: t.kind });
   }
 
-  // Delete nudges 10 min after their alarm; complete recaps 30 min after theirs.
+  // Delete nudges and cues 10 min after their alarm; complete recaps 30 min after theirs.
   cleanupDue(): Promise<void[]> {
     const now = this.clock();
     const due = this.ledger.filter((t) => t.state === "pending" && t.cleanupAt <= now && !this.queuedCleanup.has(t.todoId));

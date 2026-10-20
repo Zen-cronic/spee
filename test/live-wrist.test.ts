@@ -166,6 +166,18 @@ describe("BeeTodoWrist", () => {
       ["todos", "delete", "1", "--json"],
     ]);
   });
+  it("a cue to-do: a later alarm when asked, deleted 10 min after it, and the stale sweep knows its text", async () => {
+    const r = rig((a) => (a[1] === "create" ? created(a) : "{}"));
+    const text = '[coach] If asked for status: result first, no "I guess".';
+    const res = await r.w.send({ kind: "cue", refId: "cue_1", text, alarmAt: T0 + 10 * 60_000 });
+    expect(r.calls[0]!.args).toEqual(["todos", "create", "--text", text, "--alarm-at", alarmIso(T0 + 10 * 60_000), "--json"]);
+    expect(r.w.entries()[0]).toMatchObject({ kind: "cue", refId: "cue_1", cleanup: "delete", cleanupAt: res.alarmAt! + 10 * 60_000 });
+    // never sooner than the lead
+    await r.w.send({ kind: "cue", refId: "cue_2", text, alarmAt: T0 });
+    expect(Date.parse(r.calls[1]!.args[5]!)).toBeGreaterThanOrEqual(T0 + 10_000 + 400);
+    const s = rig((a) => (a[1] === "list" ? JSON.stringify([{ id: 8, text, completed: false, alarm_at: T0 - 3600_000 }]) : "{}"));
+    expect(await s.w.sweep()).toBe(1);
+  });
   it("parses the create and list outputs defensively", () => {
     expect(parseTodo('{"id":29154389,"text":"x","alarm_at":1792177029000}')).toEqual({ id: "29154389", alarmAt: 1792177029000 });
     expect(parseTodo('{"todo":{"id":"7","alarmAt":"2026-10-20T17:30:10Z"}}')).toEqual({ id: "7", alarmAt: T0 + 10_000 });
