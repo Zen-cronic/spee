@@ -1,4 +1,4 @@
-// Public-access gate (contract v2, lead-owned). A tunnel (ngrok http 8791) would otherwise expose
+// Public-access gate (contract v2). A tunnel (ngrok http 8791) would otherwise expose
 // the wearer's own words (/api/*, SSE, the TV), and so would any web page the wearer visits while
 // the hub runs (it can call http://127.0.0.1:8791 from the browser). Two independent checks:
 //
@@ -31,10 +31,10 @@
 //      (ports 5183 tv/web, 5184 web/phone, 5175 web/sim) and HUB_ALLOWED_ORIGINS (comma-separated).
 //    CORS answers echo an allowed Origin (never `*`) with `vary: origin`.
 //
-// When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated, printed in full once (the start
-// that generates it) and saved to <stateDir>/tokens.json (git-ignored, mode 0600). Later starts reuse
-// it, so a hub restart does not lock out every paired phone and MCP client (review M40), and print
-// only its last 4 characters. `--rotate-tokens` (rotateTokens) generates new ones and deletes the old
+// When PAIR_TOKEN or MCP_TOKEN is unset, a random one is generated, saved to <stateDir>/tokens.json (git-ignored, mode 0600). Later starts reuse
+// it, so a hub restart does not lock out every paired phone and MCP client. A generated pair token
+// is printed in full once (the start that makes it); the MCP token is only ever shown by its last 4
+// characters (read it from tokens.json, or export your own). Later starts print only the last 4. `--rotate-tokens` (rotateTokens) generates new ones and deletes the old
 // copies (tokens.json.bak, tokens.json.corrupt-*), which unpairs every phone: do it after a recording
 // or a shared log showed a token or the TV's pairing QR. Tokens never appear in a response or a log,
 // with one exception by design: a WebSocket peer that presented the pair token, or a trusted one
@@ -95,7 +95,8 @@ export function resolveTokens(env: Record<string, string | undefined> = process.
     }
     const t = randomBytes(18).toString("base64url");
     toSave[name] = t;
-    print(`hub: ${name} is unset; generated: ${t}  (${savePath ? `saved in ${savePath} for the next start; ` : ""}export ${name} to choose your own)`);
+    const shown = name === "MCP_TOKEN" ? `…${t.slice(-4)}` : t; // the MCP token is never printed in full
+    print(`hub: ${name} is unset; generated: ${shown}  (${savePath ? `saved in ${savePath} for the next start; ` : ""}export ${name} to choose your own)`);
     return [t, "generated"];
   };
   const [pairToken, pair] = one("PAIR_TOKEN");
