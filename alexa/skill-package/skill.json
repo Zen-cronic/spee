@@ -27,7 +27,18 @@
         "endpoint": {
           "uri": "https://PUBLIC_BASE_URL.invalid/alexa",
           "sslCertificateType": "Wildcard"
-        }
+        },
+        "interfaces": [
+          {
+            "type": "ALEXA_PRESENTATION_APL",
+            "supportedViewports": [
+              { "mode": "HUB", "shape": "RECTANGLE", "minHeight": 100, "maxHeight": 599, "minWidth": 960, "maxWidth": 1279 },
+              { "mode": "HUB", "shape": "RECTANGLE", "minHeight": 600, "maxHeight": 959, "minWidth": 960, "maxWidth": 1279 },
+              { "mode": "HUB", "shape": "RECTANGLE", "minHeight": 600, "maxHeight": 1279, "minWidth": 1280, "maxWidth": 1920 },
+              { "mode": "TV", "shape": "RECTANGLE", "minHeight": 540, "maxHeight": 540, "minWidth": 960, "maxWidth": 960 }
+            ]
+          }
+        ]
       }
     },
     "manifestVersion": "1.0",
