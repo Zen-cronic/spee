@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { InstrumentResponse, TransferHabit, TransferResponse } from '../contract';
+import type { InstrumentResponse, SettingsResponse, TransferHabit, TransferResponse } from '../contract';
+import { BySettingLine } from '../components/BySetting';
 import { CaptionsLine } from '../components/CaptionsLine';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
@@ -13,7 +14,7 @@ import { Empty } from './WeekView';
  * from the hub (non-overlapping 95% intervals, minimum words); the screen only says them plainly.
  * Under them, a secondary strip (CaptionsLine) with meeting captions included, labelled as such.
  */
-export function TransferView({ transfer, captions }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null } }) {
+export function TransferView({ transfer, captions, settings }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null }; settings?: SettingsResponse | null }) {
   const debug = useDebug();
   if (!transfer) return <Empty text="Loading your progress…" />;
   const drilled = transfer.habits.filter((x) => x.role === 'drilled');
@@ -36,6 +37,7 @@ export function TransferView({ transfer, captions }: { transfer: TransferRespons
         ))}
       </View>
       <FirstSignalLines signals={transfer.firstSignal} />
+      <BySettingLine line={settings?.line} />
       <CaptionsLine all={captions?.all ?? null} instrument={captions?.instrument ?? null} />
       <Text style={[styles.note, withCaptions && styles.noteTight]} numberOfLines={1}>{`Plan set ${fmtDate(transfer.prereg.registeredAt)}, before your first practice. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and a clear gap between them.`}</Text>
       {debug ? <Text style={styles.debug} numberOfLines={2}>{transfer.habits.map((x) => `${x.habit} ${x.before.ci95.join('–')} → ${x.after.ci95.join('–')} (${x.before.words}/${x.after.words} w)`).join('  ·  ')}{transfer.unregistered.length ? `  ·  unregistered: ${transfer.unregistered.map((u) => u.habit).join(', ')}` : ''}</Text> : null}

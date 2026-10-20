@@ -34,6 +34,7 @@ import type {
   PracticeSummary,
   Recap,
   SessionSummary,
+  SettingTag,
 } from '../contract';
 import { gradeFailure, type GradeFailure } from './format';
 
@@ -135,7 +136,9 @@ export type MirrorAction =
   | { type: 'recapFetched'; ok: boolean }
   | { type: 'dismissRecap' }
   | { type: 'liveState'; live: LiveState }
-  | { type: 'recap'; recap: Recap; show: boolean; now: number };
+  | { type: 'recap'; recap: Recap; show: boolean; now: number }
+  // the wearer changed a conversation's setting (the chip on the recap or Live): every held recap of it shows it
+  | { type: 'recapSetting'; conversationId: string; setting: SettingTag | null; now: number };
 
 /** One step of the Live tracker: you said it, checked by Bee, graded. */
 export type StepState = 'todo' | 'now' | 'done' | 'bad' | 'pass';
@@ -227,6 +230,12 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       // The socket's live.mode wins over a refetch built before it (an older changedAt): a slow
       // GET /api/live must not turn live coaching back on after it expired.
       return { ...s, live: { ...s.live, mode: newerMode(s.live.mode, a.live.mode), baseline: a.live.baseline ?? s.live.baseline, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
+    case 'recapSetting': {
+      const set = (r: Recap | null) => (r && r.conversationId === a.conversationId ? { ...r, setting: a.setting } : r);
+      if (s.recap?.conversationId !== a.conversationId && s.latestRecap?.conversationId !== a.conversationId) return s;
+      // changing it keeps the recap up: its 30 s start again
+      return { ...s, recap: set(s.recap), latestRecap: set(s.latestRecap), recapShownAt: s.recapVisible && s.recap?.conversationId === a.conversationId ? a.now : s.recapShownAt };
+    }
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;
       return { ...s, recap: a.recap, latestRecap: newerRecap(s.latestRecap, a.recap), recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };

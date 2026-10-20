@@ -12,11 +12,14 @@ import {C, F, R, SP, T} from './theme';
  */
 export type RemoteKey = 'up' | 'down' | 'left' | 'right' | 'select' | 'back' | 'playpause';
 
-export function FocusRoot({children, onBack, onKey}: {children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void}) {
+// `onCapture` gets Left/Right key-ups first (the recap's setting chip takes Right); the platform still moves focus.
+export function FocusRoot({children, onBack, onKey, onCapture}: {children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void; onCapture?: (k: RemoteKey) => boolean}) {
   const backRef = useRef(onBack);
   backRef.current = onBack;
   const keyRef = useRef(onKey);
   keyRef.current = onKey;
+  const captureRef = useRef(onCapture);
+  captureRef.current = onCapture;
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       // false lets the system handle Back, which exits the app on the root screen. onBack returns
@@ -30,6 +33,7 @@ export function FocusRoot({children, onBack, onKey}: {children: ReactNode; onBac
   useTVEventHandler((evt: HWEvent) => {
     if (!evt || evt.eventKeyAction !== 1) return;
     const k = evt.eventType === 'enter' ? 'select' : (evt.eventType as RemoteKey);
+    if ((k === 'left' || k === 'right') && captureRef.current?.(k)) return;
     if (k === 'select' || k === 'back') keyRef.current?.(k);
   });
   return <>{children}</>;

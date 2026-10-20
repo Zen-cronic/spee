@@ -21,7 +21,8 @@ interface Ctx {
 }
 const FocusCtx = createContext<Ctx | null>(null);
 
-export function FocusRoot({ children, onBack, initial, onKey }: { children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void }) {
+// `onCapture` sees every key first: true means it handled the key (the recap's setting chip takes Right).
+export function FocusRoot({ children, onBack, initial, onKey, onCapture }: { children: ReactNode; onBack?: () => boolean | void; initial?: string; onKey?: (k: RemoteKey) => boolean | void; onCapture?: (k: RemoteKey) => boolean }) {
   const items = useRef(new Map<string, Item>());
   const [focused, setFocused] = useState<string | null>(initial ?? null);
   const focusedRef = useRef(focused);
@@ -30,6 +31,8 @@ export function FocusRoot({ children, onBack, initial, onKey }: { children: Reac
   backRef.current = onBack;
   const keyRef = useRef(onKey);
   keyRef.current = onKey;
+  const captureRef = useRef(onCapture);
+  captureRef.current = onCapture;
 
   const register = useCallback((i: Item) => {
     items.current.set(i.id, i);
@@ -42,6 +45,7 @@ export function FocusRoot({ children, onBack, initial, onKey }: { children: Reac
   useEffect(
     () =>
       subscribeRemote((k) => {
+        if (captureRef.current?.(k)) return;
         const all = [...items.current.values()];
         const cur = (focusedRef.current && items.current.get(focusedRef.current)) || all[0];
         if (k === 'back') return backRef.current?.();

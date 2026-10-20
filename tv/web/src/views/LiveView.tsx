@@ -1,5 +1,6 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
+import { SettingChip } from '../components/SettingChip';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
 import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
@@ -13,14 +14,14 @@ import { C, F, R, SP, SPLIT, T } from '../theme';
  * the two drilled habits over the last 2 minutes, and the last wrist nudge). Developer detail
  * (speaker score, hops in ms, held-back nudges) shows only in debug.
  */
-export function LiveView({ drill, live, partial, focus, last }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live'; last?: Recap | null }) {
+export function LiveView({ drill, live, partial, focus, last, onCycleSetting }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live'; last?: Recap | null; onCycleSetting?: () => void }) {
   return (
     <View style={styles.wrap} testID="view-live">
       <View style={styles.drill}>
         <DrillPanel d={drill} partial={partial} />
       </View>
       <View style={styles.convo}>
-        <ConversationPanel live={live} last={last ?? null} />
+        <ConversationPanel live={live} last={last ?? null} onCycleSetting={onCycleSetting} />
       </View>
     </View>
   );
@@ -169,7 +170,7 @@ function Counter({ label, value, over, idle }: { label: string; value: string; o
  * you: between conversations it shows your usual numbers dimmed (the hub's baseline), and they
  * brighten into this conversation's numbers once one starts.
  */
-function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null }) {
+function ConversationPanel({ live, last, onCycleSetting }: { live: LiveSlice; last: Recap | null; onCycleSetting?: () => void }) {
   const debug = useDebug();
   const w: LiveWindow | null = live.window;
   const b = live.baseline;
@@ -218,7 +219,11 @@ function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null
         </View>
       ) : idle && footer.headline ? (
         <View style={styles.last} testID="last-conversation">
-          <Text style={styles.lastKicker}>Last conversation</Text>
+          <View style={styles.lastHead}>
+            <Text style={styles.lastKicker}>Last conversation</Text>
+            {/* Down from the tabs, then OK, changes where it happened */}
+            <SettingChip tag={last?.setting} tone="dark" focusId="last-setting" onCycle={onCycleSetting} testID="last-setting" />
+          </View>
           <Text style={styles.lastText} numberOfLines={2}>{curly(footer.headline)}</Text>
         </View>
       ) : idle ? (
@@ -251,6 +256,7 @@ const styles = StyleSheet.create({
   listenHint: { color: C.faint, fontSize: T.body, lineHeight: 42, maxWidth: 640, fontFamily: F.family },
   usual: { color: C.faint },
   last: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l },
+  lastHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   lastKicker: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   lastText: { color: C.text, fontSize: T.body, lineHeight: 42, fontWeight: '600', marginTop: SP.xs, fontFamily: F.family },
   status: { flexShrink: 1, fontSize: 56, lineHeight: 66, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },

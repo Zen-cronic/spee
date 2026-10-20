@@ -1,4 +1,5 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
+import { SettingChip } from '../components/SettingChip';
 import type { Recap } from '../contract';
 import { useDebug } from '../debug';
 import { curly, fmt1, fmtInt, fmtMs, fmtPct, habitTitle } from '../mirror/format';
@@ -13,7 +14,8 @@ const VERDICT: Record<string, { word: string; bg: string; ink: string }> = {
 /**
  * The recap after a conversation, over whatever screen is showing: one headline, three numbers,
  * each habit against your usual rate, and the wearer's own moment (as the hub served it, at most 12
- * words) with a plain rephrase. OK or Back closes it; it also closes by itself after 30 s.
+ * words) with a plain rephrase, and where it happened (Meeting, Work talk, Casual): Right changes
+ * that. OK or Back closes it; it also closes by itself after 30 s.
  */
 export function RecapOverlay({ recap }: { recap: Recap }) {
   const debug = useDebug();
@@ -23,7 +25,11 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
   return (
     <View style={styles.scrim} testID="recap-overlay">
       <Animated.View style={[styles.card, enter]}>
-        <Text style={styles.kicker}>{`After your conversation · ${fmtMs(recap.durationMs)} · from Bee`}</Text>
+        <View style={styles.kickerRow}>
+          <Text style={styles.kicker}>{`After your conversation · ${fmtMs(recap.durationMs)} · from Bee`}</Text>
+          <View style={{ flex: 1 }} />
+          <SettingChip tag={recap.setting} tone="paper" testID="recap-setting" />
+        </View>
         <Text style={styles.headline} numberOfLines={2}>{curly(recap.headline)}</Text>
         <View style={styles.body}>
           <View style={styles.left}>
@@ -57,7 +63,7 @@ export function RecapOverlay({ recap }: { recap: Recap }) {
             </View>
           ) : null}
         </View>
-        <Text style={styles.foot}>{[wrist, 'OK or Back to close'].filter(Boolean).join('   ·   ')}</Text>
+        <Text style={styles.foot}>{[wrist, recap.setting ? 'Right changes the setting' : null, 'OK or Back to close'].filter(Boolean).join('   ·   ')}</Text>
         {debug ? <Text style={styles.debug}>{`${m.wearerWords} words · longest turn ${fmtMs(m.longestMonologueMs)} · nudges ${recap.nudges.sent} sent, ${recap.nudges.skipped} held · phrasing ${recap.phrasing} · wrist ${recap.delivery.wrist}${recap.replay ? ' · replay' : ''}`}</Text> : null}
       </Animated.View>
     </View>
@@ -76,6 +82,7 @@ function Metric({ big, label }: { big: string; label: string }) {
 const styles = StyleSheet.create({
   scrim: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,10,9,0.86)', alignItems: 'center', justifyContent: 'center' },
   card: { width: 1560, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
+  kickerRow: { flexDirection: 'row', alignItems: 'center' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   headline: { color: C.ink, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.s, fontFamily: F.family },
   body: { flexDirection: 'row', marginTop: SP.xl },

@@ -37,17 +37,23 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
     if (k === 'left') step(-1);
     if (k === 'right') step(1);
   };
+  // Right on an open recap changes where it happened (the setting chip), before focus moves
+  const onCapture = (k: string): boolean => {
+    if (!s.recapVisible || !s.recap?.setting || k !== 'right') return false;
+    m.cycleSetting('recap');
+    return true;
+  };
   const right = m.status !== 'online' ? (m.status === 'offline' ? 'Hub offline, retrying…' : 'Connecting…') : m.mics ? 'Phone paired' : `Pair code ${m.code ?? '····'}`;
   const diag = debug ? `${config.platform} · seq ${s.lastSeq ?? '–'} · applied ${s.applied} · dup ${s.duplicates} · gaps ${s.gaps}${m.rttMs !== null ? ` · rtt ${m.rttMs} ms` : ''} · meters ${s.practice.frames} @ ${config.metersHz} Hz` : null;
 
   let screen;
   switch (s.view) {
     case 'transfer':
-      screen = <TransferView transfer={m.transfer} captions={m.captions} />;
+      screen = <TransferView transfer={m.transfer} captions={m.captions} settings={m.settings} />;
       break;
     case 'live':
     case 'drill':
-      screen = <LiveView drill={s.drill} live={s.live} partial={m.partial?.text ?? null} focus={s.view === 'drill' ? 'drill' : 'live'} last={s.latestRecap} />;
+      screen = <LiveView drill={s.drill} live={s.live} partial={m.partial?.text ?? null} focus={s.view === 'drill' ? 'drill' : 'live'} last={s.latestRecap} onCycleSetting={() => m.cycleSetting('last')} />;
       break;
     case 'practice':
       screen = <PracticeView p={s.practice} code={m.code} mics={m.mics} />;
@@ -59,7 +65,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
       screen = <WeekView stats={m.stats} today={s.practiceToday} deck={s.drill.deck} transfer={m.transfer} />;
   }
   return (
-    <FocusRoot key="mirror" initial={`tab-${cur}`} onBack={onBack} onKey={onKey}>
+    <FocusRoot key="mirror" initial={`tab-${cur}`} onBack={onBack} onKey={onKey} onCapture={onCapture}>
       <View style={styles.root}>
         <TopBar view={s.view} onShow={m.show} right={s.view === 'pair' && m.status === 'online' ? null : right} rightTone={m.status === 'online' ? 'ok' : 'warn'} />
         {debug && s.viewReason && s.viewBy && s.viewBy !== 'remote' ? <Text style={styles.reason} numberOfLines={1}>{`${TAB_LABEL[s.view]}: ${s.viewReason} (${s.viewBy})`}</Text> : <View style={styles.reasonSpacer} />}

@@ -1,5 +1,6 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { ConversationEnded, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
+import type { ConversationEnded, ConversationSetting, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, SettingTag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
+import { CONVERSATION_SETTINGS, SETTING_NAME } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -381,4 +382,19 @@ export function captionsLine(all: TransferResponse | null | undefined, inst: Ins
   const n = inst?.pairs ?? 0;
   const agree = inst?.claim === 'practised-agree' ? curly(`Captions and Bee agree on unsure words and filler "like" (${n} meeting${n === 1 ? '' : 's'} both heard)`) : null;
   return { label, habits, agree };
+}
+
+/** A conversation's setting in plain words ("Meeting", "Work talk", "Casual"), or null when it has none. */
+export function settingName(tag: Pick<SettingTag, 'setting'> | null | undefined): string | null {
+  return tag ? (SETTING_NAME[tag.setting] ?? null) : null;
+}
+/** The setting the remote moves to next: Meeting, then Work talk, then Casual, then Meeting again. */
+export function nextSetting(s: ConversationSetting): ConversationSetting {
+  const i = CONVERSATION_SETTINGS.indexOf(s);
+  return CONVERSATION_SETTINGS[(i + 1) % CONVERSATION_SETTINGS.length]!;
+}
+/** The hub's per-setting line split for the strip: the tag and the rest ("Unsure words: work talk 2.1 → 1.4 · ..."). */
+export function bySettingLine(line: string | null | undefined): string | null {
+  if (!line) return null;
+  return line.replace(/^By setting\s*·\s*/, '');
 }

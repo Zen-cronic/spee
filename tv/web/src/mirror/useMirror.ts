@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { BridgeClient } from 'tv-voice-bridge';
-import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, StatsResponse, TransferResponse } from '../contract';
+import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, SettingTag, StatsResponse, TransferResponse } from '../contract';
+import { nextSetting } from './format';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
 
 /**
@@ -46,6 +47,7 @@ export function useMirror(cfg: MirrorConfig) {
   const [transfer, setTransfer] = useState<TransferResponse | null>(null);
   // Secondary, labelled: the same before/after with meeting captions, and the Bee-vs-captions check.
   const [captions, setCaptions] = useState<{ all: TransferResponse | null; instrument: InstrumentResponse | null }>({ all: null, instrument: null });
+  const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [rttMs, setRttMs] = useState<number | null>(null);
   const clientRef = useRef<BridgeClient | null>(null);
   const meterBuf = useRef<PracticeMeters[]>([]);
@@ -101,6 +103,8 @@ export function useMirror(cfg: MirrorConfig) {
     void getJson<StatsResponse>(`${cfg.httpBase}/api/stats?range=week`).then((r) => alive && r && setStats(r));
     void getJson<TransferResponse>(`${cfg.httpBase}/api/transfer`).then((r) => alive && r && setTransfer(r));
     void Promise.all([getJson<TransferResponse>(`${cfg.httpBase}/api/transfer?source=all`), getJson<InstrumentResponse>(`${cfg.httpBase}/api/instrument`)]).then(([all, instrument]) => alive && setCaptions({ all, instrument }));
+    // the per-setting view: secondary, so an older hub without it just leaves the strip hidden
+    void getJson<SettingsResponse>(`${cfg.httpBase}/api/settings`).then((r) => alive && r && setSettings(r));
     return () => {
       alive = false;
     };
@@ -124,9 +128,30 @@ export function useMirror(cfg: MirrorConfig) {
     });
   }, [state.recapWanted, cfg.httpBase]);
 
+  // The setting chip (the recap overlay's, or Live's last conversation): the next setting at once,
+  // then the hub's answer; the old one back if the hub refused.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const cycleSetting = useCallback(
+    (which: 'recap' | 'last') => {
+      const s = stateRef.current;
+      const r = which === 'recap' ? s.recap : s.latestRecap;
+      if (!r || !r.setting) return;
+      const old: SettingTag = r.setting;
+      const want = nextSetting(old.setting);
+      const id = r.conversationId;
+      dispatch({ type: 'recapSetting', conversationId: id, setting: { setting: want, source: 'you', confidence: 'high', reasons: ['you'] }, now: Date.now() });
+      void fetch(`${cfg.httpBase}/api/sessions/${encodeURIComponent(id)}/setting`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ setting: want }) })
+        .then(async (res) => (res.ok ? ((await res.json()) as SettingResponse) : null))
+        .catch(() => null)
+        .then((out) => dispatch({ type: 'recapSetting', conversationId: id, setting: out?.tag ?? old, now: Date.now() }));
+    },
+    [cfg.httpBase],
+  );
+
   const show = useCallback((view: ScreenView) => dispatch({ type: 'show', view }), []);
   const dismissRecap = useCallback(() => dispatch({ type: 'dismissRecap' }), []);
-  return { state, status, code, joinUrl, mics, partial, stats, transfer, captions, rttMs, show, dismissRecap };
+  return { state, status, code, joinUrl, mics, partial, stats, transfer, captions, settings, rttMs, show, dismissRecap, cycleSetting };
 }
 
 export type Mirror = ReturnType<typeof useMirror>;
