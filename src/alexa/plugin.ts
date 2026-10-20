@@ -159,7 +159,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
       return true;
     },
     describe: () => ({
-      owner: "packet C",
+      owner: "Alexa skill",
       status: configError ? "degraded" : "ready",
       routes: ALEXA_ROUTES,
       note: configError

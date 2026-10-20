@@ -286,7 +286,7 @@ describe("POST /alexa over HTTP", () => {
   });
   it("health reports the alexa plugin ready", async () => {
     const h = await get("/api/health");
-    expect(h.plugins.find((p: any) => p.name === "alexa")).toMatchObject({ owner: "packet C", status: "ready", routes: ["POST /alexa"] });
+    expect(h.plugins.find((p: any) => p.name === "alexa")).toMatchObject({ owner: "Alexa skill", status: "ready", routes: ["POST /alexa"] });
   });
 });
 

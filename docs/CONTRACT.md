@@ -744,13 +744,13 @@ interface PluginCtx {
 
 **Registry.** The registry is fixed, in this order. Each module exports the named factory, and packets keep the export names, prefixes and routes.
 
-| Plugin | Module (factory) | Owner | Prefixes |
+| Plugin | Module (factory) | `owner` in health | Prefixes |
 |---|---|---|---|
-| `live` | `src/hub/live/plugin.ts` (`createLivePlugin`) | packet A | `/api/live`, `/api/recaps`, `/api/coach`, `/api/demo/live` |
-| `mirror` | `src/hub/mirror.ts` (`createMirrorPlugin`) | packet B | `/api/demo/mirror` |
-| `static` | `src/hub/static.ts` (`createStaticPlugin`) | lead | `/tv/`, `/p/`, `/sim/` |
-| `alexa` | `src/alexa/plugin.ts` (`createAlexaPlugin`) | packet C | `/alexa` |
-| `mcp` | `src/mcp/plugin.ts` (`createMcpPlugin`) | packet C | `/mcp` |
+| `live` | `src/hub/live/plugin.ts` (`createLivePlugin`) | live coaching | `/api/live`, `/api/recaps`, `/api/coach`, `/api/demo/live` |
+| `mirror` | `src/hub/mirror.ts` (`createMirrorPlugin`) | practice mirror | `/api/demo/mirror` |
+| `static` | `src/hub/static.ts` (`createStaticPlugin`) | hub | `/tv/`, `/p/`, `/sim/` |
+| `alexa` | `src/alexa/plugin.ts` (`createAlexaPlugin`) | Alexa skill | `/alexa` |
+| `mcp` | `src/mcp/plugin.ts` (`createMcpPlugin`) | MCP server | `/mcp` |
 
 **Request order.**
 
@@ -1622,9 +1622,9 @@ The catch-all slot rescues "how did I do", "how am I doing", "next" and "stop". 
 ```json
 { "ok": true, "contractVersion": 2, "mode": "demo", "fixtureV2": false, "publicBaseUrl": null,
   "plugins": [
-    { "name": "live", "prefixes": ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live"], "owner": "packet A", "status": "stub",
+    { "name": "live", "prefixes": ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live"], "owner": "live coaching", "status": "stub",
       "routes": ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "POST /api/demo/live"], "topics": ["..."] },
-    { "name": "static", "prefixes": ["/tv/", "/p/", "/sim/"], "owner": "lead", "status": "ready", "routes": ["GET /tv/*", "GET /p/*", "GET /sim/*"],
+    { "name": "static", "prefixes": ["/tv/", "/p/", "/sim/"], "owner": "hub", "status": "ready", "routes": ["GET /tv/*", "GET /p/*", "GET /sim/*"],
       "note": "/tv/ not built (npm run tv:web:build); /p/ not built (npm run web:build); /sim/ not built (npm run web:build)" },
     "..."
   ],

@@ -216,7 +216,7 @@ export function createMirrorPlugin(opts: MirrorOptions = {}): HubPlugin {
       }
     },
     describe: () => ({
-      owner: "packet B",
+      owner: "practice mirror",
       status: "ready",
       routes: MIRROR_ROUTES,
       topics: MIRROR_TOPICS,

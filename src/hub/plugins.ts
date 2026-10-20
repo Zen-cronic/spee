@@ -16,11 +16,11 @@ export const PLUGIN_NAMES = ["live", "mirror", "static", "alexa", "mcp"] as cons
 export type PluginName = (typeof PLUGIN_NAMES)[number];
 
 export const PLUGIN_MODULES: Record<PluginName, { file: string; owner: string; create: () => HubPlugin }> = {
-  live: { file: "src/hub/live/plugin.ts", owner: "packet A", create: createLivePlugin },
-  mirror: { file: "src/hub/mirror.ts", owner: "packet B", create: createMirrorPlugin },
-  static: { file: "src/hub/static.ts", owner: "lead", create: () => createStaticPlugin() },
-  alexa: { file: "src/alexa/plugin.ts", owner: "packet C", create: createAlexaPlugin },
-  mcp: { file: "src/mcp/plugin.ts", owner: "packet C", create: createMcpPlugin },
+  live: { file: "src/hub/live/plugin.ts", owner: "live coaching", create: createLivePlugin },
+  mirror: { file: "src/hub/mirror.ts", owner: "practice mirror", create: createMirrorPlugin },
+  static: { file: "src/hub/static.ts", owner: "hub", create: () => createStaticPlugin() },
+  alexa: { file: "src/alexa/plugin.ts", owner: "Alexa skill", create: createAlexaPlugin },
+  mcp: { file: "src/mcp/plugin.ts", owner: "MCP server", create: createMcpPlugin },
 };
 
 // Fresh plugin instances for one hub server, in registry order.

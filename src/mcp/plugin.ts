@@ -89,7 +89,7 @@ export function createMcpPlugin(opts: McpPluginOptions = {}): HubPlugin {
       return true;
     },
     describe: () => ({
-      owner: "packet C",
+      owner: "MCP server",
       status: "ready",
       routes: MCP_ROUTES,
       note: `stateless Streamable HTTP; ${TOOL_DEFS.length} tools (MCP_TOOLS); ${requests} requests served`,

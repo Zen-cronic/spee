@@ -149,7 +149,7 @@ export function createStaticPlugin(opts: { mounts?: StaticMount[]; root?: string
     route: (req: IncomingMessage, res: ServerResponse, url: URL, _ctx: PluginCtx) => serveStatic(req, res, url, mounts, root),
     describe: () => {
       const built = mounts.map((m) => `${m.prefix} ${existsSync(m.dir.startsWith("/") ? m.dir : join(root, m.dir)) ? "built" : `not built (${m.build})`}`);
-      return { owner: "lead", status: "ready", routes: mounts.map((m) => `GET ${m.prefix}*`), note: built.join("; ") };
+      return { owner: "hub", status: "ready", routes: mounts.map((m) => `GET ${m.prefix}*`), note: built.join("; ") };
     },
   };
 }

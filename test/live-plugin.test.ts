@@ -40,7 +40,7 @@ afterAll(async () => s.close());
 describe("live routes (demo hub)", () => {
   it("health: the live plugin is ready, with its wrist and principles source", async () => {
     const h = (await get("/api/health")).body;
-    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template; Bee facts: demo; cues: on$/), routes: expect.arrayContaining(["GET /api/coach/facts", "POST /api/coach/cue"]) });
+    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "live coaching", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template; Bee facts: demo; cues: on$/), routes: expect.arrayContaining(["GET /api/coach/facts", "POST /api/coach/cue"]) });
   });
   it("GET /api/live: off by default, the synthetic baseline, the replay wrist", async () => {
     const r = await get("/api/live");

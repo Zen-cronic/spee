@@ -208,7 +208,7 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
     describe() {
       const w = wrist?.status();
       return {
-        owner: "packet A",
+        owner: "live coaching",
         status: !engine ? "off" : w && !w.healthy ? "degraded" : "ready",
         routes: LIVE_ROUTES,
         topics: LIVE_TOPICS,

@@ -214,6 +214,6 @@ describe("/mcp HTTP behaviour", () => {
   });
   it("health reports the mcp plugin ready", async () => {
     const hh = JSON.parse((await raw(s.port, "/api/health")).text);
-    expect(hh.plugins.find((p: any) => p.name === "mcp")).toMatchObject({ owner: "packet C", status: "ready", routes: ["POST /mcp", "GET /mcp", "DELETE /mcp"] });
+    expect(hh.plugins.find((p: any) => p.name === "mcp")).toMatchObject({ owner: "MCP server", status: "ready", routes: ["POST /mcp", "GET /mcp", "DELETE /mcp"] });
   });
 });

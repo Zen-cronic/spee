@@ -106,8 +106,11 @@ describe("hub server with the landed plugins (and a probe plugin)", () => {
     for (const name of ["live", "mirror", "alexa", "mcp"]) {
       expect(h.plugins.find((p: any) => p.name === name)?.status, `${name} landed`).toBe("ready");
     }
-    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", routes: expect.arrayContaining(["GET /api/coach/now"]) });
-    expect(h.plugins.find((p: any) => p.name === "static")).toMatchObject({ owner: "lead", status: "ready" });
+    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "live coaching", routes: expect.arrayContaining(["GET /api/coach/now"]) });
+    expect(h.plugins.find((p: any) => p.name === "static")).toMatchObject({ owner: "hub", status: "ready" });
+    // each owner is the component, never a label from the build plan
+    expect(Object.fromEntries(h.plugins.map((p: any) => [p.name, p.owner]))).toMatchObject({ live: "live coaching", mirror: "practice mirror", static: "hub", alexa: "Alexa skill", mcp: "MCP server" });
+    for (const n of PLUGIN_NAMES) expect(PLUGIN_MODULES[n].owner, n).toBe(h.plugins.find((p: any) => p.name === n).owner);
     expect(h.fixtureV2).toBe(false);
     expect(r.text).not.toContain("p".repeat(20));
     expect(r.text).not.toContain("m".repeat(20));

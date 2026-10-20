@@ -184,7 +184,7 @@ describe("mirror plugin on a demo hub", () => {
   });
   it("health reports the mirror plugin ready", async () => {
     const h = await (await fetch(`${s.url}/api/health`)).json();
-    expect(h.plugins.find((p: any) => p.name === "mirror")).toMatchObject({ owner: "packet B", status: "ready", routes: ["POST /api/demo/mirror"] });
+    expect(h.plugins.find((p: any) => p.name === "mirror")).toMatchObject({ owner: "practice mirror", status: "ready", routes: ["POST /api/demo/mirror"] });
   });
 });
 
