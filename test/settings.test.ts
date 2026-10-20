@@ -136,6 +136,20 @@ describe("a choice stays on its own conversation", () => {
     expect(c.tagConversation({ conversationId: "live-k", startedAt: K.startMs + 10_000, endedAt: at("14:19"), otherLines: 1 })).toMatchObject({ setting: "casual", source: "you" });
     expect(c.tagConversation({ conversationId: "live-s", startedAt: at("13:00"), endedAt: at("13:58"), otherLines: 1 }).source).toBe("auto");
   });
+  it("a choice set on a stats session by its id never deletes the choice of the conversation just before", () => {
+    const b = book();
+    // the live conversation R (13:00:20 to 13:58), set to Meeting by its recap's conversation id
+    b.set("live-r", "meeting", { startMs: at("13:00") + 20_000, endMs: at("13:58") });
+    expect(b.tagSession("S")).toMatchObject({ setting: "meeting", source: "you" });
+    // then the separate conversation K (13:59:30 to 14:20), set to Casual by its stats id
+    b.set("K", "casual");
+    expect(b.tagSession("K")).toMatchObject({ setting: "casual", source: "you" });
+    expect(b.tagRecap({ conversationId: "live-r", startedAt: at("13:00") + 20_000, endedAt: at("13:58") })).toMatchObject({ setting: "meeting", source: "you" });
+    expect(b.tagSession("S")).toMatchObject({ setting: "meeting", source: "you" });
+    // the same conversation under its other id is still replaced
+    b.set("S", "work");
+    expect(b.tagRecap({ conversationId: "live-r", startedAt: at("13:00") + 20_000, endedAt: at("13:58") })).toMatchObject({ setting: "work", source: "you" });
+  });
   it("same conversation: mostly the same time, or a point inside the other span", () => {
     expect(sameConversation([0, 60_000 * 58], [60_000 * 59.5, 60_000 * 80])).toBe(false);
     expect(sameConversation([0, 60_000 * 20], [60_000, 60_000 * 25])).toBe(true);

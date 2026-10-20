@@ -364,10 +364,13 @@ export class SettingsBook {
 
   /** The wearer's choice for one conversation (null clears it). `span` is a live conversation's start and end. */
   set(id: string, setting: ConversationSetting | null, span?: { startMs: number; endMs: number }): void {
-    const startMs = span?.startMs ?? this.o.hub.sessions.find((s) => s.id === id)?.startMs;
+    // A stats session id brings its own span, so the match below is the lookup's (sameConversation).
+    const own = span ? null : this.sessionsById().get(id);
+    const startMs = span?.startMs ?? own?.startMs;
+    const endMs = span?.endMs ?? own?.endMs;
     // A choice made for the same conversation under its other id (matched by time) is replaced too.
     for (let i = 0; i < 50 && startMs != null; i++) {
-      const e = this.overrideEntry(id, startMs, span?.endMs);
+      const e = this.overrideEntry(id, startMs, endMs);
       if (!e) break;
       delete this.file.overrides[e[0]];
     }
