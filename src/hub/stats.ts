@@ -214,8 +214,16 @@ export interface TransferReport {
 // "dropped-control-flat" only when a drilled habit dropped and every control showed no change
 // ("all-dropped-control-flat" when every drilled habit dropped); "dropped-control-dropped" when a
 // control dropped too; "dropped-control-unclear" when a drilled habit dropped but the controls
-// cannot be compared (too little data, rose, invalid, or none registered).
-export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" | "dropped-control-dropped" | "dropped-control-unclear" | "not-drilled-yet" | "no-drop-yet";
+// cannot be compared (too little data, rose, invalid, or none registered). "partly-started" when
+// nothing dropped, some drilled habit's after period has started and another is not drilled yet.
+export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" | "dropped-control-dropped" | "dropped-control-unclear" | "partly-started" | "not-drilled-yet" | "no-drop-yet";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "2026-10-19" -> "Oct 19"
+const monthDay = (ymd: string) => `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`;
+// A habit's name inside a sentence: 'hedges (I guess, ...)' -> 'hedges', '"like" as a filler' -> '"like"'.
+export const habitName = (label: string) => label.replace(/\s*\(.*$/, "").replace(/ as a filler$/, "").trim();
+const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 
 const ciOverlap = (a: [number, number], b: [number, number]) => a[0] <= b[1] && b[0] <= a[1];
 
@@ -327,6 +335,8 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
   const flat = control.length > 0 && control.every((h) => h.verdict === "no change");
   const controlDropped = control.some((h) => h.verdict === "dropped");
   const drilled = habits.filter((h) => h.role === "drilled");
+  const started = drilled.filter((h) => h.cutoverAt != null);
+  const notYet = drilled.filter((h) => h.verdict === "not drilled yet");
   const claim: TransferClaim = dropped.length
     ? flat
       ? dropped.length === drilled.length
@@ -335,14 +345,18 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
       : controlDropped
         ? "dropped-control-dropped"
         : "dropped-control-unclear"
-    : drilled.some((h) => h.verdict === "not drilled yet")
-      ? "not-drilled-yet"
+    : notYet.length
+      ? started.length
+        ? "partly-started"
+        : "not-drilled-yet"
       : "no-drop-yet";
   const headline = dropped.length
     ? `${dropped.map((h) => h.label).join(" and ")} dropped in real speech after drilling${flat ? "; the undrilled control stayed flat" : controlDropped ? "; but the undrilled control dropped too, so the drop may not be the drill" : "; the control has too little data to compare"}`
-    : claim === "not-drilled-yet"
-      ? "Not drilled yet: the after period starts at the first drill"
-      : "No drilled habit has dropped measurably yet";
+    : claim === "partly-started"
+      ? `After period started for ${andList(started.map((h) => `${habitName(h.label)} on ${monthDay(localDate(h.cutoverAt!, opts.tz))}`))}; ${andList(notYet.map((h) => habitName(h.label)))} not drilled yet`
+      : claim === "not-drilled-yet"
+        ? "Not drilled yet: the after period starts at the first drill"
+        : "No drilled habit has dropped measurably yet";
   return {
     generatedAt: new Date(opts.nowMs).toISOString(),
     synthetic: !!prereg.synthetic || ss.some((s) => s.synthetic),

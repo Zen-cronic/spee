@@ -115,6 +115,16 @@ describe("transfer", () => {
     expect(drilledControl.claim).toBe("dropped-control-unclear");
     expect(drilledControl.headline).not.toMatch(/stayed flat/);
     expect(run({ drills: [] }).claim).toBe("not-drilled-yet");
+    // Only "like" drilled so far (hedges not yet): its after period has started, and the headline says
+    // so instead of "not drilled yet". It holds while "like" has too little data, as on the first day.
+    const heroes = { ...PREREG, drilled: [{ habit: "hedges", why: "" }, { habit: "filler:like", why: "" }] };
+    const likeAt = Date.parse("2026-10-19T20:09:00-04:00"); // late evening in Toronto: still Oct 19 there
+    const partly = run({ prereg: heroes, drills: [{ at: likeAt, habitKeys: ["filler:like", "fillers"] }], tz: "America/Toronto" });
+    expect(partly.habits.filter((h) => h.role === "drilled").map((h) => [h.habit, h.verdict])).toEqual([["hedges", "not drilled yet"], ["filler:like", "too little data"]]);
+    expect(partly.claim).toBe("partly-started");
+    expect(partly.headline).toBe('After period started for "like" on Oct 19; hedges not drilled yet');
+    // a drop still outranks it (the claim follows the drop)
+    expect(run({ prereg: heroes, drills: [{ at: drill.at, habitKeys: ["hedge:i guess", "hedges"] }] }).claim).toBe("dropped-control-flat");
     const nothing = run({ sessions: [before, sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(12).fill("I guess we we shipped it.")])] });
     expect(nothing.claim).toBe("no-drop-yet");
   });

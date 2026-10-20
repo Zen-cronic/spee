@@ -349,7 +349,8 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 - `dropped-control-flat`: some drilled habit dropped, and the control stayed flat.
 - `dropped-control-dropped`: a drilled habit dropped, but so did the control, so the drop may not be the drill.
 - `dropped-control-unclear`: a drilled habit dropped, but the control cannot be compared (too little data, rose, invalid, or none registered).
-- `not-drilled-yet`: no drilled habit dropped, and one has not been drilled yet.
+- `partly-started`: nothing dropped yet; some drilled habit's after period has started (its first drill) and another is not drilled yet. The headline names both: `After period started for "like" on Oct 19; hedges not drilled yet` (the date is the hub's local day of that habit's first drill).
+- `not-drilled-yet`: no drilled habit has been drilled yet, so no after period has started.
 - `no-drop-yet`: no drilled habit has dropped measurably yet.
 
 **Verdicts:**

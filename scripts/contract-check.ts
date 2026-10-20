@@ -23,7 +23,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { createInterface } from "node:readline";
 import WebSocket from "ws";
-import { CONTRACT_VERSION, ROOM_TOPICS, V1_TOPICS, V2_TOPICS } from "../src/hub/contract.js";
+import { CONTRACT_VERSION, ROOM_TOPICS, TRANSFER_CLAIMS, V1_TOPICS, V2_TOPICS } from "../src/hub/contract.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 import { PLUGIN_NAMES } from "../src/hub/plugins.js";
 import type { BridgeClient, CheckCtx, CheckResult } from "./checks/types.js";
@@ -428,6 +428,8 @@ const rows = [...table.matchAll(/^\| `([\w.]+)` \| (sequenced|room) \|/gm)].map(
 check(JSON.stringify(rows.filter((r) => r.kind === "sequenced").map((r) => r.topic)) === JSON.stringify(V2_TOPICS), "doc topic table: the sequenced v2 topics equal V2_TOPICS (same order)");
 check(JSON.stringify(rows.filter((r) => r.kind === "room").map((r) => r.topic)) === JSON.stringify(ROOM_TOPICS), "doc topic table: the room topics equal ROOM_TOPICS");
 check(V1_TOPICS.every((t) => doc.includes(`| \`${t}\` |`)), "every v1 topic is in the v1 event table");
+const claimList = /\*\*Claim:\*\*([\s\S]*?)\*\*Verdicts:\*\*/.exec(doc)?.[1] ?? "";
+check(JSON.stringify([...claimList.matchAll(/^- `([\w-]+)`:/gm)].map((m) => m[1])) === JSON.stringify(TRANSFER_CLAIMS), "doc claim list: every transfer claim equals TRANSFER_CLAIMS (same order)");
 check(tv.events.every((e) => e.topic === "hub.state" || e.topic === "practice.meters" || (V1_TOPICS as readonly string[]).includes(e.topic) || (V2_TOPICS as readonly string[]).includes(e.topic)), "every event the TV received is a contract topic");
 
 console.log("\nv2: fixture mode (a second hub: --demo --fixture-v2)");

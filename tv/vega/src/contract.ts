@@ -333,7 +333,10 @@ export interface TransferResponse {
   // drilled habit dropped; "dropped-control-unclear" when the controls cannot be compared.
   claim: TransferClaim;
 }
-export type TransferClaim = "all-dropped-control-flat" | "dropped-control-flat" | "dropped-control-dropped" | "dropped-control-unclear" | "not-drilled-yet" | "no-drop-yet";
+// "partly-started": nothing dropped yet, some drilled habit's after period has started (its first
+// drill) and another drilled habit is not drilled yet.
+export const TRANSFER_CLAIMS = ["all-dropped-control-flat", "dropped-control-flat", "dropped-control-dropped", "dropped-control-unclear", "partly-started", "not-drilled-yet", "no-drop-yet"] as const;
+export type TransferClaim = (typeof TRANSFER_CLAIMS)[number];
 
 // GET /api/brief
 export interface Brief {
