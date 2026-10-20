@@ -66,7 +66,7 @@ import { CliBeeSource, pickUtterances } from "../src/bee/source.js";
 import { parseTactiq, sameSpeaker, zonedToEpoch } from "../src/real/tactiq.js";
 import { discoverWearerLabels, isWearer, type WearerLabels } from "../src/real/wearer.js";
 import { hubStateFiles } from "./leak-state.js";
-import { classifyVoice, copyPhrasesByOrigin, formatVoiceLedger, isCopyEvidence, parseVoiceLedger, phraseHash, PRODUCT_VOICE, productPhrases, productVoice, type VoiceEntry } from "./leak-voice.js";
+import { classifyVoice, commitBefore, copyPhrasesByOrigin, formatVoiceLedger, isCopyEvidence, parseFileCommits, parseVoiceLedger, phraseHash, PRODUCT_VOICE, productPhrases, productVoice, type VoiceEntry } from "./leak-voice.js";
 
 const fold = (s: string) =>
   s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[’`]/g, "'").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -369,15 +369,21 @@ const copyPhrases = copyPhrasesByOrigin(
   words,
 );
 // A file's literals as committed before a time (git), for the words it held before a recording.
+// Each file's commits are listed once; each time picks its commit from that list.
+const fileCommits = new Map<string, { hash: string; atMs: number }[]>();
 const priorPhrases = new Map<string, Set<string> | null>(); // "<path>@<commit>" -> phrases
 const phrasesBefore = (f: string, t: number): Set<string> | null => {
   if (!committedAt.has(f) || !Number.isFinite(t)) return null;
-  let commit = "";
-  try {
-    commit = execFileSync("git", ["log", "-1", "--format=%H", `--before=${new Date(t).toISOString()}`, "--", f], { encoding: "utf8" }).trim();
-  } catch {
-    return null;
+  let commits = fileCommits.get(f);
+  if (!commits) {
+    try {
+      commits = parseFileCommits(execFileSync("git", ["log", "--format=%H%x00%ct", "--", f], { encoding: "utf8", maxBuffer: 1 << 26 }));
+    } catch {
+      commits = [];
+    }
+    fileCommits.set(f, commits);
   }
+  const commit = commitBefore(commits, t);
   if (!commit) return null;
   const k = `${f}@${commit}`;
   if (!priorPhrases.has(k)) {

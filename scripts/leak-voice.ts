@@ -87,6 +87,22 @@ export function productVoice(file: string, copy: Map<string, Set<string>>, befor
   };
 }
 
+// A file's commits, listed once (`git log --format=%H%x00%ct -- <file>`, newest first), and the one
+// it was at before a time: the first listed commit made at or before `t` (what `git log -1
+// --before=<t> -- <file>` gives), or null when the file had no commit yet.
+export function parseFileCommits(log: string): { hash: string; atMs: number }[] {
+  const out: { hash: string; atMs: number }[] = [];
+  for (const line of log.split("\n")) {
+    const [hash, ct] = line.trim().split("\0");
+    if (hash && /^[0-9a-f]{7,64}$/.test(hash) && ct && Number.isFinite(Number(ct))) out.push({ hash, atMs: Number(ct) * 1000 });
+  }
+  return out;
+}
+export function commitBefore(commits: { hash: string; atMs: number }[], t: number): string | null {
+  for (const c of commits) if (c.atMs <= t) return c.hash;
+  return null;
+}
+
 // One ledger line: "<file sha256>  <path>  <phrase hash>,<phrase hash>,...".
 export interface VoiceEntry {
   sha: string;

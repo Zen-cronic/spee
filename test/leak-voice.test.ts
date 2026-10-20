@@ -3,7 +3,7 @@
 // never the file as it is now, and never demo data or fixtures), the approval is pinned to the file's
 // exact content, and the ledger holds hashes only. Synthetic text only.
 import { describe, expect, it } from "vitest";
-import { classifyVoice, copyPhrasesByOrigin, formatVoiceLedger, isCopyEvidence, literalTexts, parseVoiceLedger, phraseHash, productPhrases, productVoice, voiceOrigin } from "../scripts/leak-voice.js";
+import { classifyVoice, commitBefore, copyPhrasesByOrigin, formatVoiceLedger, isCopyEvidence, literalTexts, parseFileCommits, parseVoiceLedger, phraseHash, productPhrases, productVoice, voiceOrigin } from "../scripts/leak-voice.js";
 
 const words = (s: string) => s.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").split(" ").filter(Boolean);
 const SKILL = `export const SPEECH = { help: "You can also ask how am I doing, or say quiz me.", again: \`Say it again: \${line}. Then ask how did I do.\` };`;
@@ -69,5 +69,18 @@ describe("the ledger", () => {
   });
   it("ignores comments, blank and malformed lines", () => {
     expect(parseVoiceLedger("# note\n\nnot a line\nabc  x  y\n").size).toBe(0);
+  });
+});
+
+describe("a file's commit before a recording", () => {
+  it("is picked from one listing of the file's commits, as git log -1 --before would", () => {
+    const log = `${"c".repeat(40)}\u00001760900000\n${"b".repeat(40)}\u00001760800000\n${"a".repeat(40)}\u00001760700000\n\n`;
+    const commits = parseFileCommits(log);
+    expect(commits.map((c) => c.hash[0])).toEqual(["c", "b", "a"]);
+    expect(commitBefore(commits, 1760850000_000)).toBe("b".repeat(40));
+    expect(commitBefore(commits, 1760900000_000)).toBe("c".repeat(40)); // at the commit's own second
+    expect(commitBefore(commits, 1760999999_000)).toBe("c".repeat(40));
+    expect(commitBefore(commits, 1760600000_000)).toBeNull(); // before the file's first commit
+    expect(parseFileCommits("not a line\n")).toEqual([]);
   });
 });
