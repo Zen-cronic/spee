@@ -76,6 +76,7 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
 - **Transfer.** `GET /api/transfer` asks whether a drilled habit dropped in later non-drill real speech, compared with a control habit that was deliberately not drilled. It reports rates per 100 words with 95% intervals, before vs after the first drill, and a plain verdict.
   - The drilled and control habits are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any drill attempt).
   - The endpoint refuses to report an unregistered habit as drilled.
+- **Finished conversations are picked up automatically.** Once Bee marks a conversation complete, the running hub fetches it, keeps the wearer's lines through the same wearer filter and mislabel rules as `npm run real`, and refreshes the stats and the first signal. No rerun or restart is needed ([`docs/live.md`](docs/live.md)).
 - **Privacy.** Stream text stays in memory until Bee tags it as the wearer. Untagged and other-speaker lines are never sent to a surface or written to disk.
 - **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.3.tgz`.
 

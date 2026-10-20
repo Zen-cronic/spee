@@ -19,6 +19,7 @@ bee stream (one subscriber, src/hub/bee.ts)
   -> wrist (live/wrist.ts)                     Bee to-do with an alarm, or the replay channel
   -> nudge.sent | nudge.skipped
 end of conversation -> conversation.ended -> recap (live/recap.ts) -> recap.ready -> wrist -> disk
+Bee marks it COMPLETED -> live ingest (ingest.ts) -> stats session -> stats.updated (Progress, first signal)
 ```
 
 - **No second stream.** The hub keeps its one `bee stream` process. The verifier emits `bee.line` once Bee has decided a line's speaker: the wearer tag, another person's tag, a low score, or the 3 s tag timeout. Only a wearer line (tag score at least 0.5) carries text. Every other line is a word count.
@@ -30,6 +31,7 @@ end of conversation -> conversation.ended -> recap (live/recap.ts) -> recap.read
 | File | What it does |
 |---|---|
 | `src/hub/live/plugin.ts` | Routes, wiring, wrist selection (`createLivePlugin`) |
+| `src/hub/ingest.ts` | `LiveIngest`: finished Bee conversations become stats sessions while the hub runs |
 | `src/hub/live/engine.ts` | Conversation lifecycle, nudges, recaps, `coachNow()`, persistence |
 | `src/hub/live/window.ts` | `ConversationWindow`: rate, talk share, monologue, pauses, 2-minute counts, rule evidence |
 | `src/hub/live/rules.ts` | Which rules fire; the generated wrist text |
@@ -169,6 +171,35 @@ Deterministic, at most 4 sentences:
 3. **The week.** The top habit's rate (hedges or vague answers when they have at least 3 occurrences, otherwise fillers or restarts) and the number of due drills.
 4. **Live mode.** `Live coaching is on until 2:30 PM.` or `Live coaching is off.`
 
+## Finished conversations feed the stats (live ingest)
+
+The live hub picks up finished conversations by itself. The weekly stats, the transfer check and its first signal (Progress on the TV, and "how am I doing?") update once Bee has finished a conversation. You do not need `npm run real` or a hub restart.
+
+- **Triggers.**
+  - `update-conversation` with state `COMPLETED` on the stream: fetched at once.
+  - `update-conversation` when a recording stops (state `PROCESSING`): re-fetched after 1, 2, 4, 8, then every 10 min until Bee completes it, for up to 6 h.
+  - A list poll every 10 min (the first 30 s after start) covers events the stream missed: every `COMPLETED` conversation of the last 24 h that the hub does not have yet, at most 10 per poll.
+  - A `delete-conversation` does not cancel the fetch (Bee sends one right after a recording stops). A conversation Bee no longer returns is dropped.
+- **Same rules as the offline pipeline.**
+  - The conversation is fetched with `bee conversations get <id> --json` (the `CliBeeSource` path).
+  - It goes through `conversationLines` (`src/real/corpus.ts`): the wearer filter and the mislabel detector that `npm run real` and `npm run class` use.
+  - One conversation on its own takes only a label the Bee profile (or `BEE_WEARER_LABELS`) names as the wearer, as the drill poll does. Without `bee me` and without `BEE_WEARER_LABELS`, the conversation waits (`bee.ingest.deferred`) and `bee me` is retried every 10 min.
+  - No model call. Everything is deterministic.
+- **Drill lines stay out.** Lines Bee heard as drill attempts are left out of the transfer periods and the first signal, as before (`drillLineKeys`).
+- **After each ingest.** The hub publishes `stats.updated`, so the screens refetch the stats and `GET /api/transfer`. `GET /api/coach/now` reads the transfer on every ask.
+- **Storage.**
+  - `<stateDir>/live/sessions.json` (`real/live/sessions.json`, gitignored) holds the wearer's lines and per-conversation counts, in the shape of `real/corpus.json`.
+  - `loadRealSessions` merges it after the offline files at the next start.
+  - A session an offline file already has is kept as the offline run wrote it, so a later `npm run real` still wins.
+- **Robustness.**
+  - One Bee CLI call at a time, each with the `BEE_CLI_TIMEOUT_MS` timeout (default 30 s), tracked like the other children.
+  - Three failed calls in a row open a circuit for 10 min (`bee.ingest.circuit-open`).
+  - A failure is logged once per kind: the error's name and code, never its message, which can quote CLI output.
+  - A failed write is logged once (`bee.ingest.persist-error`), and the session still counts until the next restart.
+  - Nothing in the ingest stops the hub.
+- **Off switches.** `COACH_INGEST=off`, or `--no-bee` (no stream). Demo mode never ingests and never calls Bee.
+- **Proof.** `test/hub-ingest.test.ts` uses a fake Bee CLI and a fake stream. It checks that a `COMPLETED` event moves the first signal from `no-next-conversation` to `measured`, the de-duplication with the offline files, the poll fallback, failure isolation, and a planted other-speaker line that must not reach the file, an event, a response or a log.
+
 ## Coaching principles
 
 `coach/principles.local.md` (the operator's notes, gitignored) wins over the committed generic template.
@@ -184,7 +215,8 @@ Deterministic, at most 4 sentences:
 - **What is persisted** (under `<stateDir>/live/`):
   - `recaps.json`: metrics, plus a moment of at most 12 of the wearer's own words;
   - `nudges.json`: generated text and numbers;
-  - `todos.json`: generated text and ids.
+  - `todos.json`: generated text and ids;
+  - `sessions.json`: finished conversations the hub ingested, as the wearer's lines plus per-conversation counts. Other speakers' lines are counted, never stored.
 - **Where state lives.** `real/live/` in live mode (gitignored, and screened as wearer text by `npm run leak-check`), `out/demo/live/` in demo mode.
 - **Logs.** Event names and ids only.
 - **Proof.** The story plants a colleague line (marker `zebra orchid`). `test/live-engine.test.ts`, `test/live-plugin.test.ts`, `scripts/checks/live.ts` and `npm run demo:replay` all assert that it never reaches an event, a response or a file.
@@ -238,11 +270,14 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
 | `NUDGE_ALARM_LEAD_S` | 10 | alarm lead for nudge and recap to-dos |
 | `COACH_WRIST` | `bee-todo` (live), `replay` (demo or `--no-bee`) | `replay` = live dry run, no to-dos |
 | `COACH_RECAP_LLM` | unset | `1` = Claude Haiku recap phrasing in live mode (Bedrock, profile `hackathon-1`) |
+| `COACH_INGEST` | on (live mode with the stream) | `off` = finished conversations are not ingested; run `npm run real` and restart as before |
 | `BEE_BIN`, `BEE_TZ`, `BEE_WEARER_PERSON_ID` | | as for the hub (`CONTRACT.md` "Live mode") |
 
 ## Known limits
 
 - **Live mode is not persisted:** a hub restart turns it off.
+- **Ingest waits for Bee.** A conversation counts only once Bee marks it `COMPLETED`. That is Bee's own processing, from a few minutes to about an hour after the recording stops. The hub then takes it within a minute of the stream event, or by the next 10-min poll.
+- **Ingested data is not retracted.** A conversation you delete in the Bee app after it was ingested stays in `real/live/sessions.json`, and in the stats, until you remove it from that file.
 - **Delete races.** A `delete-conversation` that arrives after an idle-ended recap retracts the recap from storage, but `recap.ready` was already published (there is no retraction event).
 - **Talk share.** Other speakers are only those lines Bee did not tag as the wearer, so a missed wearer tag counts toward the others.
 - **Recap moments** exist only for hedges and "like" (vague answers and restarts have no mechanical rephrase).

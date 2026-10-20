@@ -549,7 +549,7 @@ Possible unverified reasons:
 
 ## Live mode
 
-- **Data.** `real/deck.json` (cards from the existing pipeline; `npm run hub:cards` adds deterministic hedge and "like" cards from the wearer's own Bee lines), `real/hub-attempts.json`, and the analysed sessions (`real/corpus.json`, `real/class-*.json`, `real/meetings.json`). All are gitignored.
+- **Data.** `real/deck.json` (cards from the existing pipeline; `npm run hub:cards` adds deterministic hedge and "like" cards from the wearer's own Bee lines), `real/hub-attempts.json`, and the analysed sessions (`real/corpus.json`, `real/class-*.json`, `real/meetings.json`, plus `real/live/sessions.json`: finished conversations the running hub ingested itself, see [`live.md`](live.md)). All are gitignored.
 - **Bee.** The hub spawns `bee stream --types new-utterance,tagged-utterance,new-conversation --json` and restarts it with backoff if it exits. The wearer rule comes from `bee me`. The fallback poll runs `bee conversations get <id> --json` on the conversation(s) seen in the window. The CLI handles authentication, and the hub never reads or logs the token or any transcript text.
 - **Environment.** `BEE_BIN`, `BEE_WEARER_PERSON_ID` (comma-separated `person_id`s to accept as the wearer), `COACH_PORT` and `BEE_TZ`.
 
