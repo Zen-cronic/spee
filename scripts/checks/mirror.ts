@@ -6,6 +6,10 @@
 //   4. POST /api/demo/mirror plays a metered synthetic take (60 frames at 10 Hz) to the room, then
 //      practice.summary; {script:"focus"} publishes mirror.focus; bad requests get 400.
 //   5. The TV, the phone and SSE saw the same sequenced mirror events (seq and topic).
+//   6. The phone's Progress reads through a tunnel: GET /api/stats, /api/transfer, /api/recaps answer
+//      an ngrok-shaped request only with the pair token in x-pair-token (as the page sends it), and
+//      the token opens nothing else; no answer carries the token.
+import { PAIR_HEADER, pairHeaders } from "../../web/phone/src/take.js";
 import type { CheckCtx, CheckResult, Ev } from "./types.js";
 
 const MIRROR_TOPICS = new Set(["practice.summary", "mirror.focus"]);
@@ -91,5 +95,19 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const sseSeq = seqs(ctx.sse.slice(sseFrom));
   check(sseSeq.length > 0 && seqs(ctx.tv.events.slice(tvFrom)) === sseSeq && seqs(ctx.phone.events.slice(phoneFrom)) === sseSeq, "the TV, the phone and SSE saw the same sequenced mirror events");
   other.ws.close();
+
+  // 6. the phone's Progress reads through a tunnel
+  const tunnel = { "x-forwarded-for": "203.0.113.7", host: "abc123.ngrok-free.app" };
+  const header = pairHeaders(ctx.tokens.pair)[PAIR_HEADER]!;
+  const paired = { ...tunnel, [PAIR_HEADER]: header };
+  const reads = ["/api/stats?range=week", "/api/transfer", "/api/recaps?limit=3"];
+  const pairedReads = await Promise.all(reads.map((p) => ctx.raw(p, { headers: paired })));
+  const refused = await Promise.all(reads.map((p) => ctx.raw(p, { headers: { ...tunnel, [PAIR_HEADER]: "bm90LXRoZS10b2tlbg" } })));
+  check(pairedReads.every((r) => r.status === 200) && refused.every((r) => r.status === 403), `Progress reads through a tunnel: 200 with the pair token in ${PAIR_HEADER}, 403 with a wrong one (${pairedReads.map((r) => r.status).join("/")}, ${refused.map((r) => r.status).join("/")})`);
+  const shapes = pairedReads.map((r) => JSON.parse(r.text));
+  check(typeof shapes[0]?.habits?.words === "number" && Array.isArray(shapes[1]?.habits) && typeof shapes[1]?.claim === "string" && Array.isArray(shapes[2]?.recaps), "the paired reads are the TV's own payloads (stats habits, transfer claim, recap list)");
+  const others = await Promise.all(["/api/live", "/api/recaps/rcp_demo_0001", "/api/settings", "/api/events/recent", "/api/health"].map((p) => ctx.raw(p, { headers: paired })));
+  check(others.every((r) => r.status === 403), "the pair token opens no other route through a tunnel");
+  check([...pairedReads, ...others].every((r) => !r.text.includes(ctx.tokens.pair) && !r.text.includes(header)), "no paired answer carries the token");
   return { name: "mirror", ...ctx.counts() };
 }
