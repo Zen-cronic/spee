@@ -1,12 +1,16 @@
 # Speaking Mirror: a realtime speaking coach on Bee
 
-Bee hears you say "I guess" four times in two minutes, and about 20 seconds later your wrist buzzes. When the conversation ends you get a recap. When you practise, you re-say the line to Alexa or your phone, and the attempt is graded from **Bee's own wearer-tagged transcript**, not from the mic you said it into. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
+**Bee listens, Alexa drills, the TV keeps score.** For non-native English speakers and any professional who wants to speak more clearly: at work first, and everywhere else.
 
-- **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins.
-- **AI finds the habits; deterministic code grades and decides.** Unsure words ("I guess", "maybe", "kind of") and the filler "like" are the hero habits: the two you practise, pre-registered in `prereg/transfer.json` (keys `hedges` and `filler:like`). Vague answers and the other filler words ("um", "uh", "you know") are tracked too, and starting over ("the the", key `restart`) is the one you deliberately don't practise, kept for comparison.
-- **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator), Fire TV (a Vega app) and a phone page (drills and practice meters).
+Bee hears you use four unsure words ("I guess", "maybe", "kind of") in two minutes, and about 20 seconds later your wrist buzzes. When the conversation ends you get a recap. When you practise, you re-say the line to Alexa or your phone, and the attempt is graded from **Bee's own wearer-tagged transcript**, not from the mic you said it into. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
+
+- **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins. Bee's live wearer tag named the wearer on 8 of 9 lines when we measured it on 2026-10-16 (FL-8 in `FRICTION_LOG.md`), so the coach does not guess who spoke.
+- **Fixed word lists count the habits; deterministic code grades and decides.** A model only drafts vague-answer practice lines and, when you turn it on, rewords a recap. Unsure words ("I guess", "maybe", "kind of") and the filler "like" are the hero habits: the two you practise, pre-registered in `prereg/transfer.json` (keys `hedges` and `filler:like`). Vague answers and the other filler words ("um", "uh", "you know") are tracked too, and repeating words, like "the the" (key `restart`), is the one habit you don't practise, kept for comparison.
+- **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator; Speaking Mirror's Alexa skill is called Speech Coach), Fire TV (a Vega app) and a phone page (drills and practice meters).
 
 ## Start here (no accounts, no keys, about 2 minutes)
+
+Needs Node 22.12 or later (`engines` in `package.json`).
 
 ```bash
 npm run setup          # installs the hub and the web TV
@@ -26,11 +30,13 @@ Everything the demo shows is labelled **SYNTHETIC DEMO DATA** on screen. With a 
 ## What we'll tell you before you find it
 
 - **Demo mode replays Bee.** `npm run demo` replays recorded-shape Bee events; the "verified by Bee" step there is the replay, and the screens say so.
-- **Latency is set by Bee.** A tagged line reaches the hub about 5.4 s (median; range 4.3 to 14.7 s) after you stop speaking, measured on our Watch. A wrist nudge therefore lands about 17 to 20 s after the line that triggered it, and a voice drill takes two turns, because an Alexa reply must come within 8 s.
+- **Latency is set by Bee.** Bee tags a line about 5 s after you stop speaking (median 5.4 s, 4.3 to 14.7 s, measured on 2026-10-16), so a wrist nudge lands about 20 s after the line that triggered it. A drill line can take up to about 20 s, because Bee may merge it with your next words, and Alexa must answer within 8 s, so the verdict comes on the next turn.
 - **The Watch buzzes only while Bee is recording and the iPhone is locked.** Otherwise the alarm shows on the iPhone (iOS notification mirroring).
-- **The before/after check is pre-registered but young.** `prereg/transfer.json` fixed the practised habits (unsure words and filler "like") and the one you don't practise (starting over) before the first practice. `GET /api/transfer` reports `not drilled yet`, `too little data` or `no change` until real speech after practice shows a drop, and it says so when the one you didn't practise dropped too.
+- **The before/after check is a two-tier pilot, pre-registered but young.** `prereg/transfer.json` fixed the practised habits (unsure words and filler "like") and the one you don't practise (repeating words) on 2026-10-16, before the first practice. Two practised habits against one control is one tier short of the formal standard for this kind of design, so it is a pilot, not proof of cause. `GET /api/transfer` reports `not drilled yet`, `too little data` or `no change` until real speech after practice shows a drop, and it says so when the one you didn't practise dropped too.
 - **Alexa+ third-party add-ons are partner-gated**, so the Alexa surface is a classic custom skill (tested in the Alexa iPhone app) plus an MCP server any MCP client can use; `/sim/` is that client in a browser, with a keyword router standing in for Alexa+'s model.
 - **No audio is stored by Bee**, so tone and pitch exist only in phone practice mode; Bee-based coaching works from words and timing.
+- **Wearable feedback on unwanted words is not new.** A 2025 study (WSCoach, arXiv 2507.04238) reports that near-real-time feedback and after-the-fact review both reduced unwanted words. What this repo adds is Bee as the grader of record, drills on your own lines, and a pre-registered check against a habit you don't practise.
+- **Every number on this page is in `FACTS.md`.** `test/claims.test.ts` fails the test run when a doc drifts from it or from the code.
 
 - **Bee vs meeting captions.** On one meeting both heard, unsure words came out alike (11 against 11) and filler "like" nearly alike, while captions showed fewer "um" and "uh" (4.7 against 6.7 per 100; the 95% intervals overlap, so one meeting does not show a real gap). See `docs/instrument-check.md`, `npm run instrument:check` and `GET /api/instrument`. Progress shows a secondary "Including meeting captions" line under the Bee-only result, labelled as not the pre-registered check. A meeting that Bee also heard counts once there: from Bee when Bee heard most of it, else from the captions with Bee's lines inside the meeting left out.
 
@@ -49,7 +55,7 @@ flowchart LR
 - **Bee (Watch + `bee` CLI)** is the input of record: `bee stream` delivers wearer-tagged lines for habits, live nudges and every drill grade, and Bee to-dos with alarms are the wrist nudges.
 - **The hub** holds all state. It verifies each attempt against Bee (`src/hub/bee.ts`), grades it deterministically (`src/hub/grade.ts`), runs the live coach and recaps (`src/hub/live/`), and serves every surface from one port behind a public-access gate (`src/hub/gate.ts`).
 - **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"), and on a Fire TV or Echo Show each turn shows a Speaking Mirror screen (APL: the line, Bee's check, the verdict) instead of Alexa's plain card ([`docs/alexa.md`](docs/alexa.md), "Screens (APL)"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
-- **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
+- **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `node_modules/tv-voice-bridge/PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
 - **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge. Its microphone needs https (the `ngrok http` link above); over LAN `http://` it is typing only.
 
 ## Coach hub (shared core for the TV mirror and the Alexa drill session)
@@ -68,15 +74,15 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
   - Habits, drills and stats come from Bee captures. Meeting captions are a secondary source, used only with `source=all` and always labelled.
   - In a drill, a phone or Alexa transcript is a provisional preview. The attempt counts when Bee's live stream tags the wearer saying it, and then Bee's text is graded. If the preview and Bee disagree, Bee wins.
   - With no tag on the stream within 30 s, the hub polls the conversation through the Bee CLI. With nothing by 45 s, the attempt is "unverified" and does not count.
-  - A voice drill takes two turns, because Bee's line takes 5 to 20 s and a voice skill must answer within 8 s. `POST /api/attempt` returns `pending_bee` at once, and `GET /api/attempts/<id>` returns Bee's verdict once it lands. A Bee line merged with the next words ("... How did I do?") is matched by coverage, and the extra sentence is cut before grading.
-- **AI finds the habits; code grades the attempt.** `src/hub/grade.ts` is deterministic and gives a reason for every rule:
+  - A voice drill takes two turns (L2 in `FACTS.md`). `POST /api/attempt` returns `pending_bee` at once, and `GET /api/attempts/<id>` returns Bee's verdict once it lands. A Bee line merged with the next words ("... How did I do?") is matched by coverage, and the extra sentence is cut before grading.
+- **Fixed word lists find the habits; code grades the attempt.** `src/hub/grade.ts` is deterministic and gives a reason for every rule:
   - the target habit occurs 0 times;
   - 0 fillers;
   - at least 80% of the target sentence is matched, with fuzzy word matching for ASR slips ("car" for "card", "rec board" for "rack board");
   - every concrete word the fix introduces is said.
-- **Hero habits.** Unsure words ("I guess", "maybe", "kind of") and the filler "like": the two practised habits, pre-registered in `prereg/transfer.json`. Vague answers ("that thing", "getting there", "and stuff") and the other filler words are tracked, and starting over ("the the") is the one you don't practise, kept for comparison (the control).
+- **Hero habits.** Unsure words ("I guess", "maybe", "kind of") and the filler "like": the two practised habits, pre-registered in `prereg/transfer.json`. Vague answers ("that thing", "getting there", "and stuff") and the other filler words are tracked, and repeating words ("the the") is the one habit you don't practise, kept for comparison (the control).
 - **Is it working?** `GET /api/transfer` asks whether a practised habit dropped in later real speech (practice lines excluded), compared with the habit you deliberately didn't practise. It reports rates per 100 words with 95% intervals, before vs after your first practice, and a plain verdict.
-  - Both are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any practice).
+  - Both are pre-registered in `prereg/transfer.json` (written 2026-10-16, before any practice). It is a two-tier pilot: it can show a drop, not what caused it.
   - The endpoint refuses to report an unregistered habit as practised.
 - **Like with like.** Each conversation is tagged Meeting, Work talk or Casual (deterministic rules on times, calendar events and speaker counts; one press on the TV corrects it), and recaps compare with your usual in that setting. `GET /api/settings` is a secondary view; the pre-registered check above never uses it ([`docs/live.md`](docs/live.md), "Settings").
 - **Finished conversations are picked up automatically.** Once Bee marks a conversation complete, the running hub fetches it, keeps the wearer's lines through the same wearer filter and mislabel rules as `npm run real`, and refreshes the stats and the first signal. No rerun or restart is needed ([`docs/live.md`](docs/live.md)).
@@ -110,7 +116,8 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
 - `src/alexa/` and `alexa/`: the Alexa skill handler and its skill package. `src/mcp/`: the MCP server and its loopback hub client.
 - `tv/web/` and `tv/vega/`: the Speaking Mirror TV app for the browser and for Vega OS (`scripts/tv-sync.ts` keeps the shared views identical).
 - `web/phone/`: the phone page. `web/sim/`: the Alexa+ simulator (a browser MCP client).
-- `docs/`: `CONTRACT.md` (the hub contract), `tv.md`, `alexa.md`, `live.md`, and [`poc.md`](docs/poc.md) (the proof of concept this grew from).
+- `docs/`: the hub contract (`docs/CONTRACT.md`), `tv.md`, `alexa.md`, `live.md`, and [`poc.md`](docs/poc.md) (the proof of concept this grew from).
+- `FACTS.md`: the claims ledger that `test/claims.test.ts` checks.
 - `fixtures/demo/`: synthetic demo fixtures. `prereg/transfer.json`: the transfer pre-registration. `coach/principles.template.md`: the generic coaching principles.
 - `scripts/`: the hub tools (`contract-check.ts`, `demo-replay.ts`, `hub-cards.ts`, `wrist-probe.ts`, `alexa-deploy.ts`, `tv-sync.ts`, `leak-check.ts`) and the PoC tools (see `docs/poc.md`).
 - `src/bee/`, `src/analyze/`, `src/coach/`, `src/sim/`, `src/eval/`, `src/report/`, `src/real/`: the proof-of-concept pipeline (see `docs/poc.md`).
