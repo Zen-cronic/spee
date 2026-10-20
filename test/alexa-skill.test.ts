@@ -302,3 +302,19 @@ describe("progressive response sender", () => {
     expect(got.length).toBe(n);
   });
 });
+
+describe("StartDrill adopts a card that is already open", () => {
+  it("speaks the card the TV opened and keeps it as the drill's first card", async () => {
+    await post("/api/session/end", {});
+    const opened = await post("/api/card/open", { cardId: "demo:filler-like", by: "tv" });
+    const e = env("next");
+    e.request.intent!.name = "StartDrillIntent";
+    const out = await handleAlexa(e, fake().deps);
+    expect(out.routed.intent).toBe("StartDrillIntent");
+    expect(out.envelope.response.outputSpeech?.text).toContain(opened.card.resay);
+    expect(out.envelope.sessionAttributes).toMatchObject({ cardId: "demo:filler-like" });
+    const st = await get("/api/session");
+    expect(st.session?.cardIds).toEqual(["demo:filler-like"]);
+    await post("/api/session/end", {});
+  });
+});

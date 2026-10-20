@@ -440,14 +440,24 @@ export class CoachHub extends EventEmitter {
 
   // Drill sessions (driven by the Alexa MCP tools; mirrored on the TV)
 
+  // A card already open outside a session (the TV, the phone or the API opened it) becomes the
+  // session's first card instead of being replaced: the wearer may be saying it right now, and Bee
+  // keeps matching lines against that opening. card.open is sent again so the screens show it under
+  // the session.
   startSession(opts: { by?: string; size?: number } = {}): { session: DrillSession; card: CardView | null } {
-    if (this.session) this.endSession();
+    const adopt = !this.session && this.open && this.card(this.open.cardId) ? this.card(this.open.cardId)! : null;
     this.passedClose = null;
+    if (this.session) this.endSession();
     const now = this.clock();
     this.session = { id: newId("ses", now), by: opts.by ?? "http", startedAt: now, endedAt: null, size: Math.max(1, Math.min(10, opts.size ?? 3)), cardIds: [], attemptIds: [] };
     this.touch();
     this.publish("session.started", { session: this.session });
-    const card = this.openCard({ by: this.session.by });
+    let card: CardView | null;
+    if (adopt) {
+      this.session.cardIds.push(adopt.id);
+      card = this.view(adopt);
+      this.publish("card.open", { card, by: this.session.by, sessionId: this.session.id, deck: this.deckSummary() });
+    } else card = this.openCard({ by: this.session.by });
     if (!card) this.endSession();
     return { session: this.session ?? this.lastSession!, card };
   }

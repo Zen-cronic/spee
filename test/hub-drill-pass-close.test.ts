@@ -1,5 +1,5 @@
-// A card Bee passed stops collecting attempts: the wearer's next everyday line is not graded
-// against it.
+// A card someone else opened is adopted by a drill session instead of replaced, and a card Bee
+// passed stops collecting attempts: the wearer's next everyday line is not graded against it.
 // A manual clock and Bee events shaped like the live stream (wearer-tagged, Bee-only: no preview).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -105,6 +105,42 @@ describe("a passed card stops collecting attempts", () => {
     expect(r.hub.open?.cardId).toBe(LIKE); // the submit reopened it
     r.say(c.resay, 0);
     expect(r.hub.attempts.find((x) => x.id === a.id)).toMatchObject({ status: "graded", agreement: "agree" });
+    r.hub.dispose();
+  });
+});
+
+describe("a session adopts the card that is already open", () => {
+  it("start keeps the TV's open card as the first card, re-sends card.open, and Bee's line counts in the session", () => {
+    const r = rig();
+    const opened = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    r.advance(4000);
+    const { session, card } = r.hub.startSession({ by: "mcp" });
+    expect(card?.id).toBe(opened.id);
+    expect(session.cardIds).toEqual([opened.id]);
+    const topics = r.events.map((e) => `${e.topic}:${(e.payload.card as { id?: string } | undefined)?.id ?? ""}`);
+    expect(topics.slice(-2)).toEqual(["session.started:", `card.open:${LIKE}`]);
+    expect(r.events.at(-1)!.payload).toMatchObject({ by: "mcp", sessionId: session.id });
+    // the opening is the TV's: a line the wearer began before the session started still counts
+    r.say(opened.resay, -2000);
+    expect(r.graded().map((a) => [a.cardId, a.sessionId, a.final?.pass])).toEqual([[LIKE, session.id, true]]);
+    r.hub.dispose();
+  });
+  it("with nothing open, or inside a running session, start opens the next due card as before", () => {
+    const r = rig();
+    const first = r.hub.startSession({ by: "alexa" });
+    expect(first.card).not.toBeNull();
+    const again = r.hub.startSession({ by: "alexa" });
+    expect(again.session.id).not.toBe(first.session.id);
+    expect(r.events.filter((e) => e.topic === "session.ended")).toHaveLength(1);
+    r.hub.dispose();
+  });
+  it("a card closed by its pass is not adopted: the next due card opens", () => {
+    const r = rig();
+    const c = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    r.say(c.resay, 10_000);
+    const { card } = r.hub.startSession({ by: "mcp" });
+    expect(card?.id).not.toBe(LIKE);
+    expect(r.hub.sessionState().lastAttempt).toBeNull();
     r.hub.dispose();
   });
 });

@@ -131,7 +131,7 @@ Habit keys are used by stats, transfer and the pre-registration file:
 |---|---|---|
 | `GET /api/health` | all | mode, labels, Bee feed status (`bee.counters`, `bee.replay`) |
 | `GET /api/state` = `GET /api/session` | Alexa, TV | the voice-UI state above, open card, last attempt, current and last session summary |
-| `POST /api/session/start` `{by?, size? (1-10, default 3)}` | Alexa | starts a drill session and opens the first due card |
+| `POST /api/session/start` `{by?, size? (1-10, default 3)}` | Alexa | starts a drill session and opens the first due card. A card already open outside a session (the TV, the phone or `POST /api/card/open` opened it) becomes the session's first card instead: `card.open` is sent again with the session id, and Bee keeps matching lines against that opening |
 | `POST /api/session/next` | Alexa | opens the next due card, or ends the session when `size` cards were counted or nothing is due: `{card, done, summary?}` |
 | `POST /api/session/end` | Alexa | ends the session: `{summary}` |
 | `POST /api/attempt` `{text, source: "phone"\|"alexa"\|"mcp"\|"typed", cardId?, speechEndAt? (hub-clock ms)}` | Alexa, MCP clients, phone, typed | provisional attempt on the open card (or on `cardId`, which it opens). Returns **202** at once: `{attempt, narration, verdictUrl, retryAfterMs}` with `status: "pending_bee"` |

@@ -150,6 +150,19 @@ describe("MCP over Streamable HTTP (stateless)", () => {
   });
 });
 
+describe("start_drill adopts a card that is already open", () => {
+  it("the card the TV opened stays the drill's first card (not replaced by the next due one)", async () => {
+    await call("end_drill");
+    const opened = await (await fetch(`${s.url}/api/card/open`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cardId: "demo:filler-like", by: "tv" }) })).json();
+    expect(opened.card.id).toBe("demo:filler-like");
+    const { r } = await call("start_drill");
+    expect(r.isError).toBeFalsy();
+    expect(r.structuredContent).toMatchObject({ card: { id: "demo:filler-like" }, session: { cardIds: ["demo:filler-like"] } });
+    expect(r.content[0]!.text).toContain(opened.card.resay);
+    await call("end_drill");
+  });
+});
+
 describe("/mcp HTTP behaviour", () => {
   const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
   const h = { "content-type": "application/json", accept: "application/json, text/event-stream" };
