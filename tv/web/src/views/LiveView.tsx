@@ -28,8 +28,10 @@ export function LiveView({ drill, live, partial, focus, last }: { drill: DrillSt
 
 function Dot({ state, bee }: { state: StepState; bee?: boolean }) {
   const pulse = useLoop(state === 'now', 600);
-  const fill = state === 'todo' ? 'transparent' : state === 'now' ? C.lavender : state === 'bad' ? C.coral : state === 'pass' ? C.lime : bee ? C.lavender : C.ink;
-  const border = state === 'todo' ? C.inkFaint : state === 'pass' ? C.ink : fill;
+  // Bee's step never turns coral: a line Bee did not confirm is an open lavender ring (coral is a graded fail)
+  const beeMissed = bee && state === 'bad';
+  const fill = state === 'todo' || beeMissed ? 'transparent' : state === 'now' ? C.lavender : state === 'bad' ? C.coral : state === 'pass' ? C.lime : bee ? C.lavender : C.ink;
+  const border = beeMissed ? C.lavender : state === 'todo' ? C.inkFaint : state === 'pass' ? C.ink : fill;
   return <Animated.View style={[styles.dot, { backgroundColor: fill, borderColor: border, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) }]} />;
 }
 
@@ -99,13 +101,13 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
       <Text style={styles.kicker} numberOfLines={1}>{card.said ? `Instead of “${card.said}”, say` : 'Say'}</Text>
       <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
       <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
+        {overrules ? (
+          <View style={styles.beeTag}>
+            <Text style={styles.beeTagText}>Bee overrules</Text>
+          </View>
+        ) : null}
         <View style={styles.bandHead}>
           <Text style={[styles.status, status.length <= 9 && styles.statusBig, { color: ink }]} numberOfLines={2}>{status}</Text>
-          {overrules ? (
-            <View style={styles.beeTag}>
-              <Text style={styles.beeTagText}>Bee overrules</Text>
-            </View>
-          ) : null}
         </View>
         {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 4 : 2}>{support}</Text> : null}
       </Animated.View>
@@ -224,7 +226,7 @@ const styles = StyleSheet.create({
   bandPass: { backgroundColor: C.lime },
   bandFail: { backgroundColor: C.coral },
   bandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  beeTag: { backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6 },
+  beeTag: { alignSelf: 'flex-start', backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, marginBottom: SP.s },
   beeTagText: { color: C.lavenderInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
   listening: { marginTop: SP.xxl },
   listenRow: { flexDirection: 'row', alignItems: 'center' },
