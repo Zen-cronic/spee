@@ -145,4 +145,23 @@ describe("drill lines in the final transcript", () => {
     mergeCorpus(byId, { sessions: [{ id: "1", kind: "conversation", startMs: T0, totalLines: 1, wearerLines: 1 }], lines: [{ key: "u:1", session: "1", kind: "conversation", start: 10, end: 14.5, spokenAt: T0 + 10_000, text: "hello there", lang: "en", dom: "en", uncertain: false, mislabelScore: 0, reasons: [] }] } as never);
     expect(byId.get("1")!.lines[0]).toMatchObject({ spokenAt: T0 + 10_000, spokenEndAt: T0 + 14_500 });
   });
+
+  it("an attempt Bee never confirmed (unverified, pending or polling) still leaves its sentence out", () => {
+    const sentence = "The quarterly numbers look steady across every region this month.";
+    for (const status of ["unverified", "pending_bee", "polling"] as const) {
+      const r = rig();
+      const end = T0 - 3_600_000;
+      r.hub.attempts.push({ id: `att_${status}`, cardId: LIKE, sessionId: null, status, counted: false, createdAt: end + 500, settledAt: null, provisional: { source: "phone", text: sentence.toLowerCase(), speechEndAt: end, grade: {} as never }, bee: null, final: null, agreement: null, reason: "", box: null });
+      const s: StatSession = {
+        id: "55", kind: "conversation", startMs: end - 120_000, endMs: end + 120_000,
+        lines: [
+          { key: "u:801", text: sentence, dom: "en", uncertain: false, spokenAt: end - 4000, spokenEndAt: end },
+          { key: "u:802", text: "Okay, see you at the stand-up tomorrow.", dom: "en", uncertain: false, spokenAt: end + 5000 },
+        ],
+      };
+      r.hub.sessions = [s];
+      expect(r.hub.everydaySessions()[0]!.lines.map((l) => l.text), status).toEqual(["Okay, see you at the stand-up tomorrow."]);
+      r.hub.dispose();
+    }
+  });
 });

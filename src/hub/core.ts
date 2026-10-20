@@ -680,13 +680,20 @@ export class CoachHub extends EventEmitter {
 
   // The Bee lines that were drill attempts, which are not everyday speech: by utterance id, and by
   // time and text for the final transcript's own ids (stats.ts DrillLines). An attempt stored without
-  // its spoken window gets one from what it has: its speech end, back 30 s.
+  // its spoken window gets one from what it has: its speech end, back 30 s. An attempt Bee has not
+  // confirmed (unverified, or still pending or polling) was still said: Bee's final transcript may
+  // hold it later, so its provisional text and speech end make a span too (any conversation; the
+  // text match guards against everyday lines).
   drillLines(): DrillLines {
     const keys = new Set<string>();
     const spans: DrillSpan[] = [];
     for (const a of this.attempts) {
       const b = a.bee;
-      if (!b) continue;
+      if (!b) {
+        const p = a.provisional;
+        if (p?.text && Number.isFinite(p.speechEndAt)) spans.push({ session: null, fromMs: p.speechEndAt - 30_000, toMs: p.speechEndAt, text: p.text });
+        continue;
+      }
       for (const id of b.utteranceIds ?? []) keys.add(`u:${id}`);
       const end = b.spokenToMs ?? a.provisional?.speechEndAt ?? a.createdAt - (b.latencyMs ?? 0);
       spans.push({ session: b.conversationId ?? null, fromMs: b.spokenFromMs ?? end - 30_000, toMs: end, text: b.text });
