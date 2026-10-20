@@ -2,9 +2,9 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { curly, fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
+import { curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
-import { useEnter, useLoop } from '../motion';
+import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, R, SP, T } from '../theme';
 
 /**
@@ -54,16 +54,20 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   const card = d.card;
   const st = d.stage;
   const enter = useEnter(`${card?.id ?? 'none'}:${st}`, 14, 280);
+  // the pass lands with a short spring (none with reduced motion): the one moment worth celebrating
+  const pop = usePop(d.graded?.pass ? `${d.attemptId}:pass` : 'none', 0.05);
   if (!card) {
     return (
       <View style={styles.fill}>
-        <Text style={styles.kicker}>Drill</Text>
-        <Text style={styles.sentence}>No drill running.</Text>
+        <Text style={styles.kicker}>Practice line</Text>
+        <Text style={styles.sentence}>Ready when you are.</Text>
+        <Text style={[styles.support, styles.idleSupport]}>Alexa gives you a line. Say it out loud, and Bee checks it.</Text>
         <View style={{ flex: 1 }} />
+        {d.deck && d.deck.dueNow > 0 ? <Text style={styles.dueLine}>{`${d.deck.dueNow} line${d.deck.dueNow === 1 ? '' : 's'} to practise today`}</Text> : null}
         <View style={styles.cta}>
           <Text style={styles.ctaText}>Say “Alexa, quiz me”</Text>
         </View>
-        {d.summary ? <Text style={styles.support}>{sessionTally('Last session', d.summary)}</Text> : null}
+        {d.summary ? <Text style={styles.support}>{sessionTally('Last time', d.summary)}</Text> : null}
       </View>
     );
   }
@@ -78,13 +82,13 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   const overrules = g?.agreement === 'bee-overrules';
   if (g) {
     status = g.pass ? 'Passed.' : 'Not yet.';
-    support = g.pass ? `Checked by Bee.${g.dueAfter ? ` Next review ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.failure) ?? 'Close'}. Say it again.`;
+    support = g.pass ? `Nice — Bee heard it.${g.dueAfter ? ` See it again ${fmtDay(g.dueAfter)}.` : ''}` : `${plainReason(g.failure) ?? 'So close'}. Say it again, slower.`;
     band = g.pass ? styles.bandPass : styles.bandFail;
     ink = g.pass ? C.limeInk : C.coralInk;
     if (overrules) support = curly(overruleText(pv?.source, g.pass, g.beeText));
   } else if (st === 'unverified') {
     status = 'Bee didn’t catch that one.';
-    support = 'It doesn’t count. Say it again.';
+    support = 'It doesn’t count yet. Say it again.';
   } else if (st === 'verified') {
     status = 'Bee heard you. Grading…';
     band = styles.bandWait;
@@ -100,10 +104,10 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
     <View style={styles.fill}>
       <Text style={styles.kicker} numberOfLines={1}>{card.said ? `Instead of “${card.said}”, say` : 'Say'}</Text>
       <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
-      <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
+      <Animated.View style={[styles.band, band, enter, g?.pass ? pop : null]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
         {overrules ? (
           <View style={styles.beeTag}>
-            <Text style={styles.beeTagText}>Bee overrules</Text>
+            <Text style={styles.beeTagText}>Bee’s call</Text>
           </View>
         ) : null}
         <View style={styles.bandHead}>
@@ -115,7 +119,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
         steps={[
           { label: 'You said it', state: heard },
           { label: 'Checked by Bee', state: checked, bee: true },
-          { label: 'Graded', state: graded },
+          { label: 'Result', state: graded },
         ]}
       />
       {debug ? (
@@ -127,8 +131,8 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
   );
 }
 
-function Listening() {
-  const pulse = useLoop(true, 900);
+function Listening({ active }: { active: boolean }) {
+  const pulse = useLoop(active, 900);
   return <Animated.View style={[styles.listenDot, { opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.3] }) }]} />;
 }
 
@@ -142,69 +146,73 @@ function Mode({ mode }: { mode: LiveMode | null }) {
   );
 }
 
-function Counter({ label, value, over }: { label: string; value: string; over: boolean }) {
+function Counter({ label, value, over, idle }: { label: string; value: string; over: boolean; idle: boolean }) {
   return (
     <View style={styles.counter}>
-      <Text style={[styles.counterValue, over && { color: C.coral }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.counterValue, idle && styles.usual, over && { color: C.coral }]}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
 
+/**
+ * The conversation card keeps one layout in every state, so nothing jumps when Bee starts hearing
+ * you: between conversations it shows your usual numbers dimmed (the hub's baseline), and they
+ * brighten into this conversation's numbers once one starts.
+ */
 function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null }) {
   const debug = useDebug();
   const w: LiveWindow | null = live.window;
+  const b = live.baseline;
+  const idle = !w;
   const over = (r: string) => !!w?.rules.find((x) => x.rule === r)?.over;
   const nudge: Nudge | undefined = live.nudges[0];
   const skip: NudgeSkipped | undefined = live.skips[0];
+  const unsure = habitTitle('hedges').toLowerCase();
+  const like = curly(habitTitle('filler:like')).replace(/^F/, 'f');
+  const status = w ? 'Bee is hearing you now.' : live.ended ? 'Conversation ended · your usual numbers' : 'Bee is listening · your usual numbers';
+  const hint = live.ended && !w ? `${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Your recap is on its way.' : 'Too short for a recap.'}` : null;
   return (
     <View style={styles.fill}>
       <View style={styles.rowBetween}>
         <Text style={styles.convoTitle}>Conversation</Text>
         <Mode mode={live.mode} />
       </View>
-      {!w ? (
-        <View style={styles.listening}>
-          <View style={styles.listenRow}>
-            <Listening />
-            <Text style={styles.listenTitle}>{live.ended ? 'Conversation ended.' : 'Bee is listening.'}</Text>
-          </View>
-          <Text style={styles.listenHint}>{live.ended ? `${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'Your pace and habits show here when you talk. Other voices are never shown.'}</Text>
+      <View style={styles.listenRow} testID="conversation-status">
+        <Listening active={idle} />
+        <Text style={styles.listenTitle} numberOfLines={1}>{status}</Text>
+      </View>
+      <View style={styles.stats}>
+        <View style={styles.stat}>
+          <Text style={[styles.statBig, idle && styles.usual]}>{w ? fmtInt(w.wearer.wpm) : fmtInt(b?.wpm)}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>words a minute</Text>
         </View>
-      ) : (
-      <View>
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statBig}>{w ? fmtInt(w.wearer.wpm) : '–'}</Text>
-            <Text style={styles.statLabel}>words a minute</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statBig}>{w ? fmtPct(w.talkShare) : '–'}</Text>
-            <Text style={styles.statLabel}>you talked</Text>
-          </View>
-        </View>
-        <Text style={styles.sub}>Last 2 minutes</Text>
-        <View style={styles.counters}>
-          <Counter label="hedges" value={w ? String(w.recent.hedges) : '–'} over={over('hedge-streak')} />
-          <Counter label="“like”" value={w ? String(w.recent.likes) : '–'} over={over('like-streak')} />
+        <View style={styles.stat}>
+          <Text style={[styles.statBig, idle && styles.usual]}>{w ? fmtPct(w.talkShare) : b ? fmtWords(b.words) : '–'}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{idle ? 'your words this week' : 'you talked'}</Text>
         </View>
       </View>
-      )}
+      <Text style={styles.sub}>{idle ? 'Usually, out of every 100 words you say' : 'Last 2 minutes'}</Text>
+      <View style={styles.counters}>
+        <Counter idle={idle} label={unsure} value={w ? String(w.recent.hedges) : fmt1(b?.hedgesPer100)} over={over('hedge-streak')} />
+        <Counter idle={idle} label={like} value={w ? String(w.recent.likes) : fmt1(b?.likesPer100)} over={over('like-streak')} />
+      </View>
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
       <View style={{ flex: 1 }} />
-      {!w && last && !nudge ? (
-        <View style={styles.last} testID="last-conversation">
-          <Text style={styles.lastKicker}>Last conversation</Text>
-          <Text style={styles.lastText} numberOfLines={2}>{curly(last.headline)}</Text>
-        </View>
-      ) : null}
       {nudge ? (
         <View style={styles.nudge} testID="nudge-card">
-          <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge not delivered: ${RULE_LABEL[nudge.rule]}` : `Wrist nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
+          <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge didn’t reach your wrist · ${RULE_LABEL[nudge.rule]}` : `Wrist nudge · ${RULE_LABEL[nudge.rule]}`}</Text>
           <Text style={styles.nudgeText} numberOfLines={1}>{curly(nudge.text.replace(/^\[[^\]]*\]\s*/, ''))}</Text>
           {nudge.wrist.status !== 'failed' ? <Text style={styles.nudgeWhen}>{`Buzzed ${fmtMs(nudge.latencyMs.total)} after you said it${nudge.replay ? ' (replay)' : ''}`}</Text> : null}
           {debug ? <HopTimeline nudge={nudge} width={700} /> : null}
         </View>
+      ) : idle && last ? (
+        <View style={styles.last} testID="last-conversation">
+          <Text style={styles.lastKicker}>Last conversation</Text>
+          <Text style={styles.lastText} numberOfLines={2}>{curly(last.headline)}</Text>
+        </View>
+      ) : idle ? (
+        <Text style={styles.listenHint} numberOfLines={2}>{hint ?? 'Your numbers light up when you talk. Other voices are never shown.'}</Text>
       ) : null}
       {debug && skip ? <Text style={styles.debugDark} numberOfLines={1}>{`Held back: ${RULE_LABEL[skip.rule]} (${SKIP_LABEL[skip.reason]})${skip.retryAfterMs ? `, again in ${fmtMs(skip.retryAfterMs)}` : ''}`}</Text> : null}
     </View>
@@ -228,11 +236,13 @@ const styles = StyleSheet.create({
   bandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   beeTag: { alignSelf: 'flex-start', backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, marginBottom: SP.s },
   beeTagText: { color: C.lavenderInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
-  listening: { marginTop: SP.xxl },
-  listenRow: { flexDirection: 'row', alignItems: 'center' },
-  listenDot: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.lavender, marginRight: SP.l },
-  listenTitle: { color: C.text, fontSize: 52, lineHeight: 64, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
-  listenHint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.m, maxWidth: 640, fontFamily: F.family },
+  listenRow: { flexDirection: 'row', alignItems: 'center', marginTop: SP.l },
+  listenDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: C.lavender, marginRight: SP.s },
+  listenTitle: { color: C.dim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
+  listenHint: { color: C.faint, fontSize: T.body, lineHeight: 42, maxWidth: 640, fontFamily: F.family },
+  usual: { color: C.faint },
+  dueLine: { color: C.ink, fontSize: T.body, fontWeight: '700', marginBottom: SP.m, fontFamily: F.family },
+  idleSupport: { color: C.inkDim, marginTop: SP.l, maxWidth: 680 },
   last: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l },
   lastKicker: { color: C.faint, fontSize: T.label, fontFamily: F.family },
   lastText: { color: C.text, fontSize: T.body, lineHeight: 42, fontWeight: '600', marginTop: SP.xs, fontFamily: F.family },
@@ -254,14 +264,15 @@ const styles = StyleSheet.create({
   mode: { flexDirection: 'row', alignItems: 'center' },
   modeDot: { width: 14, height: 14, borderRadius: 7, marginRight: SP.s },
   modeText: { color: C.dim, fontSize: T.label, fontFamily: F.family },
-  stats: { flexDirection: 'row', marginTop: SP.xl },
+  stats: { flexDirection: 'row', marginTop: SP.m },
   stat: { flex: 1 },
-  statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -3, paddingHorizontal: 12, marginLeft: -12, fontFamily: F.family },
+  // no negative margin or padding around big numerals: on Vega that box drew a sliver beside the first glyph
+  statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
   statLabel: { color: C.dim, fontSize: T.body, fontFamily: F.family },
   sub: { color: C.faint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
   counters: { flexDirection: 'row', marginTop: SP.xs },
   counter: { flex: 1 },
-  counterValue: { color: C.text, fontSize: 80, lineHeight: 92, fontWeight: '700', paddingHorizontal: 10, marginLeft: -10, fontFamily: F.family },
+  counterValue: { color: C.text, fontSize: 80, lineHeight: 92, fontWeight: '700', fontFamily: F.family },
   nudge: { backgroundColor: C.coralBg, borderRadius: R.m, paddingHorizontal: SP.l, paddingVertical: SP.m },
   nudgeTitle: { color: C.coral, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   nudgeText: { color: C.text, fontSize: T.small, marginTop: 6, fontFamily: F.family },

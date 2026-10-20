@@ -4,10 +4,21 @@ import { Animated, Easing, Platform } from 'react-native';
 /** Native driver on Vega (transform/opacity off the JS thread); react-native-web has none. */
 export const ND = Platform.OS !== 'web';
 
+/** The viewer asked for less motion (web: prefers-reduced-motion). Every hook below then shows its end state at once. */
+export const REDUCED_MOTION: boolean = (() => {
+  try {
+    const mm = (globalThis as { matchMedia?: (q: string) => { matches: boolean } }).matchMedia;
+    return Platform.OS === 'web' && typeof mm === 'function' && mm('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+})();
+
 /** Fade and rise in whenever `key` changes (a new stage, a new nudge, a new caption). */
 export function useEnter(key: unknown, from = 24, duration = 320) {
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (REDUCED_MOTION) return v.setValue(1);
     v.setValue(0);
     Animated.timing(v, { toValue: 1, duration, easing: Easing.out(Easing.cubic), useNativeDriver: ND }).start();
   }, [key]);
@@ -23,6 +34,7 @@ export function usePop(key: unknown, amount = 0.08) {
       first.current = false;
       return;
     }
+    if (REDUCED_MOTION || !amount) return;
     v.setValue(1 + amount);
     Animated.spring(v, { toValue: 1, friction: 5, tension: 120, useNativeDriver: ND }).start();
   }, [key]);
@@ -33,7 +45,7 @@ export function usePop(key: unknown, amount = 0.08) {
 export function useLoop(active: boolean, duration = 520, delay = 0) {
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!active) {
+    if (!active || REDUCED_MOTION) {
       v.setValue(0);
       return;
     }

@@ -21,6 +21,7 @@ import type {
   ConversationEnded,
   DeckSummary,
   HubState,
+  LiveBaseline,
   LiveMode,
   LiveState,
   LiveWindow,
@@ -63,6 +64,7 @@ export interface DrillState {
 
 export interface LiveSlice {
   mode: LiveMode | null;
+  baseline: LiveBaseline | null; // the wearer's usual rates (GET /api/live), shown dimmed between conversations
   conversationId: string | null;
   startedAt: number | null;
   window: LiveWindow | null;
@@ -176,7 +178,7 @@ export function initialMirror(view: ScreenView = 'week'): MirrorState {
     viewBy: null,
     viewReason: null,
     drill: emptyDrill(),
-    live: { mode: null, conversationId: null, startedAt: null, window: null, ended: null, nudges: [], skips: [] },
+    live: { mode: null, baseline: null, conversationId: null, startedAt: null, window: null, ended: null, nudges: [], skips: [] },
     practice: emptyPractice(),
     recap: null,
     recapVisible: false,
@@ -220,7 +222,7 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       // a finished fetch (found or not) clears the request, so the next "show my recap" fetches again
       return s.recapWanted === null ? s : { ...s, recapWanted: null };
     case 'liveState':
-      return { ...s, live: { ...s.live, mode: a.live.mode, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
+      return { ...s, live: { ...s.live, mode: a.live.mode, baseline: a.live.baseline ?? s.live.baseline, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;
       return { ...s, recap: a.recap, recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };

@@ -105,7 +105,7 @@ export function useMirror(cfg: MirrorConfig) {
   useEffect(() => {
     if (status !== 'online') return;
     void getJson<LiveState>(`${cfg.httpBase}/api/live`).then((r) => r && r.mode && dispatch({ type: 'liveState', live: r }));
-  }, [status, cfg.httpBase]);
+  }, [status, state.statsVersion, cfg.httpBase]); // the usual rates move with the week's stats
   useEffect(() => {
     const want = state.recapWanted;
     if (!want) return;

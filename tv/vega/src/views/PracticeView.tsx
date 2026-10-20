@@ -46,6 +46,9 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
   const pauses = done ? s!.pauses.count : (m?.pause.count ?? s?.pauses.count ?? 0);
   const range = done ? s!.pitch.rangeSt : (m?.pitchRangeSt ?? null);
   const flat = done ? s!.pitch.monotone : !!m?.monotone;
+  // the volume block stays after the take: the take's average level, worded from the hub's own flags
+  const level = done ? s!.volume.meanDbfs : db;
+  const lvBand: keyof typeof BAND_WORD = done ? (s!.flags.includes('quiet') ? 'quiet' : s!.flags.includes('loud') ? 'loud' : 'ok') : band;
   return (
     <View style={styles.wrap} testID="view-practice">
       <View style={styles.row}>
@@ -54,15 +57,13 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
           <Text style={styles.big}>{fmtInt(wpm)}</Text>
           <Text style={styles.bigLabel}>words a minute</Text>
           <View style={{ flex: 1 }} />
-          {!done ? (
-            <View>
-              <Text style={styles.label}>{BAND_WORD[band]}</Text>
-              <View style={[styles.volTrack, { width: VOL_W }]}>
-                <View style={[styles.zone, { left: dbFrac(QUIET) * VOL_W, width: (dbFrac(LOUD) - dbFrac(QUIET)) * VOL_W }]} />
-                <View style={[styles.volFill, { width: Math.max(8, dbFrac(db) * VOL_W) }]} />
-              </View>
+          <View>
+            <Text style={styles.label}>{done ? `${BAND_WORD[lvBand]} overall` : BAND_WORD[band]}</Text>
+            <View style={[styles.volTrack, { width: VOL_W }]}>
+              <View style={[styles.zone, { left: dbFrac(QUIET) * VOL_W, width: (dbFrac(LOUD) - dbFrac(QUIET)) * VOL_W }]} />
+              <View style={[styles.volFill, { width: Math.max(8, dbFrac(level) * VOL_W) }]} />
             </View>
-          ) : null}
+          </View>
           <View style={styles.pauseRow}>
             <Text style={[styles.pauseNum, !done && m?.pause.active && { color: C.ink }]}>{String(pauses)}</Text>
             <Text style={styles.pauseLabel}>{`pause${pauses === 1 ? '' : 's'}${!done && m?.pause.active ? ' · pausing now' : ''}`}</Text>
@@ -86,13 +87,23 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
       ) : null}
       {s ? (
         <View style={styles.summary} testID="practice-summary">
-          <Text style={styles.summaryTitle}>{s.flags.length ? 'Work on' : 'This take'}</Text>
-          <View style={styles.flags}>{s.flags.length ? s.flags.map((f) => <Chip key={f} text={FLAG_LABEL[f]} tone={f === 'fast' || f === 'slow' ? 'neutral' : 'bad'} big />) : <Chip text="Nothing to fix" tone="good" big />}</View>
+          <View style={styles.flags}>{s.flags.length ? s.flags.map((f) => <Chip key={f} text={FLAG_LABEL[f]} tone={f === 'fast' || f === 'slow' ? 'neutral' : 'bad'} big />) : <Chip text="Nice take" tone="good" big />}</View>
+          <Text style={styles.summaryText} numberOfLines={1}>{takeSentence(s)}</Text>
+          <View style={{ flex: 1 }} />
+          <Text style={styles.summaryNext} numberOfLines={1}>Tap Start on your phone for another</Text>
           {debug ? <Text style={styles.debug}>{`${fmt1(s.volume.meanDbfs)} dBFS mean · pitch ${s.pitch.medianHz ?? '–'} Hz · ${fmt1(s.pauses.perMin)} pauses/min · voiced ${fmtPct(s.pitch.voicedShare)}`}</Text> : null}
         </View>
       ) : null}
     </View>
   );
+}
+
+/** The take in one plain sentence, from the summary's own flags and counts ("Steady pace, a lively melody, 2 pauses."). */
+function takeSentence(s: NonNullable<PracticeSlice['summary']>): string {
+  const pace = s.flags.includes('fast') ? 'A bit fast' : s.flags.includes('slow') ? 'A bit slow' : 'Steady pace';
+  const melody = s.pitch.monotone ? 'a flat melody' : 'a lively melody';
+  const pauses = `${s.pauses.count} pause${s.pauses.count === 1 ? '' : 's'}`;
+  return `${pace}, ${melody}, ${pauses}.`;
 }
 
 const styles = StyleSheet.create({
@@ -104,14 +115,14 @@ const styles = StyleSheet.create({
   idleNote: { color: C.inkDim, fontSize: T.body, marginTop: SP.s, fontFamily: F.family },
   paper: { width: 660, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
-  big: { color: C.ink, fontSize: T.hero, lineHeight: 210, fontWeight: '700', letterSpacing: -6, paddingHorizontal: 14, marginLeft: -14, marginTop: SP.s, fontFamily: F.family },
+  big: { color: C.ink, fontSize: T.hero, lineHeight: 210, fontWeight: '700', letterSpacing: -2, marginTop: SP.s, fontFamily: F.family },
   bigLabel: { color: C.ink, fontSize: T.h2, fontWeight: '600', marginTop: -SP.s, fontFamily: F.family },
   label: { color: C.ink, fontSize: T.body, fontWeight: '600', marginBottom: SP.s, fontFamily: F.family },
   volTrack: { height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.08)', overflow: 'hidden' },
   zone: { position: 'absolute', top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.08)' },
   volFill: { position: 'absolute', left: 0, top: 0, height: 22, borderRadius: 11, backgroundColor: C.ink },
   pauseRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: SP.l },
-  pauseNum: { color: C.ink, fontSize: 64, fontWeight: '700', paddingHorizontal: 8, marginLeft: -8, fontFamily: F.family },
+  pauseNum: { color: C.ink, fontSize: 64, fontWeight: '700', fontFamily: F.family },
   pauseLabel: { color: C.inkDim, fontSize: T.body, marginLeft: SP.s, fontFamily: F.family },
   note: { color: C.inkFaint, fontSize: T.label, marginTop: SP.s, fontFamily: F.family },
   dark: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
@@ -122,7 +133,8 @@ const styles = StyleSheet.create({
   caption: { backgroundColor: C.surface, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginTop: SP.m },
   captionText: { color: C.text, fontSize: T.title, fontStyle: 'italic', fontFamily: F.family },
   summary: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginTop: SP.m },
-  summaryTitle: { color: C.dim, fontSize: T.body, marginRight: SP.l, fontFamily: F.family },
-  flags: { flexDirection: 'row', gap: SP.s },
+  flags: { flexDirection: 'row', gap: SP.s, marginRight: SP.l },
+  summaryText: { flexShrink: 1, color: C.text, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
+  summaryNext: { color: C.dim, fontSize: T.small, marginLeft: SP.l, fontFamily: F.family },
   debug: { color: C.faint, fontSize: 20, marginTop: SP.s, marginLeft: SP.l, fontFamily: F.mono },
 });
