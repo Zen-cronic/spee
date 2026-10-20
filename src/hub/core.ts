@@ -94,6 +94,9 @@ export class CoachHub extends EventEmitter {
   prereg: TransferPrereg | null;
   readonly verifier: BeeVerifier;
   open: { cardId: string; openedAt: number; by: string } | null = null;
+  // The lone card (no session) Bee just passed, closed by that pass: hub.state keeps showing its
+  // verdict until another card opens.
+  passedClose: { cardId: string; attemptId: string } | null = null;
   session: DrillSession | null = null;
   lastSession: DrillSession | null = null;
   private seq = 0;
@@ -285,6 +288,7 @@ export class CoachHub extends EventEmitter {
     const c = opts.cardId ? this.card(opts.cardId) : this.nextCard();
     if (!c) return null;
     this.open = { cardId: c.id, openedAt: this.clock(), by: opts.by ?? "http" };
+    this.passedClose = null;
     this.touch();
     if (this.session && !this.session.cardIds.includes(c.id)) this.session.cardIds.push(c.id);
     this.verifier.openCard({ cardId: c.id, resay: c.resay, lang: c.lang, openedAt: this.open.openedAt });
@@ -369,6 +373,7 @@ export class CoachHub extends EventEmitter {
       this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "verified", via: v.via, speakerScore: v.speakerScore, latencyMs: v.latencyMs, beeText: v.beeText, replay: !!this.opts.replay, reason: v.reason });
       this.settle(a, c, v.beeText);
       this.publish("attempt.graded", { attempt: a, card: this.view(c), deck: this.deckSummary() });
+      this.afterVerdict(a);
     } else {
       a.status = "unverified";
       a.settledAt = this.clock();
@@ -414,13 +419,30 @@ export class CoachHub extends EventEmitter {
     this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "verified", via: "stream", speakerScore: b.speakerScore, latencyMs: a.bee!.latencyMs, beeText: b.text, replay: !!this.opts.replay, reason: a.reason });
     this.settle(a, c, b.text);
     this.publish("attempt.graded", { attempt: a, card: this.view(c), deck: this.deckSummary() });
+    this.afterVerdict(a);
     this.publishStats();
+  }
+
+  // A counted PASS ends that card's attempts: Bee stops grading the wearer's later lines against it
+  // (they are everyday speech, not retries). A lone card (no session) is closed, and every screen is
+  // re-sent hub.state, which still carries the passing attempt; in a session the card stays on screen
+  // until "next" (the voice flows advance on the verdict). After a FAIL nothing closes: say it again.
+  private afterVerdict(a: Attempt) {
+    if (!a.counted || !a.final?.pass) return;
+    this.verifier.markPassed(a.cardId, a.createdAt);
+    // only the opening the attempt was made in: a late verdict from an earlier one leaves a new card alone
+    if (this.session || this.open?.cardId !== a.cardId || a.createdAt < this.open.openedAt) return;
+    this.open = null;
+    this.verifier.closeCards();
+    this.passedClose = { cardId: a.cardId, attemptId: a.id };
+    this.emit("state.changed", { reason: "card-passed", cardId: a.cardId });
   }
 
   // Drill sessions (driven by the Alexa MCP tools; mirrored on the TV)
 
   startSession(opts: { by?: string; size?: number } = {}): { session: DrillSession; card: CardView | null } {
     if (this.session) this.endSession();
+    this.passedClose = null;
     const now = this.clock();
     this.session = { id: newId("ses", now), by: opts.by ?? "http", startedAt: now, endedAt: null, size: Math.max(1, Math.min(10, opts.size ?? 3)), cardIds: [], attemptIds: [] };
     this.touch();
@@ -493,6 +515,10 @@ export class CoachHub extends EventEmitter {
       unverified: "Bee didn't confirm that one, so it doesn't count. Try it again.",
     };
     const lastShown = last && this.open && last.createdAt >= this.open.openedAt ? last : null;
+    // The lone card Bee just passed is closed; its verdict stays the last attempt until a card opens.
+    const passed = !this.open && !this.session && this.passedClose ? (this.attempts.find((a) => a.id === this.passedClose!.attemptId) ?? null) : null;
+    if (passed) narration.idle = "Bee heard it. That's a pass, so the card is closed. Start a drill for the next one.";
+    else if (state === "graded" && this.session && last?.final?.pass) narration.graded += " Say next for the next card.";
     return {
       state,
       narration: narration[state] ?? "",
@@ -500,7 +526,7 @@ export class CoachHub extends EventEmitter {
       retryAfterMs: lastShown ? this.retryAfterMs(lastShown) : null,
       session: this.session,
       openCard: openCard ? this.view(openCard) : null,
-      lastAttempt: lastShown,
+      lastAttempt: lastShown ?? passed,
       deck: this.deckSummary(),
       practiceToday: this.practiceToday(),
       bee: { replay: !!this.opts.replay, pendingVerifications: this.verifier.pendingCount(), lastEventAt: this.verifier.lastEventAt, counters: this.verifier.counters },

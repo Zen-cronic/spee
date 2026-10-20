@@ -297,6 +297,10 @@ export interface OpenCard {
   lang: Lang;
   openedAt: number;
   closedAt: number | null;
+  // Bee graded a counted PASS on this opening: it takes no more Bee-only attempts, so the wearer's
+  // later lines are not graded against a card already said right. A preview submitted for it (a
+  // deliberate retry) still matches.
+  passedAt?: number | null;
 }
 
 export class BeeVerifier {
@@ -338,6 +342,13 @@ export class BeeVerifier {
   closeCards() {
     const now = this.opts.clock();
     for (const x of this.cards) if (x.closedAt == null) x.closedAt = now;
+  }
+
+  // A counted PASS landed for an attempt made at `attemptAt`: the card's latest opening stops taking
+  // Bee-only attempts, unless it opened after that attempt (a late verdict from an earlier opening).
+  markPassed(cardId: string, attemptAt: number) {
+    const c = this.cardOf(cardId);
+    if (c && c.passedAt == null && c.openedAt <= attemptAt) c.passedAt = this.opts.clock();
   }
 
   expect(a: Omit<PendingAttempt, "createdAt" | "pollsDone" | "polling">) {
@@ -489,6 +500,7 @@ export class BeeVerifier {
     for (const c of this.cards) {
       if (!this.afterOpen(u, c) || (c.closedAt != null && u.startMs > c.closedAt + this.t.slackMs)) continue;
       if (u.startMs - c.openedAt > BEE_ONLY_MAX_AGE_MS) continue; // too long after the card opened to be a drill attempt
+      if (c.passedAt != null) continue; // already passed: a later line is everyday speech, not a retry
       if ([...this.pending.values()].some((a) => a.cardId === c.cardId && this.overlaps(u, a))) continue; // its preview is still pending
       const m = align(normTokens(c.resay, c.lang), normTokens(u.text, c.lang)).score;
       if (m > match || (m === match && card && c.openedAt > card.openedAt)) (card = c), (match = m);

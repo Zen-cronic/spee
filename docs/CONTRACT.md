@@ -50,14 +50,20 @@ card_open --(Bee alone hears the wearer say the card)--> graded (agreement "bee-
 
 | State (`GET /api/session` `.state`) | Narration (`.narration`) | Meaning |
 |---|---|---|
-| `idle` | "No drill is running. Start a session to get your first card." | no open card |
+| `idle` | "No drill is running. Start a session to get your first card." / "Bee heard it. That's a pass, so the card is closed. Start a drill for the next one." | no open card (the second line right after Bee passed a lone card; `lastAttempt` is that pass) |
 | `card_open` | `Say this: "<resay>"` | waiting for the user |
 | `pending_bee` | "Got it. I'm checking with Bee, which takes 5 to 20 seconds. Ask me how you did in a moment." | preview graded; waiting for Bee's wearer-tagged line |
 | `polling` | "Bee's live feed was quiet, so I'm checking your conversation directly." | stream timeout; fallback poll of the conversation through the Bee CLI |
-| `graded` | "Bee heard it. That's a pass." / "Bee heard it. Not yet: <first failed rule>." | Bee's text graded; the schedule moved |
+| `graded` | "Bee heard it. That's a pass." (in a session: "... Say next for the next card.") / "Bee heard it. Not yet: <first failed rule>." | Bee's text graded; the schedule moved |
 | `unverified` | "Bee didn't confirm that one, so it doesn't count. Try it again." | no Bee confirmation; the schedule is unchanged |
 
 `GET /api/session` also returns `verdictReady` (true in `graded`/`unverified`) and `retryAfterMs` (when to ask again for a pending attempt).
+
+**A PASS ends a card's attempts.** Once Bee grades a counted PASS on the open card, that opening takes no more Bee-only attempts: the wearer's next lines are everyday speech, not retries, and are never graded against it.
+
+- **Outside a session** (a card opened with `POST /api/card/open`, by the TV or the phone), the card closes: `open` becomes `null`, live nudges are no longer held back, and every surface is re-sent `hub.state` (it carries the passing attempt as `lastAttempt`, so a screen showing the card keeps the verdict). A new attempt then needs a card again (`no_open_card`), or names one with `cardId`.
+- **In a session**, the card stays open and waits for `POST /api/session/next` (the voice flows call it on the verdict); a preview submitted for it is still a deliberate retry and counts.
+- **After a FAIL** nothing closes: say it again.
 
 ### Two-turn voice drill (Alexa's 8 s limit)
 
