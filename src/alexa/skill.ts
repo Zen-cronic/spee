@@ -89,6 +89,11 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     const s = await track("GET /api/session", hub.session());
     return s.ok ? s.body.openCard : null;
   };
+  // The open line to say again (a turn that checked nothing must not leave "Bee is checking…" up).
+  const lineAgain = (none: () => Screen) => screen(async () => {
+    const card = await openCard();
+    return card ? drillScreen(card) : none();
+  });
 
   const handlers: Record<Routed["intent"], () => Promise<Out | null>> = {
     LaunchRequest: () => start("launch"),
@@ -98,7 +103,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       if (!r.ok) {
         if (r.body.error === "no_open_card") return { text: SPEECH.noCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId"), screen: await screen(EMPTY.noLine) };
         if (r.status === 0 || r.status >= 500) return hubDown();
-        return { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs };
+        return { text: SPEECH.fallbackCard, reprompt: SPEECH.askHowDidIDo, attrs, screen: await lineAgain(EMPTY.noLine) };
       }
       return {
         text: line([`Got it, checking with Bee`, `Ask me how you did in about ${seconds(r.body.retryAfterMs)}`]),
@@ -117,7 +122,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       if (!id) return { text: SPEECH.noAttempt, reprompt: SPEECH.helpReprompt, attrs, screen: await screen(EMPTY.noAttempt) };
       let v = await track("GET /api/attempts/<id>", hub.verdict(id));
       if (!v.ok) {
-        if (v.status === 404) return { text: "I lost track of that one. Say the line again.", reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId") };
+        if (v.status === 404) return { text: "I lost track of that one. Say the line again.", reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId"), screen: await lineAgain(EMPTY.noAttempt) };
         return hubDown();
       }
       if (!v.body.verdictReady) {

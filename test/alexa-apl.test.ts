@@ -345,6 +345,29 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
     expect(directives(await handleAlexa(env("stop"), deps()))).toEqual([]);
   });
 
+  it("a lost attempt and a refused one show the open line again, never the stale checking screen", async () => {
+    await post("/api/session/end", {});
+    const card = (await post("/api/session/start", { by: "alexa" })).card;
+    // "how did I do?" for an attempt the hub no longer has (a restart or a reset)
+    const lost = await handleAlexa(env("how-did-i-do", { attrs: { cardId: card.id, attemptId: "att_gone" } }), deps());
+    expect(lost.envelope.response.outputSpeech?.text).toBe("I lost track of that one. Say the line again.");
+    expect(screenOf(lost)).toMatchObject({ kind: "drill", sentence: card.resay, status: "" });
+    expect(screenOf(lost).steps).toEqual(tracker(0));
+    // with no line open: nothing to check
+    await post("/api/session/end", {});
+    expect(screenOf(await handleAlexa(env("how-did-i-do", { attrs: { attemptId: "att_gone" } }), deps()))).toMatchObject({ kind: "empty", headline: "Nothing to check yet." });
+    // an attempt the hub refused for a reason other than "no line open"
+    const open = (await post("/api/session/start", { by: "alexa" })).card;
+    const refusing = new HubClient(s.url, { fetch: async (u, init) => (String(u).endsWith("/api/attempt") ? new Response(JSON.stringify({ error: "attempt_refused", message: "x" }), { status: 409, headers: { "content-type": "application/json" } }) : fetch(u, init)) });
+    const refused = await handleAlexa(env("attempt", { attrs: { cardId: open.id }, slot: open.resay }), { ...deps(), hub: refusing });
+    expect(refused.envelope.response.outputSpeech?.text).toBe("I didn't catch that. Say the sentence again, or ask how did I do.");
+    expect(screenOf(refused)).toMatchObject({ kind: "drill", sentence: open.resay });
+    // voice-only: the same speech, no directive
+    const voice = await handleAlexa(env("attempt", { attrs: { cardId: open.id }, slot: open.resay, screen: false }), { ...deps(), hub: refusing });
+    expect(voice.envelope.response.outputSpeech).toEqual(refused.envelope.response.outputSpeech);
+    expect(voice.envelope.response.directives).toBeUndefined();
+  });
+
   it("the round's end: a summary screen", () => {
     expect(summaryScreen({ passed: 2, counted: 3, attempts: 3 })).toMatchObject({ headline: "That’s the round.", line: "2 of 3 lines passed, checked by Bee." });
     expect(summaryScreen({ passed: 0, counted: 0, attempts: 0 }).line).toBe("");
