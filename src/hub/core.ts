@@ -102,8 +102,8 @@ export class CoachHub extends EventEmitter {
   open: { cardId: string; openedAt: number; by: string; seq: number } | null = null;
   private openings = 0;
   // The lone card (no session) Bee just passed, closed by that pass: hub.state keeps showing its
-  // verdict until another card opens.
-  passedClose: { cardId: string; attemptId: string } | null = null;
+  // verdict until another card opens, DRILL_IDLE_MS passes, or the local day turns.
+  passedClose: { cardId: string; attemptId: string; at: number } | null = null;
   session: DrillSession | null = null;
   lastSession: DrillSession | null = null;
   private seq = 0;
@@ -178,6 +178,7 @@ export class CoachHub extends EventEmitter {
   // hub.state to every peer: the TV and phone drop the card instead of showing one that answers
   // "open a card first".
   expireIdle(idleMs = DRILL_IDLE_MS): boolean {
+    this.expirePassed(idleMs);
     if (!this.session && !this.open) return false;
     if (this.verifier.pendingCount() > 0) return (this.touch(), false);
     if (this.clock() - this.lastActivity < idleMs) return false;
@@ -188,6 +189,17 @@ export class CoachHub extends EventEmitter {
       this.verifier.closeCards();
       this.emit("state.changed", { reason: "card-expired", cardId });
     }
+    return true;
+  }
+
+  // The lone card's pass is old news after DRILL_IDLE_MS, or on another day: "how did I do?" no longer
+  // answers with it, and the screens are re-sent hub.state without it.
+  private expirePassed(idleMs = DRILL_IDLE_MS): boolean {
+    const p = this.passedClose;
+    if (!p) return false;
+    if (this.clock() - p.at < idleMs && localDate(p.at, this.tz) === this.today()) return false;
+    this.passedClose = null;
+    this.emit("state.changed", { reason: "pass-expired", cardId: p.cardId });
     return true;
   }
 
@@ -444,7 +456,7 @@ export class CoachHub extends EventEmitter {
     if (this.session || !this.inOpening(a)) return;
     this.open = null;
     this.verifier.closeCards();
-    this.passedClose = { cardId: a.cardId, attemptId: a.id };
+    this.passedClose = { cardId: a.cardId, attemptId: a.id, at: this.clock() };
     this.emit("state.changed", { reason: "card-passed", cardId: a.cardId });
   }
 
@@ -551,7 +563,9 @@ export class CoachHub extends EventEmitter {
       unverified: "Bee didn't catch that one, so it doesn't count. Say it again.",
     };
     const lastShown = last ?? null;
-    // The lone card Bee just passed is closed; its verdict stays the last attempt until a card opens.
+    // The lone card Bee just passed is closed; its verdict stays the last attempt until a card opens
+    // (or the pass expires: expirePassed).
+    this.expirePassed();
     const passed = !this.open && !this.session && this.passedClose ? (this.attempts.find((a) => a.id === this.passedClose!.attemptId) ?? null) : null;
     if (passed) narration.idle = "Nice, Bee heard it. That's a pass. Say quiz me for your next line.";
     else if (state === "graded" && this.session && last?.final?.pass) narration.graded += " Say next for the next line.";
@@ -702,6 +716,7 @@ export class CoachHub extends EventEmitter {
     // The day is marked before the stats are computed: if that throws, it is tried again tomorrow
     // (or with the next settled attempt), not on every tick for the rest of the day.
     this.statsDay = today;
+    this.expirePassed();
     this.publishStats();
     return true;
   }

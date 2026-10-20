@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { BeeEvent } from "../src/hub/bee.js";
 import { deriveHabit, deriveMustSay, type HubCard } from "../src/hub/cards.js";
-import { CoachHub, type Attempt, type HubEvent } from "../src/hub/core.js";
+import { CoachHub, DRILL_IDLE_MS, type Attempt, type HubEvent } from "../src/hub/core.js";
 import { DEMO_TZ, DEMO_WEARER } from "../src/hub/demoData.js";
 import type { HubDeck } from "../src/hub/scheduler.js";
 import { wearerRule } from "../src/hub/setup.js";
@@ -191,6 +191,33 @@ describe("openings are told apart by id, not by time", () => {
     const beeOnly = r.graded().filter((x) => x.agreement === "bee-only");
     expect(beeOnly.map((x) => [x.final?.pass, x.openingSeq])).toEqual([[true, second]]);
     expect(r.changed).toEqual([{ reason: "card-passed", cardId: LIKE }]); // that pass closes the new opening
+    r.hub.dispose();
+  });
+});
+
+describe("a lone card's pass expires", () => {
+  it("after the idle time, and on another day, 'how did I do?' no longer answers with it", () => {
+    const r = rig();
+    const c = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    r.say(c.resay, 10_000);
+    expect(r.hub.sessionState().narration).toMatch(/That's a pass/);
+    r.advance(DRILL_IDLE_MS - 1000);
+    expect(r.hub.sessionState().lastAttempt?.final?.pass).toBe(true);
+    r.advance(1000);
+    r.hub.expireIdle();
+    expect(r.hub.passedClose).toBeNull();
+    expect(r.changed.at(-1)).toEqual({ reason: "pass-expired", cardId: LIKE });
+    expect(r.hub.sessionState()).toMatchObject({ state: "idle", lastAttempt: null, narration: expect.stringMatching(/not practising/) });
+    r.hub.dispose();
+  });
+  it("on the next day even within the idle time", () => {
+    const r = rig();
+    r.advance(Date.parse("2026-10-20T23:57:00-04:00") - r.at());
+    const c = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    r.say(c.resay, 10_000);
+    expect(r.hub.passedClose).not.toBeNull();
+    r.advance(4 * 60_000); // past midnight
+    expect(r.hub.sessionState().lastAttempt).toBeNull();
     r.hub.dispose();
   });
 });
