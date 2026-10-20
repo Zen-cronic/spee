@@ -2,7 +2,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { countHabitKey, habitKeysOf, parseHabitKey } from "../src/hub/habits.js";
-import { firstSignalSentence, habitRates, loadPrereg, transfer, wordsToSeeHalving, type StatSession, type TransferPrereg } from "../src/hub/stats.js";
+import { firstSignalSentence, habitRates, loadPrereg, nextSessionDeltas, transfer, wordsToSeeHalving, type StatSession, type TransferPrereg } from "../src/hub/stats.js";
+import { wordCount } from "../src/real/text.js";
 import { demoFixtures } from "../scripts/build-demo-fixtures.js";
 
 const sess = (id: string, kind: StatSession["kind"], start: string, texts: string[]): StatSession => ({
@@ -12,6 +13,7 @@ const PREREG: TransferPrereg = {
   kind: "transfer", registered_at: "2026-10-12T13:00:00.000Z", registered_local: "", lang: "en", basis: "test",
   drilled: [{ habit: "hedge:i guess", why: "" }], control: [{ habit: "restart", why: "" }], min_words_per_period: 400, cutover_rule: "",
 };
+const wordsOf = (ts: string[]) => ts.reduce((n, t) => n + wordCount(t), 0);
 const filler = (n: number) => new Array(n).fill("The export finished on time and the totals match the ledger today.").join(" ");
 
 describe("habit keys and rates", () => {
@@ -241,5 +243,33 @@ describe("first signal: the next conversation after the first drill", () => {
     const keys = new Set(["drill:0"]);
     const fs = run([mon, drillOnly, tue], { drillLines: { keys, spans: [] } });
     expect(fs[0]!.after!.session).toBe("tue");
+  });
+  it("a short exchange right after the drill is passed over: the first conversation with enough words is compared", () => {
+    const short = sess("short", "conversation", "2026-10-20T10:12:00-04:00", ["Yes, like, sure.", "Sounds good."]);
+    const fs = run([mon, short, tue]);
+    expect(fs[0]).toMatchObject({ status: "measured", before: { session: "mon" }, after: { session: "tue" } });
+    // and the same on the before side: a short exchange just before the drill is not the "before"
+    const shortBefore = sess("early", "conversation", "2026-10-20T09:40:00-04:00", ["Like, ok."]);
+    expect(run([mon, shortBefore, short, tue])[0]).toMatchObject({ status: "measured", before: { session: "mon" }, after: { session: "tue" } });
+  });
+  it("before is strictly pre-drill: a conversation still going at the drill counts only what was said before it", () => {
+    // started at 09:50, before the 10:02 drill; 12 lines before it, 6 "like" lines after it
+    const start = Date.parse("2026-10-20T09:50:00-04:00");
+    const over: StatSession = { id: "over", kind: "conversation", startMs: start, lines: [] };
+    talk(10, 0).forEach((t, i) => over.lines.push({ key: `o:${i}`, text: t, dom: "en", uncertain: false, spokenAt: start + i * 1000 }));
+    for (let i = 0; i < 6; i++) over.lines.push({ key: `o:a${i}`, text: "It was, like, fine.", dom: "en", uncertain: false, spokenAt: drillAt + 60_000 + i * 1000 });
+    const f = run([over, tue])[0]!;
+    expect(f).toMatchObject({ status: "measured", before: { session: "over", count: 0 } });
+    expect(f.before!.words).toBe(wordsOf(talk(10, 0)));
+  });
+  it("/api/stats' next-session glance compares the same two conversations as the first signal", () => {
+    const short = sess("short", "conversation", "2026-10-20T10:12:00-04:00", ["Yes, like, sure."]);
+    const fs = run([mon, short, tue])[0]!;
+    const d = nextSessionDeltas([mon, short, tue], [likeDrill], tz).find((x) => x.habit === "filler:like")!;
+    expect([d.lastSessionBefore?.session, d.nextSessionAfter?.session]).toEqual([fs.before!.session, fs.after!.session]);
+    expect(d.deltaPer100).toBe(fs.deltaPer100);
+    // too short on one side: no number from either
+    const only = nextSessionDeltas([mon, short], [likeDrill], tz).find((x) => x.habit === "filler:like")!;
+    expect(only).toMatchObject({ nextSessionAfter: { session: "short" }, deltaPer100: null });
   });
 });

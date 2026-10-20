@@ -235,7 +235,8 @@ export interface TransferReport {
 // The first signal: one pre-registered drilled habit in the last conversation before its first drill
 // vs the next conversation after it. A same-day glance (the stand-up an hour after the drill), never
 // a verdict: one conversation either side, no interval, and only with enough words on both sides.
-// Drill lines are left out, as in the transfer periods; a conversation with no other words is skipped.
+// Drill lines are left out, as in the transfer periods; a conversation with too few words is passed
+// over (signalPair).
 export type FirstSignalStatus = "measured" | "too-few-words" | "no-next-conversation" | "no-earlier-conversation";
 export interface FirstSignalSide {
   session: string;
@@ -250,17 +251,38 @@ export interface FirstSignal {
   label: string;
   firstDrillAt: number;
   status: FirstSignalStatus;
-  before: FirstSignalSide | null; // the last conversation that started before the first drill
-  after: FirstSignalSide | null; // the next conversation that started at or after it
+  before: FirstSignalSide | null; // the last conversation before the first drill with enough words (its pre-drill lines only)
+  after: FirstSignalSide | null; // the next conversation that started at or after it with enough words
   deltaPer100: number | null; // after - before, only when "measured"
   minWords: number; // FIRST_SIGNAL_MIN_WORDS, on each side
   note: string;
 }
 export const FIRST_SIGNAL_NOTE = "one conversation either side of the first drill: a first signal, not proof (the pre-registered before/after is the test)";
 
+// The two conversations either side of a habit's first drill: the last one before it and the next
+// one after it that each hold at least FIRST_SIGNAL_MIN_WORDS of the wearer's words (a short exchange
+// is passed over, not compared). "Before" is strictly pre-drill: a conversation that was still going
+// when the drill began counts only its lines spoken before it. When no conversation on a side has
+// enough words, the nearest one with any words is returned, so the caller can say it was too short.
+// The first signal (/api/transfer) and drilledVsNextSession (/api/stats) both use this.
+export function signalPair(ss: StatSession[], firstDrillAt: number): { before: StatSession | null; after: StatSession | null; status: FirstSignalStatus } {
+  const words = (s: StatSession) => enLines([s]).reduce((n, l) => n + wordCount(l.text), 0);
+  const sorted = [...ss].sort((a, b) => a.startMs - b.startMs);
+  const pre = sorted
+    .filter((s) => s.startMs < firstDrillAt)
+    .map((s) => (s.lines.some((l) => l.spokenAt != null && l.spokenAt >= firstDrillAt) ? { ...s, lines: s.lines.filter((l) => l.spokenAt == null || l.spokenAt < firstDrillAt) } : s))
+    .filter((s) => words(s) > 0)
+    .reverse();
+  const post = sorted.filter((s) => s.startMs >= firstDrillAt && words(s) > 0);
+  const pick = (xs: StatSession[]) => xs.find((s) => words(s) >= FIRST_SIGNAL_MIN_WORDS) ?? xs[0] ?? null;
+  const before = pick(pre);
+  const after = pick(post);
+  const status: FirstSignalStatus = !after ? "no-next-conversation" : !before ? "no-earlier-conversation" : words(before) < FIRST_SIGNAL_MIN_WORDS || words(after) < FIRST_SIGNAL_MIN_WORDS ? "too-few-words" : "measured";
+  return { before, after, status };
+}
+
 export function firstSignals(ss: StatSession[], drilled: { habit: string; label: string; firstDrillAt: number | null }[], tz?: string): FirstSignal[] {
-  const spoken = ss.filter((s) => enLines([s]).some((l) => wordCount(l.text) > 0));
-  const side = (s: StatSession | undefined, key: string): FirstSignalSide | null => {
+  const side = (s: StatSession | null, key: string): FirstSignalSide | null => {
     if (!s) return null;
     const p = period([s], key, tz);
     return { session: s.id, date: localDate(s.startMs, tz), startMs: s.startMs, words: p.words, count: p.count, per100: p.per100 };
@@ -268,9 +290,10 @@ export function firstSignals(ss: StatSession[], drilled: { habit: string; label:
   return drilled
     .filter((h): h is { habit: string; label: string; firstDrillAt: number } => h.firstDrillAt != null)
     .map((h) => {
-      const before = side([...spoken].reverse().find((s) => s.startMs < h.firstDrillAt), h.habit);
-      const after = side(spoken.find((s) => s.startMs >= h.firstDrillAt), h.habit);
-      const status: FirstSignalStatus = !after ? "no-next-conversation" : !before ? "no-earlier-conversation" : before.words < FIRST_SIGNAL_MIN_WORDS || after.words < FIRST_SIGNAL_MIN_WORDS ? "too-few-words" : "measured";
+      const pair = signalPair(ss, h.firstDrillAt);
+      const before = side(pair.before, h.habit);
+      const after = side(pair.after, h.habit);
+      const status = pair.status;
       return { habit: h.habit, label: h.label, firstDrillAt: h.firstDrillAt, status, before, after, deltaPer100: status === "measured" ? r2(after!.per100 - before!.per100) : null, minWords: FIRST_SIGNAL_MIN_WORDS, note: FIRST_SIGNAL_NOTE };
     });
 }
@@ -504,17 +527,19 @@ export function sourceBreakdown(ss: StatSession[]) {
   return out;
 }
 
+// The same pair as the first signal (signalPair), for every drilled habit key, pre-registered or not.
+// Pass the sessions with the drill lines already left out (withoutDrillLines). deltaPer100 only when
+// both sides have FIRST_SIGNAL_MIN_WORDS words.
 export function nextSessionDeltas(sessions: StatSession[], drills: DrillEvent[], tz?: string, source: SourceSel = "bee") {
-  const ss = sessions.filter((s) => inSource(s, source)).sort((a, b) => a.startMs - b.startMs);
+  const ss = sessions.filter((s) => inSource(s, source));
   const keys = [...new Set(drills.flatMap((d) => d.habitKeys))];
   return keys.map((key) => {
     const first = Math.min(...drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at));
-    const prev = [...ss].reverse().find((s) => s.startMs < first);
-    const next = ss.find((s) => s.startMs >= first);
-    const one = (s: StatSession | undefined) => (s ? { session: s.id, date: localDate(s.startMs, tz), ...period([s], key, tz) } : null);
-    const b = one(prev);
-    const a = one(next);
-    return { habit: key, label: parseHabitKey(key)?.label ?? key, firstDrillAt: first, lastSessionBefore: b, nextSessionAfter: a, deltaPer100: a && b && a.words && b.words ? r2(a.per100 - b.per100) : null };
+    const pair = signalPair(ss, first);
+    const one = (s: StatSession | null) => (s ? { session: s.id, date: localDate(s.startMs, tz), ...period([s], key, tz) } : null);
+    const b = one(pair.before);
+    const a = one(pair.after);
+    return { habit: key, label: parseHabitKey(key)?.label ?? key, firstDrillAt: first, lastSessionBefore: b, nextSessionAfter: a, deltaPer100: pair.status === "measured" ? r2(a!.per100 - b!.per100) : null };
   });
 }
 
