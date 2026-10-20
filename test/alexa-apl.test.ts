@@ -150,11 +150,26 @@ describe("APL document", () => {
     expect(DOC.layouts.Brand.items[0].items[0]).toMatchObject({ source: "mark", bee: "@colorBee", you: "@lime" });
   });
 
-  it("draws the mark at 48 dp or more on every viewport (smaller, it blurs)", () => {
+  it("draws the mark at 48 dp or more on every viewport (the large master; smaller sizes need the small one)", () => {
     for (const r of DOC.resources) {
       const m = r.dimensions?.markSize;
       if (m) expect(parseInt(m, 10)).toBeGreaterThanOrEqual(48);
     }
+  });
+
+  it("the mark is the approved two voices: your bubble and the bar, then the reflection lower in the Bee colour", () => {
+    const mark = DOC.graphics.mark;
+    expect(mark).toMatchObject({ width: 64, height: 64, viewportWidth: 64, viewportHeight: 64 });
+    expect(mark.items.map((i: { fill: string }) => i.fill)).toEqual(["${you}", "${you}", "${bee}"]);
+    // where each path starts (its top edge): the reflection sits below your bubble, the bar spans both
+    const top = (i: { pathData: string }) => Number(/^M[\d.]+ ([\d.]+)/.exec(i.pathData)![1]);
+    const [you, bar, bee] = mark.items.map(top);
+    expect(bee).toBeGreaterThan(you);
+    expect(bar).toBeLessThan(you);
+    expect(mark.parameters).toEqual([
+      { name: "you", type: "color", default: "@lime" },
+      { name: "bee", type: "color", default: "@colorBee" },
+    ]);
   });
 });
 

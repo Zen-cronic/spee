@@ -87,7 +87,7 @@
   ],
   "graphics": {
     "mark": {
-      "description": "The Speaking Mirror mark, concept G (two voices): a lime speech bubble and its reflection in the Bee colour (Sky) across a mirror bar. Shown at 48 dp or more; smaller, it blurs. The colours come from the document's resources (you: @lime, bee: @colorBee).",
+      "description": "The Speaking Mirror mark, two voices: your speech bubble and its reflection in the Bee colour (Sky) across a mirror bar, the reflection sitting lower (call and answer); each bubble's tail is the corner that faces the bar. The large master from the approved logo board (BrandMarkLarge, 64 units; the TV's BrandMark at 48 and up). Shown at 48 dp or more; smaller sizes need the small master. The colours come from the document's resources (you: @lime, bee: @colorBee).",
       "type": "AVG",
       "version": "1.2",
       "width": 64,
@@ -98,27 +98,29 @@
         {
           "type": "path",
           "fill": "${you}",
-          "pathData": "M10.72 37.33L4 45L3.93 29.24A12.5 12.5 0 1 1 10.72 37.33Z"
+          "pathData": "M13 15H17A10 10 0 0 1 27 25V33A2 2 0 0 1 25 35H13A10 10 0 0 1 3 25V25A10 10 0 0 1 13 15Z"
         },
         {
           "type": "path",
           "fill": "${you}",
-          "pathData": "M30.5 10.5A1.5 1.5 0 0 1 33.5 10.5L33.5 47.5A1.5 1.5 0 0 1 30.5 47.5Z"
+          "pathData": "M32 11H32A2 2 0 0 1 34 13V51A2 2 0 0 1 32 53H32A2 2 0 0 1 30 51V13A2 2 0 0 1 32 11Z"
         },
         {
           "type": "path",
           "fill": "${bee}",
-          "pathData": "M53.28 37.33L60 45L60.07 29.24A12.5 12.5 0 1 0 53.28 37.33Z"
+          "pathData": "M39 29H51A10 10 0 0 1 61 39V39A10 10 0 0 1 51 49H47A10 10 0 0 1 37 39V31A2 2 0 0 1 39 29Z"
         }
       ],
       "parameters": [
         {
           "name": "you",
-          "type": "color"
+          "type": "color",
+          "default": "@lime"
         },
         {
           "name": "bee",
-          "type": "color"
+          "type": "color",
+          "default": "@colorBee"
         }
       ]
     }
