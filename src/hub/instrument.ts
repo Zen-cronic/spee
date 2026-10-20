@@ -1,5 +1,6 @@
 // GET /api/instrument: Bee and meeting captions on the meetings both heard (src/real/instruments.ts
-// pairMeetings over the hub's loaded sessions). Aggregates only: words, counts, per-100 rates and
+// pairMeetings over the hub's everyday sessions: drill lines left out, as in every other view).
+// Aggregates only: words, counts, per-100 rates and
 // their 95% intervals pooled over the pairs (transcriberRates), and whether the two transcribers
 // gave similar numbers on each habit. No line text, no session id.
 //

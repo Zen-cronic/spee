@@ -125,6 +125,33 @@ describe("GET /api/instrument on the demo hub", () => {
     s = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), maskTerms: [] });
   });
   afterAll(async () => s.close());
+  it("leaves a drill sentence said during a captioned meeting out of Bee's side, as every other view does", async () => {
+    const setup = demoSetup({ pace: 0.05, stateDir: null });
+    const t = Date.parse("2026-10-19T11:00:00-04:00");
+    const DRILL = "We will ship the export on Friday after the demo with no hedging at all.";
+    const timedLines = (id: string, texts: string[]) => texts.map((text, i) => ({ key: `${id}:${i}`, text, dom: "en" as const, uncertain: false, spokenAt: t + 5_000 + i * 20_000 }));
+    const meeting: StatSession = { id: "meet-x", kind: "meeting", startMs: t, endMs: t + 30 * 60_000, lines: timedLines("meet-x", many(SAY, 40)) };
+    const beeLines = timedLines("bee-x", many(SAY, 40));
+    beeLines.push({ key: "u:7777", text: DRILL, dom: "en", uncertain: false, spokenAt: t + 10 * 60_000 });
+    const bee: StatSession = { id: "bee-x", kind: "conversation", startMs: t, endMs: t + 30 * 60_000, lines: beeLines, speakers: 4 };
+    setup.hub.sessions = [meeting, bee];
+    setup.hub.attempts = [
+      {
+        id: "att-x", cardId: "c1", sessionId: null, status: "graded", counted: true, createdAt: t + 10 * 60_000 + 9_000, settledAt: t + 10 * 60_000 + 10_000, provisional: null,
+        bee: { text: DRILL, utteranceIds: [9001], speakerScore: 0.9, via: "stream", latencyMs: 8000, coverage: null, replay: false, spokenFromMs: t + 10 * 60_000 - 2_000, spokenToMs: t + 10 * 60_000 + 2_000, conversationId: "bee-x" },
+        final: { source: "bee", pass: true, grade: {} as never }, agreement: null, reason: "", box: null,
+      },
+    ];
+    const srv = await startHubServer({ port: 0, host: "127.0.0.1", quiet: true, setup, maskTerms: [] });
+    try {
+      const r = (await (await fetch(`${srv.url}/api/instrument`)).json()) as InstrumentResponse;
+      expect(r.pairs).toBe(1);
+      expect(r.words.bee).toBe(r.words.captions); // the drill sentence is not Bee's everyday speech
+      expect(instrumentReport(setup.hub.sessions, { nowMs: t, tz: TZ, dataLabel: "x", synthetic: true }).words.bee).toBeGreaterThan(r.words.captions);
+    } finally {
+      await srv.close();
+    }
+  });
   it("pairs the synthetic stand-up's captions with its Bee conversation, aggregates only; the Bee-only transfer is unchanged", async () => {
     const r = (await (await fetch(`${s.url}/api/instrument`)).json()) as InstrumentResponse;
     // the demo's captions are copies of Bee's lines: never shown as agreeing

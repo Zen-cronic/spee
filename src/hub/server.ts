@@ -505,7 +505,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
         return send(res, 200, t);
       }
       case "GET /api/instrument":
-        return send(res, 200, instrumentReport(hub.sessions, { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }));
+        return send(res, 200, instrumentReport(hub.everydaySessions(), { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }));
       case "GET /api/brief":
         return send(res, 200, await buildBrief(hub, setup.calendar));
       case "GET /api/events/recent":
