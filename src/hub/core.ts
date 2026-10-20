@@ -40,6 +40,7 @@ export interface Attempt {
   reason: string; // why it is in this status
   box: BoxChange | null;
   synthetic?: boolean;
+  openingSeq?: number; // the card opening it was made in (CoachHub.open.seq); absent on stored attempts
 }
 
 export interface DrillSession {
@@ -96,7 +97,9 @@ export class CoachHub extends EventEmitter {
   sessions: StatSession[];
   prereg: TransferPrereg | null;
   readonly verifier: BeeVerifier;
-  open: { cardId: string; openedAt: number; by: string } | null = null;
+  // `seq` tells openings apart: an attempt records the one it was made in.
+  open: { cardId: string; openedAt: number; by: string; seq: number } | null = null;
+  private openings = 0;
   // The lone card (no session) Bee just passed, closed by that pass: hub.state keeps showing its
   // verdict until another card opens.
   passedClose: { cardId: string; attemptId: string } | null = null;
@@ -290,11 +293,11 @@ export class CoachHub extends EventEmitter {
   openCard(opts: { cardId?: string; by?: string } = {}): CardView | null {
     const c = opts.cardId ? this.card(opts.cardId) : this.nextCard();
     if (!c) return null;
-    this.open = { cardId: c.id, openedAt: this.clock(), by: opts.by ?? "http" };
+    this.open = { cardId: c.id, openedAt: this.clock(), by: opts.by ?? "http", seq: ++this.openings };
     this.passedClose = null;
     this.touch();
     if (this.session && !this.session.cardIds.includes(c.id)) this.session.cardIds.push(c.id);
-    this.verifier.openCard({ cardId: c.id, resay: c.resay, lang: c.lang, openedAt: this.open.openedAt });
+    this.verifier.openCard({ cardId: c.id, resay: c.resay, lang: c.lang, openedAt: this.open.openedAt, seq: this.open.seq });
     const v = this.view(c);
     this.publish("card.open", { card: v, by: this.open.by, sessionId: this.session?.id ?? null, deck: this.deckSummary() });
     return v;
@@ -330,6 +333,7 @@ export class CoachHub extends EventEmitter {
       agreement: null,
       reason: "listening via Bee: waiting for the wearer-tagged line (typically 5-15 s)",
       box: null,
+      openingSeq: this.open?.seq,
     };
     this.attempts.push(a);
     if (this.session) this.session.attemptIds.push(a.id);
@@ -416,6 +420,7 @@ export class CoachHub extends EventEmitter {
       agreement: null,
       reason: "Bee tagged the wearer saying the open card (no phone/Alexa preview)",
       box: null,
+      openingSeq: b.openingSeq,
     };
     this.attempts.push(a);
     if (this.session) this.session.attemptIds.push(a.id);
@@ -432,13 +437,19 @@ export class CoachHub extends EventEmitter {
   // until "next" (the voice flows advance on the verdict). After a FAIL nothing closes: say it again.
   private afterVerdict(a: Attempt) {
     if (!a.counted || !a.final?.pass) return;
-    this.verifier.markPassed(a.cardId, a.createdAt);
-    // only the opening the attempt was made in: a late verdict from an earlier one leaves a new card alone
-    if (this.session || this.open?.cardId !== a.cardId || a.createdAt < this.open.openedAt) return;
+    this.verifier.markPassed(a.cardId, a.openingSeq);
+    // only the opening the attempt was made in: a late verdict from an earlier one leaves a new card
+    // alone, even one opened in the same millisecond
+    if (this.session || !this.inOpening(a)) return;
     this.open = null;
     this.verifier.closeCards();
     this.passedClose = { cardId: a.cardId, attemptId: a.id };
     this.emit("state.changed", { reason: "card-passed", cardId: a.cardId });
+  }
+
+  // The attempt was made in the card opening that is open now.
+  private inOpening(a: Attempt): boolean {
+    return !!this.open && a.cardId === this.open.cardId && a.openingSeq != null && a.openingSeq === this.open.seq;
   }
 
   // Drill sessions (driven by the Alexa MCP tools; mirrored on the TV)
@@ -515,10 +526,12 @@ export class CoachHub extends EventEmitter {
 
   // What a voice UI should narrate now.
   sessionState() {
-    const last = [...this.attempts].reverse().find((a) => !this.open || a.cardId === this.open.cardId);
+    // An attempt shows when it was made in this opening.
+    const shown = (a: Attempt) => this.inOpening(a);
+    const last = this.open ? [...this.attempts].reverse().find(shown) : undefined;
     const openCard = this.open ? this.card(this.open.cardId) : undefined;
     let state: "idle" | "card_open" | AttemptStatus = this.open ? "card_open" : "idle";
-    if (this.open && last && last.createdAt >= this.open.openedAt) state = last.status;
+    if (last) state = last.status;
     const narration: Record<string, string> = {
       idle: "You're not practising right now. Say quiz me to get your first line.",
       card_open: openCard ? `Say this: "${openCard.resay}"` : "",
@@ -527,7 +540,7 @@ export class CoachHub extends EventEmitter {
       graded: last?.final ? (last.final.pass ? "Nice, Bee heard it. That's a pass." : `Not yet: ${failReason(last.final.grade)}. Say it again.`) : "",
       unverified: "Bee didn't catch that one, so it doesn't count. Say it again.",
     };
-    const lastShown = last && this.open && last.createdAt >= this.open.openedAt ? last : null;
+    const lastShown = last ?? null;
     // The lone card Bee just passed is closed; its verdict stays the last attempt until a card opens.
     const passed = !this.open && !this.session && this.passedClose ? (this.attempts.find((a) => a.id === this.passedClose!.attemptId) ?? null) : null;
     if (passed) narration.idle = "Nice, Bee heard it. That's a pass. Say quiz me for your next line.";

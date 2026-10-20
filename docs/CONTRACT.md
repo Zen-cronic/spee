@@ -217,7 +217,7 @@ Card fields:
 - `status`: `pending_bee | polling | graded | unverified`.
 - `counted`: true only once Bee's text has been graded.
 - `provisional`: `{source, text, speechEndAt, grade}`, or null for a Bee-only attempt.
-- `bee`: `{text, gradedText, extraText, utteranceIds, speakerScore, via: "stream"|"poll", latencyMs, coverage, replay, spokenFromMs?, spokenToMs?, conversationId?}`. `gradedText` is the part of Bee's line that was graded; `extraText` is the merged speech that was cut. `spokenFromMs`/`spokenToMs` (hub-clock ms) and `conversationId` (the Bee conversation, or null) say when and where Bee's lines were spoken; older attempts omit them.
+- `bee`: `{text, gradedText, extraText, utteranceIds, speakerScore, via: "stream"|"poll", latencyMs, coverage, replay, spokenFromMs?, spokenToMs?, conversationId?}`. `gradedText` is the part of Bee's line that was graded; `extraText` is the merged speech that was cut. `spokenFromMs`/`spokenToMs` (hub-clock ms) and `conversationId` (the Bee conversation, or null) say when and where Bee's lines were spoken; older attempts omit them. `openingSeq` (additive) is the hub's counter for the card opening the attempt was made in; it restarts with the hub.
 - `final`: `{source: "bee", pass, grade}`.
 - `agreement`: `agree | bee-overrules | bee-only`.
 - `box`: `{from, to, dueBefore, dueAfter, scheduled}`. `scheduled` is false for a pass on a card that was not due.

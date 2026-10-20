@@ -283,6 +283,7 @@ export interface BeeAttempt {
   speechEndMs: number;
   match: number;
   beeSpan?: BeeSpan | null;
+  openingSeq?: number; // the card opening the line was matched to (OpenCard.seq)
 }
 
 interface Utt {
@@ -305,6 +306,7 @@ export interface OpenCard {
   resay: string;
   lang: Lang;
   openedAt: number;
+  seq?: number; // the hub's opening id (CoachHub.open.seq): two openings in the same ms stay apart
   closedAt: number | null;
   // Bee graded a counted PASS on this opening: it takes no more Bee-only attempts, so the wearer's
   // later lines are not graded against a card already said right. A preview submitted for it (a
@@ -353,11 +355,12 @@ export class BeeVerifier {
     for (const x of this.cards) if (x.closedAt == null) x.closedAt = now;
   }
 
-  // A counted PASS landed for an attempt made at `attemptAt`: the card's latest opening stops taking
-  // Bee-only attempts, unless it opened after that attempt (a late verdict from an earlier opening).
-  markPassed(cardId: string, attemptAt: number) {
-    const c = this.cardOf(cardId);
-    if (c && c.passedAt == null && c.openedAt <= attemptAt) c.passedAt = this.opts.clock();
+  // A counted PASS landed for an attempt made in opening `openingSeq`: that opening stops taking
+  // Bee-only attempts. A late verdict from an earlier opening leaves a newer one alone, even one
+  // opened in the same millisecond.
+  markPassed(cardId: string, openingSeq: number | undefined) {
+    const c = openingSeq == null ? undefined : this.cards.find((x) => x.cardId === cardId && x.seq === openingSeq);
+    if (c && c.passedAt == null) c.passedAt = this.opts.clock();
   }
 
   expect(a: Omit<PendingAttempt, "createdAt" | "pollsDone" | "polling">) {
@@ -512,13 +515,13 @@ export class BeeVerifier {
       if (c.passedAt != null) continue; // already passed: a later line is everyday speech, not a retry
       if ([...this.pending.values()].some((a) => a.cardId === c.cardId && this.overlaps(u, a))) continue; // its preview is still pending
       const m = align(normTokens(c.resay, c.lang), normTokens(u.text, c.lang)).score;
-      if (m > match || (m === match && card && c.openedAt > card.openedAt)) (card = c), (match = m);
+      if (m > match || (m === match && card && c.openedAt >= card.openedAt)) (card = c), (match = m); // a tie goes to the newer opening (this.cards is in opening order)
     }
     if (!card || match < TARGET_MATCH) return; // the wearer was saying something else
     u.consumed = true;
     this.consumedIds.add(u.id);
     this.counters.beeOnly++;
-    this.opts.onBeeAttempt({ cardId: card.cardId, text: u.text, speakerScore: u.score ?? 0, beeUtteranceIds: [u.id], speechStartMs: u.startMs, speechEndMs: u.endMs, match, beeSpan: this.spanOf([u]) });
+    this.opts.onBeeAttempt({ cardId: card.cardId, text: u.text, speakerScore: u.score ?? 0, beeUtteranceIds: [u.id], speechStartMs: u.startMs, speechEndMs: u.endMs, match, beeSpan: this.spanOf([u]), openingSeq: card.seq });
   }
 
   private finish(a: PendingAttempt, group: Utt[], via: "stream" | "poll", sim: number, scores?: (number | null)[]) {

@@ -148,6 +148,7 @@ export interface Attempt {
   reason: string;
   box: BoxChange | null;
   synthetic?: boolean;
+  openingSeq?: number; // additive: which opening of the card it was made in (a hub counter, reset on restart)
 }
 
 export interface DrillSession {

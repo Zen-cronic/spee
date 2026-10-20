@@ -144,3 +144,24 @@ describe("a session adopts the card that is already open", () => {
     r.hub.dispose();
   });
 });
+
+describe("openings are told apart by id, not by time", () => {
+  it("a late pass from an earlier opening leaves a card opened in the same millisecond alone", () => {
+    const r = rig();
+    const c = r.hub.openCard({ cardId: LIKE, by: "tv" })!;
+    const a = r.hub.submit({ text: c.resay, source: "phone", speechEndAt: r.at() + 3000 }) as Attempt;
+    r.hub.openCard({ cardId: LIKE, by: "tv" }); // the same card again, in the same millisecond
+    const second = r.hub.open!.seq;
+    r.say(c.resay, 0); // Bee confirms the earlier opening's attempt
+    expect(r.hub.attempts.find((x) => x.id === a.id)).toMatchObject({ final: { pass: true }, openingSeq: a.openingSeq });
+    expect(r.hub.open?.cardId).toBe(LIKE); // the new opening stays open
+    expect(r.hub.open?.seq).not.toBe(a.openingSeq);
+    expect(r.changed).toEqual([]);
+    // and it still takes a Bee-only attempt: the pass marked the earlier opening only
+    r.say(c.resay, 1000);
+    const beeOnly = r.graded().filter((x) => x.agreement === "bee-only");
+    expect(beeOnly.map((x) => [x.final?.pass, x.openingSeq])).toEqual([[true, second]]);
+    expect(r.changed).toEqual([{ reason: "card-passed", cardId: LIKE }]); // that pass closes the new opening
+    r.hub.dispose();
+  });
+});
