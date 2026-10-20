@@ -71,6 +71,9 @@ describe("intent rescue from the catch-all slot", () => {
     expect(routeRequest(nav)).toMatchObject({ intent: "AMAZON.StopIntent", rescuedFrom: "AMAZON.NavigateHomeIntent" });
     nav.request.intent!.name = "SomethingElse";
     expect(routeRequest(nav).intent).toBe("Unknown");
+    // requests the skill may not answer with speech
+    for (const type of ["Alexa.Presentation.APL.RuntimeError", "System.ExceptionEncountered"]) expect(routeRequest({ ...nav, request: { type } }).intent, type).toBe("NoAnswer");
+    expect(routeRequest({ ...nav, request: { type: "Messaging.MessageReceived" } }).intent).toBe("Unknown");
   });
   it("normalize drops punctuation and lead-ins", () => {
     expect(normalize("  Okay, so: HOW did I do?! ")).toBe("how did i do");

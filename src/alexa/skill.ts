@@ -9,7 +9,7 @@
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
 // On a device with a screen (Fire TV, Echo Show) each turn also renders a Speaking Mirror screen
 // (./apl.ts); the speech, the reprompts and the timing are the same with or without one.
-import type { AlexaIntent, CardView, VerdictResponse } from "../hub/contract.js";
+import type { CardView, VerdictResponse } from "../hub/contract.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
 import { clampMinutes, routeRequest, type Routed } from "./route.js";
 import { EMPTY, checkingScreen, drillScreen, emptyScreen, progressScreen, renderDirective, supportsApl, verdictScreen, type Screen } from "./apl.js";
@@ -90,7 +90,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     return s.ok ? s.body.openCard : null;
   };
 
-  const handlers: Record<AlexaIntent | "Unknown", () => Promise<Out | null>> = {
+  const handlers: Record<Routed["intent"], () => Promise<Out | null>> = {
     LaunchRequest: () => start("launch"),
     StartDrillIntent: () => start("start"),
     async AttemptIntent() {
@@ -175,6 +175,15 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       if (!mine) return null;
       const state = await track("GET /api/session", hub.session());
       if (state.ok && state.body.session?.id === mine) await track("POST /api/session/end", hub.endSession());
+      return null;
+    },
+    // An APL document failed on the device, or Alexa could not use the last response: logged (the
+    // request type, the token and the error kinds; never a message, which can quote the screen) and
+    // answered with an empty response, as Alexa requires. The drill and the screen stay as they are.
+    NoAnswer: async () => {
+      const r = env.request;
+      const errors = r.errors?.map((x) => (x.reason ? `${x.type ?? "?"}:${x.reason}` : (x.type ?? "?"))) ?? (r.error?.type ? [r.error.type] : []);
+      deps.log?.("alexa.no-answer", { type: r.type, token: r.token ?? null, errors });
       return null;
     },
   };

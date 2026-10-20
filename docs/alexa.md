@@ -53,6 +53,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 | `AMAZON.HelpIntent` | none | how to use it | open |
 | `AMAZON.FallbackIntent` | none | asks for the sentence again, or how to start | open |
 | `SessionEndedRequest` | `GET /api/session`, then `POST /api/session/end` only for the drill this skill session started (its id rides in the session attributes) | (empty response) | |
+| `Alexa.Presentation.APL.RuntimeError` (a screen failed on the device), `System.ExceptionEncountered` (Alexa could not use the last response) | none; logged as `alexa.no-answer {type, token, errors}` with the error kinds only, never a message | (empty response: Alexa allows no speech here) | as it was |
 
 **Catch-all rescue** (`route.ts`). The model's catch-all slot also swallows commands; on a real device (2026-10-16) "how did I do" arrived as `AttemptIntent`. Whole-utterance rules move it back:
 

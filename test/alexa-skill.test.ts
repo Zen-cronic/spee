@@ -232,6 +232,24 @@ describe("other intents", () => {
       await post("/api/session/end", {});
     }
   });
+  it("an APL runtime error or an exception report mid-drill gets an empty answer: no speech, no reprompt, no screen", async () => {
+    const reports = [
+      { type: "Alexa.Presentation.APL.RuntimeError", token: "speakingMirror.verdict", errors: [{ type: "RENDER_ERROR", reason: "UNKNOWN_RESOURCE", message: "a private word" }] },
+      { type: "System.ExceptionEncountered", error: { type: "INVALID_RESPONSE", message: "a private word" }, cause: { requestId: "amzn1.echo-api.request.prev" } },
+    ];
+    for (const r of reports) {
+      const e = env("launch", { attrs: { cardId: "demo:x", attemptId: "att_x" } });
+      e.request = { ...r, requestId: "amzn1.echo-api.request.x", timestamp: e.request.timestamp, locale: "en-US" } as AlexaRequestEnvelope["request"];
+      const f = fake();
+      const out = await handleAlexa(e, f.deps);
+      expect(out.envelope, r.type).toEqual({ version: "1.0", response: {} });
+      expect(out.hubCalls).toEqual([]);
+      expect(out.routed.intent).toBe("NoAnswer");
+      // the log names the request and the error kinds, never the message
+      expect(f.logs).toContainEqual(expect.objectContaining({ event: "alexa.no-answer", type: r.type }));
+      expect(JSON.stringify(f.logs)).not.toContain("a private word");
+    }
+  });
   it("an unreachable hub is a short apology, not a crash", async () => {
     const down = { ...fake().deps, hub: new HubClient("http://127.0.0.1:9", { timeoutMs: 500 }) };
     const r = await handleAlexa(env("how-am-i-doing"), down);

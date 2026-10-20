@@ -40,6 +40,8 @@ export interface AlexaRequestEnvelope {
     intent?: AlexaIntentPayload;
     reason?: string;
     error?: { type?: string; message?: string };
+    token?: string; // Alexa.Presentation.APL.RuntimeError: the document's token
+    errors?: { type?: string; reason?: string; message?: string }[]; // Alexa.Presentation.APL.RuntimeError
   };
 }
 export interface OutputSpeech {

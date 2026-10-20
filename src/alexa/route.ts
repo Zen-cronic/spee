@@ -7,7 +7,8 @@ import type { AlexaIntent } from "../hub/contract.js";
 import type { AlexaRequestEnvelope } from "./types.js";
 
 export interface Routed {
-  intent: AlexaIntent | "Unknown";
+  // NoAnswer: a request the skill may not answer with speech (NO_ANSWER_REQUEST)
+  intent: AlexaIntent | "Unknown" | "NoAnswer";
   text: string | null; // the attempt text (AttemptIntent only)
   minutes: number | null; // LiveCoachOnIntent "for 30 minutes"
   rescuedFrom: string | null; // the model's intent when this router changed it
@@ -102,10 +103,16 @@ function rawPrefix(raw: string, cut: string): string {
   return cut;
 }
 
+// Requests Alexa sends about the skill's own output: an APL document that failed on the device
+// (Alexa.Presentation.APL.RuntimeError; the document sends no other APL request) and a response
+// Alexa could not use (System.ExceptionEncountered). The skill cannot answer them with speech.
+export const NO_ANSWER_REQUEST = (type: string) => type.startsWith("Alexa.Presentation.APL.") || type === "System.ExceptionEncountered";
+
 export function routeRequest(env: AlexaRequestEnvelope): Routed {
   const type = env.request.type;
   if (type === "LaunchRequest") return { intent: "LaunchRequest", text: null, minutes: null, rescuedFrom: null };
   if (type === "SessionEndedRequest") return { intent: "SessionEndedRequest", text: null, minutes: null, rescuedFrom: null };
+  if (NO_ANSWER_REQUEST(type)) return { intent: "NoAnswer", text: null, minutes: null, rescuedFrom: null };
   if (type !== "IntentRequest" || !env.request.intent) return { intent: "Unknown", text: null, minutes: null, rescuedFrom: null };
   const name = env.request.intent.name;
   const slots = env.request.intent.slots ?? {};
