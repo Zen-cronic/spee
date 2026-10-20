@@ -13,7 +13,7 @@
 // Contract v2 (docs/CONTRACT.md "Contract v2"): plugins registered, every v2 route owned, the
 // public-access gate (LAN vs proxy/public Host, /alexa, /p/, /mcp bearer, /ws k), static traversal
 // refused, practice.meters never on SSE or recent events, the topic table matching contract.ts,
-// fixture mode on a second hub, then each packet's module in scripts/checks/{live,mirror,alexa,mcp}.ts.
+// fixture mode on a second hub, then each plugin's module in scripts/checks/{live,mirror,alexa,mcp}.ts.
 //
 //   npm run contract:check                       # exits 1 on any failed assertion
 //   npm run contract:check -- --write-examples   # also writes docs/contract-examples.json
@@ -495,7 +495,7 @@ fxTv.ws.close();
 fxPhone.ws.close();
 fxHub.child.kill("SIGTERM");
 
-console.log("\nv2: packet check modules");
+console.log("\nv2: plugin check modules");
 const modules: CheckResult[] = [];
 for (const name of ["live", "mirror", "alexa", "mcp"]) {
   let mp = 0;
@@ -539,6 +539,6 @@ tv.ws.close();
 phone.ws.close();
 child.kill("SIGTERM");
 const pendingMods = modules.filter((m) => m.pending).map((m) => m.name);
-console.log(`\nCONTRACT CHECK: ${failures.length ? "FAIL" : "PASS"} (${passes} passed, ${failures.length} failed)${pendingMods.length ? `; packet checks pending: ${pendingMods.join(", ")}` : ""}`);
+console.log(`\nCONTRACT CHECK: ${failures.length ? "FAIL" : "PASS"} (${passes} passed, ${failures.length} failed)${pendingMods.length ? `; plugin checks pending: ${pendingMods.join(", ")}` : ""}`);
 for (const f of failures) console.log(`  - ${f}`);
 process.exit(failures.length ? 1 : 0);

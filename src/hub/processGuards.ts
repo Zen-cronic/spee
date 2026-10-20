@@ -1,4 +1,4 @@
-// Process-level robustness for the hub (lead-owned).
+// Process-level robustness for the hub.
 //
 // - trackChild(): every child the hub starts (`bee stream`, the wrist and poll CLI calls) is
 //   registered, and killChildren() runs on shutdown and on process exit, so no `bee stream` outlives

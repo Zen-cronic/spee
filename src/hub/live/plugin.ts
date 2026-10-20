@@ -1,4 +1,4 @@
-// Live coaching plugin (packet A): the realtime window, nudge policy, wrist, recaps and coachNow.
+// Live coaching plugin: the realtime window, nudge policy, wrist, recaps and coachNow.
 // Routes (docs/CONTRACT.md "Routes (v2)"):
 //   GET  /api/live           LiveState
 //   POST /api/live/mode      {enabled, minutes?, by?, rules?} -> LiveModeResponse, then live.mode

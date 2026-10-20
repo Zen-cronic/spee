@@ -1,4 +1,4 @@
-// Mirror plugin (packet B): the practice meters, the practice summary and the mirror's focus.
+// Mirror plugin: the practice meters, the practice summary and the mirror's focus.
 //
 //   app practice.meters  (mic)   relayed to the screens of the mic's room only, via
 //                                ctx.broadcastToScreens (<= 20 Hz per room). No seq, never SSE,

@@ -1,4 +1,4 @@
-// Hub-side defences around the vendored tv-voice-bridge hub (lead-owned). The bridge package itself
+// Hub-side defences around the vendored tv-voice-bridge hub. The bridge package itself
 // is never patched here: this wraps one BridgeHub instance from the outside.
 //
 // - Every WebSocket gets an `error` listener (a bad frame used to throw "Unhandled error event") and a

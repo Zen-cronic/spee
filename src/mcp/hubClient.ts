@@ -1,4 +1,4 @@
-// Loopback hub client (packet C): a typed HTTP client over the v1 + v2 contract, used by the Alexa
+// Loopback hub client: a typed HTTP client over the v1 + v2 contract, used by the Alexa
 // skill and the MCP tools so both obey docs/CONTRACT.md exactly instead of reaching into the hub's
 // internals. It talks to ctx.selfUrl() (http://127.0.0.1:<port>), which the gate treats as LAN.
 // Client headers are never forwarded. No model call anywhere in here.

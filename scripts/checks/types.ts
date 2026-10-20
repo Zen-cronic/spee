@@ -1,5 +1,5 @@
-// The context scripts/contract-check.ts hands to each packet's check module (contract v2,
-// lead-owned). A module is `export async function run(ctx: CheckCtx): Promise<CheckResult>` in
+// The context scripts/contract-check.ts hands to each plugin's check module (contract v2). A
+// module is `export async function run(ctx: CheckCtx): Promise<CheckResult>` in
 // scripts/checks/<name>.ts, runs against the same demo hub (pace 0.02) after the v1 and v2 core
 // assertions, and returns `{ name, ...ctx.counts() }` (or `pending: true` while it is a stub).
 import type WebSocket from "ws";
@@ -45,6 +45,6 @@ export interface CheckResult {
   name: string;
   passed: number;
   failed: number;
-  pending?: boolean; // the packet has not landed; its flows are not checked yet
+  pending?: boolean; // the plugin is still a stub; its flows are not checked yet
   note?: string;
 }

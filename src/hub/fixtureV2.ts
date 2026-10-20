@@ -1,7 +1,7 @@
-// Fixture mode (`npm run hub -- --demo --fixture-v2`, lead-owned): the v2 live and mirror demo
+// Fixture mode (`npm run hub -- --demo --fixture-v2`): the v2 live and mirror demo
 // routes answer from the frozen examples in fixtures/contract-v2/, so the TV, the phone, Alexa and
-// MCP can be built before the live engine lands. It runs before the plugins, so it keeps working
-// unchanged after packet A replaces the live stub. Every payload is synthetic (wearer "Ada").
+// MCP can be built before the live engine lands. It runs before the plugins, so it works the same
+// with the live engine running. Every payload is synthetic (wearer "Ada").
 //
 //   GET  /api/live             live.json
 //   POST /api/live/mode        live-mode-on.json or live-mode-off.json (by `enabled`); publishes live.mode

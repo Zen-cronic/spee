@@ -1,4 +1,4 @@
-// Contract-check module for the mcp plugin (packet C), run against the shared demo hub (pace 0.02)
+// Contract-check module for the mcp plugin, run against the shared demo hub (pace 0.02)
 // with the MCP SDK client over Streamable HTTP:
 //   - tools/list = MCP_TOOLS; public /mcp needs the bearer token;
 //   - plan Verification item 1: MCP start_drill -> TV card.open -> phone attempt over the bridge ->
@@ -102,11 +102,11 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
     const ended = running ? await waitList(() => ctx.sse.slice(sseAt), (e) => e.topic === "session.ended") : true;
     ctx.check(!end.isError && /^(Practice done: |You.re not practising right now)/.test(text(end)) && !!end.structuredContent?.summary && !!ended, `end_drill -> a summary narration${running ? " and session.ended" : " (the session had already ended)"}`);
 
-    // v2 tools (need packet A outside fixture mode)
+    // v2 tools (need the live engine outside fixture mode)
     const how = await call("how_am_i_doing");
     if (how.isError && how.structuredContent?.error === "not_implemented") {
       ctx.check(true, "how_am_i_doing surfaces the live stub's 501 as isError");
-      notes.push("how_am_i_doing, live_coach and last_recap wait for packet A (the live routes answer 501)");
+      notes.push("how_am_i_doing, live_coach and last_recap wait for the live engine (the live routes answer 501)");
     } else {
       ctx.check(!how.isError && text(how) === how.structuredContent?.narration, "how_am_i_doing speaks GET /api/coach/now");
       const recap = await call("last_recap");

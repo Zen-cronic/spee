@@ -1,4 +1,4 @@
-// Contract-check module for the live plugin (packet A), run by scripts/contract-check.ts against
+// Contract-check module for the live plugin, run by scripts/contract-check.ts against
 // the demo hub (pace 0.02, state in out/contract-check). It asserts the plan's verification flow:
 // live coaching on -> demo hedge streak -> nudge.sent (hops) -> a second streak inside the
 // cooldown -> nudge.skipped (cooldown) -> 90 s idle -> conversation.ended -> recap.ready; then
@@ -31,7 +31,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
     return null;
   };
 
-  console.log("\nv2: live coaching (packet A)");
+  console.log("\nv2: live coaching");
   await ctx.post("/api/session/end", {}); // no drill in progress: nudges are suppressed while drilling
   const live0 = await ctx.get("/api/live", "GET /api/live (before)");
   c(live0.status === 200 && typeof live0.body.mode?.enabled === "boolean" && live0.body.wrist?.channel === "replay" && live0.body.synthetic === true, "GET /api/live: LiveState, replay wrist, synthetic");
@@ -135,8 +135,8 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   c(files.includes("recaps.json") && files.includes("nudges.json") && files.includes("settings.json"), `live state persisted under ${dir}/ (${files.join(", ")})`);
   c(!seen.includes(PLANTED_OTHER_MARKER) && !onDisk.includes(PLANTED_OTHER_MARKER) && !/4417/.test(onDisk), "the planted other-speaker line never reaches an event, a response or a file");
 
-  // Bee memory and the wrist cue (packet W): the demo hub writes nothing to Bee
-  console.log("\nv2: Bee memory and the wrist cue (packet W)");
+  // Bee memory and the wrist cue: the demo hub writes nothing to Bee
+  console.log("\nv2: Bee memory and the wrist cue");
   const mem = await ctx.get("/api/coach/facts", "GET /api/coach/facts");
   c(mem.status === 200 && mem.body.status === "demo" && mem.body.enabled === true && mem.body.synthetic === true && mem.body.note === BEE_MEMORY_NOTE && mem.body.goal?.factId === null && GOAL_TEXT_RE.test(mem.body.goal?.text ?? "") && mem.body.insights === null && mem.body.facts === null, "GET /api/coach/facts: demo BeeMemory with the template goal, nothing written, and the note");
   c((await ctx.post("/api/coach/cue", { inMinutes: 500 })).body?.error === "bad_request", "POST /api/coach/cue: inMinutes 0-180 (400 bad_request)");

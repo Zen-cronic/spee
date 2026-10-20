@@ -1,4 +1,4 @@
-// The MCP tools (packet C): one per entry of MCP_TOOLS in src/hub/contract.ts, each calling exactly
+// The MCP tools: one per entry of MCP_TOOLS in src/hub/contract.ts, each calling exactly
 // one hub route through the loopback HubClient. A result is the route's narration as text plus the
 // route's JSON as structuredContent; a route answering >= 400 (or an unreachable hub) is isError.
 // Narration is deterministic: no model call in a tool.

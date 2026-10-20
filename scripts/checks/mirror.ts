@@ -1,4 +1,4 @@
-// Contract-check module for the mirror plugin (packet B), run against the shared demo hub:
+// Contract-check module for the mirror plugin, run against the shared demo hub:
 //   1. practice.meters from the phone reach the TV (its room's screen) only: never another room's
 //      screen, the phone, SSE or /api/events/recent; frames are rebuilt from the contract fields.
 //   2. practice.summary from the phone is sequenced, with the hub's room and from, and answered.

@@ -1,11 +1,11 @@
-// Contract-check module for the alexa plugin (packet C), run against the shared demo hub (pace 0.02):
+// Contract-check module for the alexa plugin, run against the shared demo hub (pace 0.02):
 //   - POST /alexa rejects a wrong skill id and a stale timestamp (400 alexa_rejected) and passes the
 //     gate through a tunnel;
 //   - Launch -> card.open on the TV (by alexa) -> Attempt answered < 1 s (pending_bee) -> early
 //     HowDidIDo answered < 7 s with Bee's verdict (merged line, as on the real device) -> TV saw
 //     attempt.verified and attempt.graded -> Stop ends the session;
 //   - HowDidIDo said into the catch-all slot is rescued;
-//   - HowAmIDoing speaks GET /api/coach/now and, once packet A's engine runs, reflects the recap of
+//   - HowAmIDoing speaks GET /api/coach/now and, once the live engine runs, reflects the recap of
 //     a demo conversation (plan Verification item 3). Until then those parts report as waiting.
 import { readFileSync } from "node:fs";
 import { resolveSkillId } from "../../src/alexa/verify.js";
@@ -105,12 +105,12 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const ended = running ? await sseFrom(sseAt, (e) => e.topic === "session.ended") : true;
   ctx.check(stop.body?.response?.shouldEndSession === true && /Bye\.$/.test(stop.speech) && !!ended, "Stop ends the session (session.ended) and closes the skill session");
 
-  // HowAmIDoing (needs packet A's /api/coach/now)
+  // HowAmIDoing (needs the live engine's /api/coach/now)
   const coach = await ctx.get("/api/coach/now");
   if (coach.status === 501) {
     const h = await alexa(envelope("how-am-i-doing"));
     ctx.check(h.status === 200 && h.speech === "The coach hub didn't answer. Try again in a moment.", "HowAmIDoing degrades to a short apology while /api/coach/now is a stub");
-    notes.push("HowAmIDoing and live coaching wait for packet A (/api/coach/now and /api/live/mode answer 501)");
+    notes.push("HowAmIDoing and live coaching wait for the live engine (/api/coach/now and /api/live/mode answer 501)");
   } else {
     const demo = await ctx.post("/api/demo/live", { script: "story" });
     if (demo.status === 202) {

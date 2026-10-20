@@ -1,4 +1,4 @@
-// MCP plugin (packet C): /mcp, a stateless Streamable HTTP MCP server whose tools map 1:1 to hub
+// MCP plugin: /mcp, a stateless Streamable HTTP MCP server whose tools map 1:1 to hub
 // routes (MCP_TOOLS in src/hub/contract.ts, implemented in ./tools.ts over the loopback HubClient).
 //   POST /mcp      JSON-RPC (initialize, tools/list, tools/call, ...); JSON responses, no session id
 //   GET|DELETE     405 (stateless: no standalone SSE stream, no session to delete)

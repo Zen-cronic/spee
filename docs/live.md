@@ -1,4 +1,4 @@
-# Live coaching (packet A)
+# Live coaching
 
 The live engine turns Bee's live stream into three kinds of feedback:
 
@@ -382,9 +382,8 @@ These write to your Bee account: **one goal fact** and **one or two to-dos** (cu
 
 ## Contract change requests
 
-These are implemented around the frozen contract, pending the lead:
+These are worked around in code until the frozen contract changes:
 
 1. **A deleted conversation's status.** `ConversationEnded.recap` has no value for "Bee deleted it". Today a deleted conversation ends with `recap: "skipped-short"`. Proposed: add `"skipped-deleted"`.
 2. **A recap retraction event.** There is no event for it. Proposed: a sequenced `recap.retracted {recapId, conversationId, reason: "bee-deleted"}`, so the TV can drop a recap card.
 3. **`delivery.wrist` at `recap.ready`.** It is `"scheduled"` before the Bee to-do call returns, because the contract orders `recap.ready` before the wrist. Proposed: document this, or add `"pending"`.
-4. **The lead's tests for the stubs.** `test/hub-plugins.test.ts` still expects the live plugin to be a stub (status `"stub"`, every route 501). Now that packet A has landed, those two assertions need the lead's update. Packets B and C trip the same test.

@@ -1,4 +1,4 @@
-// Hand-written SYNTHETIC examples of every v2 payload (contract v2, lead-owned), type-checked
+// Hand-written SYNTHETIC examples of every v2 payload (contract v2), type-checked
 // against src/hub/contract.ts. `npm run contract:fixtures` writes them to fixtures/contract-v2/
 // and refreshes the matching blocks in docs/CONTRACT.md; test/contract-v2.test.ts fails if either
 // drifts. The wearer is the invented demo wearer "Ada"; the other speaker in the conversation is
@@ -287,7 +287,7 @@ export const requests = {
   "WS any -> hub mirror.focus": { type: "app", topic: "mirror.focus", payload: { view: "week", reason: "show my week" } },
 };
 
-// Alexa (packet C): one HowAmIDoing turn, envelope trimmed to the fields the skill reads.
+// Alexa: one HowAmIDoing turn, envelope trimmed to the fields the skill reads.
 
 export const alexaHowAmIDoing = {
   note: "SYNTHETIC. The skill id, user id and request id are placeholders; the response speaks GET /api/coach/now narration.",

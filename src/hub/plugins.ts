@@ -1,10 +1,10 @@
-// The fixed plugin registry (contract v2, lead-owned). Order matters: routing and onApp fall
-// through in this order. A packet fills in its own module; it never edits this list.
-//   live    src/hub/live/plugin.ts  packet A   /api/live, /api/recaps, /api/coach, /api/demo/live
-//   mirror  src/hub/mirror.ts       packet B   /api/demo/mirror; practice.* and mirror.focus frames
-//   static  src/hub/static.ts       lead       /tv/, /p/, /sim/
-//   alexa   src/alexa/plugin.ts     packet C   /alexa
-//   mcp     src/mcp/plugin.ts       packet C   /mcp
+// The fixed plugin registry (contract v2). Order matters: routing and onApp fall through in this
+// order. Each plugin lives in its own module; the list itself does not change.
+//   live    src/hub/live/plugin.ts  live coaching     /api/live, /api/recaps, /api/coach, /api/demo/live
+//   mirror  src/hub/mirror.ts       practice mirror   /api/demo/mirror; practice.* and mirror.focus frames
+//   static  src/hub/static.ts       hub               /tv/, /p/, /sim/
+//   alexa   src/alexa/plugin.ts     Alexa skill       /alexa
+//   mcp     src/mcp/plugin.ts       MCP server        /mcp
 import { createAlexaPlugin } from "../alexa/plugin.js";
 import { createMcpPlugin } from "../mcp/plugin.js";
 import { createLivePlugin } from "./live/plugin.js";
