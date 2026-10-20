@@ -145,13 +145,6 @@ export interface SettingBaseline {
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const f1 = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
 
-// Bee lines heard as drill attempts are not everyday speech: left out here as in the transfer.
-function withoutDrillLines(hub: CoachHub, ss: StatSession[]): StatSession[] {
-  const keys = new Set(hub.attempts.flatMap((a) => (a.bee?.utteranceIds ?? []).map((id) => `u:${id}`)));
-  if (!keys.size) return ss;
-  return ss.map((s) => (s.lines.some((l) => keys.has(l.key)) ? { ...s, lines: s.lines.filter((l) => !keys.has(l.key)) } : s));
-}
-
 /**
  * The wearer's settings: the automatic tags, the wearer's corrections (persisted), the calendar
  * times the hub has seen (memory only), per-setting baselines and the GET /api/settings report.
@@ -319,10 +312,8 @@ export class SettingsBook {
 
   private sessionsOf(setting: ConversationSetting, source: SourceSel): StatSession[] {
     const tags = this.tags();
-    return withoutDrillLines(
-      this.o.hub,
-      fromSource(this.o.hub.sessions, source).filter((s) => tags.get(s.id)?.setting === setting),
-    );
+    // Drill lines are left out exactly as in the transfer (CoachHub.everydaySessions).
+    return fromSource(this.o.hub.everydaySessions(), source).filter((s) => tags.get(s.id)?.setting === setting);
   }
 
   /** The wearer's usual rates in one setting (Bee conversations; this week, else all), or null with too little speech. */
@@ -351,7 +342,7 @@ export class SettingsBook {
     const tags = this.tags();
     const t = hub.transfer(source);
     const minWords = t?.minWordsPerPeriod ?? SETTING_MIN_WORDS;
-    const inSrc = fromSource(hub.sessions, source);
+    const inSrc = fromSource(hub.everydaySessions(), source);
     const present = CONVERSATION_SETTINGS.filter((st) => inSrc.some((s) => tags.get(s.id)?.setting === st));
     const rates: SettingRates[] = present.map((setting) => {
       const ss = this.sessionsOf(setting, source);

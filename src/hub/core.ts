@@ -624,7 +624,7 @@ export class CoachHub extends EventEmitter {
 
   stats(range: RangeSpec, source: SourceSel = "bee") {
     const now = this.clock();
-    const ss = selectSessions(this.sessions, range, now, this.tz, source);
+    const ss = selectSessions(this.everydaySessions(), range, now, this.tz, source);
     const today = this.today();
     // Drill counts belong to a period (today, the week, all time). A conversation or meeting range has
     // no drill period, so its practice block is null rather than every drill ever.
@@ -645,7 +645,7 @@ export class CoachHub extends EventEmitter {
       habits: habitRates(ss),
       talk: talkSummary(ss),
       practice: as && practiceCounts(as),
-      drilledVsNextSession: nextSessionDeltas(withoutDrillLines(this.sessions, this.drillLines()), this.drillEvents(), this.tz, source).map((d) => ({
+      drilledVsNextSession: nextSessionDeltas(this.everydaySessions(), this.drillEvents(), this.tz, source).map((d) => ({
         ...d,
         preregistered: !!this.prereg && isRegistered(d.habit, new Set([...this.prereg.drilled, ...this.prereg.control].map((h) => h.habit))),
         note: "one session either side of the first drill: a glance, not a test (see /api/transfer)",
@@ -669,6 +669,13 @@ export class CoachHub extends EventEmitter {
   transfer(source: SourceSel = "bee") {
     if (!this.prereg) return null;
     return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLines: this.drillLines() }) };
+  }
+
+  // The sessions with every drill line left out (stats.ts withoutDrillLines, by id, time and text):
+  // what "non-drill" means everywhere. /api/stats habits (and so the live baseline), the settings
+  // view, the next-session glance and the transfer all count these.
+  everydaySessions(): StatSession[] {
+    return withoutDrillLines(this.sessions, this.drillLines());
   }
 
   // The Bee lines that were drill attempts, which are not everyday speech: by utterance id, and by

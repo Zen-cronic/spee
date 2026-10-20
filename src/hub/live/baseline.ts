@@ -1,7 +1,8 @@
 // The wearer's baseline: what the live rules and the recap compare against.
 //
 // Habit rates come from the hub's Bee sessions (kind "conversation": drills and voice notes are
-// excluded), this week when it has at least MIN_BASELINE_WORDS, else every Bee conversation. The
+// excluded, and drill lines are left out as in the transfer: CoachHub.everydaySessions), this week
+// when it has at least MIN_BASELINE_WORDS, else every Bee conversation. The
 // rate of speech comes from Bee line timing in real/corpus.json (start/end of each wearer line);
 // the measured median on 2026-10-16 was 140 wpm, which is also the fallback and the demo value.
 import { existsSync, readFileSync } from "node:fs";
