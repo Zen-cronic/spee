@@ -138,6 +138,11 @@ export function pairMeetings(sessions: StatSession[], o: { fallbackWindowMs?: nu
   return { pairs, skipped };
 }
 
+/** The ids of caption sessions whose meeting Bee also heard (a paired meeting): one speech, two transcripts. */
+export function captionsHeardByBee(sessions: StatSession[]): Set<string> {
+  return new Set(pairMeetings(sessions).pairs.map((p) => p.meeting));
+}
+
 // The habits the two transcribers are compared on: the pre-registered ones (practised: unsure words
 // and filler "like"; not practised: starting over), and the filler words a caption engine may clean
 // up. "um-uh" is "um" and "uh" together.

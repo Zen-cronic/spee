@@ -22,7 +22,7 @@ import type { CalendarFn } from "./brief.js";
 import { CONVERSATION_SETTINGS, SETTING_NAME, type ConversationSetting, type SettingBeforeAfter, type SettingRates, type SettingReason, type SettingsResponse, type SettingTag } from "./contract.js";
 import type { CoachHub } from "./core.js";
 import { habitTitle } from "./habitNames.js";
-import { habitRates, inSource, period, type SourceSel, type StatSession } from "./stats.js";
+import { fromSource, habitRates, period, type SourceSel, type StatSession } from "./stats.js";
 
 export { CONVERSATION_SETTINGS, SETTING_NAME };
 export type { ConversationSetting, SettingTag };
@@ -321,7 +321,7 @@ export class SettingsBook {
     const tags = this.tags();
     return withoutDrillLines(
       this.o.hub,
-      this.o.hub.sessions.filter((s) => inSource(s, source) && tags.get(s.id)?.setting === setting),
+      fromSource(this.o.hub.sessions, source).filter((s) => tags.get(s.id)?.setting === setting),
     );
   }
 
@@ -351,7 +351,7 @@ export class SettingsBook {
     const tags = this.tags();
     const t = hub.transfer(source);
     const minWords = t?.minWordsPerPeriod ?? SETTING_MIN_WORDS;
-    const inSrc = hub.sessions.filter((s) => inSource(s, source));
+    const inSrc = fromSource(hub.sessions, source);
     const present = CONVERSATION_SETTINGS.filter((st) => inSrc.some((s) => tags.get(s.id)?.setting === st));
     const rates: SettingRates[] = present.map((setting) => {
       const ss = this.sessionsOf(setting, source);

@@ -7,7 +7,7 @@ import { FILLER_RE, HEDGE_RE, listRe, stripFillers, wordCount } from "../real/te
 import type { HubCard } from "./cards.js";
 import { deriveMustSay } from "./cards.js";
 import { countHabitKey } from "./habits.js";
-import { inSource, type SourceSel, type StatSession } from "./stats.js";
+import { fromSource, type SourceSel, type StatSession } from "./stats.js";
 
 const tidy = (s: string) => {
   const t = s.replace(/\s+([,.?!])/g, "$1").replace(/,(\s*,)+/g, ",").replace(/^[\s,]+/, "").replace(/\s{2,}/g, " ").trim();
@@ -17,8 +17,7 @@ export const stripHedges = (s: string, hedges: string[]) => tidy(hedges.reduce((
 
 export function habitCards(sessions: StatSession[], opts: { source?: SourceSel; perHabit?: number; today: string }): HubCard[] {
   const n = opts.perHabit ?? 3;
-  const sents = sessions
-    .filter((s) => inSource(s, opts.source ?? "bee"))
+  const sents = fromSource(sessions, opts.source ?? "bee")
     .flatMap((s) => s.lines.filter((l) => !l.uncertain && l.dom === "en").flatMap((l) => splitSentences(l.text).map((text, i) => ({ s, l, i, text }))))
     .filter((x) => wordCount(x.text) >= 6 && wordCount(x.text) <= 25);
   const make = (x: (typeof sents)[number], kind: "hedge" | "filler", targets: string[], fix: string): HubCard => {

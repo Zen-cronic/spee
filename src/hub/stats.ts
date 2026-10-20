@@ -12,6 +12,7 @@ import { localDate, addDays } from "../real/deck.js";
 import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
+import { captionsHeardByBee } from "../real/instruments.js";
 import { countedLines, listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
 import { readJsonSafe } from "./atomic.js";
 import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
@@ -94,6 +95,14 @@ export type SourceSel = "bee" | "all";
 export const parseSource = (s: string | null | undefined): SourceSel | null => (!s || s === "bee" ? "bee" : s === "all" ? "all" : null);
 export const inSource = (s: StatSession, src: SourceSel) => (src === "bee" ? s.kind === "conversation" : NON_DRILL_KINDS.has(s.kind));
 export const SOURCE_LABEL: Record<string, string> = { conversation: "Bee (Apple Watch) conversation", meeting: "meeting captions (secondary source)", voice_note: "Bee voice note (excluded: scripted readings/drills)" };
+// The sessions a source counts. With "all", a meeting that Bee also heard (src/real/instruments.ts
+// pairMeetings) would count its speech twice, once per transcriber, so its caption session is left
+// out and Bee stays the instrument of record for it.
+export function fromSource(ss: StatSession[], src: SourceSel): StatSession[] {
+  if (src === "bee") return ss.filter((s) => inSource(s, src));
+  const dup = ss.some((s) => s.kind === "meeting") ? captionsHeardByBee(ss) : new Set<string>();
+  return ss.filter((s) => inSource(s, src) && !dup.has(s.id));
+}
 const enLines = (ss: StatSession[]) => ss.flatMap((s) => countedLines(s.lines));
 
 export interface Rate {
@@ -153,7 +162,8 @@ export function parseRange(s: string | null | undefined): RangeSpec | null {
 
 export function selectSessions(all: StatSession[], r: RangeSpec, nowMs: number, tz?: string, source: SourceSel = "bee"): StatSession[] {
   const today = localDate(nowMs, tz);
-  const ss = all.filter((s) => inSource(s, source) || (r.kind === "session" && NON_DRILL_KINDS.has(s.kind)));
+  // A single session asked for by id is returned whatever the source (a meeting's own captions too).
+  const ss = r.kind === "session" ? all.filter((s) => NON_DRILL_KINDS.has(s.kind)) : fromSource(all, source);
   if (r.kind === "all") return ss;
   if (r.kind === "session") return ss.filter((s) => s.id === r.id);
   const from = r.kind === "today" ? today : addDays(today, -6);
@@ -412,7 +422,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
   const source = opts.source ?? "bee";
   const minWords = prereg.min_words_per_period;
   const ss = withoutDrillLines(
-    opts.sessions.filter((s) => inSource(s, source)),
+    fromSource(opts.sessions, source),
     opts.drillLines,
   ).sort((a, b) => a.startMs - b.startMs);
   const registeredAt = Date.parse(prereg.registered_at);
@@ -522,7 +532,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     prereg: { path: opts.preregPath, registeredAt: prereg.registered_at, drilled: prereg.drilled.map((h) => h.habit), control: prereg.control.map((h) => h.habit), basis: prereg.basis },
     minWordsPerPeriod: minWords,
     method:
-      "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
+      "Per habit: rate per 100 of the wearer's English words in non-drill sessions (Bee conversations by default; meeting captions only with source=all, and a meeting Bee also heard counted once, from Bee; drill attempts and voice notes always excluded), before vs after the cutover. Drilled habit cutover: its first drill attempt. Control cutover: the earliest first drill of any drilled habit. 95% Poisson intervals (Byar). Verdict 'dropped' or 'rose' only when the intervals do not overlap and both periods have the minimum words.",
     habits,
     unregistered,
     headline,
@@ -550,7 +560,7 @@ export function sourceBreakdown(ss: StatSession[], tz?: string) {
 // Pass the sessions with the drill lines already left out (withoutDrillLines). deltaPer100 only when
 // both sides have FIRST_SIGNAL_MIN_WORDS words.
 export function nextSessionDeltas(sessions: StatSession[], drills: DrillEvent[], tz?: string, source: SourceSel = "bee") {
-  const ss = sessions.filter((s) => inSource(s, source));
+  const ss = fromSource(sessions, source);
   const keys = [...new Set(drills.flatMap((d) => d.habitKeys))];
   return keys.map((key) => {
     const first = Math.min(...drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at));

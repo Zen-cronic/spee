@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { habitTitle } from "../src/hub/habitNames.js";
-import { habitRates, mergeCorpus, type StatSession } from "../src/hub/stats.js";
+import { fromSource, habitRates, mergeCorpus, type StatSession } from "../src/hub/stats.js";
 import { instrumentCheck, instrumentCheckLines, pairMeetings, transcriberRates } from "../src/real/instruments.js";
 
 const MIN = 60_000;
@@ -121,6 +121,15 @@ describe("instrument check", () => {
     expect(out).toMatch(/\d+\.\d\d-\d+\.\d\d/);
     expect(out).not.toContain("export");
     expect(JSON.stringify(c)).not.toContain("export");
+  });
+
+  it("source=all counts a meeting Bee also heard once, from Bee", () => {
+    const m = session("meet-d", "meeting", T, ["Um I guess so."], { durationMin: 30 });
+    const b = session("bee-d", "conversation", T + MIN, ["Um I guess so."], { endMs: T + 20 * MIN });
+    const other = session("meet-e", "meeting", T + 86400_000, ["A meeting Bee missed."], { durationMin: 30 });
+    expect(fromSource([m, b, other], "all").map((s) => s.id)).toEqual(["bee-d", "meet-e"]);
+    expect(fromSource([m, b, other], "bee").map((s) => s.id)).toEqual(["bee-d"]);
+    expect(habitRates(fromSource([m, b, other], "all")).words).toBe(4 + 4);
   });
 
   it("keeps Bee's end time from the corpus", () => {
