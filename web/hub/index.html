@@ -94,7 +94,7 @@
       }
       .grid {
         display: grid;
-        grid-template-columns: 1.25fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 18px;
         margin-top: 44px;
       }
@@ -155,37 +155,28 @@
       }
       .code {
         font-size: 64px;
+        line-height: 1;
         font-weight: 800;
         letter-spacing: 0.14em;
-        margin-top: 18px;
+        /* on the same baseline row as the other cards' buttons */
+        margin-top: auto;
+        padding-top: 18px;
         font-variant-numeric: tabular-nums;
       }
-      .hero {
-        display: grid;
-        /* the same columns as the cards below, so the status starts on the third card's edge */
-        grid-template-columns: 1.25fr 1fr 1fr;
-        gap: 18px;
-        align-items: end;
-      }
-      .hero > div:first-child {
-        grid-column: span 2;
-      }
-      @media (max-width: 860px) {
-        .hero {
-          grid-template-columns: 1fr;
-        }
-        .hero > div:first-child {
-          grid-column: auto;
-        }
-      }
+      /* the hub's status as a row of quiet pills under the lede */
       .status {
         display: flex;
-        flex-direction: column;
-        gap: 12px;
-        font-size: 18px;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 22px;
+        font-size: 15px;
         color: var(--ink);
-        border-left: 2px solid var(--line);
-        padding: 4px 0 6px 28px;
+      }
+      .status span {
+        background: var(--card);
+        border-radius: 999px;
+        padding: 7px 14px;
+        box-shadow: inset 0 0 0 1px var(--line);
       }
       .status span::before {
         content: "";
@@ -246,10 +237,8 @@
     <header><span class="mark"></span>Speaking Mirror <span class="where">Running on this machine</span></header>
     <main>
       <div class="hero">
-        <div>
-          <h1>Your speaking coach is ready.</h1>
-          <p class="lede">Pick a screen to start. Bee checks every line you practise.</p>
-        </div>
+        <h1>Your speaking coach is ready.</h1>
+        <p class="lede">Pick a screen to start. Bee checks every line you practise.</p>
         <div class="status" id="status" aria-live="polite"></div>
       </div>
       <div class="grid">
