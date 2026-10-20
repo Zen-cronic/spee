@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   left: { flex: 1, marginRight: SP.xxl },
   metrics: { flexDirection: 'row', marginBottom: SP.l },
   metric: { flex: 1 },
-  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  metricBig: { color: C.ink, fontSize: T.big, lineHeight: 132, fontWeight: '700', fontFamily: F.family },
   metricLabel: { color: C.inkDim, fontSize: T.body, fontFamily: F.family },
   habit: { flexDirection: 'row', alignItems: 'center', paddingVertical: SP.s, borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.07)' },
   habitLabel: { flex: 1, color: C.ink, fontSize: T.body, fontWeight: '600', fontFamily: F.family },

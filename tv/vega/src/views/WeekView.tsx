@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   workRow: { flexDirection: 'row', marginTop: SP.s },
   workItem: { flex: 1, paddingRight: SP.m },
   workValue: { height: 68, justifyContent: 'flex-end' },
-  workNum: { color: C.text, fontSize: 60, lineHeight: 68, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  workNum: { color: C.text, fontSize: 60, lineHeight: 68, fontWeight: '700', fontFamily: F.family },
   workWords: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
   workNone: { color: C.faint },
   workFlat: { color: C.dim },

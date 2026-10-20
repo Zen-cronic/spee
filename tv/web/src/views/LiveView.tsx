@@ -273,8 +273,8 @@ const styles = StyleSheet.create({
   modeText: { color: C.dim, fontSize: T.label, fontFamily: F.family },
   stats: { flexDirection: 'row', marginTop: SP.m },
   stat: { flex: 1 },
-  // no negative margin or padding around big numerals: on Vega that box drew a sliver beside the first glyph
-  statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  // no negative letter spacing, margin or padding on light numerals: on Vega each drew a sliver beside the first glyph
+  statBig: { color: C.text, fontSize: T.big, lineHeight: 132, fontWeight: '700', fontFamily: F.family },
   statLabel: { color: C.dim, fontSize: T.body, fontFamily: F.family },
   sub: { color: C.faint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
   counters: { flexDirection: 'row', marginTop: SP.xs },
