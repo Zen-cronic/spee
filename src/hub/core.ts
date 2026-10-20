@@ -349,6 +349,7 @@ export class CoachHub extends EventEmitter {
       openingSeq: this.open?.seq,
     };
     this.attempts.push(a);
+    this.dataVersion++;
     if (this.session) this.session.attemptIds.push(a.id);
     this.touch();
     this.persistAttempts();
@@ -389,6 +390,7 @@ export class CoachHub extends EventEmitter {
     if (!a || !c) return;
     if (v.status === "verified" && v.beeText) {
       a.bee = { text: v.beeText, utteranceIds: v.beeUtteranceIds, speakerScore: v.speakerScore, via: v.via!, latencyMs: v.latencyMs, coverage: v.coverage, replay: !!this.opts.replay, ...spanFields(v.beeSpan) };
+      this.dataVersion++;
       a.reason = v.reason;
       this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "verified", via: v.via, speakerScore: v.speakerScore, latencyMs: v.latencyMs, beeText: v.beeText, replay: !!this.opts.replay, reason: v.reason });
       this.settle(a, c, v.beeText);
@@ -436,6 +438,7 @@ export class CoachHub extends EventEmitter {
       openingSeq: b.openingSeq,
     };
     this.attempts.push(a);
+    this.dataVersion++;
     if (this.session) this.session.attemptIds.push(a.id);
     this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "verified", via: "stream", speakerScore: b.speakerScore, latencyMs: a.bee!.latencyMs, beeText: b.text, replay: !!this.opts.replay, reason: a.reason });
     this.settle(a, c, b.text);
@@ -662,6 +665,7 @@ export class CoachHub extends EventEmitter {
     const added = ss.filter((s) => !have.has(s.id) && !!have.add(s.id));
     if (!added.length) return 0;
     this.sessions = [...this.sessions, ...added].sort((a, b) => a.startMs - b.startMs);
+    this.dataVersion++;
     this.publishStats();
     return added.length;
   }
@@ -686,18 +690,21 @@ export class CoachHub extends EventEmitter {
   }
 
   // The drill lines, the everyday sessions and each source's selection, computed once per version of
-  // the data: the sessions (a new list on addSessions, or another line count) and the attempts (what
-  // each one holds that a drill span is made from). Every screen refetches several views on each
-  // stats.updated; they share one computation.
-  private viewCache: { sessions: StatSession[]; key: string; drill: DrillLines; everyday: StatSession[]; bySource: Partial<Record<SourceSel, StatSession[]>> } | null = null;
+  // the data. Every screen refetches several views on each stats.updated; they share one computation.
+  // The version is a counter, checked in O(1): bumped where the hub changes what a drill span is made
+  // from (an attempt added, Bee's text set on one) and on addSessions. A session list or attempt list
+  // replaced from outside, or an attempt pushed onto it, is seen by identity and length. Sessions are
+  // replaced, never edited in place; call dataChanged() after editing a session or an attempt directly.
+  private dataVersion = 0;
+  dataChanged(): void {
+    this.dataVersion++;
+  }
+  private viewCache: { sessions: StatSession[]; attempts: Attempt[]; count: number; version: number; drill: DrillLines; everyday: StatSession[]; bySource: Partial<Record<SourceSel, StatSession[]>> } | null = null;
   private views() {
-    let lines = 0;
-    for (const s of this.sessions) lines += s.lines.length;
-    const key = `${this.sessions.length}:${lines}|${this.attempts.map((a) => `${a.id}:${a.status}:${a.bee ? `${a.bee.text}:${a.bee.utteranceIds?.join(",")}:${a.bee.spokenFromMs ?? ""}:${a.bee.spokenToMs ?? ""}:${a.bee.conversationId ?? ""}:${a.bee.latencyMs ?? ""}` : ""}:${a.provisional ? `${a.provisional.text}:${a.provisional.speechEndAt}` : ""}`).join("|")}`;
     const c = this.viewCache;
-    if (c && c.sessions === this.sessions && c.key === key) return c;
+    if (c && c.sessions === this.sessions && c.attempts === this.attempts && c.count === this.attempts.length && c.version === this.dataVersion) return c;
     const drill = this.computeDrillLines();
-    return (this.viewCache = { sessions: this.sessions, key, drill, everyday: withoutDrillLines(this.sessions, drill), bySource: {} });
+    return (this.viewCache = { sessions: this.sessions, attempts: this.attempts, count: this.attempts.length, version: this.dataVersion, drill, everyday: withoutDrillLines(this.sessions, drill), bySource: {} });
   }
 
   drillLines(): DrillLines {

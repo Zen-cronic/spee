@@ -46,4 +46,25 @@ describe("shared session views", () => {
     expect(h.everydaySessions().find((s) => s.id === "new-1")!.lines).toEqual([]);
     h.dispose();
   });
+
+  it("checks the cache in O(1): no attempt is read again until the data changes", () => {
+    const h = hub();
+    let reads = 0;
+    const many = Array.from({ length: 200 }, (_, i) => {
+      const a = { id: `att_${i}`, cardId: "c", sessionId: null, status: "graded", counted: true, createdAt: Date.parse("2026-10-20T09:00:00-04:00") + i * 1000, settledAt: null, provisional: null, final: null, agreement: null, reason: "", box: null } as Record<string, unknown>;
+      const bee = { text: "a line that no session holds at all", utteranceIds: [i], speakerScore: 0.9, via: "stream", latencyMs: 1000, coverage: null, replay: false };
+      Object.defineProperty(a, "bee", { get: () => (reads++, bee), enumerable: true });
+      return a;
+    });
+    h.attempts.push(...(many as never[]));
+    h.everydaySessions();
+    const afterFirst = reads;
+    expect(afterFirst).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i++) (h.everydaySessions(), h.sessionsFor("all"), h.drillLines());
+    expect(reads).toBe(afterFirst);
+    h.dataChanged();
+    h.everydaySessions();
+    expect(reads).toBeGreaterThan(afterFirst);
+    h.dispose();
+  });
 });
