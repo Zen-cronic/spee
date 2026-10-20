@@ -782,13 +782,15 @@ A plugin that throws gets `500 {"error":"plugin_error"}`.
 | `GET /api/recaps?limit=10` | A (`live`) | `limit` 1-50 | `200 RecapList {dataLabel, synthetic, recaps[]}` (newest first) | |
 | `GET /api/recaps/<id>` | A (`live`) | | `200 Recap` | `404 unknown_recap` |
 | `GET /api/coach/now` | A (`live`) | | `200 CoachNow` | |
+| `GET /api/settings?source=bee` | A (`live`) | `source` bee (default) or all | `200 SettingsResponse` (conversation settings; a secondary view) | `400 bad_source` |
+| `POST /api/sessions/<id>/setting` | A (`live`) | `SettingRequest {setting: "meeting" \| "work" \| "casual" \| null}`; `<id>` a stats session id, a recap's `conversationId` or a recap id | `200 SettingResponse {id, tag, recapIds}`, then `stats.updated` | `400 bad_request`, `404 unknown_session` |
 | `POST /api/demo/live` | A (`live`) | `DemoLiveRequest {script?: "story" \| "monologue" \| "short"}` | `202 DemoLiveResponse` | `400 demo_only`, `400 bad_request` |
 | `POST /api/demo/mirror` | B (`mirror`) | `DemoMirrorRequest {script?: "practice-take" \| "focus", view?, room?}` | `202 DemoMirrorResponse` | `400 demo_only`, `400 bad_request` |
 | `POST /alexa` | C (`alexa`) | Alexa request envelope | `200` Alexa response envelope | `400 alexa_rejected` (bad skill id, or a timestamp more than 150 s off) |
 | `POST /mcp` (`GET`/`DELETE` answer 405) | C (`mcp`) | MCP JSON-RPC over Streamable HTTP, stateless | JSON-RPC result | JSON-RPC errors; tool errors as `isError: true` |
 | `GET /tv/*`, `/p/*`, `/sim/*` | lead (`static`) | | the built files; paths without an extension fall back to `index.html` | `404 not_built` (with the build command), `404 not_found`, `400 bad_path`, `405 method_not_allowed` |
 
-New error codes: `not_implemented` (501), `forbidden` (403), `unknown_recap` (404), `not_built` (404), `bad_path` (400), `method_not_allowed` (405), `plugin_error` (500), `alexa_rejected` (400).
+New error codes: `not_implemented` (501), `forbidden` (403), `unknown_recap` (404), `unknown_session` (404), `not_built` (404), `bad_path` (400), `method_not_allowed` (405), `plugin_error` (500), `alexa_rejected` (400).
 
 **Live mode policy** (frozen numbers; packet A implements them):
 
@@ -1005,6 +1007,44 @@ The narration is deterministic, with at most 4 sentences. It leads with the live
 }
 ```
 <!-- /fixture -->
+
+### Conversation settings: `GET /api/settings` and `POST /api/sessions/<id>/setting`
+
+Each conversation gets a setting, so the coach compares like with like: `meeting`, `work` or `casual` (shown as "Meeting", "Work talk", "Casual", `SETTING_NAME`). It is a **secondary, labelled view**: `GET /api/transfer` (headline, claim, verdicts, first signal) never reads it, and `test/settings.test.ts` and `npm run contract:check` assert that the transfer is identical with and without settings data. Additive: older hubs answer `404 not_found`, and a screen then hides the strip.
+
+- **Automatic tag** (`SettingTag.source: "auto"`), deterministic, from counts and times only:
+  1. `meeting`: a captions session; a Bee conversation a captions session matches by time (`pairMeetings`, 45 min); or one that overlaps a calendar event the hub has seen (start and end times only; without an end, 30 min; from 10 min before).
+  2. `work`: a weekday inside the work hours (`COACH_WORK_HOURS`, default `09:00-18:00`, in `BEE_TZ`) with 2 to 4 distinct speakers.
+  3. `casual`: everything else. `confidence: "low"` when, on a weekday in work hours, the speaker count was missing (`speakers-unknown`) or outside 2-4 (`speakers-out-of-range`).
+- **The wearer's choice wins** (`source: "you"`). `setting: null` goes back to the automatic tag. It is saved in `<stateDir>/live/settings.json` (ids, a setting, times; gitignored under `real/live/`). A recap's `conversationId` (the stream's uuid) and the stats session Bee completes later (its numeric id) are matched by time, both ways.
+- **Rates** need `minWords` (the pre-registration's `min_words_per_period`, 400) English words; below that a rate is `null` and the line says "too little speech". Drill lines are left out, as in the transfer.
+- **Recaps** carry `setting` (the choice when there is one, else the automatic tag) and `metrics.baselineSetting`: the setting whose usual the recap compared against, when that setting has at least 400 words (this week, else all Bee conversations); otherwise `null` and the overall usual. The headline then says where: `... against your usual 1.4 at work.` A correction changes the chip and the per-setting rates, not a recap's wording.
+- **`CoachNow.lastRecap.setting`** names the last conversation's setting.
+
+```json
+GET /api/settings (SYNTHETIC demo, trimmed)
+{
+  "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)", "synthetic": true,
+  "source": "bee", "minWords": 400,
+  "note": "a secondary view: the setting of each conversation, so like is compared with like; the pre-registered before and after (GET /api/transfer) does not use it",
+  "workHours": { "start": "09:00", "end": "18:00", "days": "Mon-Fri", "tz": "America/Toronto" },
+  "sessions": [{ "id": "demo-bee-1010", "kind": "conversation", "date": "2026-10-10", "startMs": 1791675000000, "words": 223, "tag": { "setting": "casual", "source": "auto", "confidence": "high", "reasons": ["weekend"] } }],
+  "rates": [
+    { "setting": "meeting", "name": "Meeting", "sessions": 1, "words": 316, "enough": false, "per100": { "hedges": null, "filler:like": null, "vague": null, "restart": null } },
+    { "setting": "work", "name": "Work talk", "sessions": 5, "words": 1400, "enough": true, "per100": { "hedges": 1.43, "filler:like": 1.79, "vague": 0.64, "restart": 0.86 } },
+    { "setting": "casual", "name": "Casual", "sessions": 4, "words": 885, "enough": true, "per100": { "hedges": 0.9, "filler:like": 1.13, "vague": 0.23, "restart": 0.68 } }
+  ],
+  "practised": [{ "habit": "hedges", "label": "unsure words (I guess, I think, maybe, kind of...)", "cutoverAt": 1792080600000, "bySetting": [
+    { "setting": "meeting", "name": "Meeting", "before": { "sessions": 1, "words": 316, "count": 8, "per100": 2.53 }, "after": { "sessions": 0, "words": 0, "count": 0, "per100": 0 }, "enough": false, "deltaPer100": null },
+    { "setting": "work", "name": "Work talk", "before": { "sessions": 2, "words": 614, "count": 15, "per100": 2.44 }, "after": { "sessions": 3, "words": 786, "count": 5, "per100": 0.64 }, "enough": true, "deltaPer100": -1.8 },
+    { "setting": "casual", "name": "Casual", "before": { "sessions": 2, "words": 451, "count": 6, "per100": 1.33 }, "after": { "sessions": 2, "words": 434, "count": 2, "per100": 0.46 }, "enough": true, "deltaPer100": -0.87 }
+  ] }],
+  "line": "By setting · Unsure words: meeting: too little speech · work talk 2.4 → 0.6 · casual 1.3 → 0.5"
+}
+
+POST /api/sessions/demo-bee-1017/setting {"setting": "meeting"}
+{ "id": "demo-bee-1017", "tag": { "setting": "meeting", "source": "you", "confidence": "high", "reasons": ["you"] }, "recapIds": [] }
+```
 
 ### `POST /api/demo/live` (demo only)
 

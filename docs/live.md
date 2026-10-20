@@ -39,6 +39,7 @@ Bee marks it COMPLETED -> live ingest (ingest.ts) -> stats session -> stats.upda
 | `src/hub/live/baseline.ts` | The wearer's baseline rates and rate of speech |
 | `src/hub/live/wrist.ts` | `BeeTodoWrist` (queue, retries, breaker, ledger, cleanup) and `ReplayWrist` |
 | `src/hub/live/recap.ts` | Template recap: metrics, verdicts, the moment and its rephrase |
+| `src/hub/settings.ts` | Conversation settings: the automatic tag, the wearer's correction, per-setting rates and baselines |
 | `src/hub/live/recapPrompt.ts` | Optional Claude Haiku phrasing and its acceptance checks |
 | `src/hub/live/principles.ts` | The principles loader: thresholds and the runtime-only rubric |
 | `src/hub/live/demoScripts.ts` | Synthetic scripts for "Ada" (`story`, `monologue`, `short`) |
@@ -70,7 +71,8 @@ Notes on how the rules are computed:
 
 - Habit rates come from Bee conversations (drills and voice notes excluded): this week, or every Bee conversation when the week has under 400 words.
 - The rate of speech is the median per-line rate in `real/corpus.json`. It was 140 wpm on 2026-10-16, and 140 is also the fallback and the demo value.
-- The demo baseline (synthetic week) is 1400 words, hedges 1.43, "like" 1.79 and fillers 2.43 per 100, at 140 wpm.
+- The demo baseline (synthetic week) is 1834 words, hedges 1.2, "like" 1.58 and fillers 2.07 per 100, at 140 wpm.
+- **The usual for the setting.** A recap compares with the wearer's usual in that conversation's setting when the setting has at least 400 words ("Settings" below), otherwise with this baseline.
 
 ## Policy defaults (frozen in the contract)
 
@@ -200,6 +202,23 @@ The live hub picks up finished conversations by itself. The weekly stats, the tr
 - **Off switches.** `COACH_INGEST=off`, or `--no-bee` (no stream). Demo mode never ingests and never calls Bee.
 - **Proof.** `test/hub-ingest.test.ts` uses a fake Bee CLI and a fake stream. It checks that a `COMPLETED` event moves the first signal from `no-next-conversation` to `measured`, the de-duplication with the offline files, the poll fallback, failure isolation, and a planted other-speaker line that must not reach the file, an event, a response or a log.
 
+## Settings
+
+Every conversation gets a setting, so the coach compares like with like: **Meeting**, **Work talk** or **Casual**. It is a secondary view. The pre-registered before and after (`GET /api/transfer`, the Progress headline) never uses it, and a test checks that it is identical with and without settings data.
+
+- **The automatic tag** (`src/hub/settings.ts` `autoSetting`) is deterministic, with no model call, and reads counts and times only, never anyone's words:
+  1. **Meeting**: a meeting-captions session; a Bee conversation a captions session matches by time (`pairMeetings`); or one that overlaps a calendar event the hub has seen in Bee's today brief (times only, never the title; an event without an end counts as 30 min, from 10 min before its start).
+  2. **Work talk**: a weekday inside the work hours (`COACH_WORK_HOURS`, default `09:00-18:00`, in `BEE_TZ`) with 2 to 4 distinct speakers.
+  3. **Casual**: everything else.
+- **Unknown inputs.** When a weekday conversation in work hours has no speaker count, or one outside 2 to 4, it is Casual with `confidence: "low"` (reason `speakers-unknown` or `speakers-out-of-range`). We picked Casual-low over an "unknown" setting so every conversation has one of the three plain words, and the wearer fixes a wrong guess with one press.
+- **Speaker counts** come from the per-conversation counts: the number of distinct speaker labels (`SessionStats.speakers`, new in the offline files and the live ingest). An older file without it counts 2 when it has lines that are not the wearer's. Bee usually labels everyone but the wearer "Unknown", so 2 often means "two or more". A live conversation (for its recap) counts the wearer plus one when any line was someone else's.
+- **The calendar** is read from Bee's today brief when a conversation starts and when `GET /api/settings` is asked (at most every 5 min), and only when the hub talks to Bee or runs the demo. Its times are kept in memory only, so a past day's meetings are found only for days the hub was running.
+- **One-press correction.** `POST /api/sessions/<id>/setting {setting}` (`meeting`, `work`, `casual`, or `null` for automatic) takes a stats session id, a recap's conversation id or a recap id. It is a mutating route behind the same gate as the others (loopback, or LAN with `--lan`; refused through a tunnel or from a foreign Origin). The choice wins over every rule and is saved in `<stateDir>/live/settings.json` (`real/live/` in live mode, gitignored; ids, a setting and times only). The live stream's conversation id and the id Bee gives the finished conversation differ, so the two are matched by start time. The hub then publishes `stats.updated`.
+- **On the TV.** The recap shows a chip ("Work talk") in its top corner: **Right** changes it (Meeting, Work talk, Casual, then round again). On Live, "Last conversation" has the same chip: move **Down** from the tabs to it and press **OK**. A choice shows "set by you".
+- **Per-setting results** (`GET /api/settings`): each setting's habit rates, and for each practised habit its rate before and after the first practice within each setting. Drill lines are left out, and a setting under 400 words says "too little speech" instead of a number. Progress shows one strip under the result, for example `By setting · Unsure words: meeting: too little speech · work talk 2.4 → 0.6 · casual 1.3 → 0.5`, hidden when no setting has enough speech on both sides. It never replaces the pre-registered headline.
+- **Recaps** compare with the usual for their setting when that setting has 400 words (this week, else all Bee conversations): `Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.` Otherwise the overall usual, worded as before. The number rules are unchanged: the setting is words, never a slot. A later correction changes the chip and the stats, not the recap's wording.
+- **"How am I doing?"** names the setting of the last conversation: `Your last conversation, a meeting, ran high on ...`, or `... against your usual 1.6 in meetings.` when the recap used that setting's usual.
+
 ## Coaching principles
 
 `coach/principles.local.md` (the operator's notes, gitignored) wins over the committed generic template.
@@ -288,6 +307,7 @@ Before you start: an authenticated `bee` CLI (`bee me` works), the Watch running
 | `COACH_WRIST` | `bee-todo` (live), `replay` (demo or `--no-bee`) | `replay` = live dry run, no to-dos |
 | `COACH_RECAP_LLM` | unset | `1` = Claude Haiku recap phrasing in live mode (Bedrock, profile `hackathon-1`) |
 | `HUB_MASK` | on when a terms file exists | `0` = no display masking (same as `--no-mask`); see "Filming" above |
+| `COACH_WORK_HOURS` | `09:00-18:00` | work hours for the Work talk setting (weekdays, `BEE_TZ`) |
 | `COACH_INGEST` | on (live mode with the stream) | `off` = finished conversations are not ingested; run `npm run real` and restart as before |
 | `BEE_BIN`, `BEE_TZ`, `BEE_WEARER_PERSON_ID` | | as for the hub (`CONTRACT.md` "Live mode") |
 
