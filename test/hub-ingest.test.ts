@@ -232,6 +232,52 @@ describe("live ingest: a finished conversation becomes a stats session", () => {
     expect(r.bee.calls.filter((c) => c === "get 302")).toHaveLength(INGEST_TIMINGS.deletedFailures);
   });
 
+  it("a conversation fetched before Bee labelled it is fetched again on the next COMPLETED event", async () => {
+    const r = rig({ poll: false });
+    const labelled = conversation(200, T_DRILL + 3600_000);
+    // first fetch: COMPLETED, but only the realtime transcript (every speaker "Unknown")
+    const realtime = structuredClone(labelled);
+    realtime.transcriptions = [{ ...realtime.transcriptions[0]!, realtime: true, utterances: realtime.transcriptions[0]!.utterances.map((u) => ({ ...u, realtime: true, speaker: "Unknown" })) }];
+    r.bee.add(realtime);
+    r.hub.ingestBee(r.ended(200, "COMPLETED"));
+    await r.ingest.tick();
+    expect(r.bee.calls).toEqual(["get 200"]);
+    expect(r.hub.sessions.map((s) => s.id)).not.toContain("200");
+    // Bee has the labelled final transcript now and says COMPLETED again
+    r.bee.add(labelled);
+    r.advance(60_000);
+    r.hub.ingestBee(r.ended(200, "COMPLETED"));
+    await r.ingest.tick();
+    expect(r.bee.calls).toEqual(["get 200", "get 200"]);
+    expect(hedges(r.hub).status).toBe("measured");
+  });
+
+  it("a final transcript with no wearer line yet is re-fetched by later polls, a bounded number of times", async () => {
+    const r = rig();
+    const unlabelled = conversation(200, T_DRILL + 3600_000);
+    unlabelled.transcriptions[0]!.utterances = unlabelled.transcriptions[0]!.utterances.map((u) => ({ ...u, speaker: "Unknown" }));
+    r.bee.add(unlabelled);
+    r.advance(INGEST_TIMINGS.firstPollMs);
+    await r.ingest.tick();
+    expect(r.bee.calls).toEqual(["list", "get 200"]);
+    expect(r.ingest.status().ingested).toBe(0);
+    r.bee.add(conversation(200, T_DRILL + 3600_000)); // labelled now
+    r.advance(INGEST_TIMINGS.retryBaseMs);
+    await r.ingest.tick();
+    expect(r.bee.calls).toEqual(["list", "get 200", "list", "get 200"]);
+    expect(hedges(r.hub).status).toBe("measured");
+    // one that never gets a wearer line is stored after notReadyTries fetches, and not fetched again
+    const r2 = rig();
+    const empty = conversation(210, T_DRILL + 3600_000);
+    empty.transcriptions[0]!.utterances = empty.transcriptions[0]!.utterances.map((u) => ({ ...u, speaker: "Unknown" }));
+    r2.bee.add(empty);
+    for (let i = 0; i < 20; i++) {
+      r2.advance(INGEST_TIMINGS.retryMaxMs / 4);
+      await r2.ingest.tick();
+    }
+    expect(r2.bee.calls.filter((c) => c === "get 210")).toHaveLength(INGEST_TIMINGS.notReadyTries);
+    expect(r2.ingest.status().ingested).toBe(1);
+  });
 });
 
 describe("live ingest: de-duplication with the offline files", () => {

@@ -22,7 +22,9 @@
 // calls for three different conversations (or the list) in a row open a circuit for 10 min; one
 // conversation that keeps failing counts once. Each conversation remembers its own failures and
 // waits a growing backoff before it is tried again, and the list poll takes the newest first, so a
-// few that always fail never starve a newer one. A failure is logged once per kind, and nothing here
+// few that always fail never starve a newer one. A conversation fetched before Bee has labelled its
+// final transcript (realtime only, or no wearer line yet) is not stored: it is fetched again on a
+// later event or poll, a bounded number of times. A failure is logged once per kind, and nothing here
 // ever throws into the hub.
 import { join } from "node:path";
 import type { ConversationDetail, ConversationSummary, Me } from "../bee/schemas.js";
@@ -51,6 +53,7 @@ export interface IngestTimings {
   meRetryMs: number; // retry `bee me` this often while it is unavailable
   retryBaseMs: number; // a conversation that failed (or was not ready) waits this long, doubling per try
   retryMaxMs: number;
+  notReadyTries: number; // fetches of a not-yet-labelled conversation before it is stored as it is
   deletedFailures: number; // failed fetches after delete-conversation before the entry is dropped
 }
 export const INGEST_TIMINGS: IngestTimings = {
@@ -66,6 +69,7 @@ export const INGEST_TIMINGS: IngestTimings = {
   meRetryMs: 10 * 60_000,
   retryBaseMs: 10 * 60_000,
   retryMaxMs: 6 * 3600_000,
+  notReadyTries: 5,
   deletedFailures: 3,
 };
 
@@ -113,7 +117,7 @@ export class LiveIngest {
   private me: Me | null;
   private meTriedAt = -Infinity;
   private logged = new Map<string, string>();
-  readonly counters = { events: 0, fetched: 0, added: 0, deferred: 0, polls: 0, failures: 0, circuitOpened: 0 };
+  readonly counters = { events: 0, fetched: 0, added: 0, deferred: 0, notReady: 0, polls: 0, failures: 0, circuitOpened: 0 };
   lastAddedAt: number | null = null;
 
   constructor(
@@ -184,7 +188,8 @@ export class LiveIngest {
     if (c.state === "CAPTURING" && c.endMs == null) return;
     if (this.done.has(id) || this.o.known().has(id)) return;
     const now = this.o.clock();
-    // One that failed waits for its backoff.
+    // A later COMPLETED event fetches a conversation that was not ready at once; one that failed
+    // waits for its backoff.
     const r = this.retries.get(id);
     const due = Math.max(c.state === COMPLETED ? now : now + this.t.recheckMs[0]!, r && r.failures ? r.retryAt : now);
     if (p) p.dueAt = Math.min(p.dueAt, due);
@@ -311,7 +316,10 @@ export class LiveIngest {
     const r = this.retries.get(String(id));
     if (r) r.failures = 0;
     if (c.state !== COMPLETED) return this.reschedule(p);
-    if ((await this.ingest(c, via)) === "deferred") return this.reschedule(p);
+    const res = await this.ingest(c, via);
+    if (res === "deferred") return this.reschedule(p);
+    // Not labelled yet: a later COMPLETED event or poll fetches it again, after its backoff.
+    if (res === "not-ready") return void this.pending.delete(id);
     this.pending.delete(id);
     this.retries.delete(String(id));
   }
@@ -328,7 +336,7 @@ export class LiveIngest {
     return this.me;
   }
 
-  private async ingest(c: ConversationDetail, via: "stream" | "poll"): Promise<"added" | "deferred"> {
+  private async ingest(c: ConversationDetail, via: "stream" | "poll"): Promise<"added" | "deferred" | "not-ready"> {
     const id = String(c.id);
     if (this.done.has(id) || this.o.known().has(id)) return "added";
     const found = discoverWearerLabels(speakerCounts([c]), await this.profile());
@@ -342,6 +350,15 @@ export class LiveIngest {
     // Other speakers' lines stay in the context returned here, which is dropped unread.
     const { sessions, lines } = conversationLines([c], namedWearerOnly(found));
     const stat = sessions[0]!;
+    // Bee can report COMPLETED before the final, labelled transcript is there: a realtime-only
+    // transcript or no wearer line is not stored yet, up to notReadyTries fetches; then it is stored
+    // as it is (`npm run real` still re-reads it).
+    if ((stat.skipped || stat.wearerLines === 0) && (this.retries.get(id)?.notReady ?? 0) + 1 < this.t.notReadyTries) {
+      const r = this.backoff(c.id, "notReady");
+      this.counters.notReady++;
+      this.log("bee.ingest.not-ready", { id: c.id, via, tries: r.notReady, realtimeOnly: !!stat.skipped, wearerLines: stat.wearerLines });
+      return "not-ready";
+    }
     this.store.sessions = [...this.store.sessions.filter((s) => s.id !== id), stat].sort((a, b) => a.startMs - b.startMs);
     this.store.lines = [...this.store.lines.filter((l) => l.session !== id), ...lines];
     this.store.generatedAt = new Date(this.o.clock()).toISOString();
