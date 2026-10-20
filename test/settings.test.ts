@@ -218,9 +218,10 @@ describe("over HTTP (demo hub, synthetic)", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ synthetic: true, source: "bee", minWords: 400, workHours: { start: "09:00", end: "18:00", days: "Mon-Fri", tz: "America/Toronto" } });
     const tags = Object.fromEntries(r.body.sessions.map((x: any) => [x.id, x.tag.setting]));
-    expect(tags).toMatchObject({ "demo-bee-1010": "casual", "demo-bee-1013": "work", "demo-bee-1017": "casual", "demo-bee-1020": "work" });
-    expect(r.body.rates.map((x: any) => x.setting)).toEqual(["work", "casual"]);
-    expect(r.body.line).toMatch(/^By setting · Unsure words: work talk \d\.\d → \d\.\d · casual \d\.\d → \d\.\d$/);
+    // demo-bee-1013 has synthetic meeting captions too (demo-meet-1013), so it is a meeting
+    expect(tags).toMatchObject({ "demo-bee-1010": "casual", "demo-bee-1013": "meeting", "demo-bee-1014": "work", "demo-bee-1017": "casual", "demo-bee-1020": "work" });
+    expect(r.body.rates.map((x: any) => x.setting)).toEqual(["meeting", "work", "casual"]);
+    expect(r.body.line).toMatch(/^By setting · Unsure words: meeting: too little speech · work talk \d\.\d → \d\.\d · casual \d\.\d → \d\.\d$/);
     expect((await get("/api/settings?source=all")).body.sessions.find((x: any) => x.id === "demo-meet-1014").tag).toMatchObject({ setting: "meeting", reasons: ["captions"] });
     expect((await get("/api/settings?source=bad")).status).toBe(400);
   });

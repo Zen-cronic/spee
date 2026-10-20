@@ -389,7 +389,7 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 
 A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) attempt.
 
-**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("3 captioned meetings since Oct 14").
+**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("3 captioned meetings since Oct 13").
 
 **Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee agree only when `GET /api/instrument` has `claim: "practised-agree"`.
 
@@ -399,14 +399,14 @@ Each meeting caption session is paired with the Bee conversation that starts clo
 
 ```json
 { "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)", "synthetic": true, "generatedAt": "2026-10-20T17:36:28.459Z",
-  "pairs": 1, "from": "2026-10-20", "to": "2026-10-20", "words": { "captions": 255, "bee": 256 }, "minWords": 200,
+  "pairs": 1, "from": "2026-10-13", "to": "2026-10-13", "words": { "captions": 314, "bee": 316 }, "minWords": 200,
   "tolerance": { "per100": 0.3, "relative": 0.15 },
   "habits": [
-   { "habit": "hedges", "captionsPer100": 0.39, "beePer100": 0.39, "agree": true },
-   { "habit": "filler:like", "captionsPer100": 0.78, "beePer100": 0.78, "agree": true },
-   { "habit": "restart", "captionsPer100": 0.78, "beePer100": 0.78, "agree": true },
-   { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.39, "agree": false },
-   { "habit": "fillers", "captionsPer100": 0.78, "beePer100": 1.17, "agree": false } ],
+   { "habit": "hedges", "captionsPer100": 2.55, "beePer100": 2.53, "agree": true },
+   { "habit": "filler:like", "captionsPer100": 2.87, "beePer100": 2.85, "agree": true },
+   { "habit": "restart", "captionsPer100": 0.64, "beePer100": 0.63, "agree": true },
+   { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.63, "agree": false },
+   { "habit": "fillers", "captionsPer100": 2.87, "beePer100": 3.48, "agree": false } ],
   "claim": "practised-agree",
   "note": "the same meetings heard by Bee and by the meeting's captions, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only." }
 ```

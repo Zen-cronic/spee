@@ -87,7 +87,7 @@ describe("GET /api/instrument on the demo hub", () => {
   afterAll(async () => s.close());
   it("pairs the synthetic stand-up's captions with its Bee conversation, aggregates only; the Bee-only transfer is unchanged", async () => {
     const r = (await (await fetch(`${s.url}/api/instrument`)).json()) as InstrumentResponse;
-    expect(r).toMatchObject({ synthetic: true, pairs: 1, from: "2026-10-20", claim: "practised-agree" });
+    expect(r).toMatchObject({ synthetic: true, pairs: 1, from: "2026-10-13", claim: "practised-agree" });
     expect(r.dataLabel).toMatch(/SYNTHETIC/);
     expect(JSON.stringify(r)).not.toMatch(/demo-(bee|meet)-/);
     const bee = (await (await fetch(`${s.url}/api/transfer`)).json()) as TransferResponse;
@@ -95,7 +95,7 @@ describe("GET /api/instrument on the demo hub", () => {
     expect(bee.sources.meeting).toBeUndefined();
     expect(bee.claim).toBe("all-dropped-control-flat");
     const withCaptions = (await (await fetch(`${s.url}/api/transfer?source=all`)).json()) as TransferResponse;
-    expect(withCaptions.sources.meeting).toMatchObject({ sessions: 3, from: "2026-10-14", to: "2026-10-20" });
-    expect(captionsLine(withCaptions, r)!.label).toBe("3 captioned meetings since Oct 14 · not the pre-registered check");
+    expect(withCaptions.sources.meeting).toMatchObject({ sessions: 3, from: "2026-10-13", to: "2026-10-19" });
+    expect(captionsLine(withCaptions, r)!.label).toBe("3 captioned meetings since Oct 13 · not the pre-registered check");
   });
 });

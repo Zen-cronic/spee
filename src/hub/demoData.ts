@@ -121,7 +121,8 @@ export interface SessionPlan {
 }
 
 // Before drilling (Oct 13-15 morning) vs after (Oct 15 afternoon onward). Bee conversations are
-// the input of record; the two meetings are the secondary caption source.
+// the input of record; the three meetings are the secondary caption source (one of them, Oct 13, is
+// the captions of a conversation Bee heard too).
 // The weekday Bee conversations are work talk (2 to 4 speakers in work hours); the four evening and
 // weekend ones are casual (src/hub/settings.ts tags them).
 export const PLANS: SessionPlan[] = [
@@ -138,9 +139,10 @@ export const PLANS: SessionPlan[] = [
   { id: "demo-bee-1011", kind: "conversation", start: "2026-10-11T12:00:00-04:00", sentences: 20, marks: { iguess: 3, like: 3, restart: 1, vague: 1 }, speakers: 3, casual: true },
   { id: "demo-bee-1017", kind: "conversation", start: "2026-10-17T20:15:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 2 }, speakers: 2, casual: true },
   { id: "demo-bee-1018", kind: "conversation", start: "2026-10-18T11:30:00-04:00", sentences: 20, marks: { iguess: 1, like: 2, restart: 1, vague: 1 }, speakers: 3, casual: true },
-  // Synthetic: the 09:35 stand-up's own captions, heard by Bee too (the instrument check's pair).
-  // Last, so it can copy that conversation's lines.
-  { id: "demo-meet-1020", kind: "meeting", start: "2026-10-20T09:36:00-04:00", sentences: 0, marks: {}, captionsOf: "demo-bee-1020" },
+  // Synthetic: the Oct 13 stand-up's own captions, heard by Bee too (the instrument check's pair).
+  // Last, so it can copy that conversation's lines. Before this week, so the usual "at work" rate
+  // (this week's work talk) is the same with or without it.
+  { id: "demo-meet-1013", kind: "meeting", start: "2026-10-13T10:06:00-04:00", sentences: 0, marks: {}, captionsOf: "demo-bee-1013" },
 ];
 
 export function buildSessions(): StatSession[] {
