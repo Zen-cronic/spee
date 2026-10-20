@@ -389,13 +389,13 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 
 A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) attempt.
 
-**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("3 captioned meetings since Oct 13").
+**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("2 captioned meetings since Oct 14"). A meeting that Bee also heard (paired by `pairMeetings`) is counted once, from Bee: its caption session is left out of every `source=all` view.
 
 **Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee agree only when `GET /api/instrument` has `claim: "practised-agree"`.
 
 ### `GET /api/instrument` (Bee vs captions; aggregates only)
 
-Each meeting caption session is paired with the Bee conversation that starts closest to it, within 45 minutes (`pairMeetings`, `src/real/instruments.ts`), and both are counted with the hub's own habit rules. Rates are pooled over the pairs. No line text and no session id is returned.
+Each meeting caption session is paired with every Bee conversation that overlaps its time, and Bee's lines are cut to the meeting's start and end (`pairMeetings`, `src/real/instruments.ts`); a Bee line counts toward one meeting at most. When an end time is missing, the Bee conversation that starts nearest, within 45 minutes, is used instead, and `note` says how many pairs were matched that weaker way. A meeting with no English lines of the wearer on either side is skipped. Both sides are counted with the hub's own habit rules, and rates are pooled over the pairs. No line text and no session id is returned.
 
 ```json
 { "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)", "synthetic": true, "generatedAt": "2026-10-20T17:36:28.459Z",
@@ -408,7 +408,7 @@ Each meeting caption session is paired with the Bee conversation that starts clo
    { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.63, "agree": false },
    { "habit": "fillers", "captionsPer100": 2.87, "beePer100": 3.48, "agree": false } ],
   "claim": "practised-agree",
-  "note": "the same meetings heard by Bee and by the meeting's captions, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only." }
+  "note": "the same meetings heard by Bee and by the meeting's captions, Bee's lines cut to each meeting's time, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only." }
 ```
 
 - `agree`: the two rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. It is `null` until the pairs have `minWords` words on each side.

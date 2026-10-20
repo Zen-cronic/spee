@@ -116,7 +116,7 @@ export interface SessionPlan {
   speakers?: number; // distinct speakers heard, the wearer included (a count, as Bee's sessions carry)
   casual?: boolean; // small talk (CASUAL sentences) instead of work talk
   // The captions of a meeting Bee also heard: the same lines as that Bee conversation, with every
-  // "um" left out, as real captions drop about 30% of them (docs/instrument-check.md).
+  // "um" left out, as captions showed fewer "um" and "uh" on the one real meeting checked (docs/instrument-check.md).
   captionsOf?: string;
 }
 
