@@ -166,6 +166,7 @@ Notes on how the rules are computed:
     - the narration has at most 3 sentences;
     - every quote is the moment or its rephrase;
     - every number of the template is kept and none is added, each still about the same fact: a number belongs to the nearest habit, minutes, words, words-a-minute or per-100-words word in its clause, and "usual" marks the baseline, so swapping the hedge count and the minutes is refused;
+    - the setting's words ("at work") stand right after each usual, as the template has them, and nowhere else, so a later correction re-words every one of them;
     - nothing shares a 5-word shingle with the principles.
   - Otherwise the template stays (`phrasing: "template"`).
 - **Delivery.**

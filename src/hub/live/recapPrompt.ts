@@ -47,7 +47,7 @@ export function recapPrompt(recap: Recap, slots: RecapSlots, principles: Princip
     "You reword a short recap of one conversation for a personal speaking coach.",
     "The wearer reads it on a watch and hears it from a voice assistant. Be warm, direct and brief.",
     "Use only the facts given. Never write a number, in digits or in words (one, once, twice, half...): write the slot instead, in braces, exactly as named in `slots`, e.g. {hedges_rate}. The only number you may write is the unit \"per 100 words\" (or \"out of every 100 words\").",
-    "Keep every slot the template uses, and keep the setting's words after a usual (\"in meetings\", \"at work\", \"in casual talk\") exactly as the template has them. Each sentence with a slot names what it is about: a habit's slots with that habit (unsure words, \"like\", vague answers, starting over), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
+    "Keep every slot the template uses, and keep the setting's words right after each usual (\"in meetings\", \"at work\", \"in casual talk\") exactly as the template has them, and nowhere else. Each sentence with a slot names what it is about: a habit's slots with that habit (unsure words, \"like\", vague answers, starting over), {longest_turn_min} with the word \"turn\", {minutes} with the conversation, {wpm} and {usual_wpm} with the pace or words a minute. Put \"usual\" or \"usually\" right next to each *_usual slot and never next to another slot.",
     "Do not invent quotes: quote only the given moment or its rephrase, word for word.",
     "Follow these coaching principles, but never quote or closely paraphrase them:",
     "<principles>",
@@ -158,6 +158,16 @@ function slotsOnTheirFacts(text: string): boolean {
   return true;
 }
 
+// Outside quotes (which the re-wording never touches), every habit's usual slot is followed by the
+// setting's words exactly as written ("{hedges_usual} at work", or "{hedges_usual} per 100 words at
+// work"), and the words appear nowhere else.
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function settingAfterUsuals(text: string, where: string): boolean {
+  const w = escapeRe(where);
+  const rest = text.replace(/"[^"]*"|“[^”]*”/g, " ").replace(new RegExp(`\\{[a-z]+_usual\\}(?: per 100 words)? ${w}(?![\\p{L}\\p{N}])`, "gu"), " ");
+  return !/\{[a-z]+_usual\}/.test(rest) && !new RegExp(`(?<![\\p{L}\\p{N}])${w}(?![\\p{L}\\p{N}])`, "iu").test(rest);
+}
+
 // Text with its quotes removed: the quote rule below checks them, and a quoted moment may hold
 // numbers of its own (only quotes in `allowed` are removed; anything else is still checked).
 const unquoted = (s: string, allowed: string[]) => s.replace(/"([^"]*)"/g, (q, inner: string) => (allowed.includes(fold(inner)) ? " " : q));
@@ -177,9 +187,12 @@ export function acceptPhrasing(out: unknown, recap: Recap, slots: RecapSlots, pr
     if ((bare.toLowerCase().match(/\p{L}+/gu) ?? []).some((w) => NUMBER_WORDS.has(w))) return null;
     if (!slotsOnTheirFacts(unquoted(t, allowed))) return null;
   }
-  // The setting's words are kept word for word where the template has them (see RecapSlots.usualWhere).
+  // The setting's words are kept word for word where the template has them (see RecapSlots.usualWhere),
+  // and only right after a usual, as the template writes them: that is the phrase a served recap
+  // re-words when the wearer sets another setting (settings.ts rewordRecapSetting).
   const where = slots.usualWhere?.toLowerCase();
   if (where && (["headline", "narration"] as const).some((k) => slots.template[k].toLowerCase().includes(where) && !raw[k].toLowerCase().includes(where))) return null;
+  if (slots.usualWhere && (["headline", "narration"] as const).some((k) => !settingAfterUsuals(raw[k], slots.usualWhere!))) return null;
   const said = new Set([...slotsIn(raw.headline), ...slotsIn(raw.narration)]);
   if ([...slotsIn(slots.template.headline), ...slotsIn(slots.template.narration)].some((n) => !said.has(n))) return null;
   const headline = fillSlots(raw.headline, slots.values);

@@ -15,7 +15,7 @@ import { verdictOf } from "../src/hub/live/recap.js";
 import { acceptPhrasing, phraseRecap, recapPrompt, RECAP_LLM_MODEL, slotsIn, type PhraseFn } from "../src/hub/live/recapPrompt.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
-import { SETTING_WHERE } from "../src/hub/settings.js";
+import { rewordRecapSetting, SETTING_WHERE } from "../src/hub/settings.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
 const BASE: Baseline = { source: "test", words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, fillersPer100: 2.43, wpm: 140, vaguePer100: 0.64, restartsPer100: 0.86 };
@@ -245,6 +245,23 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
     const h = (headline: string) => acceptPhrasing({ headline, narration: one.template.narration, wristText: one.template.wristText }, { moment: null } as never, one, principles);
     expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in meetings.")).not.toBeNull();
     expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} for calls.")).toBeNull();
+  });
+  it("the setting's words stand right after a usual, so a served recap re-words every one of them", () => {
+    const work: RecapSlots = { values: { hedges_rate: "2.4", hedges_usual: "1.4", minutes: "4", hedges_count: "3", like_count: "0", vague_count: "0", restarts_count: "0" }, template: { headline: "Unsure words ran high: {hedges_rate} per 100 words against your usual {hedges_usual} at work.", narration: "That conversation ran about {minutes} minutes.", wristText: "[coach] Recap" }, usualWhere: "at work" };
+    const h = (headline: string, narration = work.template.narration) => acceptPhrasing({ headline, narration, wristText: work.template.wristText }, { moment: null } as never, work, principles);
+    // away from the usual, a correction would leave "at work" as written
+    expect(h("Unsure words ran high at work: {hedges_rate} per 100 words against your usual {hedges_usual}.")).toBeNull();
+    expect(h("Unsure words ran high: {hedges_rate} per 100 words against your usual {hedges_usual} at work.", "At work, that conversation ran about {minutes} minutes.")).toBeNull();
+    expect(h("Unsure words ran high: {hedges_rate} per 100 words against your usual {hedges_usual} At work.")).toBeNull();
+    // right after the usual, with or without the unit
+    const ok = ["Unsure words ran high: {hedges_rate} per 100 words, above your usual {hedges_usual} at work.", "Unsure words came to {hedges_rate} per 100 words; usually {hedges_usual} per 100 words at work."];
+    for (const headline of ok) {
+      const a = h(headline);
+      expect(a, headline).not.toBeNull();
+      const served = rewordRecapSetting({ ...a!, setting: { setting: "meeting", source: "you", confidence: "high", reasons: ["you"] }, moment: null, metrics: { baselineSetting: "work", habits: [{ baselinePer100: 1.4 }] } });
+      expect(served.headline).not.toMatch(/at work/i);
+      expect(served.headline).toMatch(/1\.4 (per 100 words )?from work talk\.$/);
+    }
   });
   it("the template is an accepted phrasing in every branch: worse, clean, better, typical, long turn, no baseline", () => {
     const window = (said: string[]) => {
