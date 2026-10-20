@@ -320,3 +320,18 @@ describe("a lone card closed by Bee's pass", () => {
     expect(s.drill).toMatchObject({ card: null, stage: "idle" });
   });
 });
+
+describe("stale refetches and older recaps", () => {
+  const mode = (enabled: boolean, changedAt: number) => ({ ...(fx["live.json"] as any).mode, enabled, changedAt });
+  const live = (m: unknown) => ({ ...(fx["live.json"] as any), mode: m });
+  it("a GET /api/live built before the socket's live.mode does not turn live coaching back on", () => {
+    let s = run(initialMirror(), { type: "liveState", live: live(mode(true, 1000)) });
+    s = run(s, { type: "event", event: ev(1, "live.mode", { mode: mode(false, 2000) }), now: 0 });
+    s = run(s, { type: "liveState", live: live(mode(true, 1000)) }); // the slow response lands last
+    expect(s.live.mode?.enabled).toBe(false);
+    // a refetch of the same change still refreshes the counts
+    s = run(s, { type: "liveState", live: live({ ...mode(false, 2000), sent: { lastHour: 3, today: 9 } }) });
+    expect(s.live.mode?.sent).toEqual({ lastHour: 3, today: 9 });
+  });
+
+});

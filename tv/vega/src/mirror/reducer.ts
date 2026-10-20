@@ -222,12 +222,17 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       // a finished fetch (found or not) clears the request, so the next "show my recap" fetches again
       return s.recapWanted === null ? s : { ...s, recapWanted: null };
     case 'liveState':
-      return { ...s, live: { ...s.live, mode: a.live.mode, baseline: a.live.baseline ?? s.live.baseline, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
+      // The socket's live.mode wins over a refetch built before it (an older changedAt): a slow
+      // GET /api/live must not turn live coaching back on after it expired.
+      return { ...s, live: { ...s.live, mode: newerMode(s.live.mode, a.live.mode), baseline: a.live.baseline ?? s.live.baseline, window: s.live.window ?? a.live.conversation, conversationId: s.live.conversationId ?? a.live.conversation?.conversationId ?? null, nudges: s.live.nudges.length ? s.live.nudges : a.live.recentNudges.slice(0, KEEP_NUDGES), skips: s.live.skips.length ? s.live.skips : a.live.recentSkips.slice(0, KEEP_NUDGES) }, dataLabel: s.dataLabel ?? a.live.dataLabel, synthetic: s.synthetic || a.live.synthetic };
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;
       return { ...s, recap: a.recap, recapVisible: a.show || (s.recapVisible && s.recap?.id === a.recap.id), recapShownAt: a.show ? a.now : s.recapShownAt, recapWanted: s.recapWanted === a.recap.id || s.recapWanted === 'latest' ? null : s.recapWanted };
   }
 }
+
+// The live mode with the later change; a refetch with the same change refreshes the counts.
+export const newerMode = (have: LiveMode | null, got: LiveMode): LiveMode => (!have || (got.changedAt ?? 0) >= (have.changedAt ?? 0) ? got : have);
 
 function onHubState(s: MirrorState, h: HubState): MirrorState {
   const d: DrillState = { ...emptyDrill(), sessionId: h.session?.id ?? null, card: h.openCard, deck: h.deck, stage: h.openCard ? 'card' : 'idle' };
