@@ -5,31 +5,37 @@ import { F } from './platform/fonts';
  * Design tokens for the 10-foot UI (1920x1080 stage, read from about 3 m). Shared verbatim by the
  * web TV and the Vega app (npm run tv:sync); only the font family differs (platform/fonts.ts).
  *
- * Warm charcoal ground; one paper card per screen carries the hero. Two accents only: lime for
- * "the thing to do / better / pass", lavender only for "checked by Bee" (Bee is the input of
- * record). Coral is kept for a fail or a wrist nudge; amber only for a lost hub connection.
+ * Warm espresso ground and cream paper. Meaning colours, never decoration: lime for "the thing to
+ * do / better / pass", coral for "not yet" or a wrist nudge, the bee colour (C.bee) only for "checked by Bee",
+ * amber only for a lost hub connection or synthetic data. Each habit has its own hue (HABIT_HUE),
+ * the same on every screen, so a habit is recognisable by colour as well as by its name.
  */
 export const C = {
-  bg: '#121211',
-  surface: '#1d1d1b',
-  surface2: '#282825',
-  line: '#34332f',
-  text: '#f4f3ed',
-  dim: '#abaaa2',
-  faint: '#7a7972',
-  paper: '#eeede6',
-  ink: '#131312',
-  inkDim: '#5f5e58',
-  inkFaint: '#8c8b84',
+  bg: '#17130f',
+  surface: '#241e18',
+  surface2: '#332b22',
+  line: '#43392d',
+  text: '#f8f2e7',
+  dim: '#c4b9a8',
+  faint: '#a0947f',
+  paper: '#f6eedd',
+  ink: '#1b160f',
+  inkDim: '#5c5244',
+  inkFaint: '#6f6555',
   lime: '#d7f26a',
   limeInk: '#1a2006',
   limeBg: '#2a3114',
-  lavender: '#bbaef7',
-  lavenderInk: '#1d1640',
-  lavenderBg: '#2b2748',
+  // "checked by Bee", and nothing else: the one place its colour is set (web/phone, web/sim and
+  // web/hub use the same values as --bee, --bee-ink). Lavender for now.
+  bee: '#bbaef7', // on the dark ground
+  beeInk: '#1d1640', // text on a solid bee pill
+  beeBg: '#2b2748', // a bee-tinted pill on the dark ground (text: bee)
+  beeWash: 'rgba(187,174,247,0.35)', // a bee-tinted band on paper
+  beeOnLight: '#bbaef7', // a bee mark (dot, ring) on paper
+  beeTextOnLight: '#1d1640', // bee text on paper
   coral: '#f2876e',
   coralInk: '#2e0f08',
-  coralBg: '#3a241e',
+  coralBg: '#3d2219',
   amber: '#e9c46a',
   amberBg: '#3a301c',
   // older names, kept so per-app files read the same palette
@@ -37,8 +43,33 @@ export const C = {
   mintInk: '#1a2006',
   mintBg: '#2a3114',
   focus: '#ffffff', // remote focus ring: never used for anything else
-  rule: 'rgba(255,255,255,0.08)',
+  rule: 'rgba(255,240,220,0.09)',
 };
+
+/**
+ * One hue per habit, on Today, Progress and Live: `hue` for numbers and marks on the dark ground,
+ * `tint` for a card filled with it, `deep` for the hue on paper. None is lime, coral, the bee colour or
+ * amber, so a habit's colour never reads as a verdict. The words always name the habit too.
+ */
+export interface Hue {
+  hue: string;
+  tint: string;
+  deep: string;
+}
+export const HABIT_HUE: Record<string, Hue> = {
+  hedges: { hue: '#8ccaff', tint: '#1c2833', deep: '#1d5c94' },
+  'filler:like': { hue: '#6fdcc4', tint: '#152e28', deep: '#0e6857' },
+  fillers: { hue: '#6fdcc4', tint: '#152e28', deep: '#0e6857' },
+  vague: { hue: '#e2c9a0', tint: '#33291c', deep: '#7a5a26' },
+  restart: { hue: '#f5a8d0', tint: '#36202c', deep: '#97306a' },
+  restarts: { hue: '#f5a8d0', tint: '#36202c', deep: '#97306a' },
+};
+const NO_HUE: Hue = { hue: C.dim, tint: C.surface, deep: C.inkDim };
+/** A habit key's hue ('hedge:...' and 'filler:...' keys take their family's). */
+export function habitHue(key: string | null | undefined): Hue {
+  const k = key ?? '';
+  return HABIT_HUE[k] ?? (k.startsWith('hedge') ? HABIT_HUE.hedges! : k.startsWith('filler') ? HABIT_HUE.fillers! : NO_HUE);
+}
 
 /** Type scale. Fire TV guidance: body text at least 28 px at 1080p. Only labels use 24 px. */
 export const T = { hero: 200, big: 120, h1: 64, h2: 46, title: 38, body: 30, small: 28, label: 24 };

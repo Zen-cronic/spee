@@ -31,7 +31,7 @@ export function PracticeView({ p, code, mics }: { p: PracticeSlice; code: string
           <Text style={styles.kicker}>Practice</Text>
           <Text style={styles.idleTitle}>Talk for 30 seconds and watch your voice here.</Text>
           <View style={{ flex: 1 }} />
-          <Text style={styles.idleHint}>{mics ? 'Your phone is paired. Tap Practice, then Start.' : `Pair a phone first: the Pair phone tab, or code ${code ?? '····'}.`}</Text>
+          <Text style={styles.idleHint}>{mics ? 'Your phone is paired. On it, tap Voice, then Start take.' : `Pair a phone first: the Pair phone tab, or code ${code ?? '····'}.`}</Text>
           <Text style={styles.idleNote}>Measured on your phone. Nothing is recorded.</Text>
         </View>
       </View>

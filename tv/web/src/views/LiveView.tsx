@@ -6,7 +6,7 @@ import { useDebug } from '../debug';
 import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
-import { C, F, R, SP, SPLIT, T } from '../theme';
+import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
 
 /**
  * Live: the drill on the left (the sentence to say, one status sentence, and a three-step tracker:
@@ -29,10 +29,10 @@ export function LiveView({ drill, live, partial, focus, last, onCycleSetting }: 
 
 function Dot({ state, bee }: { state: StepState; bee?: boolean }) {
   const pulse = useLoop(state === 'now', 600);
-  // Bee's step never turns coral: a line Bee did not confirm is an open lavender ring (coral is a graded fail)
+  // Bee's step never turns coral: a line Bee did not confirm is an open ring in the bee colour (coral is a graded fail)
   const beeMissed = bee && state === 'bad';
-  const fill = state === 'todo' || beeMissed ? 'transparent' : state === 'now' ? C.lavender : state === 'bad' ? C.coral : state === 'pass' ? C.lime : bee ? C.lavender : C.ink;
-  const border = beeMissed ? C.lavender : state === 'todo' ? C.inkFaint : state === 'pass' ? C.ink : fill;
+  const fill = state === 'todo' || beeMissed ? 'transparent' : state === 'now' ? C.beeOnLight : state === 'bad' ? C.coral : state === 'pass' ? C.lime : bee ? C.beeOnLight : C.ink;
+  const border = beeMissed ? C.beeOnLight : state === 'todo' ? C.inkFaint : state === 'pass' ? C.ink : fill;
   return <Animated.View style={[styles.dot, { backgroundColor: fill, borderColor: border, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.35] }) }]} />;
 }
 
@@ -121,7 +121,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
           </View>
         ) : null}
         <View style={styles.bandHead}>
-          <Text style={[styles.status, status.length <= 9 && styles.statusBig, { color: ink }]} numberOfLines={2}>{status}</Text>
+          <Text style={[styles.status, status.length <= 9 && !overrules && styles.statusBig, { color: ink }]} numberOfLines={2}>{status}</Text>
         </View>
         {support ? <Text style={[styles.support, overrules && styles.supportSmall, { color: ink }]} numberOfLines={overrules ? 4 : 2}>{support}</Text> : null}
       </Animated.View>
@@ -156,11 +156,16 @@ function Mode({ mode }: { mode: LiveMode | null }) {
   );
 }
 
-function Counter({ label, value, over, idle }: { label: string; value: string; over: boolean; idle: boolean }) {
+function Counter({ label, value, over, idle, habit }: { label: string; value: string; over: boolean; idle: boolean; habit: string }) {
+  const hue = habitHue(habit).hue;
+  // the habit's hue, live or usual; coral (and the word "high") once a nudge rule is crossed
   return (
     <View style={styles.counter}>
-      <Text style={[styles.counterValue, idle && styles.usual, over && { color: C.coral }]}>{value}</Text>
-      <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.counterValue, { color: hue }, over && { color: C.coral }]}>{value}</Text>
+      <View style={styles.counterRow}>
+        <View style={[styles.counterDot, { backgroundColor: over ? C.coral : hue }]} />
+        <Text style={styles.statLabel} numberOfLines={1}>{over ? `${label} · high` : label}</Text>
+      </View>
     </View>
   );
 }
@@ -205,8 +210,8 @@ function ConversationPanel({ live, last, onCycleSetting }: { live: LiveSlice; la
       </View>
       <Text style={styles.sub}>{idle ? 'Usually, out of every 100 words you say' : 'Last 2 minutes'}</Text>
       <View style={styles.counters}>
-        <Counter idle={idle} label={unsure} value={w ? String(w.recent.hedges) : fmt1(b?.hedgesPer100)} over={over('hedge-streak')} />
-        <Counter idle={idle} label={like} value={w ? String(w.recent.likes) : fmt1(b?.likesPer100)} over={over('like-streak')} />
+        <Counter habit="hedges" idle={idle} label={unsure} value={w ? String(w.recent.hedges) : fmt1(b?.hedgesPer100)} over={over('hedge-streak')} />
+        <Counter habit="filler:like" idle={idle} label={like} value={w ? String(w.recent.likes) : fmt1(b?.likesPer100)} over={over('like-streak')} />
       </View>
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
       <View style={{ flex: 1 }} />
@@ -244,17 +249,18 @@ const styles = StyleSheet.create({
   sentence: { color: C.ink, fontSize: 60, lineHeight: 72, fontWeight: '700', letterSpacing: -1, marginTop: SP.m, fontFamily: F.family },
   band: { flex: 1, minHeight: 224, marginTop: SP.xl, borderRadius: R.m, paddingHorizontal: SP.xl, paddingVertical: SP.xl, justifyContent: 'center' },
   bandIdle: { backgroundColor: 'rgba(0,0,0,0.05)' },
-  bandWait: { backgroundColor: 'rgba(187,174,247,0.35)' },
+  bandWait: { backgroundColor: C.beeWash },
   bandPass: { backgroundColor: C.lime },
   bandFail: { backgroundColor: C.coral },
   bandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  beeTag: { alignSelf: 'flex-start', backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, marginBottom: SP.s },
-  beeTagText: { color: C.lavenderInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
+  beeTag: { alignSelf: 'flex-start', backgroundColor: C.bee, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6, marginBottom: SP.s },
+  beeTagText: { color: C.beeInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
   listenRow: { flexDirection: 'row', alignItems: 'center', marginTop: SP.l },
-  listenDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: C.lavender, marginRight: SP.s },
+  listenDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: C.bee, marginRight: SP.s },
   listenTitle: { color: C.dim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   listenHint: { color: C.faint, fontSize: T.body, lineHeight: 42, maxWidth: 640, fontFamily: F.family },
-  usual: { color: C.faint },
+  // your usual numbers between conversations: one step quieter than live, still readable from the couch
+  usual: { color: C.dim },
   last: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l },
   lastHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   lastKicker: { color: C.faint, fontSize: T.label, fontFamily: F.family },
@@ -286,6 +292,8 @@ const styles = StyleSheet.create({
   sub: { color: C.faint, fontSize: T.label, marginTop: SP.xl, fontFamily: F.family },
   counters: { flexDirection: 'row', marginTop: SP.xs },
   counter: { flex: 1 },
+  counterRow: { flexDirection: 'row', alignItems: 'center' },
+  counterDot: { width: 14, height: 14, borderRadius: 7, marginRight: SP.s },
   counterValue: { color: C.text, fontSize: 80, lineHeight: 92, fontWeight: '700', fontFamily: F.family },
   nudge: { backgroundColor: C.coralBg, borderRadius: R.m, paddingHorizontal: SP.l, paddingVertical: SP.m },
   nudgeTitle: { color: C.coral, fontSize: T.body, fontWeight: '700', fontFamily: F.family },

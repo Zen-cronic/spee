@@ -3,7 +3,7 @@ import { NUDGE_HOP_ORDER, type Nudge, type NudgeHops } from '../contract';
 import { fmtMs, HOP_LABEL } from '../mirror/format';
 import { C, F, SP, T } from '../theme';
 
-const HOP_COLOR: Record<keyof NudgeHops, string> = { spokenAt: C.text, beeAt: C.lavender, detectedAt: C.mint, todoAt: C.amber, alarmAt: C.coral };
+const HOP_COLOR: Record<keyof NudgeHops, string> = { spokenAt: C.text, beeAt: C.bee, detectedAt: C.mint, todoAt: C.amber, alarmAt: C.coral };
 
 /**
  * One nudge's latency hops, from the end of the wearer's line to the Watch buzz: spoken, Bee

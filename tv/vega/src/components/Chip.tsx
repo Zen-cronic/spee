@@ -7,7 +7,7 @@ const INK: Record<Tone, { fg: string; bg: string }> = {
   bad: { fg: C.coralInk, bg: C.coral },
   neutral: { fg: C.text, bg: C.surface2 },
   wait: { fg: C.dim, bg: C.surface2 },
-  bee: { fg: C.lavenderInk, bg: C.lavender },
+  bee: { fg: C.beeInk, bg: C.bee },
 };
 
 /** A verdict or status pill: a filled shape and a word (never colour alone: the word is the signal). */

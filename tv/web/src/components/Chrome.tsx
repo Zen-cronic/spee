@@ -47,7 +47,7 @@ export function DataLabel({ label, synthetic, replay, extra }: { label: string |
           <Text style={styles.synthetic}>{label ?? 'SYNTHETIC DEMO DATA'}</Text>
         </>
       ) : (
-        <Text style={styles.real}>Real speech from Bee. A phone or Alexa preview counts only once Bee confirms it.</Text>
+        <Text style={styles.real}>Real speech, heard by Bee</Text>
       )}
       {replay ? <Text style={styles.replay}>Bee replay (demo)</Text> : null}
       <View style={{ flex: 1 }} />

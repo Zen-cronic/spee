@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
 import { changeLabel, controlWord, fmt1, habitTitle, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
-import { C, F, R, SP, SPLIT, T } from '../theme';
+import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
 
 /**
  * Today: today's practice (the lines due, how many are done, the one thing to say), this week's
@@ -16,6 +16,7 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
   return (
     <View style={styles.wrap} testID="view-week">
       <View style={styles.hero}>
+        <View style={styles.heroBand} />
         <Text style={styles.heroKicker}>Today’s practice</Text>
         {due === null ? (
           <Text style={[styles.heroNum, styles.heroWait]}>…</Text>
@@ -52,11 +53,12 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
           </View>
           {rows.map((r) => (
             <View key={r.key} style={styles.row} testID={`week-${r.key}`}>
+              <View style={[styles.mark, { backgroundColor: habitHue(r.key).hue }]} />
               <View style={styles.rowLabel}>
                 <Text style={styles.habit}>{r.label}</Text>
                 <Text style={styles.top} numberOfLines={1}>{r.top ? `mostly ${r.top}` : r.key === 'restarts' ? 'the one you didn’t practise' : ' '}</Text>
               </View>
-              <Text style={styles.rate}>{fmt1(r.rate.per100)}</Text>
+              <Text style={[styles.rate, { color: habitHue(r.key).hue }]}>{fmt1(r.rate.per100)}</Text>
             </View>
           ))}
         </View>
@@ -112,8 +114,8 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
               <View style={styles.workValue}>
                 <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }, !change.pct && styles.workNone]}>{change.pct ? change.text : '—'}</Text>
               </View>
-              <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(x.habit, x.label)}</Text>
-              <Text style={styles.workWords} numberOfLines={2}>{change.pct ? 'practised' : change.text}</Text>
+              <HabitLabel habit={x.habit} label={x.label} />
+              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : shortWords(x.verdict, change.text)}</Text>
             </View>
           );
         })}
@@ -122,11 +124,25 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
             <View style={styles.workValue}>
               <Text style={[styles.workNum, styles.workFlat, cw.word && styles.workNone]} numberOfLines={1}>{cw.word ? '—' : cw.text}</Text>
             </View>
-            <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(control.habit, control.label)}</Text>
-            <Text style={styles.workWords} numberOfLines={2}>{cw.word ? cw.text : 'not practised'}</Text>
+            <HabitLabel habit={control.habit} label={control.label} />
+            <Text style={styles.workWords} numberOfLines={1}>{cw.word ? shortWords(control.verdict, cw.text) : 'not practised'}</Text>
           </View>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+/** Today's one-word-ish status under a dash (Progress says it in full): it must fit a third of the card on one line. */
+const SHORT: Record<string, string> = { 'too little data': 'Needs speech', 'not drilled yet': 'Not started' };
+const shortWords = (verdict: string, text: string): string => SHORT[verdict] ?? text;
+
+/** A habit's name with its hue as a small dot (the colour repeats the name, never replaces it). */
+function HabitLabel({ habit, label }: { habit: string; label: string }) {
+  return (
+    <View style={styles.labelRow}>
+      <View style={[styles.labelDot, { backgroundColor: habitHue(habit).hue }]} />
+      <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(habit, label)}</Text>
     </View>
   );
 }
@@ -143,7 +159,9 @@ const PAD = { paddingHorizontal: SP.xxl, paddingVertical: 44 };
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, flexDirection: 'row' },
-  hero: { width: SPLIT.left, backgroundColor: C.paper, borderRadius: R.l, ...PAD, marginRight: SP.l },
+  hero: { width: SPLIT.left, backgroundColor: C.paper, borderRadius: R.l, ...PAD, marginRight: SP.l, overflow: 'hidden' },
+  // the one lime edge on Today: this card is the thing to do
+  heroBand: { position: 'absolute', left: 0, right: 0, top: 0, height: 12, backgroundColor: C.lime },
   heroKicker: { color: C.inkDim, fontSize: T.title, fontWeight: '600', fontFamily: F.family },
   heroNum: { color: C.ink, fontSize: 260, lineHeight: 270, fontWeight: '700', letterSpacing: -4, marginTop: SP.xs, fontFamily: F.family },
   heroDone: { fontSize: T.big, lineHeight: 140, letterSpacing: -3 },
@@ -159,7 +177,7 @@ const styles = StyleSheet.create({
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   tally: { borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.08)', paddingTop: SP.l },
   beeRow: { flexDirection: 'row', alignItems: 'center' },
-  beeDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.lavender, marginRight: SP.s },
+  beeDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.beeOnLight, marginRight: SP.s },
   beeText: { color: C.inkDim, fontSize: T.label, fontFamily: F.family },
   side: { flex: 1 },
   card: { backgroundColor: C.surface, borderRadius: R.l, ...PAD },
@@ -168,10 +186,11 @@ const styles = StyleSheet.create({
   cardTitle: { color: C.text, fontSize: T.title, fontWeight: '700', fontFamily: F.family },
   cardNote: { color: C.faint, fontSize: T.label, marginTop: 4, fontFamily: F.family },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderColor: C.rule },
+  mark: { width: 8, height: 48, borderRadius: 4, marginRight: SP.m },
   rowLabel: { flex: 1 },
   habit: { color: C.text, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
   top: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
-  rate: { width: 140, textAlign: 'right', color: C.text, fontSize: 52, fontWeight: '700', letterSpacing: -1, paddingHorizontal: 8, fontFamily: F.family },
+  rate: { width: 140, textAlign: 'right', color: C.text, fontSize: 52, fontWeight: '700', paddingHorizontal: 8, fontFamily: F.family },
   working: { marginTop: SP.l, paddingVertical: SP.l },
   workRow: { flexDirection: 'row', marginTop: SP.s },
   workItem: { flex: 1, paddingRight: SP.m },
@@ -180,7 +199,9 @@ const styles = StyleSheet.create({
   workWords: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
   workNone: { color: C.faint },
   workFlat: { color: C.dim },
-  workLabel: { color: C.dim, fontSize: T.label, marginTop: 2, fontFamily: F.family },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  labelDot: { width: 12, height: 12, borderRadius: 6, marginRight: SP.xs },
+  workLabel: { flexShrink: 1, color: C.text, fontSize: T.label, fontWeight: '600', fontFamily: F.family },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: C.dim, fontSize: T.title, textAlign: 'center', fontFamily: F.family },
 });
