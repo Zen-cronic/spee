@@ -11,6 +11,7 @@ export interface SettingSenderDeps {
   post: (id: string, setting: ConversationSetting) => Promise<SettingTag | null>; // null: refused or failed
   current: (id: string) => Promise<SettingTag | null>; // the hub's stored tag, read again after a failure
   apply: (id: string, tag: SettingTag) => void;
+  settled?: (id: string, tag: SettingTag) => void; // after the last answer is applied (nothing else on its way)
 }
 
 export const youChose = (setting: ConversationSetting): SettingTag => ({ setting, source: 'you', confidence: 'high', reasons: ['you'] });
@@ -37,6 +38,7 @@ export function createSettingSender(d: SettingSenderDeps) {
     lane.confirmed = shown;
     lane.busy = false;
     d.apply(id, shown);
+    d.settled?.(id, shown);
   };
   /** A press: `shown` is the chip's tag now (the hub's, when nothing is on its way), `want` the next setting. */
   return (id: string, shown: SettingTag, want: ConversationSetting): Promise<void> => {

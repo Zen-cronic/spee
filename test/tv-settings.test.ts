@@ -1,6 +1,7 @@
 // The TV's setting chip and per-setting strip (tv/web/src/mirror, synced to tv/vega): plain words,
 // the cycle order, and the reducer keeping every held copy of the recap in step. Synthetic data.
 import { describe, expect, it } from "vitest";
+import type { SettingTag } from "../src/hub/contract.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 import { bySettingLine, nextSetting, settingName } from "../tv/web/src/mirror/format.js";
 import { initialMirror, mirrorReducer, RECAP_VISIBLE_MS, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
@@ -35,5 +36,34 @@ describe("reducer: recapSetting", () => {
     expect(s.recapVisible).toBe(true);
     // another conversation's change leaves this one alone
     expect(mirrorReducer(s, { type: "recapSetting", conversationId: "other", setting: null, now: 30_000 })).toBe(s);
+  });
+});
+
+describe("reducer: recapWording", () => {
+  // the recap as it arrived (recap.ready), before the wearer changed the setting
+  const shown = {
+    ...fx["recap.json"],
+    setting: { setting: "work", source: "auto", confidence: "medium", reasons: ["work-hours"] },
+    headline: "Unsure words ran high: 2.4 per 100 words against your usual 1.4 at work.",
+    narration: "You used 5 unsure words, 2.4 out of every 100 words you said against your usual 1.4 at work.",
+    metrics: { ...fx["recap.json"].metrics, baselineSetting: "work" },
+  };
+  const meeting: SettingTag = { setting: "meeting", source: "you", confidence: "high", reasons: ["you"] };
+  const served = { ...shown, setting: meeting, headline: "Unsure words ran high: 2.4 per 100 words against your usual 1.4 from work talk.", narration: "You used 5 unsure words, 2.4 out of every 100 words you said against your usual 1.4 from work talk." };
+  it("after a setting change the overlay and Live's last conversation take the hub's new wording", () => {
+    let s: MirrorState = mirrorReducer(initialMirror(), { type: "event", event: ev(1, "recap.ready", { recap: shown }), now: 1000 });
+    s = mirrorReducer(s, { type: "recapSetting", conversationId: shown.conversationId, setting: meeting, now: 2000 });
+    s = mirrorReducer(s, { type: "recapWording", recap: served as never });
+    expect(s.recap?.headline).toBe(served.headline);
+    expect(s.latestRecap?.headline).toBe(served.headline);
+    expect(s.recap?.narration).toBe(served.narration);
+    expect(s.recap?.setting).toEqual(meeting);
+    expect(s.recapVisible).toBe(true);
+  });
+  it("an answer for a setting the chip no longer shows, or another recap, changes nothing", () => {
+    let s: MirrorState = mirrorReducer(initialMirror(), { type: "event", event: ev(1, "recap.ready", { recap: shown }), now: 1000 });
+    s = mirrorReducer(s, { type: "recapSetting", conversationId: shown.conversationId, setting: { ...meeting, setting: "casual" }, now: 2000 });
+    expect(mirrorReducer(s, { type: "recapWording", recap: served as never })).toBe(s);
+    expect(mirrorReducer(s, { type: "recapWording", recap: { ...served, id: "rcp_other", setting: { ...meeting, setting: "casual" } } as never })).toBe(s);
   });
 });

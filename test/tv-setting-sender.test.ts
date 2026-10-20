@@ -12,6 +12,7 @@ function rig(o: { fail?: (n: number) => boolean } = {}) {
   let stored: SettingTag = auto("meeting");
   const posts: { setting: ConversationSetting; resolve: () => void }[] = [];
   const shown: SettingTag[] = [];
+  const settled: SettingTag[] = [];
   const send = createSettingSender({
     post: (_id, setting) =>
       new Promise((res) => {
@@ -20,8 +21,9 @@ function rig(o: { fail?: (n: number) => boolean } = {}) {
       }),
     current: async () => stored,
     apply: (_id, tag) => shown.push(tag),
+    settled: (_id, tag) => settled.push(tag),
   });
-  return { send, posts, shown, stored: () => stored };
+  return { send, posts, shown, settled, stored: () => stored };
 }
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -76,5 +78,17 @@ describe("setting chip requests", () => {
     await flush();
     await flush();
     expect(r.shown.at(-1)).toEqual(auto("meeting"));
+  });
+
+  it("says it settled once, after the last answer, so the screen can fetch the recap's new wording", async () => {
+    const r = rig();
+    void r.send("c1", auto("meeting"), "work");
+    void r.send("c1", youChose("work"), "casual");
+    r.posts[0]!.resolve();
+    await flush();
+    expect(r.settled).toEqual([]); // a press is still on its way
+    r.posts[1]!.resolve();
+    await flush();
+    expect(r.settled).toEqual([youChose("casual")]);
   });
 });

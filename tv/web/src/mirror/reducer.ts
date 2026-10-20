@@ -138,7 +138,8 @@ export type MirrorAction =
   | { type: 'liveState'; live: LiveState }
   | { type: 'recap'; recap: Recap; show: boolean; now: number }
   // the wearer changed a conversation's setting (the chip on the recap or Live): every held recap of it shows it
-  | { type: 'recapSetting'; conversationId: string; setting: SettingTag | null; now: number };
+  | { type: 'recapSetting'; conversationId: string; setting: SettingTag | null; now: number }
+  | { type: 'recapWording'; recap: Recap };
 
 /** One step of the Live tracker: you said it, checked by Bee, graded. */
 export type StepState = 'todo' | 'now' | 'done' | 'bad' | 'pass';
@@ -235,6 +236,15 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
       if (s.recap?.conversationId !== a.conversationId && s.latestRecap?.conversationId !== a.conversationId) return s;
       // changing it keeps the recap up: its 30 s start again
       return { ...s, recap: set(s.recap), latestRecap: set(s.latestRecap), recapShownAt: s.recapVisible && s.recap?.conversationId === a.conversationId ? a.now : s.recapShownAt };
+    }
+    case 'recapWording': {
+      // The hub's served recap after a setting change: its headline and narration say where the usual
+      // came from ("1.4 from work talk"). Taken only while the chip still shows that same setting, so
+      // an answer to an older press never replaces newer words.
+      const word = (r: Recap | null) => (r && r.id === a.recap.id && r.setting?.setting === a.recap.setting?.setting ? { ...r, headline: a.recap.headline, narration: a.recap.narration } : r);
+      const recap = word(s.recap);
+      const latestRecap = word(s.latestRecap);
+      return recap === s.recap && latestRecap === s.latestRecap ? s : { ...s, recap, latestRecap };
     }
     case 'recap':
       if (s.recap && s.recap.id === a.recap.id && !a.show) return s;

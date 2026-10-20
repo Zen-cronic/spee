@@ -147,6 +147,11 @@ export function useMirror(cfg: MirrorConfig) {
           return rid ? ((await getJson<Recap>(`${cfg.httpBase}/api/recaps/${encodeURIComponent(rid)}`))?.setting ?? null) : null;
         },
         apply: (id, tag) => dispatch({ type: 'recapSetting', conversationId: id, setting: tag, now: Date.now() }),
+        // the headline and narration as the hub now words them for the new setting
+        settled: (id) => {
+          const rid = recapIds.current.get(id);
+          if (rid) void getJson<Recap>(`${cfg.httpBase}/api/recaps/${encodeURIComponent(rid)}`).then((r) => r && r.id && dispatch({ type: 'recapWording', recap: r }));
+        },
       }),
     [cfg.httpBase],
   );
