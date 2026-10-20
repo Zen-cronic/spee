@@ -59,6 +59,17 @@
         font-size: 14px;
         color: var(--ink-dim);
       }
+      header {
+        white-space: nowrap;
+      }
+      @media (max-width: 560px) {
+        header {
+          padding: 18px 16px;
+        }
+        header .where {
+          font-size: 13px;
+        }
+      }
       main {
         width: min(1120px, 100% - 32px);
         margin: 0 auto;
