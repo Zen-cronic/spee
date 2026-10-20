@@ -1,6 +1,6 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
-import type { LiveMode, LiveWindow, Nudge, NudgeSkipped } from '../contract';
+import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
 import { curly, fmtDay, fmtInt, fmtMs, fmtPct, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
@@ -13,14 +13,14 @@ import { C, F, R, SP, T } from '../theme';
  * the two drilled habits over the last 2 minutes, and the last wrist nudge). Developer detail
  * (speaker score, hops in ms, held-back nudges) shows only in debug.
  */
-export function LiveView({ drill, live, partial, focus }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live' }) {
+export function LiveView({ drill, live, partial, focus, last }: { drill: DrillState; live: LiveSlice; partial: string | null; focus: 'drill' | 'live'; last?: Recap | null }) {
   return (
     <View style={styles.wrap} testID="view-live">
-      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet, !!drill.card && !live.window && styles.drillWide]}>
+      <View style={[styles.drill, focus === 'live' && !drill.card && styles.drillQuiet]}>
         <DrillPanel d={drill} partial={partial} />
       </View>
       <View style={styles.convo}>
-        <ConversationPanel live={live} />
+        <ConversationPanel live={live} last={last ?? null} />
       </View>
     </View>
   );
@@ -87,7 +87,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
     status = 'Bee heard you. Grading…';
     band = styles.bandWait;
   } else if (st === 'provisional' || st === 'checking') {
-    status = 'Bee is checking your line…';
+    status = 'Bee is checking…';
     support = 'Only what Bee heard counts.';
     band = styles.bandWait;
   } else {
@@ -100,7 +100,7 @@ function DrillPanel({ d, partial }: { d: DrillState; partial: string | null }) {
       <Text style={styles.sentence} numberOfLines={3}>{card.resay || card.fix}</Text>
       <Animated.View style={[styles.band, band, enter]} testID={overrules ? 'bee-overrules' : 'drill-verdict'}>
         <View style={styles.bandHead}>
-          <Text style={[styles.status, { color: ink }]} numberOfLines={2}>{status}</Text>
+          <Text style={[styles.status, status.length <= 9 && styles.statusBig, { color: ink }]} numberOfLines={2}>{status}</Text>
           {overrules ? (
             <View style={styles.beeTag}>
               <Text style={styles.beeTagText}>Bee overrules</Text>
@@ -149,7 +149,7 @@ function Counter({ label, value, over }: { label: string; value: string; over: b
   );
 }
 
-function ConversationPanel({ live }: { live: LiveSlice }) {
+function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null }) {
   const debug = useDebug();
   const w: LiveWindow | null = live.window;
   const over = (r: string) => !!w?.rules.find((x) => x.rule === r)?.over;
@@ -163,8 +163,10 @@ function ConversationPanel({ live }: { live: LiveSlice }) {
       </View>
       {!w ? (
         <View style={styles.listening}>
-          <Listening />
-          <Text style={styles.listenTitle}>{live.ended ? 'Conversation ended.' : 'Bee is listening.'}</Text>
+          <View style={styles.listenRow}>
+            <Listening />
+            <Text style={styles.listenTitle}>{live.ended ? 'Conversation ended.' : 'Bee is listening.'}</Text>
+          </View>
           <Text style={styles.listenHint}>{live.ended ? `${live.ended.wearerWords} of your words. ${live.ended.recap === 'pending' ? 'Recap on its way.' : 'Too short for a recap.'}` : 'Your pace and habits show here when you talk. Other voices are never shown.'}</Text>
         </View>
       ) : (
@@ -187,7 +189,13 @@ function ConversationPanel({ live }: { live: LiveSlice }) {
       </View>
       )}
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}
-      {w ? <View style={{ flex: 1 }} /> : null}
+      <View style={{ flex: 1 }} />
+      {!w && last && !nudge ? (
+        <View style={styles.last} testID="last-conversation">
+          <Text style={styles.lastKicker}>Last conversation</Text>
+          <Text style={styles.lastText} numberOfLines={2}>{curly(last.headline)}</Text>
+        </View>
+      ) : null}
       {nudge ? (
         <View style={styles.nudge} testID="nudge-card">
           <Text style={styles.nudgeTitle} numberOfLines={1}>{nudge.wrist.status === 'failed' ? `Nudge not delivered: ${RULE_LABEL[nudge.rule]}` : `Wrist nudge: ${RULE_LABEL[nudge.rule]}`}</Text>
@@ -206,7 +214,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   drill: { flex: 1.15, backgroundColor: C.paper, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl, marginRight: SP.l },
   drillQuiet: { flex: 0.8 },
-  drillWide: { flex: 1.6 },
   convo: { flex: 1, backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: SP.xxl, paddingVertical: SP.xl },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { color: C.inkDim, fontSize: T.body, fontWeight: '600', fontFamily: F.family },
@@ -219,11 +226,16 @@ const styles = StyleSheet.create({
   bandHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   beeTag: { backgroundColor: C.lavender, borderRadius: R.pill, paddingHorizontal: SP.m, paddingVertical: 6 },
   beeTagText: { color: C.lavenderInk, fontSize: T.label, fontWeight: '700', fontFamily: F.family },
-  listening: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SP.xl },
-  listenDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.lavender, marginBottom: SP.l },
-  listenTitle: { color: C.text, fontSize: T.h2, fontWeight: '700', textAlign: 'center', fontFamily: F.family },
-  listenHint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.s, textAlign: 'center', maxWidth: 620, fontFamily: F.family },
+  listening: { marginTop: SP.xxl },
+  listenRow: { flexDirection: 'row', alignItems: 'center' },
+  listenDot: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.lavender, marginRight: SP.l },
+  listenTitle: { color: C.text, fontSize: 52, lineHeight: 64, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  listenHint: { color: C.dim, fontSize: T.body, lineHeight: 42, marginTop: SP.m, maxWidth: 640, fontFamily: F.family },
+  last: { borderTopWidth: 2, borderColor: C.line, paddingTop: SP.l },
+  lastKicker: { color: C.faint, fontSize: T.label, fontFamily: F.family },
+  lastText: { color: C.text, fontSize: T.body, lineHeight: 42, fontWeight: '600', marginTop: SP.xs, fontFamily: F.family },
   status: { flexShrink: 1, fontSize: 56, lineHeight: 66, fontWeight: '700', letterSpacing: -1, fontFamily: F.family },
+  statusBig: { fontSize: 104, lineHeight: 116, letterSpacing: -3 },
   support: { color: C.inkDim, fontSize: T.body, lineHeight: 40, marginTop: SP.s, fontFamily: F.family },
   supportSmall: { fontSize: T.small, lineHeight: 38 },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.l },

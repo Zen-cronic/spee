@@ -47,7 +47,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
       break;
     case 'live':
     case 'drill':
-      screen = <LiveView drill={s.drill} live={s.live} partial={m.partial?.text ?? null} focus={s.view === 'drill' ? 'drill' : 'live'} />;
+      screen = <LiveView drill={s.drill} live={s.live} partial={m.partial?.text ?? null} focus={s.view === 'drill' ? 'drill' : 'live'} last={s.recap} />;
       break;
     case 'practice':
       screen = <PracticeView p={s.practice} code={m.code} mics={m.mics} />;
