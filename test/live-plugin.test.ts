@@ -1,8 +1,10 @@
 // The live plugin's HTTP routes on a real demo hub (pace 0.01): GET /api/live, POST
-// /api/live/mode, GET /api/recaps[/<id>], GET /api/coach/now and POST /api/demo/live, with their
-// errors. The demo story runs through the replayed Bee stream in about 3 s.
+// /api/live/mode, GET /api/recaps[/<id>], GET /api/coach/now, GET /api/coach/facts and POST
+// /api/demo/live, with their errors. The demo story runs through the replayed Bee stream in about 3 s.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { BEE_MEMORY_NOTE } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
+import { GOAL_TEXT_RE } from "../src/hub/live/facts.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -37,7 +39,7 @@ afterAll(async () => s.close());
 describe("live routes (demo hub)", () => {
   it("health: the live plugin is ready, with its wrist and principles source", async () => {
     const h = (await get("/api/health")).body;
-    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template$/) });
+    expect(h.plugins.find((p: any) => p.name === "live")).toMatchObject({ owner: "packet A", status: "ready", note: expect.stringMatching(/^wrist: replay; principles: (template|local); recap phrasing: template; Bee facts: demo$/), routes: expect.arrayContaining(["GET /api/coach/facts"]) });
   });
   it("GET /api/live: off by default, the synthetic baseline, the replay wrist", async () => {
     const r = await get("/api/live");
@@ -74,6 +76,17 @@ describe("live routes (demo hub)", () => {
     expect(live.recentSkips[0]).toMatchObject({ reason: "cooldown" });
     const all = JSON.stringify([events, list.body, now, live]);
     expect(all).not.toContain(PLANTED_OTHER_MARKER);
+  });
+  it("GET /api/coach/facts (demo): the goal it would write, nothing written, the note", async () => {
+    const r = await get("/api/coach/facts");
+    expect(r.status).toBe(200);
+    expect(r.body).toMatchObject({ synthetic: true, enabled: true, status: "demo", goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE });
+    expect(r.text).not.toContain(PLANTED_OTHER_MARKER);
+  });
+  it("a tunnel or public request to the coach routes gets 403 (the gate)", async () => {
+    const tunnel = { "x-forwarded-for": "203.0.113.7", "x-forwarded-proto": "https" };
+    expect((await raw(s.port, "/api/coach/facts", { headers: tunnel })).status).toBe(403);
+    expect((await raw(s.port, "/api/coach/facts", { headers: { host: "bee-coach-demo.ngrok-free.app" } })).status).toBe(403);
   });
   it("unknown paths under the prefixes fall through to not_found", async () => {
     expect((await get("/api/live/nope")).body.error).toBe("not_found");

@@ -5,6 +5,7 @@
 //   GET  /api/recaps?limit=  RecapList (newest first)
 //   GET  /api/recaps/<id>    Recap | 404 unknown_recap
 //   GET  /api/coach/now      CoachNow (deterministic; no model call)
+//   GET  /api/coach/facts    BeeMemory: the goal fact in Bee and Bee's counts (live/facts.ts; COACH_FACTS=1)
 //   POST /api/demo/live      {script?} -> 202 DemoLiveResponse (demo only)
 //   GET  /api/settings       SettingsResponse: the conversation settings, per-setting rates (secondary view)
 //   POST /api/sessions/<id>/setting  {setting} -> SettingResponse, then stats.updated (src/hub/settings.ts)
@@ -24,13 +25,14 @@ import { DEFAULT_TIMINGS } from "../bee.js";
 import { corpusWpm, DEFAULT_WPM } from "./baseline.js";
 import { DEMO_SCRIPTS, predictedSteps, scheduleScript } from "./demoScripts.js";
 import { LiveEngine } from "./engine.js";
+import { BeeFacts, factsModeFor, type BeeFactsOptions, type FactsMode } from "./facts.js";
 import { MODE_MAX_MINUTES } from "./policy.js";
 import { loadPrinciples, type Principles } from "./principles.js";
 import type { PhraseFn } from "./recapPrompt.js";
 import { BeeTodoWrist, REPLAY_TODO_MS, ReplayWrist, type ExecFn, type Wrist } from "./wrist.js";
 
 export const LIVE_PREFIXES = ["/api/live", "/api/recaps", "/api/coach", "/api/demo/live", "/api/settings", "/api/sessions"];
-export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "POST /api/demo/live", "GET /api/settings", "POST /api/sessions/<id>/setting"];
+export const LIVE_ROUTES = ["GET /api/live", "POST /api/live/mode", "GET /api/recaps", "GET /api/recaps/<id>", "GET /api/coach/now", "GET /api/coach/facts", "POST /api/demo/live", "GET /api/settings", "POST /api/sessions/<id>/setting"];
 export const LIVE_TOPICS = ["conversation.started", "live.window", "nudge.sent", "nudge.skipped", "conversation.ended", "recap.ready", "live.mode"];
 
 export interface LivePluginOptions {
@@ -39,6 +41,9 @@ export interface LivePluginOptions {
   phrase?: PhraseFn | null; // recap phrasing (tests); default: env COACH_RECAP_LLM=1 in live mode
   principles?: Principles;
   onEngine?: (e: LiveEngine) => void;
+  factsMode?: FactsMode; // default: COACH_FACTS=1 in live mode with the stream ("live"), demo "demo", else "off"
+  facts?: Partial<BeeFactsOptions>; // tests: clock, sleep, timings
+  onFacts?: (f: BeeFacts) => void;
 }
 
 const SCRIPTS = Object.keys(DEMO_SCRIPTS) as DemoLiveScript[];
@@ -70,6 +75,7 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
   // Its headline and narration say where their usual came from when the wearer chose another setting.
   const served = (r: Recap): Recap => (book ? rewordRecapSetting({ ...r, setting: recapTag(book, r) }) : r);
   let wrist: Wrist | null = null;
+  let facts: BeeFacts | null = null;
 
   const pickWrist = (ctx: PluginCtx): Wrist => {
     if (opts.wrist) return opts.wrist(ctx);
@@ -107,7 +113,12 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
       ctx.hub.onBee({ line: (l) => e.onLine(l), conversation: (c) => e.onConversation(c), todoDeleted: (t) => e.onTodoDeleted(t) });
       wrist.start();
       opts.onEngine?.(e);
-      ctx.log("live.attached", { wrist: wrist.channel, principles: principles.source, thresholds: principles.thresholdsFrom, phrasing: wantLlm ? "llm" : e.phrasing });
+      // Bee memory: separate from the engine, so a Bee facts failure never touches live coaching.
+      const factsMode = opts.factsMode ?? factsModeFor({ demo: ctx.demo, stream: !!ctx.setup.stream });
+      facts = new BeeFacts({ hub: ctx.hub, mode: factsMode, stateDir: ctx.stateDir, exec: opts.exec, log: ctx.log, onChange: () => ctx.hub.publishStats(), ...opts.facts });
+      facts.start();
+      opts.onFacts?.(facts);
+      ctx.log("live.attached", { wrist: wrist.channel, principles: principles.source, thresholds: principles.thresholdsFrom, phrasing: wantLlm ? "llm" : e.phrasing, facts: factsMode });
     },
     async route(req, res, url, ctx) {
       const e = engine;
@@ -138,6 +149,8 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
         }
         case "GET /api/coach/now":
           return ctx.json(res, 200, e.coachNow()), true;
+        case "GET /api/coach/facts":
+          return ctx.json(res, 200, facts!.memory()), true;
         case "GET /api/settings": {
           const source = parseSource(url.searchParams.get("source"));
           if (!source) return ctx.json(res, 400, { error: "bad_source", message: "source must be bee (default) or all" }), true;
@@ -186,10 +199,11 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
         status: !engine ? "off" : w && !w.healthy ? "degraded" : "ready",
         routes: LIVE_ROUTES,
         topics: LIVE_TOPICS,
-        note: engine ? `wrist: ${w?.channel}${w && !w.healthy ? " (circuit open)" : ""}; principles: ${principles?.source}; recap phrasing: ${engine.phrasing}` : "not attached",
+        note: engine ? `wrist: ${w?.channel}${w && !w.healthy ? " (circuit open)" : ""}; principles: ${principles?.source}; recap phrasing: ${engine.phrasing}; Bee facts: ${facts?.describe()}` : "not attached",
       };
     },
     stop() {
+      facts?.stop();
       engine?.stop();
     },
   };
