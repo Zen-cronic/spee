@@ -28,7 +28,9 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
       <Text style={styles.kicker}>Since you started practising · your real conversations, heard by Bee</Text>
       <Text style={styles.title} numberOfLines={1}>{title.lead}</Text>
       {title.rest ? <Text style={[styles.title, styles.titleRest]} numberOfLines={1}>{title.rest}</Text> : null}
-      <View style={styles.cards}>
+      {/* the per-setting line sits right under the result; the cards start closer so they keep their height */}
+      <BySettingLine line={settings?.line} />
+      <View style={[styles.cards, settings?.line ? styles.cardsTight : null]}>
         {drilled.map((x) => (
           <HabitCard key={x.habit} h={x} />
         ))}
@@ -37,7 +39,6 @@ export function TransferView({ transfer, captions, settings }: { transfer: Trans
         ))}
       </View>
       <FirstSignalLines signals={transfer.firstSignal} />
-      <BySettingLine line={settings?.line} />
       <CaptionsLine all={captions?.all ?? null} instrument={captions?.instrument ?? null} />
       <Text style={[styles.note, withCaptions && styles.noteTight]} numberOfLines={1}>{`Plan set ${fmtDate(transfer.prereg.registeredAt)}, before your first practice. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and a clear gap between them.`}</Text>
       {debug ? <Text style={styles.debug} numberOfLines={2}>{transfer.habits.map((x) => `${x.habit} ${x.before.ci95.join('–')} → ${x.after.ci95.join('–')} (${x.before.words}/${x.after.words} w)`).join('  ·  ')}{transfer.unregistered.length ? `  ·  unregistered: ${transfer.unregistered.map((u) => u.habit).join(', ')}` : ''}</Text> : null}
@@ -78,6 +79,7 @@ const styles = StyleSheet.create({
   title: { color: C.text, fontSize: T.h1, lineHeight: 76, fontWeight: '700', letterSpacing: -1, marginTop: SP.xs, fontFamily: F.family },
   titleRest: { color: C.dim, marginTop: 0 },
   cards: { flex: 1, flexDirection: 'row', marginTop: SP.l },
+  cardsTight: { marginTop: SP.s },
   card: { flex: 1, borderRadius: R.l, paddingHorizontal: SP.xl, paddingVertical: SP.l, marginRight: SP.l },
   paper: { backgroundColor: C.paper },
   dark: { backgroundColor: C.surface, marginRight: 0 },
