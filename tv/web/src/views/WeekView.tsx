@@ -11,7 +11,6 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
   if (!stats) return <Empty text="Loading your week…" />;
   const h = stats.habits;
   const rows = WEEK_HABITS.map((w) => ({ ...w, rate: h[w.key], top: 'breakdown' in h[w.key] ? topWord((h[w.key] as { breakdown: Record<string, number> }).breakdown) : null }));
-  const sessions = stats.sessions.length;
   const due = deck?.dueNow ?? null;
   const done = today?.passed ?? 0;
   return (
