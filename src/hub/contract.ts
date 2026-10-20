@@ -857,7 +857,7 @@ export type McpToolName = (typeof MCP_TOOLS)[number]["name"];
 export type PluginStatus = "stub" | "ready" | "degraded" | "off";
 export interface PluginInfo {
   name: string;
-  owner: string; // "lead" | "packet A" | "packet B" | "packet C"
+  owner: string; // the component: "live coaching" | "practice mirror" | "hub" | "Alexa skill" | "MCP server"
   status: PluginStatus;
   prefixes: string[];
   routes: string[]; // "METHOD /path" ("<id>" marks a parameter)

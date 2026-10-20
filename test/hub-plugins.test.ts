@@ -115,6 +115,12 @@ describe("hub server with the landed plugins (and a probe plugin)", () => {
     expect(r.text).not.toContain("p".repeat(20));
     expect(r.text).not.toContain("m".repeat(20));
   });
+  it("the contract's owner comment names the same components, and the TV guide no longer asks for the stub tests", () => {
+    const owner = readFileSync(new URL("../src/hub/contract.ts", import.meta.url), "utf8").split("\n").find((l) => /^\s+owner: string;/.test(l))!;
+    for (const n of PLUGIN_NAMES) expect(owner, n).toContain(`"${PLUGIN_MODULES[n].owner}"`);
+    expect(owner).not.toMatch(/packet|"lead"/);
+    expect(readFileSync(new URL("../docs/tv.md", import.meta.url), "utf8")).not.toMatch(/still expects stubs|lead-owned/);
+  });
   it("every planned v2 route is owned by its landed plugin (no 501 stubs, no core 404)", async () => {
     const want: [string, string, number[]][] = [
       ["GET", "/api/live", [200]],

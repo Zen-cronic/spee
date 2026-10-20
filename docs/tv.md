@@ -226,10 +226,5 @@ Desktop headless Chrome has no speech service, so in the automated run part 1 fa
 
 ## Contract change requests
 
-1. **`test/hub-plugins.test.ts` (lead-owned) still expects stubs.**
-   - "every planned v2 route answers 501 not_implemented from its owner's stub" lists `POST /api/demo/mirror` as a 501. It now answers 202, or 400 `bad_request`/`demo_only`. Packet A's `/api/live` routes and packet C's routes break the same test.
-   - "health: … every plugin's status" expects `live` with status `stub`.
-   - Suggested: drop the landed routes from the 501 list, or assert "never 404 and never 501" per route, and read `status` from `describe()`.
-   - These are the only failures in `npx vitest run` from this tree; both come from that file.
-2. **(Optional) `DemoMirrorRequest` could document the non-fixture demo take.** Without fixture mode it is 60 frames at 10 Hz (6 s), and `mirror.focus` is published *before* the frames: the take starts, then the summary. Fixture mode publishes it after the frames. Both orders are valid for the TV, which switches on meters anyway.
-3. **(Optional) `PracticeSummary.room` for a demo take sent to every room is `"*"`.** The type says "bridge room code". Either document `"*"` or allow `null`.
+1. **(Optional) `DemoMirrorRequest` could document the non-fixture demo take.** Without fixture mode it is 60 frames at 10 Hz (6 s), and `mirror.focus` is published *before* the frames: the take starts, then the summary. Fixture mode publishes it after the frames. Both orders are valid for the TV, which switches on meters anyway.
+2. **(Optional) `PracticeSummary.room` for a demo take sent to every room is `"*"`.** The type says "bridge room code". Either document `"*"` or allow `null`.
