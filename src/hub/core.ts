@@ -10,14 +10,14 @@ import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { localDate } from "../real/deck.js";
 import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
-import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
+import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEvent, type BeeEvent, type BeeLine, type BeeSpan, type PollFn, type Verification, type VerifierTimings, type WearerTagRule } from "./bee.js";
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
 import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
-import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, type DrillEvent, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
+import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
 import { failReason } from "./failReason.js";
 
 export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed";
@@ -32,7 +32,9 @@ export interface Attempt {
   createdAt: number;
   settledAt: number | null;
   provisional: { source: ProvisionalSource; text: string; speechEndAt: number; grade: GradeResult } | null;
-  bee: { text: string; gradedText?: string; extraText?: string; utteranceIds: number[]; speakerScore: number | null; via: "stream" | "poll"; latencyMs: number | null; coverage: number | null; replay: boolean } | null;
+  // spokenFromMs/spokenToMs/conversationId: when Bee's lines were spoken and in which conversation
+  // (absent on attempts stored before they were recorded).
+  bee: { text: string; gradedText?: string; extraText?: string; utteranceIds: number[]; speakerScore: number | null; via: "stream" | "poll"; latencyMs: number | null; coverage: number | null; replay: boolean; spokenFromMs?: number; spokenToMs?: number; conversationId?: string | null } | null;
   final: { source: "bee"; pass: boolean; grade: GradeResult } | null;
   agreement: "agree" | "bee-overrules" | "bee-only" | null;
   reason: string; // why it is in this status
@@ -369,7 +371,7 @@ export class CoachHub extends EventEmitter {
     const c = a && this.card(a.cardId);
     if (!a || !c) return;
     if (v.status === "verified" && v.beeText) {
-      a.bee = { text: v.beeText, utteranceIds: v.beeUtteranceIds, speakerScore: v.speakerScore, via: v.via!, latencyMs: v.latencyMs, coverage: v.coverage, replay: !!this.opts.replay };
+      a.bee = { text: v.beeText, utteranceIds: v.beeUtteranceIds, speakerScore: v.speakerScore, via: v.via!, latencyMs: v.latencyMs, coverage: v.coverage, replay: !!this.opts.replay, ...spanFields(v.beeSpan) };
       a.reason = v.reason;
       this.publish("attempt.verified", { attemptId: a.id, cardId: a.cardId, status: "verified", via: v.via, speakerScore: v.speakerScore, latencyMs: v.latencyMs, beeText: v.beeText, replay: !!this.opts.replay, reason: v.reason });
       this.settle(a, c, v.beeText);
@@ -409,7 +411,7 @@ export class CoachHub extends EventEmitter {
       createdAt: now,
       settledAt: null,
       provisional: null,
-      bee: { text: b.text, utteranceIds: b.beeUtteranceIds, speakerScore: b.speakerScore, via: "stream", latencyMs: Math.round(now - b.speechEndMs), coverage: null, replay: !!this.opts.replay },
+      bee: { text: b.text, utteranceIds: b.beeUtteranceIds, speakerScore: b.speakerScore, via: "stream", latencyMs: Math.round(now - b.speechEndMs), coverage: null, replay: !!this.opts.replay, ...spanFields(b.beeSpan ?? { fromMs: b.speechStartMs, toMs: b.speechEndMs, conversationId: null }) },
       final: null,
       agreement: null,
       reason: "Bee tagged the wearer saying the open card (no phone/Alexa preview)",
@@ -606,7 +608,7 @@ export class CoachHub extends EventEmitter {
       habits: habitRates(ss),
       talk: talkSummary(ss),
       practice: as && practiceCounts(as),
-      drilledVsNextSession: nextSessionDeltas(this.sessions, this.drillEvents(), this.tz, source).map((d) => ({
+      drilledVsNextSession: nextSessionDeltas(withoutDrillLines(this.sessions, this.drillLines()), this.drillEvents(), this.tz, source).map((d) => ({
         ...d,
         preregistered: !!this.prereg && isRegistered(d.habit, new Set([...this.prereg.drilled, ...this.prereg.control].map((h) => h.habit))),
         note: "one session either side of the first drill: a glance, not a test (see /api/transfer)",
@@ -629,9 +631,23 @@ export class CoachHub extends EventEmitter {
 
   transfer(source: SourceSel = "bee") {
     if (!this.prereg) return null;
-    // Bee lines that were drill attempts are not everyday speech (review M2)
-    const drillLineKeys = new Set(this.attempts.flatMap((a) => (a.bee?.utteranceIds ?? []).map((id) => `u:${id}`)));
-    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLineKeys }) };
+    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLines: this.drillLines() }) };
+  }
+
+  // The Bee lines that were drill attempts, which are not everyday speech: by utterance id, and by
+  // time and text for the final transcript's own ids (stats.ts DrillLines). An attempt stored without
+  // its spoken window gets one from what it has: its speech end, back 30 s.
+  drillLines(): DrillLines {
+    const keys = new Set<string>();
+    const spans: DrillSpan[] = [];
+    for (const a of this.attempts) {
+      const b = a.bee;
+      if (!b) continue;
+      for (const id of b.utteranceIds ?? []) keys.add(`u:${id}`);
+      const end = b.spokenToMs ?? a.provisional?.speechEndAt ?? a.createdAt - (b.latencyMs ?? 0);
+      spans.push({ session: b.conversationId ?? null, fromMs: b.spokenFromMs ?? end - 30_000, toMs: end, text: b.text });
+    }
+    return { keys, spans };
   }
 
   // Today's drill tally (the hub's local day), without computing the rest of the stats. Every
@@ -726,6 +742,8 @@ export class CoachHub extends EventEmitter {
     if (p) this.persistSafe("attempts", () => writeJsonAtomic(p, { attempts: this.attempts }));
   }
 }
+
+const spanFields = (s: BeeSpan | null | undefined) => (s ? { spokenFromMs: s.fromMs, spokenToMs: s.toMs, conversationId: s.conversationId == null ? null : String(s.conversationId) } : {});
 
 const selectFrom = (today: string) => {
   const d = new Date(`${today}T12:00:00Z`);

@@ -217,7 +217,7 @@ Card fields:
 - `status`: `pending_bee | polling | graded | unverified`.
 - `counted`: true only once Bee's text has been graded.
 - `provisional`: `{source, text, speechEndAt, grade}`, or null for a Bee-only attempt.
-- `bee`: `{text, gradedText, extraText, utteranceIds, speakerScore, via: "stream"|"poll", latencyMs, coverage, replay}`. `gradedText` is the part of Bee's line that was graded; `extraText` is the merged speech that was cut.
+- `bee`: `{text, gradedText, extraText, utteranceIds, speakerScore, via: "stream"|"poll", latencyMs, coverage, replay, spokenFromMs?, spokenToMs?, conversationId?}`. `gradedText` is the part of Bee's line that was graded; `extraText` is the merged speech that was cut. `spokenFromMs`/`spokenToMs` (hub-clock ms) and `conversationId` (the Bee conversation, or null) say when and where Bee's lines were spoken; older attempts omit them.
 - `final`: `{source: "bee", pass, grade}`.
 - `agreement`: `agree | bee-overrules | bee-only`.
 - `box`: `{from, to, dueBefore, dueAfter, scheduled}`. `scheduled` is false for a pass on a card that was not due.
@@ -372,7 +372,7 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 
 - `dropped` or `rose`: the 95% intervals (Poisson, Byar) do not overlap, and both periods have at least `minWordsPerPeriod` words.
 - `no change`: the intervals overlap. This means no detectable change (the `detail` says so), not proof that nothing changed.
-- Bee lines that were drill attempts (`attempt.bee.utteranceIds`) are left out of both periods: a card sentence said for a drill is not everyday speech.
+- Bee lines that were drill attempts are left out of both periods: a card sentence said for a drill is not everyday speech. A line is a drill line when its key is one of `attempt.bee.utteranceIds`, or, because the stats lines come from Bee's final transcript while a stream-matched attempt carries the live stream's ids, when it was spoken inside the attempt's window (`spokenFromMs` to `spokenToMs`, 8 s slack) in the same conversation and most of its words are the attempt's (or most of the attempt's words are in it).
 - `too little data`: a period has fewer words than the minimum. `detail` gives the counts and `wordsNeededPerPeriod`, the words per period needed to tell a halving of the "before" rate from no change.
 - `not drilled yet`: there is no counted drill attempt, so no after period exists.
 - `invalid`: the control was drilled, or a drilled habit's first drill came before the pre-registration.

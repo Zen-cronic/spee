@@ -15,6 +15,7 @@ import { rateCi95, talkMetrics } from "../real/talk.js";
 import { listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
 import { readJsonSafe } from "./atomic.js";
 import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
+import { align, normTokens } from "./fuzzy.js";
 import { countHabitKey, habitMatches, isRegistered, parseHabitKey, umbrellaOf, vagueMatches } from "./habits.js";
 
 export interface StatLine {
@@ -22,6 +23,7 @@ export interface StatLine {
   text: string;
   dom: "fr" | "en";
   uncertain: boolean;
+  spokenAt?: number | null; // Bee spoken_at (epoch ms), when the source has it
 }
 export interface StatSession {
   id: string;
@@ -52,7 +54,7 @@ export function mergeCorpus(byId: Map<string, StatSession>, corpus: RealCorpus |
   for (const l of (corpus.lines ?? []) as WearerLine[]) {
     if (opts.newOnly && !mine.has(l.session)) continue;
     const s = byId.get(l.session);
-    if (s && !s.lines.some((x) => x.key === l.key)) s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain });
+    if (s && !s.lines.some((x) => x.key === l.key)) s.lines.push({ key: l.key, text: l.text, dom: l.dom, uncertain: l.uncertain, spokenAt: l.spokenAt ?? null });
   }
   for (const t of timelines) {
     const s = byId.get(t.session);
@@ -273,6 +275,41 @@ export function firstSignals(ss: StatSession[], drilled: { habit: string; label:
     });
 }
 
+// Bee lines that were drill attempts, which are not everyday speech. A line is a drill line when its
+// key is one of the attempt's utterance ids, or, since the stats lines come from Bee's final
+// transcript and an attempt matched on the live stream carries the realtime transcript's ids (two
+// lists with their own ids and their own segmentation), when it was spoken inside the attempt's
+// speech window (with the clock slack) in the same conversation and its words are the attempt's:
+// most of the line is in the attempt's Bee text, or most of that text is in the line.
+export interface DrillSpan {
+  session: string | null; // the Bee conversation id, when known
+  fromMs: number;
+  toMs: number;
+  text: string;
+}
+export interface DrillLines {
+  keys: Set<string>; // "u:<utteranceId>"
+  spans: DrillSpan[];
+}
+export const DRILL_LINE_SLACK_MS = 8000; // Bee spoken_at is second-granular, and clocks differ
+export const DRILL_TEXT_MATCH = 0.6;
+const drillText = (line: string, attempt: string) => {
+  const l = normTokens(line);
+  const a = normTokens(attempt);
+  if (!l.length || !a.length) return false;
+  return align(l, a).score >= DRILL_TEXT_MATCH || align(a, l).score >= DRILL_TEXT_MATCH;
+};
+export function isDrillLine(session: string, l: StatLine, d: DrillLines): boolean {
+  if (d.keys.has(l.key)) return true;
+  if (l.spokenAt == null) return false;
+  const t = l.spokenAt;
+  return d.spans.some((sp) => (sp.session == null || sp.session === session) && t >= sp.fromMs - DRILL_LINE_SLACK_MS && t <= sp.toMs + DRILL_LINE_SLACK_MS && drillText(l.text, sp.text));
+}
+export function withoutDrillLines(ss: StatSession[], d: DrillLines | undefined): StatSession[] {
+  if (!d || (!d.keys.size && !d.spans.length)) return ss;
+  return ss.map((s) => (s.lines.some((l) => isDrillLine(s.id, l, d)) ? { ...s, lines: s.lines.filter((l) => !isDrillLine(s.id, l, d)) } : s));
+}
+
 const f1 = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
 // The first signal as one spoken sentence (the coach's "how am I doing?"), or null when no drilled
 // habit has a next conversation yet. Says "too short to compare" instead of a number.
@@ -329,18 +366,17 @@ function period(sessions: StatSession[], key: string, tz?: string): Period {
   return { sessions: sessions.length, words, count, per100: r.per100, ci95: r.ci95, from: dates[0] ?? null, to: dates.at(-1) ?? null };
 }
 
-// `drillLineKeys`: corpus line keys ("u:<utteranceId>") that Bee heard as drill attempts. They are
-// left out of both periods: a card sentence said for a drill is not everyday speech, and counting
-// it would make the "after" rate look better just because drills were recorded.
-export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel; drillLineKeys?: Set<string> }): TransferReport {
+// `drillLines`: the lines Bee heard as drill attempts (DrillLines). They are left out of both
+// periods: a card sentence said for a drill is not everyday speech, and counting it would make the
+// "after" rate look better just because drills were recorded.
+export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel; drillLines?: DrillLines }): TransferReport {
   const { prereg } = opts;
   const source = opts.source ?? "bee";
   const minWords = prereg.min_words_per_period;
-  const drillKeys = opts.drillLineKeys ?? new Set<string>();
-  const ss = opts.sessions
-    .filter((s) => inSource(s, source))
-    .map((s) => (drillKeys.size && s.lines.some((l) => drillKeys.has(l.key)) ? { ...s, lines: s.lines.filter((l) => !drillKeys.has(l.key)) } : s))
-    .sort((a, b) => a.startMs - b.startMs);
+  const ss = withoutDrillLines(
+    opts.sessions.filter((s) => inSource(s, source)),
+    opts.drillLines,
+  ).sort((a, b) => a.startMs - b.startMs);
   const registeredAt = Date.parse(prereg.registered_at);
   const firstDrill = (key: string) => {
     const ts = opts.drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at);

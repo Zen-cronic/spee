@@ -143,7 +143,7 @@ describe("live ingest: a finished conversation becomes a stats session", () => {
     const f = hedges(r.hub);
     expect(f.status).toBe("measured");
     expect(f.after).toMatchObject({ session: "200" });
-    // the drill line Bee heard is left out, as in the transfer periods (drillLineKeys)
+    // the drill line Bee heard is left out, as in the transfer periods (DrillLines)
     expect(f.after!.words).toBe(SPEECH.reduce((n, t) => n + wordCount(t), 0));
     expect(f.after!.count).toBeGreaterThan(0);
     // "how am I doing?" reads the same transfer on every ask: it now says the first signal

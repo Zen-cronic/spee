@@ -60,7 +60,7 @@ describe("transfer", () => {
       keys.add(key);
     }
     const counted = transfer({ sessions: [before, withDrills], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now() });
-    const fixed = transfer({ sessions: [before, withDrills], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now(), drillLineKeys: keys });
+    const fixed = transfer({ sessions: [before, withDrills], prereg: PREREG, preregPath: "p", drills: [drill], nowMs: Date.now(), drillLines: { keys, spans: [] } });
     const h = (t: typeof fixed) => t.habits.find((x) => x.habit === "hedge:i guess")!;
     expect(h(fixed).after.words).toBeLessThan(h(counted).after.words);
     expect(h(fixed).after.per100).toBeGreaterThan(h(counted).after.per100);
@@ -239,7 +239,7 @@ describe("first signal: the next conversation after the first drill", () => {
     const drillOnly = sess("drill", "conversation", "2026-10-20T10:01:00-04:00", ["The dashboard loads slowly on Mondays."]);
     drillOnly.startMs = drillAt + 30_000;
     const keys = new Set(["drill:0"]);
-    const fs = run([mon, drillOnly, tue], { drillLineKeys: keys });
+    const fs = run([mon, drillOnly, tue], { drillLines: { keys, spans: [] } });
     expect(fs[0]!.after!.session).toBe("tue");
   });
 });

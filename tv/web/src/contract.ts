@@ -140,7 +140,9 @@ export interface Attempt {
   createdAt: number;
   settledAt: number | null;
   provisional: { source: ProvisionalSource; text: string; speechEndAt: number; grade: GradeResult } | null;
-  bee: { text: string; gradedText?: string; extraText?: string; utteranceIds: number[]; speakerScore: number | null; via: "stream" | "poll"; latencyMs: number | null; coverage: number | null; replay: boolean } | null;
+  // spokenFromMs/spokenToMs/conversationId (additive): when Bee's lines were spoken and in which Bee
+  // conversation, so the stats can leave the drill lines out of the final transcript too.
+  bee: { text: string; gradedText?: string; extraText?: string; utteranceIds: number[]; speakerScore: number | null; via: "stream" | "poll"; latencyMs: number | null; coverage: number | null; replay: boolean; spokenFromMs?: number; spokenToMs?: number; conversationId?: string | null } | null;
   final: { source: "bee"; pass: boolean; grade: GradeResult } | null;
   agreement: Agreement | null;
   reason: string;

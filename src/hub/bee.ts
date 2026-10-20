@@ -235,6 +235,14 @@ export interface Verification {
   coverage: number | null; // weighted share of the provisional text's words found in Bee's text
   latencyMs: number | null; // attempt speech end -> verification
   reason: string;
+  // When Bee's matched lines were spoken (hub-clock ms) and their conversation, when known: the stats
+  // lines come from Bee's final transcript, whose ids differ from the live stream's (DrillLines).
+  beeSpan?: BeeSpan | null;
+}
+export interface BeeSpan {
+  fromMs: number;
+  toMs: number;
+  conversationId: number | null;
 }
 
 // One Bee line as the live engine sees it (hub -> `bee.line`). PRIVACY: `text` is present only for
@@ -274,6 +282,7 @@ export interface BeeAttempt {
   speechStartMs: number;
   speechEndMs: number;
   match: number;
+  beeSpan?: BeeSpan | null;
 }
 
 interface Utt {
@@ -509,7 +518,7 @@ export class BeeVerifier {
     u.consumed = true;
     this.consumedIds.add(u.id);
     this.counters.beeOnly++;
-    this.opts.onBeeAttempt({ cardId: card.cardId, text: u.text, speakerScore: u.score ?? 0, beeUtteranceIds: [u.id], speechStartMs: u.startMs, speechEndMs: u.endMs, match });
+    this.opts.onBeeAttempt({ cardId: card.cardId, text: u.text, speakerScore: u.score ?? 0, beeUtteranceIds: [u.id], speechStartMs: u.startMs, speechEndMs: u.endMs, match, beeSpan: this.spanOf([u]) });
   }
 
   private finish(a: PendingAttempt, group: Utt[], via: "stream" | "poll", sim: number, scores?: (number | null)[]) {
@@ -528,7 +537,15 @@ export class BeeVerifier {
       coverage: sim,
       latencyMs: Math.round(this.opts.clock() - a.speechEndMs),
       reason: via === "stream" ? "Bee tagged the wearer saying it" : "Bee's transcript (poll) labels the wearer saying it",
+      beeSpan: this.spanOf(group),
     });
+  }
+
+  // When the lines were spoken and their Bee conversation (the first line's that is known).
+  private spanOf(group: Utt[]): BeeSpan | null {
+    if (!group.length) return null;
+    const uuid = group.find((g) => g.uuid)?.uuid;
+    return { fromMs: Math.min(...group.map((g) => g.startMs)), toMs: Math.max(...group.map((g) => g.endMs)), conversationId: uuid ? (this.convIds.get(uuid)?.id ?? null) : null };
   }
 
   private whyNot(a: PendingAttempt): string {
