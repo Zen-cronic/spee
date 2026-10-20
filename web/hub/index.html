@@ -247,15 +247,15 @@
     <main>
       <div class="hero">
         <div>
-          <h1>Your speech coach is running.</h1>
-          <p class="lede">Open a screen. Every drill is graded from what Bee hears.</p>
+          <h1>Your speaking coach is ready.</h1>
+          <p class="lede">Pick a screen to start. Bee checks every line you practise.</p>
         </div>
         <div class="status" id="status" aria-live="polite"></div>
       </div>
       <div class="grid">
         <a class="card tv" id="open-tv" href="/tv/">
           <h2>TV mirror</h2>
-          <p>Your week, the drill in progress, and whether the drilling worked.</p>
+          <p>Today’s practice, how you’re improving, and your numbers while you talk.</p>
           <span class="go">Open the TV →</span>
         </a>
         <a class="card" id="open-sim" href="/sim/">
@@ -273,7 +273,7 @@
         <summary>Developer</summary>
         <ul>
           <li><a href="/api/health">/api/health</a>: mode, plugins and the gate</li>
-          <li><a href="/api/state">/api/state</a>: the drill session</li>
+          <li><a href="/api/state">/api/state</a>: the practice session</li>
           <li><code>/api/events</code>: the hub's event stream (SSE)</li>
           <li><code>/mcp</code>: the MCP server the simulator and Alexa+ call</li>
         </ul>
@@ -298,7 +298,7 @@
         else if (s.bee === "live") add("Listening to Bee", "bee");
         else if (s.bee === "off") add("Bee not connected");
         if (typeof s.phones === "number") add(s.phones === 0 ? "No phone paired" : s.phones === 1 ? "1 phone paired" : s.phones + " phones paired", s.phones ? "ok" : "");
-        if (typeof s.drillsDue === "number") add(s.drillsDue === 0 ? "No drills due" : s.drillsDue === 1 ? "1 drill due" : s.drillsDue + " drills due");
+        if (typeof s.drillsDue === "number") add(s.drillsDue === 0 ? "Nothing to practise today" : s.drillsDue === 1 ? "1 line to practise" : s.drillsDue + " lines to practise");
         if (s.pairCode) {
           var code = document.getElementById("pair-code");
           code.textContent = s.pairCode;
