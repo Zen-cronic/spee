@@ -19,6 +19,11 @@ Bee is the input of record for the pre-registered check: it counts Bee conversat
 - Captions drop about 30% of "um" and "uh". A before/after that mixed captions and Bee would show a drop in filler words that is only the transcriber. That is why the pre-registration keeps Bee as the one instrument; captions appear only with `source=all`.
 - This is one meeting. Rerun the check whenever another meeting is both captioned and heard by Bee.
 
+## On the TV and in the hub
+
+- `GET /api/instrument` runs the same pairing over the sessions the hub has loaded and returns aggregates only: pooled rates per habit, whether the two transcribers agree within a small tolerance, and a claim (`docs/CONTRACT.md`).
+- Progress shows, under the Bee-only cards, a secondary "Including meeting captions" line: the same before and after from `GET /api/transfer?source=all`, for the practised habits and the one you didn't practise, with the number of captioned meetings and the earliest date. It says "not the pre-registered check", leaves filler words out, and says that captions and Bee agree only when `/api/instrument` finds the practised habits within tolerance.
+
 ## Run it
 
 ```bash

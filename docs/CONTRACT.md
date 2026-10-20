@@ -142,6 +142,7 @@ Habit keys are used by stats, transfer and the pre-registration file:
 | `POST /api/card/open` `{cardId?, by?}` | any | opens a card outside a session (practice; a card that is not due changes no box on a pass) |
 | `GET /api/stats?range=today\|week\|all\|session:<id>\|meeting:<id>&source=bee\|all` | TV | habit rates per 100 words with 95% intervals, practice counts (`null` for a `session:` or `meeting:` range, which is echoed back as asked), drilled-vs-next-session glance |
 | `GET /api/transfer?source=bee\|all&habit=<key>?` | TV, Alexa | the transfer result: drilled vs the pre-registered control |
+| `GET /api/instrument` | TV | Bee vs meeting captions on the meetings both heard: pooled rates per habit and whether they agree (aggregates only) |
 | `GET /api/brief` | Alexa, TV | pre-meeting nudge: next calendar event (Bee today brief), top habit, one warm-up card |
 | `GET /api/events` | Alexa simulator, TV web | Server-Sent Events: the same events as the WebSocket |
 | `GET /api/events/recent` | debugging | the last 50 events |
@@ -387,6 +388,31 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
   ```
 
 A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) attempt.
+
+**Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("3 captioned meetings since Oct 14").
+
+**Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee agree only when `GET /api/instrument` has `claim: "practised-agree"`.
+
+### `GET /api/instrument` (Bee vs captions; aggregates only)
+
+Each meeting caption session is paired with the Bee conversation that starts closest to it, within 45 minutes (`pairMeetings`, `src/real/instruments.ts`), and both are counted with the hub's own habit rules. Rates are pooled over the pairs. No line text and no session id is returned.
+
+```json
+{ "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)", "synthetic": true, "generatedAt": "2026-10-20T17:36:28.459Z",
+  "pairs": 1, "from": "2026-10-20", "to": "2026-10-20", "words": { "captions": 255, "bee": 256 }, "minWords": 200,
+  "tolerance": { "per100": 0.3, "relative": 0.15 },
+  "habits": [
+   { "habit": "hedges", "captionsPer100": 0.39, "beePer100": 0.39, "agree": true },
+   { "habit": "filler:like", "captionsPer100": 0.78, "beePer100": 0.78, "agree": true },
+   { "habit": "restart", "captionsPer100": 0.78, "beePer100": 0.78, "agree": true },
+   { "habit": "um-uh", "captionsPer100": 0, "beePer100": 0.39, "agree": false },
+   { "habit": "fillers", "captionsPer100": 0.78, "beePer100": 1.17, "agree": false } ],
+  "claim": "practised-agree",
+  "note": "the same meetings heard by Bee and by the meeting's captions, counted with the same habit rules; aggregates only. The pre-registered check counts Bee only." }
+```
+
+- `agree`: the two rates differ by at most the larger of `tolerance.per100` and `tolerance.relative` times the higher rate. It is `null` until the pairs have `minWords` words on each side.
+- `claim`: `practised-agree` (unsure words and filler "like" both agree), `practised-differ`, `too-little-data` or `no-pairs`. Only `practised-agree` lets a screen say captions and Bee agree.
 
 ### `GET /api/brief`
 
