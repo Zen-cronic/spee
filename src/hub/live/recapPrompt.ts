@@ -17,6 +17,7 @@ import { WRIST_TEXT_MAX, type Recap } from "../contract.js";
 import type { Principles } from "./principles.js";
 import { fold } from "./principles.js";
 import { fillSlots, type RecapSlots } from "./recap.js";
+import { SETTING_WHERE } from "../settings.js";
 
 export const RECAP_LLM_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 export const RECAP_LLM_TIMEOUT_MS = 6000;
@@ -128,11 +129,17 @@ function slotsInTheirClauses(sentence: string): boolean {
   return true;
 }
 
+// A setting's words ("in casual talk", "in meetings") say where the usual is from: they never name a
+// slot's subject ("talk" is the {minutes} family's). Blanked, positions kept, before the checks below.
+const SETTING_PHRASES = new RegExp(`\\b(?:${Object.values(SETTING_WHERE).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi");
+const withoutSettingWords = (s: string) => s.replace(SETTING_PHRASES, (m) => " ".repeat(m.length));
+
 // Each sentence: every slot's subject is named, each slot sits in a clause about its own subject
 // (slotsInTheirClauses), and each "usual" word points at its nearest slot (a tie goes to the later
 // one), which must be a usual slot; every usual slot is pointed at.
 function slotsOnTheirFacts(text: string): boolean {
-  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+  for (const said of text.split(/(?<=[.!?])\s+/)) {
+    const sentence = withoutSettingWords(said);
     const toks = [...sentence.matchAll(/\{[a-z_]+\}|\p{L}+/gu)].map((m) => m[0]);
     const slotAt = toks.map((t, i) => (t.startsWith("{") ? i : -1)).filter((i) => i >= 0);
     for (const i of slotAt) {

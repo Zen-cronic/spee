@@ -15,6 +15,7 @@ import { verdictOf } from "../src/hub/live/recap.js";
 import { acceptPhrasing, phraseRecap, recapPrompt, RECAP_LLM_MODEL, slotsIn, type PhraseFn } from "../src/hub/live/recapPrompt.js";
 import { windowThresholds } from "../src/hub/live/rules.js";
 import { ConversationWindow } from "../src/hub/live/window.js";
+import { SETTING_WHERE } from "../src/hub/settings.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
 const BASE: Baseline = { source: "test", words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, fillersPer100: 2.43, wpm: 140, vaguePer100: 0.64, restartsPer100: 0.86 };
@@ -232,6 +233,13 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
     expect(h('Unsure words were at {hedges_rate} (usually {hedges_usual}) and "like" at {like_rate} (usually {like_usual}).')).not.toBeNull();
     expect(h('Unsure words were at {like_rate} (usually {like_usual}) and "like" at {hedges_rate} (usually {hedges_usual}).')).toBeNull();
   });
+  it("a setting's words never stand in for a slot's subject ('talk' in 'in casual talk')", () => {
+    const one: RecapSlots = { values: { hedges_rate: "1.5", hedges_usual: "1.4", minutes: "4", hedges_count: "3", like_count: "0", vague_count: "0", restarts_count: "0" }, template: { headline: "Unsure words at {hedges_rate} per 100 words, against your usual {hedges_usual} in casual talk.", narration: "That conversation ran about {minutes} minutes.", wristText: "[coach] Recap" } };
+    const h = (headline: string, narration = one.template.narration) => acceptPhrasing({ headline, narration, wristText: one.template.wristText }, { moment: null } as never, one, principles);
+    expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in casual talk.")).not.toBeNull();
+    expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in casual talk.", "In casual talk it ran about {minutes} minutes.")).toBeNull(); // the only "talk" is the setting's
+    expect(h("Unsure words came to {hedges_rate} per 100 words, above your usual {hedges_usual} in casual talk.", "The talk ran about {minutes} minutes.")).not.toBeNull();
+  });
   it("the template is an accepted phrasing in every branch: worse, clean, better, typical, long turn, no baseline", () => {
     const window = (said: string[]) => {
       const w = new ConversationWindow("c", T0, true);
@@ -255,11 +263,13 @@ describe("optional model phrasing: the model writes slots, code writes the numbe
       ["no baseline", window([...plain, "I guess the alerting review is booked."]), null],
     ];
     const seen = new Set<string>();
-    for (const [name, w, base] of cases) {
-      const { recap, slots } = composeRecap(inputOf(w, base));
-      seen.add(slots.template.narration.split(".")[1]!.trim().split(" ").slice(0, 3).join(" "));
-      expect(acceptPhrasing(slots.template, recap, slots, principles), name).toEqual({ headline: recap.headline, narration: recap.narration, wristText: recap.wristText });
-    }
+    // and for every setting the usual can be from ("against your usual 1.4 in casual talk")
+    for (const [name, w, base] of cases)
+      for (const where of [undefined, ...Object.values(SETTING_WHERE)]) {
+        const { recap, slots } = composeRecap(inputOf(w, base, where ? { usualWhere: where } : {}));
+        seen.add(slots.template.narration.split(".")[1]!.trim().split(" ").slice(0, 3).join(" "));
+        expect(acceptPhrasing(slots.template, recap, slots, principles), `${name} ${where ?? ""}`).toEqual({ headline: recap.headline, narration: recap.narration, wristText: recap.wristText });
+      }
     const lt = longTurn();
     expect(acceptPhrasing(lt.slots.template, lt.recap, lt.slots, principles)).not.toBeNull();
     expect(seen.has("You didn't use")).toBe(true); // the clean branch was exercised
