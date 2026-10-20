@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { GradeCheck, GradeResult, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
+import type { FirstSignal, GradeCheck, GradeResult, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -265,4 +265,41 @@ export function gradeFailure(g: Partial<GradeResult> | null | undefined): GradeF
             ? uniq((g?.required ?? []).filter((r) => !r.ok).map((r) => r.word))
             : [];
   return { rule: fail.rule, words };
+}
+
+/** Said after every first-signal number: one conversation is a glance, never the result. */
+export const FIRST_SIGNAL_CAVEAT = 'one conversation, not proof';
+
+/**
+ * Progress's first-signal line, at most one so the cards above keep their room. Every measured
+ * habit is on it with its two rates ("Hedges 2.6 → 0.8 · “Like” 3.2 → 0.8 per 100 words in your
+ * next conversation"); with none measured, the first habit too short to compare, else one with
+ * nothing before it, else "Next conversation after your drill shows here". Null before any drill.
+ */
+export function firstSignalLine(fs: Pick<FirstSignal, 'label' | 'status' | 'before' | 'after' | 'minWords'>[] | undefined): { text: string; measured: boolean } | null {
+  if (!fs?.length) return null;
+  const measured = fs.filter((f) => f.status === 'measured');
+  if (measured.length) return { text: `${measured.map((f) => `${shortHabit(f.label)} ${fmt1(f.before?.per100)} → ${fmt1(f.after?.per100)}`).join(' · ')} per 100 words in your next conversation`, measured: true };
+  const other = fs.find((f) => f.status === 'too-few-words') ?? fs.find((f) => f.status === 'no-earlier-conversation');
+  return other ? firstSignalText(other) : { text: 'Next conversation after your drill shows here', measured: false };
+}
+
+/**
+ * One drilled habit's first signal on Progress, from the hub's status (never re-derived): the two
+ * rates only when the hub measured them, else what is missing in words.
+ */
+export function firstSignalText(f: Pick<FirstSignal, 'label' | 'status' | 'before' | 'after' | 'minWords'>): { text: string; measured: boolean } {
+  const name = shortHabit(f.label);
+  switch (f.status) {
+    case 'measured':
+      return { text: `${name} ${fmt1(f.before?.per100)} → ${fmt1(f.after?.per100)} per 100 words in your next conversation`, measured: true };
+    case 'too-few-words': {
+      const next = (f.after?.words ?? 0) < f.minWords;
+      return { text: `${name}: ${next ? 'your next conversation' : 'the conversation before your drill'} was too short to compare (${fmtInt(next ? f.after?.words : f.before?.words)} words)`, measured: false };
+    }
+    case 'no-earlier-conversation':
+      return { text: `${name}: no conversation before your drill to compare`, measured: false };
+    default:
+      return { text: `${name}: your next conversation after the drill shows here`, measured: false };
+  }
 }

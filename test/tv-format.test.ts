@@ -1,7 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { changeLabel, fmtDay, fmtMs, gradeFailure, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords } from "../tv/web/src/mirror/format.js";
+import { changeLabel, fmtDay, fmtMs, gradeFailure, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -134,5 +134,32 @@ describe("Since drilling on Home: a percent only for a decided change", () => {
     expect(changeLabel(h("invalid", 1, 0.2))).toEqual({ text: "Not counted", pct: false });
     expect(changeLabel(h("dropped", 1, 0.998)).text).toBe("0%");
     expect(verdictWords(h("dropped", 2.47, 0.64))).toBe("Down 74%");
+  });
+});
+
+describe("first signal on Progress: numbers only when the hub measured them, always with the caveat", () => {
+  const side = (words: number, per100: number) => ({ session: "s", date: "2026-10-20", startMs: 0, words, count: 0, per100 });
+  const like = { label: '"like" as a filler', minWords: 100 };
+  it("measured: the two rates for the next conversation", () => {
+    expect(firstSignalText({ ...like, status: "measured", before: side(309, 5.43), after: side(259, 2.1) })).toEqual({ text: "“Like” 5.4 → 2.1 per 100 words in your next conversation", measured: true });
+    expect(FIRST_SIGNAL_CAVEAT).toBe("one conversation, not proof");
+  });
+  it("too few words, no next conversation, nothing before: words instead of a number", () => {
+    expect(firstSignalText({ ...like, status: "too-few-words", before: side(309, 5.4), after: side(60, 0) })).toEqual({ text: "“Like”: your next conversation was too short to compare (60 words)", measured: false });
+    expect(firstSignalText({ ...like, status: "too-few-words", before: side(40, 5.4), after: side(300, 1) }).text).toBe("“Like”: the conversation before your drill was too short to compare (40 words)");
+    expect(firstSignalText({ ...like, status: "no-next-conversation", before: side(309, 5.4), after: null })).toEqual({ text: "“Like”: your next conversation after the drill shows here", measured: false });
+    expect(firstSignalText({ ...like, status: "no-earlier-conversation", before: null, after: side(300, 1) }).text).toBe("“Like”: no conversation before your drill to compare");
+  });
+  it("one line on Progress: every measured habit on it; else one status; nothing before any drill", () => {
+    const hedges = { label: "hedges (I guess, I think, maybe, kind of...)", minWords: 100 };
+    type Who = { label: string; minWords: number };
+    const m = (x: Who, b: number, a: number) => ({ ...x, status: "measured" as const, before: side(309, b), after: side(259, a) });
+    const wait = (x: Who) => ({ ...x, status: "no-next-conversation" as const, before: side(309, 2), after: null });
+    expect(firstSignalLine([m(hedges, 2.59, 0.77), m(like, 3.24, 0.77)])).toEqual({ text: "Hedges 2.6 → 0.8 · “Like” 3.2 → 0.8 per 100 words in your next conversation", measured: true });
+    expect(firstSignalLine([wait(hedges), m(like, 5.4, 2.1)])).toEqual({ text: "“Like” 5.4 → 2.1 per 100 words in your next conversation", measured: true });
+    expect(firstSignalLine([wait(hedges), wait(like)])).toEqual({ text: "Next conversation after your drill shows here", measured: false });
+    expect(firstSignalLine([wait(hedges), { ...like, status: "too-few-words", before: side(309, 5), after: side(60, 0) }])!.text).toMatch(/too short to compare \(60 words\)$/);
+    expect(firstSignalLine([])).toBeNull();
+    expect(firstSignalLine(undefined)).toBeNull();
   });
 });

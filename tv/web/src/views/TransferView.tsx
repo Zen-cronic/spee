@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { TransferHabit, TransferResponse } from '../contract';
+import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
 import { fmt1, fmtDate, fmtWords, shortHabit, transferTitle, verdictWords } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
@@ -30,6 +31,7 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
           <HabitCard key={x.habit} h={x} />
         ))}
       </View>
+      <FirstSignalLines signals={transfer.firstSignal} />
       <Text style={styles.note} numberOfLines={1}>{`Plan registered ${fmtDate(transfer.prereg.registeredAt)}, before any drill. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and clear statistical separation.`}</Text>
       {debug ? <Text style={styles.debug} numberOfLines={2}>{transfer.habits.map((x) => `${x.habit} ${x.before.ci95.join('–')} → ${x.after.ci95.join('–')} (${x.before.words}/${x.after.words} w)`).join('  ·  ')}{transfer.unregistered.length ? `  ·  unregistered: ${transfer.unregistered.map((u) => u.habit).join(', ')}` : ''}</Text> : null}
     </View>
