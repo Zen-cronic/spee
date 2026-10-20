@@ -26,6 +26,8 @@ export interface AlexaRequestEnvelope {
       apiEndpoint?: string;
       apiAccessToken?: string;
       user?: { userId?: string };
+      // "Alexa.Presentation.APL" is listed only by a device with a screen (src/alexa/apl.ts)
+      device?: { deviceId?: string; supportedInterfaces?: Record<string, unknown> };
     };
   };
   request: {
@@ -43,6 +45,12 @@ export interface OutputSpeech {
   text?: string;
   ssml?: string;
 }
+export interface AlexaDirective {
+  type: string;
+  token?: string;
+  document?: Record<string, unknown>;
+  datasources?: Record<string, unknown>;
+}
 export interface AlexaResponseEnvelope {
   version: "1.0";
   sessionAttributes?: SessionAttributes;
@@ -50,5 +58,6 @@ export interface AlexaResponseEnvelope {
     outputSpeech?: OutputSpeech;
     reprompt?: { outputSpeech: OutputSpeech };
     shouldEndSession?: boolean;
+    directives?: AlexaDirective[];
   };
 }
