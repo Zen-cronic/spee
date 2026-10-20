@@ -101,8 +101,8 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
   return (
     <View style={[styles.card, styles.working]} testID="week-transfer">
       <View style={styles.cardHead}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{shown ? 'It’s working' : 'Since you started'}</Text>
-        <Text style={styles.cardNote} numberOfLines={1}>since you started practising</Text>
+        <Text style={styles.cardTitle} numberOfLines={1}>{shown ? 'It’s working' : 'Since you started practising'}</Text>
+        {shown ? <Text style={styles.cardNote} numberOfLines={1}>since you started practising</Text> : null}
       </View>
       <View style={styles.workRow}>
         {drilled.map((x) => {
@@ -113,7 +113,7 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
                 <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }, !change.pct && styles.workNone]}>{change.pct ? change.text : '—'}</Text>
               </View>
               <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(x.habit, x.label)}</Text>
-              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : `${change.text} · practised`}</Text>
+              <Text style={styles.workWords} numberOfLines={2}>{change.pct ? 'practised' : change.text}</Text>
             </View>
           );
         })}
@@ -123,7 +123,7 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
               <Text style={[styles.workNum, styles.workFlat, cw.word && styles.workNone]} numberOfLines={1}>{cw.word ? '—' : cw.text}</Text>
             </View>
             <Text style={styles.workLabel} numberOfLines={1}>{habitTitle(control.habit, control.label)}</Text>
-            <Text style={styles.workWords} numberOfLines={1}>{cw.word ? `${cw.text} · not practised` : 'not practised'}</Text>
+            <Text style={styles.workWords} numberOfLines={2}>{cw.word ? cw.text : 'not practised'}</Text>
           </View>
         ) : null}
       </View>
