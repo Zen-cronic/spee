@@ -1,83 +1,103 @@
-# Friction log: Bee speech coach
+# Friction log: Speaking Mirror
 
-This log is part of the Amazon "Build, Ship, Shape" hackathon submission, for the friction-log bonus. Each entry is written when the friction happens: exact symptoms, steps and the workaround, with times in EDT.
+Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, Speech Coach, runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
 
-**Severity:** Blocker (no workaround) · High (workaround cost more than 1 h) · Medium (workaround under 1 h) · Low (cosmetic or a docs nit).
+- **Dates covered:** 2026-10-12 to 2026-10-20. All times are EDT (UTC−4).
+- **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
+- **Severity:** Blocker (no workaround, work stopped) · High (the workaround cost more than 1 h) · Medium (the workaround cost under 1 h) · Low (cosmetic, or a docs nit).
+- **Status:** open (still present, no workaround) · worked around (still present; our workaround is in the entry) · fixed upstream (Amazon changed it).
+- **Setup:** Toronto, Canada. Canadian Apple ID and App Store; Apple Watch SE 3 (GPS, 40 mm) and iPhone; Bee app 1.2.157; `@beeai/cli` 0.8.0; no Bee hardware (it ships to the US only). Ubuntu 24.04 (x86_64, KVM) with Vega CLI 1.4.4 and Vega SDK 0.24.12112, the Vega Virtual Device (VVD), and a Fire TV Stick (`armv7l`, Vega OS 2.0) on Wi-Fi. React Native 0.83 for Vega (`@amazon-devices/react-native-kepler` ~4.0). The Alexa skill is a development-stage custom skill, tested from the Alexa iPhone app (English, Canada) and from the Fire TV's Alexa. AWS in us-east-1.
+- **An earlier Vega prototype:** entries marked "(earlier Vega prototype)" were hit while building an earlier Vega prototype for this hackathon, on the same machine, SDK and VVD, on 2026-10-14 and 2026-10-15. The Speaking Mirror TV app started from that prototype's Vega shell. Each of those entries says whether this project hit the problem again.
+- **Left out on purpose:** device addresses and serials; account, skill and agreement ids; and anyone else's words. Bee conversation ids can be shared with the Bee team on request.
 
-**Setup:** operator in Toronto, Canada; Canadian Apple ID and App Store; Apple Watch SE 3 (GPS, 40 mm) + iPhone; Bee app 1.2.157; `@beeai/cli` 0.8.0; no Bee hardware (it ships to the US only).
+| ID | Product | Title | Severity | Status |
+|---|---|---|---|---|
+| FL-1 | Bee Apple Watch app | The Watch app freezes after the Watch disconnects from the iPhone | Medium | worked around |
+| FL-2 | Bee docs, hackathon FAQ | Developer Mode silently needs a paired device | High | worked around (doc unchanged on 2026-10-20) |
+| FL-3 | Bee API | The wearer's speaker label exists but is undocumented | Low | worked around |
+| FL-4 | Bee Apple Watch app | The "Voice Notes" button setting does nothing on a Watch without an Action Button | Medium | worked around |
+| FL-5 | Bee transcription | French speech is partly translated into English | High | worked around (scope change) |
+| FL-6 | Bee API | Stopping a recording doesn't end the conversation, and offsets restart | Medium | worked around |
+| FL-7 | Bee Apple Watch app | The only Watch voice-note path goes through Siri | Medium | worked around |
+| FL-8 | Bee docs, API | The live stream carries undocumented timestamps and a wearer-tag event | Low | worked around (doc unchanged on 2026-10-20) |
 
 ---
 
+## Bee
+
 ### FL-1: The Bee Watch app freezes on a static screen and "tap to start" stops responding after the Watch disconnects from the iPhone (Bee Apple Watch app)
-- **Date:** 2026-10-15 ~14:00–14:20 EDT
+- **Date:** 2026-10-15 ~14:00–14:20 EDT (observed once, not re-checked)
 - **Task attempted:** record a scripted French voice note on the Apple Watch for a transcription test.
 - **Steps taken:**
   1. Opened Bee on the Apple Watch.
-  2. Tapped "tap to start". Nothing happened, and the Bee screen stayed static (frozen).
+  2. Tapped "tap to start". Nothing happened, and the Bee screen stayed static.
   3. The Watch showed it was disconnected from the iPhone.
-- **Expected result:** recording starts. If the iPhone link is down, the app should say so, or record locally and sync later.
-- **Actual result:** a frozen Bee screen with no error, no "phone disconnected" message, and no way to start recording.
+- **Expected result:** recording starts. If the iPhone link is down, the app says so, or records locally and syncs later.
+- **Actual result:** a frozen Bee screen, with no error, no "phone disconnected" message and no way to start recording.
 - **Severity:** Medium
-- **Workaround used (~20 min):**
-  1. Force-quit the Bee app on the Watch (double-click the Digital Crown, swipe left on Bee, tap ✕).
-  2. Opened the Bee app on the iPhone and kept it in the foreground for a moment.
-  3. Reopened Bee on the Watch, which recovered.
-  - Restarting the devices was not needed.
+- **Workaround used (about 20 min):**
+  1. Force-quit Bee on the Watch (double-click the Digital Crown, swipe left on Bee, tap ✕).
+  2. Opened Bee on the iPhone and kept it in the foreground for a moment.
+  3. Reopened Bee on the Watch, which recovered. Restarting the devices was not needed.
 - **Actionable suggestion:**
-  - (a) When the iPhone link is unavailable, show an explicit "Reconnect to iPhone / open Bee on iPhone" state instead of a frozen screen.
-  - (b) Let the Watch buffer a voice note locally and sync it when the link returns.
-  - (c) Document in the Developer Mode / Apple Watch docs that the iPhone app must be running for the Watch app to start.
+  - (a) When the iPhone link is down, show a "Reconnect to iPhone / open Bee on iPhone" state instead of a frozen screen.
+  - (b) Let the Watch buffer a recording locally and sync it when the link returns.
+  - (c) Say in the Developer Mode and Apple Watch docs that the Bee iPhone app must be running for the Watch app to start a recording.
 
-### FL-2: Developer Mode silently needs a paired device, and the official FAQ said otherwise (Bee docs / hackathon FAQ)
-- **Date:** 2026-10-12 to 2026-10-15 (research and first-hand setup)
-- **Task attempted:** enable Developer Mode so the Bee CLI can connect, from Canada, without Bee hardware.
+### FL-2: Developer Mode silently needs a paired device, and the hackathon FAQ said otherwise (Bee docs / hackathon FAQ)
+- **Date:** 2026-10-12 to 2026-10-15 (research, then first-hand setup); re-checked 2026-10-20
+- **Task attempted:** enable Bee Developer Mode so the Bee CLI can connect, from Canada, without Bee hardware.
 - **Steps taken:**
-  1. Installed the Bee iOS app (Canadian App Store).
-  2. With no Watch paired, the app showed only "Set up a Bee device" / "Try with Apple Watch". There was no Settings → Version row to tap ×5.
+  1. Installed the Bee iOS app from the Canadian App Store.
+  2. With no Watch paired, the app showed only "Set up a Bee device" / "Try with Apple Watch". There was no Settings → Version row to tap 5 times.
   3. The hackathon FAQ and Discord had said no device was needed. The organizer later corrected this on the forum: "enabling developer mode DOES require pairing either an Apple Watch or Bee device."
   4. Bought an Apple Watch, paired it in Bee, then Settings → Version ×5, `bee login`, `bee status`. Verified 2026-10-15 ~11:20 EDT.
-- **Expected result:** the docs (docs.bee.computer/docs/developer-mode) state that a paired device is a prerequisite.
-- **Actual result:** the docs list only "update app → Settings → tap Version 5 times". The prerequisite is undocumented, and the FAQ contradicted it.
+- **Expected result:** https://docs.bee.computer/docs/developer-mode states that a paired device is a prerequisite.
+- **Actual result:** the page lists only "update the app → Settings → tap Version 5 times". The prerequisite is undocumented, and the FAQ contradicted it. Re-checked 2026-10-20: the page (last updated June 7, 2026) is unchanged.
 - **Severity:** High (it required buying hardware, after about 3 days of uncertainty)
-- **Workaround used:** an Apple Watch SE 3. The full path works from Canada; this is the first first-hand non-US Watch-only report we know of.
-- **Actionable suggestion:** add "Requires a paired Bee device or Apple Watch" to the Developer Mode doc. Confirm explicitly that the Watch path works outside the US.
+- **Workaround used:** an Apple Watch SE 3. The whole path (Watch → Developer Mode → `bee login`) works from Canada with a Canadian Apple ID; we found no earlier first-hand report of it from outside the US.
+- **Actionable suggestion:** add "Requires a paired Bee device or Apple Watch" to the Developer Mode page, and state that the Watch path works outside the US.
 
-### FL-3: The wearer's speaker label is present on Watch conversations, contradicting the community report that every speaker is "Unknown" (Bee API / docs)
+### FL-3: The wearer's speaker label is present on Watch conversations but undocumented, contradicting the open report that every speaker is "Unknown" (Bee API / docs)
 - **Date:** 2026-10-15 ~12:00 EDT
-- **Task attempted:** separate the wearer's own speech from others' in conversations.
-- **Observed:** utterances carry `speaker: "Kaung Zin"` / `"Kaung"` for the wearer and `"Unknown"` for others. This contradicts bee-cli issue 19 (15,578 of 15,578 utterances "Unknown").
-  - The label can be absent while a conversation is still `CAPTURING` (11292222 at first). But conversation 11300596 had wearer labels during `CAPTURING`, so timing is inconsistent.
-  - The name form varies within one account ("Kaung" vs "Kaung Zin").
-  - Some audio from a French voice assistant was labelled as the wearer.
-- **Severity:** Low (positive surprise, but undocumented)
-- **Actionable suggestion:** document `speaker` semantics: when the wearer label appears, its format (consider a stable `is_wearer: true` flag instead of a display name), that it's absent during CAPTURING, and its known false positives from media and assistant audio.
+- **Task attempted:** separate the wearer's own speech from other people's in Watch conversations, so that only the wearer's lines are coached.
+- **Steps taken:**
+  1. `bee conversations get <id> --json` on four real Watch conversations.
+  2. Read the `speaker` field of each utterance against who spoke.
+  3. Compared with [bee-cli issue 19](https://github.com/bee-computer/bee-cli/issues/19) ("Speaker is always "Unknown" in the developer API, even with my voice enrolled in the app"; 15,578 of 15,578 utterances "Unknown").
+- **Expected result:** either every speaker is "Unknown", as the issue reports, or the docs describe a wearer label.
+- **Actual result:**
+  - Wearer lines carry the wearer's display name; other people's lines carry `"Unknown"`.
+  - The name form varies within one account: the first name on some lines, the first and last name on others.
+  - In one conversation the label was absent while it was still `CAPTURING`; in another it was present during `CAPTURING`.
+  - Some French voice-assistant audio was labelled as the wearer: 9 of 151 wearer lines were flagged as possible mislabels.
+- **Severity:** Low (a positive surprise, but undocumented)
+- **Workaround used:** accept every name form the Bee profile gives (`bee me`, or `BEE_WEARER_LABELS`), and run a mislabel detector over the wearer's lines ([`src/real/corpus.ts`](src/real/corpus.ts), scored with `npm run mislabel:score`). Time not recorded separately.
+- **Actionable suggestion:** document `speaker`: when the wearer label appears, its format, that it can be missing during `CAPTURING`, and its known false positives from media and assistant audio. Better, add a stable `is_wearer: true` flag instead of a display name.
 
-### FL-4: The "Action Button → Hold and Speak → Voice Notes" setting does nothing on Apple Watch models without an Action Button; there's no documented way to record a voice note from a Watch (Bee Apple Watch app / docs)
-- **Date:** 2026-10-15 ~14:30 EDT
-- **Task attempted:** record a Bee *voice note* (an API "journal", the wearer-only channel) from an Apple Watch SE 3.
+### FL-4: The "Action Button → Hold and Speak → Voice Notes" setting does nothing on an Apple Watch without an Action Button, and there is no documented way to record a voice note from a Watch (Bee Apple Watch app / docs)
+- **Date:** 2026-10-15 ~14:30 EDT (observed once, not re-checked)
+- **Task attempted:** record a Bee voice note (an API "journal", the wearer-only channel) from an Apple Watch SE 3.
 - **Steps taken:**
   1. In the Bee iPhone app: Settings → Action Button → Hold and Speak → **Voice Notes**.
   2. On the Watch, pressed and held the Bee screen and spoke.
-  3. `bee journals list --json` returned `{"journals": []}`. The recording appeared instead as a **conversation** (`bee conversations list`, id 11300596).
+  3. `bee journals list --json` returned `{"journals": []}`. The recording appeared as a **conversation** in `bee conversations list` instead.
 - **Expected result:** a voice note (journal) is created, or the setting says it applies only to Bee hardware or an Apple Watch Ultra's Action Button.
-- **Actual result:** the setting silently has no effect. The SE 3 has only the Digital Crown and the side button, with no Action Button. No voice-note entry point was found in the Watch app.
+- **Actual result:** the setting silently has no effect. The SE 3 has only the Digital Crown and the side button, and no voice-note control was found in the Watch app.
 - **Severity:** Medium
-- **Workaround used:** use conversation recordings. The wearer's speaker label (FL-3) makes them usable for wearer-only analysis.
-- **Actionable suggestion:** state which hardware the Action Button setting applies to. Add a voice-note entry point to the Watch app (e.g. a tap target or a complication). Document how journals are created per device.
+- **Workaround used:** conversation recordings, which the wearer label (FL-3) makes usable for wearer-only analysis. Time not recorded.
+- **Actionable suggestion:** say which hardware the Action Button setting applies to; add a voice-note control to the Watch app (a tap target or a complication); document how journals are created on each device.
 
-### FL-5: French speech recorded from a Watch is partly transcribed or translated into English on an account whose primary language is English (Bee transcription)
-- **Date:** 2026-10-15 14:23 EDT (conversation 11300596)
-- **Task attempted:** a transcription test. A 109-word scripted French text with 10 planted learner errors and 4 fillers was read aloud and recorded on the Watch.
+### FL-5: French speech recorded on a Watch is partly transcribed or translated into English on an account whose primary language is English (Bee transcription)
+- **Date:** 2026-10-15 14:23–14:41 EDT
+- **Task attempted:** a transcription test. A 109-word scripted French text with 10 planted learner errors and 4 fillers, read aloud and recorded on the Watch.
+- **Steps taken:**
+  1. Reading 1 at 14:23, with English as the account's primary language.
+  2. Reading 2 at ~14:31, after setting French as the primary language mid-conversation.
+  3. Reading 3 at 14:40, with French primary.
+  4. `bee conversations get <id> --json`, compared line by line with the script.
 - **Expected result:** a French transcript, with the learner errors kept verbatim.
-- **Actual result:** several French phrases came back as **English**:
-  - "la problème…" → "The problem is…"
-  - "c'est un difficile exercice" → "and it's a difficult exercise"
-  - "j'habite en Toronto" → "and I be in Toronto"
-  - Others were garbled ("Hier soir, j'ai allé à mon cours de français" → "Yers monde de France").
-  - Of the planted errors: 3/10 kept verbatim, 1 auto-corrected, 6 garbled or translated. Fillers ("euh" ×3, "ben" ×1): 0/4 kept.
-  - By contrast, a natural French conversation earlier the same day kept learner errors ("cette groupe").
-- **Severity:** High (for any language-learning use case)
-- **Retests (same conversation 11300596):**
+- **Actual result:** several French phrases came back as **English**, and the fillers were dropped every time.
 
   | Reading | Setting | Planted errors kept verbatim | Fillers kept |
   |---|---|---|---|
@@ -85,46 +105,59 @@ This log is part of the Amazon "Build, Ship, Shape" hackathon submission, for th
   | 2 (~14:31) | French primary, set mid-conversation | 4/10 | 0/4 |
   | 3 (14:40) | French primary | 2/10 | 0/4 ("ben" → "Bon") |
 
-  Reading 3 still produced English: "and I'm in Toronto", "Yes soir she allowed my courses", "and exit for my project examens".
-  - **Confound:** all three readings were appended to a conversation that *started* under the English setting (see FL-6).
-- **Workaround used:** none found for scripted reading. The decisive test is the 18:00 class, as a fresh conversation under French. Fallback: English coaching plus French "comment on dit…?" vocabulary moments.
-- **Actionable suggestion:** support per-recording language selection or automatic language ID with code-switching, rather than one account-level primary language. Never translate. Expose a `language` field per utterance in the API.
+  - Reading 1: "la problème…" → "The problem is…"; "c'est un difficile exercice" → "and it's a difficult exercise"; "j'habite en Toronto" → "and I be in Toronto"; "Hier soir, j'ai allé à mon cours de français" → "Yers monde de France".
+  - Reading 3 still produced English: "and I'm in Toronto", "Yes soir she allowed my courses", "and exit for my project examens".
+  - Confound: all three readings were appended to one conversation that started under the English setting (FL-6).
+  - By contrast, a natural French conversation earlier the same day kept learner errors ("cette groupe").
+- **Severity:** High (for any language-learning use)
+- **Workaround used:** none for scripted reading. The product changed scope: its pre-registered habits (2026-10-16) are English unsure words and filler "like", and French appears only as vocabulary moments. The French drill plan was dropped after a day of tests.
+- **Actionable suggestion:** per-recording language selection, or automatic language ID that handles code-switching, instead of one account-level primary language. Never translate. Expose a `language` field per utterance in the API.
 
-### FL-6: "Stopping" a Watch recording doesn't end the conversation; later recordings are appended to it and their `start`/`end` offsets restart at 0 (Bee API)
-- **Date:** 2026-10-15 14:23–14:41 EDT (conversation 11300596)
-- **Task attempted:** record three separate test readings as separate conversations.
-- **Steps taken:** start a recording on the Watch, then stop. Repeat twice more, minutes apart, including after changing the primary language.
-- **Expected result:** one conversation per recording, or at least monotonic offsets.
+### FL-6: "Stopping" a Watch recording doesn't end the conversation; later recordings are appended to it, and their `start`/`end` offsets restart at 0 (Bee API)
+- **Date:** 2026-10-15 14:23–14:41 EDT (one conversation; observed once, not re-checked)
+- **Task attempted:** record three separate test readings as three separate conversations.
+- **Steps taken:**
+  1. Started a recording on the Watch, then stopped it.
+  2. Repeated twice more, minutes apart, once after changing the primary language.
+  3. `bee conversations list` and `bee conversations get <id> --json`.
+- **Expected result:** one conversation per recording, or at least offsets that keep increasing.
 - **Actual result:**
   - All three readings were appended to the same `CAPTURING` conversation.
-  - Inside it, the third reading's utterances restart at `start: 36` (after earlier lines at `start: 380`), so sorting by `start` interleaves recordings. Only `spoken_at` (epoch ms) is monotonic.
-  - Recordings also appeared in the iPhone app before the API returned them (a few minutes' lag).
-  - We first mis-read the transcript because of this.
+  - Inside it, the third reading's utterances restart at `start: 36`, after earlier lines at `start: 380`, so sorting by `start` interleaves the recordings. Only `spoken_at` (epoch ms) increases monotonically.
+  - Recordings appeared in the iPhone app a few minutes before the API returned them.
+  - We first misread the transcript because of this.
 - **Severity:** Medium (it silently scrambles transcripts for any client that orders by offset)
-- **Workaround used:** order utterances by `spoken_at` and rebuild a single timeline relative to the conversation start (`src/real/corpus.ts`). A regression test is in `test/real.test.ts`.
+- **Workaround used:** order utterances by `spoken_at` and rebuild one timeline relative to the conversation start ([`src/real/corpus.ts`](src/real/corpus.ts)), with a regression test in [`test/real.test.ts`](test/real.test.ts). Time not recorded separately.
 - **Actionable suggestion:**
-  - Document that conversations are server-segmented and can absorb later recordings.
-  - Make offsets monotonic within a conversation, or expose a recording/segment id per utterance.
-  - Let the client force-close a conversation.
+  - Document that conversations are segmented on the server and can absorb later recordings.
+  - Make offsets monotonic within a conversation, or add a recording (segment) id per utterance.
+  - Let a client close a conversation.
 
-### FL-7: The only voice-note path found on an Apple Watch SE 3 goes through Siri (Digital Crown hold), and it captures the Siri request as a Bee journal (Bee Watch app)
-- **Date:** 2026-10-15 ~14:32 EDT
-- **Steps taken:** held the Digital Crown on the SE 3 and spoke ("Hello, how can I get help with this Bee app?").
-- **Actual result:** Siri opened, and a Bee journal (voice note) was created with that text (state READY). No in-app voice-note control was found on the Watch (see FL-4).
-- **Expected result:** a Bee-native voice-note button on the Watch, independent of Siri.
+### FL-7: The only voice-note path found on an Apple Watch SE 3 goes through Siri (Digital Crown hold), and it saves the Siri request as a Bee journal (Bee Apple Watch app)
+- **Date:** 2026-10-15 ~14:32 EDT (observed once, not re-checked)
+- **Task attempted:** record a Bee voice note from the Watch (see FL-4).
+- **Steps taken:**
+  1. Held the Digital Crown on the SE 3.
+  2. Said "Hello, how can I get help with this Bee app?"
+  3. `bee journals list --json`.
+- **Expected result:** a Bee voice-note button on the Watch, independent of Siri.
+- **Actual result:** Siri opened, and a Bee journal (voice note) was created with that text (state `READY`). No in-app voice-note control was found on the Watch.
 - **Severity:** Medium
-- **Workaround used:** none needed. Conversation recordings with wearer labels serve the same purpose.
-- **Actionable suggestion:** add a voice-note control to the Bee Watch app. Document the Siri/App Intents path if it's intended.
+- **Workaround used:** conversation recordings with wearer labels serve the same purpose. No extra time.
+- **Actionable suggestion:** add a voice-note control to the Bee Watch app, and document the Siri / App Intents path if it is intended.
 
 ### FL-8: The live stream (`bee stream`) carries timestamps and a speaker-identification event that the realtime docs don't describe (Bee docs / API)
-- **Date:** 2026-10-16 14:35–14:40 EDT
-- **Task attempted:** measure whether Bee's live feed is fast enough to grade a spoken drill card on a TV.
-- **Steps taken:** ran `bee stream --types all --json` with local receive timestamps; recorded about a minute of speech on the Watch.
-- **Expected result (per docs.bee.computer/docs/realtime):** `new-utterance` = `{utterance:{text,speaker}, conversation_uuid}`, with no timestamps.
+- **Date:** 2026-10-16 14:35–14:40 EDT; docs re-checked 2026-10-20
+- **Task attempted:** measure whether Bee's live feed is fast enough to grade a spoken drill line on a TV.
+- **Steps taken:**
+  1. `bee stream --types all --json`, with a local receive timestamp on every line.
+  2. Recorded about a minute of speech on the Watch (9 utterances).
+- **Expected result (per https://docs.bee.computer/docs/realtime):** `new-utterance` = `{utterance:{text,speaker}, conversation_uuid}`, with no timestamps.
 - **Actual result:**
   - `new-utterance` also includes `id`, `sample_id`, `start`, `end` and `spoken_at`.
   - An undocumented `tagged-utterance` event (`utterance_id`, `person_id`, `person_first_name`, `speaker_score`) arrives about 0.5 s later and identifies the wearer live (8/9 utterances; scores 0.64–0.86). The first utterance of the recording was never tagged.
-  - Delay from end of speech to `new-utterance`: 4.3–14.7 s (median 5.4 s).
-- **Severity:** Low (positive surprise, but undocumented)
-- **Workaround used:** none needed. We read the extra fields defensively and poll the conversation as a fallback, because the stream is at-most-once.
-- **Actionable suggestion:** document the `tagged-utterance` event and the timestamp fields, with the meaning of `speaker_score` and when a tag may never arrive. Publish typical latency.
+  - Delay from the end of speech to `new-utterance`: 4.3–14.7 s (median 5.4 s).
+  - Re-checked 2026-10-20: the realtime page still shows `new-utterance` without timestamps and does not list `tagged-utterance`.
+- **Severity:** Low (a positive surprise, but undocumented)
+- **Workaround used:** read the extra fields defensively, and poll the conversation as a fallback, because the stream is at-most-once. No extra time.
+- **Actionable suggestion:** document the `tagged-utterance` event and the timestamp fields, what `speaker_score` means, and when a tag may never arrive. Publish the typical latency.
