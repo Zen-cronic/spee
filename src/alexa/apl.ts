@@ -6,8 +6,9 @@
 // context.System.device.supportedInterfaces["Alexa.Presentation.APL"]; voice-only devices get the
 // same response as before. Colours live in the document's resources only (@colorBee is the one
 // colour for "checked by Bee"); the datasource carries words and states. Every string a person reads is masked for the screen here (maskDeep
-// "screen"), before the hub's JSON writer masks the rest of the /alexa body for speech. Pure, apart
-// from reading the document once.
+// "screen"). The Alexa plugin then masks only what Alexa speaks (plugin.ts maskSpoken): the document
+// goes out as it is, since its expressions and resource names are not words. Pure, apart from reading
+// the document once.
 //
 // https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-for-screen-devices.html
 import { readFileSync } from "node:fs";

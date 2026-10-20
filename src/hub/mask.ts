@@ -10,7 +10,8 @@
 // Masking is output-only. The hub grades, stores and counts the unmasked text; only what leaves
 // the hub for a person to see or hear goes through maskOut / maskDeep, in the serialize path
 // (src/hub/server.ts: the JSON writer, SSE, the bridge's send, the home page; the MCP tool result;
-// the wrist to-do text). The terms themselves are never served, logged or printed: health shows
+// the wrist to-do text; the Alexa answer, where only what Alexa speaks is masked for speech and the
+// APL datasource for a screen, src/alexa/plugin.ts maskSpoken and src/alexa/apl.ts). The terms themselves are never served, logged or printed: health shows
 // only maskStatus() ("on (N terms)" or "off").
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

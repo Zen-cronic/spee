@@ -10,8 +10,8 @@ import type { HubPlugin, PluginCtx } from "../hub/plugin.js";
 import { HubClient } from "../mcp/hubClient.js";
 import { handleAlexa, type SkillDeps } from "./skill.js";
 import { ssml } from "./speech.js";
-import { maskOut } from "../hub/mask.js";
-import type { AlexaRequestEnvelope } from "./types.js";
+import { maskDeep, maskOut } from "../hub/mask.js";
+import type { AlexaRequestEnvelope, AlexaResponseEnvelope, OutputSpeech } from "./types.js";
 import { signatureVerifier, type SigResult } from "./signature.js";
 import { deviceRecorder } from "./device.js";
 import { isAlexaApiEndpoint, resolveSkillId, verifyAlexaRequest } from "./verify.js";
@@ -64,6 +64,20 @@ export function progressiveSender(opts: { allowed?: (url: string) => boolean; fe
     } catch {
       return false;
     }
+  };
+}
+
+// The skill's answer masked for speech where Alexa speaks it (outputSpeech, the reprompt) and in the
+// session attributes (ids). A directive goes out as built: the APL datasource is already masked for a
+// screen (apl.ts renderDirective), and the document's expressions and resource names ("@lime",
+// "@coral") are not words, so masking them would break the screen.
+export function maskSpoken(env: AlexaResponseEnvelope): AlexaResponseEnvelope {
+  const speech = (o: OutputSpeech): OutputSpeech => ({ ...o, ...(o.text != null ? { text: maskOut(o.text, "speech") } : {}), ...(o.ssml != null ? { ssml: maskOut(o.ssml, "speech") } : {}) });
+  const r = env.response;
+  return {
+    ...env,
+    ...(env.sessionAttributes ? { sessionAttributes: maskDeep(env.sessionAttributes, "speech") } : {}),
+    response: { ...r, ...(r.outputSpeech ? { outputSpeech: speech(r.outputSpeech) } : {}), ...(r.reprompt ? { reprompt: { outputSpeech: speech(r.reprompt.outputSpeech) } } : {}) },
   };
 }
 
@@ -141,7 +155,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
       };
       const out = await handleAlexa(body as unknown as AlexaRequestEnvelope, deps);
       served++;
-      ctx.json(res, 200, out.envelope);
+      ctx.json(res, 200, maskSpoken(out.envelope), { premasked: true });
       return true;
     },
     describe: () => ({

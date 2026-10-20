@@ -154,11 +154,13 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
   // No wildcard CORS: an allowed Origin is echoed by handle() before routing (res.setHeader), so the
   // JSON writer, SSE and the plugins all inherit it.
   // Every JSON body goes out masked: speech for the Alexa endpoint and the loopback hub client
-  // (x-hub-mask: speech, used by Alexa and MCP), screen otherwise.
+  // (x-hub-mask: speech, used by Alexa and MCP), screen otherwise. A plugin that masked its body field
+  // by field says so (`premasked`): the Alexa skill's answer carries an APL document whose expressions
+  // and resource names ("@lime") are not words, so only what Alexa speaks is masked there.
   const maskModes = new WeakMap<ServerResponse, MaskMode>();
-  const send = (res: ServerResponse, status: number, data: unknown) => {
+  const send = (res: ServerResponse, status: number, data: unknown, premasked = false) => {
     res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-    res.end(JSON.stringify(maskDeep(data, maskModes.get(res) ?? "screen"), null, 1));
+    res.end(JSON.stringify(premasked ? data : maskDeep(data, maskModes.get(res) ?? "screen"), null, 1));
   };
   const fail = (res: ServerResponse, status: number, error: string, message: string) => send(res, status, { error, message });
   const pathOf = (u: string | undefined) => {
@@ -308,7 +310,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     selfUrl: () => `http://${selfHost}:${listeningPort}`,
     auth: { mcpBearerOk: (h) => bearerOk(h, tokens.mcpToken), pairTokenOk: (k) => tokenEquals(k, tokens.pairToken) },
     isPublic: (req) => mustAuthenticate(req, gateOpts),
-    json: (res, status, data) => send(res, status, data),
+    json: (res, status, data, o) => send(res, status, data, !!o?.premasked),
     readJson: (req) => body(req),
   };
   for (const pl of plugins) pl.attach?.(ctx);

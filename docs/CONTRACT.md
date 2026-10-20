@@ -737,7 +737,8 @@ interface PluginCtx {
   selfUrl(): string; // http://127.0.0.1:<port>, for a loopback hub client (a LAN request for the gate)
   auth: { mcpBearerOk(authorization): boolean; pairTokenOk(k): boolean }; // the tokens themselves are never handed out
   isPublic(req): boolean;
-  json(res, status, data): void; readJson(req): Promise<object>;
+  json(res, status, data, opts?: { premasked?: boolean }): void; // masked for the request's mode, unless the plugin masked it itself (the Alexa plugin)
+  readJson(req): Promise<object>;
 }
 ```
 
@@ -1632,7 +1633,7 @@ The catch-all slot rescues "how did I do", "how am I doing", "next" and "stop". 
   "...": "the v1 fields" }
 ```
 
-`masking` (additive) is `"on (N terms)"` or `"off"`: the display masking of private terms (`src/hub/mask.ts`, docs/live.md "Filming"). It never names a term. When it is on, every string a person reads or hears in a response, an SSE event or a WebSocket frame has each term replaced (`▒▒▒` for screens; `"name"` for `POST /alexa` and for requests with `x-hub-mask: speech`, which the Alexa and MCP hub client sends). Ids, keys, codes and links are never masked, and the hub grades and stores the unmasked text.
+`masking` (additive) is `"on (N terms)"` or `"off"`: the display masking of private terms (`src/hub/mask.ts`, docs/live.md "Filming"). It never names a term. When it is on, every string a person reads or hears in a response, an SSE event or a WebSocket frame has each term replaced (`▒▒▒` for screens; `"name"` for what Alexa speaks in `POST /alexa`, its output speech and reprompt, and for requests with `x-hub-mask: speech`, which the Alexa and MCP hub client sends). The APL screen in a `POST /alexa` answer has `▒▒▒` in its datasource, and its document is sent as it is (expressions and resource names are not words). Ids, keys, codes and links are never masked, and the hub grades and stores the unmasked text.
 
 ## Fixture mode (`npm run hub -- --demo --fixture-v2`)
 

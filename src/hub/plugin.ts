@@ -41,7 +41,9 @@ export interface PluginCtx {
   // The request must authenticate (signature, bearer): it is public, or a tunnel is declared
   // (PUBLIC_BASE_URL), since a TCP tunnel looks like loopback (gate.ts mustAuthenticate).
   isPublic(req: IncomingMessage): boolean;
-  json(res: ServerResponse, status: number, data: unknown): void; // the hub's JSON writer (no-store; an allowed Origin is already echoed)
+  // The hub's JSON writer (no-store; an allowed Origin is already echoed). It masks every string for
+  // the request's mode, unless the plugin masked the body itself (`premasked`, as the Alexa plugin does).
+  json(res: ServerResponse, status: number, data: unknown, opts?: { premasked?: boolean }): void;
   readJson(req: IncomingMessage): Promise<Record<string, unknown>>; // <= 64 kB JSON object body ({} if empty)
 }
 

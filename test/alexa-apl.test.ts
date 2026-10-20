@@ -5,11 +5,11 @@
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { APL_DIRECTIVE, aplDocument, checkingScreen, drillScreen, EMPTY, emptyScreen, gradeFailure, IDLE_AFTER_END_MS, plainReason, progressScreen, renderDirective, supportsApl, tracker, verdictScreen, type Screen } from "../src/alexa/apl.js";
-import { createAlexaPlugin } from "../src/alexa/plugin.js";
+import { createAlexaPlugin, maskSpoken } from "../src/alexa/plugin.js";
 import { handleAlexa, summaryScreen, type SkillDeps } from "../src/alexa/skill.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, SessionAttributes } from "../src/alexa/types.js";
 import type { GradeResult } from "../src/hub/contract.js";
-import { MASK_SCREEN, maskDeep, setMaskTerms } from "../src/hub/mask.js";
+import { MASK_SCREEN, MASK_SPEECH, setMaskTerms } from "../src/hub/mask.js";
 import { createPlugins } from "../src/hub/plugins.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
@@ -225,17 +225,19 @@ describe("screens", () => {
 
 describe("masking", () => {
   afterEach(() => setMaskTerms([]));
-  it("masks every datasource string for a screen (▒▒▒), and the hub's speech pass leaves it so", () => {
+  it("masks every datasource string for a screen (▒▒▒); the plugin then masks only what Alexa says", () => {
     setMaskTerms(["Jordan Quill", "Acme"]);
     const d = renderDirective(verdictScreen({ kind: "fail", grade: grade({ checks: failed("content"), missing: ["Acme"] }), next: { resay: "Ask Jordan Quill about Acme." } }));
     const s = (d.datasources as { payload: { screen: Screen } }).payload.screen;
     expect(s.sentence).toBe(`Ask ${MASK_SCREEN} about ${MASK_SCREEN}.`);
     expect(s.reason).toBe(`A few words were missing: ${MASK_SCREEN}.`);
     expect(s.kind).toBe("verdict");
-    // the /alexa JSON writer masks the whole body for speech afterwards: the screen's marks stay
-    const spoken = JSON.stringify(maskDeep({ response: { directives: [d] } }, "speech"));
-    expect(spoken).not.toMatch(/Jordan|Acme/);
-    expect(spoken).toContain(`Ask ${MASK_SCREEN} about ${MASK_SCREEN}.`);
+    // the Alexa plugin masks the speech ("name"); the directive goes out as built, screen marks and all
+    const out = maskSpoken({ version: "1.0", sessionAttributes: { cardId: "demo:Acme" }, response: { outputSpeech: { type: "PlainText", text: "Ask Jordan Quill about Acme." }, reprompt: { outputSpeech: { type: "PlainText", text: "Say: Ask Jordan Quill." } }, directives: [d] } });
+    expect(out.response.outputSpeech?.text).toBe(`Ask ${MASK_SPEECH} about ${MASK_SPEECH}.`);
+    expect(out.response.reprompt?.outputSpeech.text).toBe(`Say: Ask ${MASK_SPEECH}.`);
+    expect(out.sessionAttributes).toEqual({ cardId: "demo:Acme" }); // an id, never masked
+    expect(out.response.directives).toEqual([d]);
   });
   it("leaves the document itself and the token alone", () => {
     setMaskTerms(["Mirror"]);
@@ -353,5 +355,29 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
     const r = await fetch(s.url + "/alexa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(env("launch")) });
     const j = (await r.json()) as AlexaResponseEnvelope;
     expect(j.response.directives?.[0]).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill", datasources: { payload: { screen: { kind: "drill" } } } });
+  });
+});
+
+describe("POST /alexa with masking on (in-process demo hub)", () => {
+  let s: HubServer;
+  beforeAll(async () => {
+    const plugins = createPlugins().map((p) => (p.name === "alexa" ? createAlexaPlugin({ skillId: SKILL }) : p));
+    // "Lime" and "Coral" are also resource names in the document (@lime, @coral); "coach" is in the launch line
+    s = await startHubServer({ maskTerms: ["Lime", "Coral", "coach"], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
+  });
+  afterAll(async () => {
+    await s.close();
+    setMaskTerms([]);
+  });
+  it("masks what Alexa says, and sends the APL document as it is", async () => {
+    await fetch(s.url + "/api/session/end", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const r = await fetch(s.url + "/alexa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(env("launch")) });
+    const j = (await r.json()) as AlexaResponseEnvelope;
+    expect(j.response.outputSpeech?.text).toMatch(/^Speech name\. Say this:/);
+    expect(j.response.reprompt?.outputSpeech.text).toMatch(/^Say:/);
+    const d = j.response.directives?.[0];
+    expect(d).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill" });
+    expect(d!.document).toEqual(DOC);
+    expect((d!.datasources as { payload: { screen: Screen } }).payload.screen).toMatchObject({ kind: "drill", brand: "Speaking Mirror" });
   });
 });
