@@ -220,6 +220,14 @@ export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & 
       return { lead: dropped, rest: 'So did the control, so it may not be the drill.' };
     case 'dropped-control-unclear':
       return { lead: dropped, rest: 'The control needs more speech to compare.' };
+    case 'partly-started': {
+      // nothing dropped yet: some drilled habits are measured from their first drill, others not drilled
+      const drilled = (t.habits ?? []).filter((h) => h.role === 'drilled');
+      const started = drilled.filter((h) => h.verdict !== 'not drilled yet').map((h) => shortHabit(h.label));
+      const waiting = drilled.filter((h) => h.verdict === 'not drilled yet').map((h) => shortHabit(h.label));
+      if (!started.length || !waiting.length) return { lead: curly(t.headline), rest: null };
+      return { lead: `Measuring ${started.join(' and ')} since ${started.length === 1 ? 'its first drill' : 'their first drills'}.`, rest: `${waiting.join(' and ')}: not drilled yet.` };
+    }
     case 'not-drilled-yet':
       return { lead: 'Not drilled yet.', rest: 'Progress counts from your first drill.' };
     case 'no-drop-yet':

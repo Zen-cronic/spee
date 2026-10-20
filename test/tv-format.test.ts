@@ -96,6 +96,20 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits }).rest).toBe("The control needs more speech to compare.");
     expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "No drilled habit has dropped yet.", rest: null });
   });
+  it("partly started: the habit measured since its drill, and the one not drilled yet; never a drop", () => {
+    const habits = [
+      { role: "drilled", verdict: "not drilled yet", label: "hedges (I guess, I think, maybe, kind of...)" },
+      { role: "drilled", verdict: "too little data", label: '"like" as a filler' },
+      { role: "control", verdict: "too little data", label: "restarts (the the, I I)" },
+    ] as never;
+    const headline = 'After period started for "like" on Oct 19; hedges not drilled yet';
+    const t = transferTitle({ claim: "partly-started", headline, habits });
+    expect(t).toEqual({ lead: "Measuring “Like” since its first drill.", rest: "Hedges: not drilled yet." });
+    expect(t.lead.length).toBeLessThanOrEqual(40);
+    expect(transferWorking("partly-started")).toBe(false);
+    // without the habits to name, the hub's own headline
+    expect(transferTitle({ claim: "partly-started", headline })).toEqual({ lead: "After period started for “like” on Oct 19; hedges not drilled yet", rest: null });
+  });
   it("each title line stays short enough for one line of the TV's big type", () => {
     const habits = [
       { role: "drilled", verdict: "dropped", label: "hedges (I guess, I think, maybe, kind of...)" },
