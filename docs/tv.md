@@ -98,6 +98,25 @@ First run on hardware 2026-10-20 (Fire TV Stick, `armv7l`, Vega OS 2.0 "TV Ship/
    On this stick `<arch>` is `armv7` (`speakingmirror_armv7.vpkg`).
 4. **Pair the phone and check.** Scan the TV's QR with the phone on the same Wi-Fi (the QR carries `#k=`, so a LAN phone gets in without `--lan`). Run one drill (provisional → checking with Bee → graded) and one practice take (meters move), then Right/OK across the tabs and Back to exit. If the phone cannot connect, restart the hub with `--lan` (home Wi-Fi only).
 
+**Checking the stick from the dev machine.** Set `D=<stick IP>:5555` (Wi-Fi) or `D=<serial>` (USB).
+
+| What | Command |
+|---|---|
+| Is it connected? | `vega device is-connected -d $D` or `vega exec vda devices` |
+| Name, model, OS, architecture | `vega device info -d $D` (`hostname` is the device name; also `product`, `buildDescription`, `architecture`, `inDeveloperMode`) |
+| OS version details | `vega exec vda -s $D shell cat /etc/os-release` |
+| Installed apps | `vega device installed-apps -d $D` (ours is listed as `com.beecoach.mirror.main`) |
+| Running apps | `vega device running-apps -d $D` |
+| Is our app running? | `vega device is-app-running -d $D --appName com.beecoach.mirror.main` |
+| Start / stop our app | `vega device launch-app -d $D --appName com.beecoach.mirror.main` / `vega device terminate-app -d $D --appName com.beecoach.mirror.main` |
+| Install without launching | `vega device install-app -d $D --packagePath tv/vega/build/<arch>-release/speakingmirror_<arch>.vpkg` |
+| Is the hub port forwarded? | `vega device is-port-forwarded -d $D --port 8791 --forward false` |
+| Live logs | `vega device start-log-stream -d $D` (Ctrl-C to stop) |
+| Crash reports | `vega device copy-logs -d $D` |
+| Reboot | `vega device reboot -d $D` |
+
+Check installs with the component name `com.beecoach.mirror.main`: `is-app-installed --appName com.beecoach.mirror` (the package name) answers "not installed" even when it is.
+
 **Troubleshooting (seen on the first run).**
 
 | Symptom | Cause | Fix |
@@ -107,9 +126,10 @@ First run on hardware 2026-10-20 (Fire TV Stick, `armv7l`, Vega OS 2.0 "TV Ship/
 | `vda connect` times out | Different networks, or the Wi-Fi blocks device-to-device traffic | Same Wi-Fi for both; a phone hotspot works as a fallback |
 | `lsusb` shows Lab126 but `vda devices` is empty (USB) | Linux USB permissions | Add the udev rule for vendor `1949` (Amazon's VDA troubleshooting page), be in `plugdev`, restart VDA |
 | The stick stops responding in TCP/IP mode | Known Vega issue | Developer Options → Connection Mode → USB, then `vega exec vda usb` |
+| `run-app` says "Successfully launched" but the TV shows nothing | Launched while the stick was still settling after the TCP/IP reboot, then closed | `vega device is-app-running …`, then `vega device launch-app -d $D --appName com.beecoach.mirror.main` |
 | The address changes after a router restart | DHCP | Reserve the IP for the stick's Wi-Fi MAC in the router if you can; otherwise read the new IP on About → Network (or `ip neigh` after a ping sweep, matching the MAC) and reconnect |
 
-**Status.** 2026-10-16: built (three vpkgs of about 276 kB, `manifest validation found 0 errors`) and verified on the VVD: it joined the hub over the reverse forward, fetched stats and transfer, rendered every screen, and remote navigation worked. 2026-10-20: installed and launched on a real stick over Wi-Fi against the live hub.
+**Status.** 2026-10-16: built (three vpkgs of about 276 kB, `manifest validation found 0 errors`) and verified on the VVD: it joined the hub over the reverse forward, fetched stats and transfer, rendered every screen, and remote navigation worked. 2026-10-20: installed and running on a real stick over Wi-Fi against the live hub; the Today screen rendered with real data (the second launch; see the troubleshooting table).
 
 ## How it is built
 
