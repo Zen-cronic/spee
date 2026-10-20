@@ -1060,7 +1060,7 @@ Live, after a pass (illustrative ids and counts):
 
 - `cue.habit` is a pre-registered drilled habit already practised (`CUE_HABITS`): never the control (`restart`), never an unpractised habit.
 - `deduped: true`: a cue for the same habit has its alarm within 10 min of this one's (the alarms are compared, not the request times); that cue comes back and nothing new reaches the wrist. Its narration says "already set for <time>" only while the alarm is still to come, else "went off N min ago".
-- `wrist.status: "failed"` (200): Bee did not take the to-do; it counts toward neither the dedupe nor the cap.
+- `wrist.status: "failed"` (200): Bee did not take the to-do; it counts toward neither the dedupe nor the cap. A request that arrived while that send was in flight gets the same failed answer, never `deduped: true`.
 - Errors: `400 bad_request`; `409 cues_off`; `409 no_practised_habit`; `409 quiet_hours` (the alarm falls between 22:00 and 08:00 local); `429 cue_cap` (3 a day); `503 wrist_down` (the wrist circuit is open).
 - The texts: `[coach] If asked for status: result first, no "I guess".` (`hedges`) and `[coach] If you need a second: pause, don't say "like".` (`filler:like`). Never a calendar title or a transcript line. The hub has no calendar timer: the coaching skill decides when.
 

@@ -11,7 +11,8 @@
 //   - dedupe on the alarm: a cue for the same habit whose alarm is within CUE_DEDUPE_MS of an
 //     earlier cue's alarm is that cue again (deduped: true), and no second to-do. When it was asked
 //     for does not matter, so the cues for meetings 14 min or more apart (the skill cues 8 to 12 min
-//     before each) never meet;
+//     before each) never meet. A request while a send for the habit is in flight waits for its
+//     outcome: a failed send is reported as failed, never as already set;
 //   - at most CUE_CAP_PER_DAY cues a local day; never for an alarm in quiet hours;
 //   - the text is CUE_TEXT (rules.ts): never a calendar title, never a transcript line.
 // Ledger: <stateDir>/live/cues.json (ids, the fixed text, alarm times; live mode only).
@@ -121,6 +122,8 @@ export class CueBook {
     const tz = this.o.hub.tz;
     const at = r.alarmAt != null ? clockTime(r.alarmAt, tz) : null;
     const line = r.text.replace(/^\[coach\] /, "");
+    // A failed send never reads as "already set".
+    if (r.wrist.status === "failed") return "I couldn't put the cue on your wrist: Bee didn't take the to-do.";
     if (deduped) {
       // Never "already set for" an alarm that has gone off.
       const now = this.now();
@@ -128,7 +131,6 @@ export class CueBook {
       const ago = r.alarmAt != null ? Math.round((now - r.alarmAt) / 60_000) : 0;
       return `That cue went off ${ago >= 1 ? `${ago} min ago` : "just now"}, so I didn't send another.`;
     }
-    if (r.wrist.status === "failed") return "I couldn't put the cue on your wrist: Bee didn't take the to-do.";
     if (r.wrist.status === "replay") return `Demo cue, no Bee call: the wrist alarm would go off${at ? ` at ${at}` : ""}. ${line}`;
     return `Cue set: your wrist alarm goes off${at ? ` at ${at}` : ""}. ${line}`;
   }
@@ -152,10 +154,14 @@ export class CueBook {
     const tz = this.o.hub.tz;
     const q = DEFAULT_POLICY.quietHours;
     if (inQuietHours(target ?? now, q, tz)) return this.err(409, "quiet_hours", `quiet hours (${String(q.startHour).padStart(2, "0")}:00 to ${String(q.endHour).padStart(2, "0")}:00): no cues`);
-    const flying = this.inFlight.get(habit);
-    if (flying) return this.ok(await flying, true);
+    // A send for this habit already in flight: wait for its outcome. A failed send is that outcome
+    // (deduped: false, never "already set"); a cue that went out is checked below like any other.
+    for (let flying = this.inFlight.get(habit); flying; flying = this.inFlight.get(habit)) {
+      const r = await flying;
+      if (!sent(r)) return this.ok(r, false);
+    }
     // The alarm this cue would get (the wrist lead when it is for now), against each earlier alarm.
-    const alarm = target ?? now + this.o.wrist.status().leadMs;
+    const alarm = target ?? this.now() + this.o.wrist.status().leadMs;
     const same = [...this.cues].reverse().find((c) => c.habit === habit && sent(c) && c.alarmAt != null && Math.abs(c.alarmAt - alarm) < (this.o.dedupeMs ?? CUE_DEDUPE_MS));
     if (same) return this.ok(same, true);
     const today = localDate(now, tz);
@@ -171,13 +177,9 @@ export class CueBook {
       this.save();
       this.log("live.cue", { id, habit, status: w.status, todoId: w.todoId, by });
       return r;
-    });
+    }).finally(() => this.inFlight.delete(habit)); // gone before anyone waiting on it resumes
     this.inFlight.set(habit, p);
-    try {
-      return this.ok(await p, false);
-    } finally {
-      this.inFlight.delete(habit);
-    }
+    return this.ok(await p, false);
   }
 
   describe(): string {

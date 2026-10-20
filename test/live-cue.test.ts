@@ -174,6 +174,21 @@ describe("the wrist", () => {
     expect(r.wrist.circuitOpenUntil()).not.toBeNull(); // 3 failed creates
     expect(await r.book.request({})).toMatchObject({ status: 503, body: { error: "wrist_down" } });
   });
+  it("a request while a send is in flight waits for its outcome: a failed send is reported as failed, never as already set", async () => {
+    const r = rig({ fail: true });
+    const [x, y] = await Promise.all([r.book.request({ by: "skill" }), r.book.request({ by: "mcp" })]);
+    for (const res of [x, y]) expect(res).toMatchObject({ status: 200, body: { deduped: false, wrist: { status: "failed", todoId: null }, narration: "I couldn't put the cue on your wrist: Bee didn't take the to-do." } });
+    expect(JSON.stringify(y.body)).not.toMatch(/already set|went off/);
+  });
+  it("a cue that went out while a request waited is checked like any other: a near alarm is deduped, a far one gets its own cue", async () => {
+    const r = rig();
+    const [a, near, far] = await Promise.all([r.book.request({}), r.book.request({ inMinutes: 5 }), r.book.request({ inMinutes: 120 })]);
+    expect((a.body as CueResponse).deduped).toBe(false);
+    expect(near.body).toMatchObject({ deduped: true, cue: { id: (a.body as CueResponse).cue.id } });
+    expect(far.body).toMatchObject({ deduped: false, wrist: { status: "scheduled" } });
+    expect((far.body as CueResponse).cue.alarmAt).toBeGreaterThan((a.body as CueResponse).cue.alarmAt! + 100 * 60_000);
+    expect(r.creates()).toHaveLength(2);
+  });
   it("the replay wrist (demo): no CLI, a replay result with its alarm", async () => {
     const s = demoSetup({ pace: 0.001, stateDir: null });
     setups.push(s);
