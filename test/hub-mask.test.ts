@@ -17,6 +17,7 @@ import { createPlugins } from "../src/hub/plugins.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { HubClient } from "../src/mcp/hubClient.js";
+import { pairHeaders } from "../web/phone/src/take.js";
 import { raw } from "./helpers-http.js";
 
 const TERMS = ["Acme", "Jordan Lee", "export"];
@@ -239,6 +240,19 @@ describe("masking on a demo hub (synthetic terms)", () => {
     const sent = wrists.flatMap((w) => w.sent.map((x) => x.text));
     expect(sent.length).toBeGreaterThan(0);
     for (const t of sent) expect(t).not.toMatch(TERM_RE);
+  });
+
+  it("the phone's Progress reads through a tunnel (pair token) are masked like the TV's", async () => {
+    const tunnel = { "x-forwarded-for": "203.0.113.7", host: "abc123.ngrok-free.app", ...pairHeaders("p".repeat(20)) };
+    const recaps = await get("/api/recaps?limit=3", tunnel);
+    expect(recaps.status).toBe(200);
+    expect(recaps.body.recaps.length).toBeGreaterThan(0); // the story's recap, from the test above
+    expect(recaps.text).toContain(MASK_SCREEN);
+    for (const p of ["/api/recaps?limit=3", "/api/stats?range=week", "/api/transfer"]) {
+      const r = await get(p, tunnel);
+      expect(r.status, p).toBe(200);
+      expect(r.text, p).not.toMatch(TERM_RE);
+    }
   });
 
   it("no log line carries a term", () => {

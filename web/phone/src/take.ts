@@ -30,9 +30,21 @@ export function wsUrl(protocol: string, host: string): string {
 // any token inside the characters a subprotocol allows). None without a token.
 export function wsProtocols(k: string | null): string[] | undefined {
   if (!k) return undefined;
+  return [WS_PROTOCOL, `${WS_TOKEN_PREFIX}${base64url(k)}`];
+}
+
+// The header that carries the pair token on the Progress tab's reads (GET /api/stats, /api/transfer,
+// /api/recaps; src/hub/gate.ts PAIR_HEADER), base64url like the subprotocol. Never in the URL. None
+// without a token: a trusted LAN phone (the hub runs with --lan) reads without one.
+export const PAIR_HEADER = "x-pair-token";
+export function pairHeaders(k: string | null | undefined): Record<string, string> {
+  return k ? { [PAIR_HEADER]: base64url(k) } : {};
+}
+
+function base64url(s: string): string {
   let bin = "";
-  for (const b of new TextEncoder().encode(k)) bin += String.fromCharCode(b);
-  return [WS_PROTOCOL, `${WS_TOKEN_PREFIX}${btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`];
+  for (const b of new TextEncoder().encode(s)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 export const newTakeId = (now: number, rand = Math.random): string => `take_${now.toString(36)}${Math.floor(rand() * 1296).toString(36).padStart(2, "0")}`;

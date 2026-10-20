@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import WebSocket from "ws";
 import { WS_PROTOCOL } from "../src/hub/contract.js";
-import { bearerOk, hostIsLocal, isPublicRequest, mustAuthenticate, protocolToken, resolveTokens, tokenEquals, tunnelWarning } from "../src/hub/gate.js";
-import { wsProtocols } from "../web/phone/src/take.js";
+import { bearerOk, headerToken, hostIsLocal, isPublicRequest, mustAuthenticate, PAIR_HEADER, PAIRED_READS, protocolToken, PUBLIC_ROUTES, resolveTokens, tokenEquals, tunnelWarning } from "../src/hub/gate.js";
+import { pairHeaders, wsProtocols } from "../web/phone/src/take.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { raw, wsOutcome } from "./helpers-http.js";
@@ -167,6 +167,46 @@ describe("gate: the hub server", () => {
     expect(lan.result).toBe("welcome");
     expect(lan.welcome.joinUrl).toMatch(new RegExp(`/p/${lan.welcome.code}#k=${PAIR}$`));
     expect((await raw(s.port, "/api/health")).status).toBe(200); // the server survives refused upgrades
+  });
+  it("the phone's Progress reads: public GET /api/stats, /api/transfer, /api/recaps only with the pair token in x-pair-token", async () => {
+    expect(PAIRED_READS).toEqual(["/api/stats", "/api/transfer", "/api/recaps"]);
+    expect(PUBLIC_ROUTES.some((r) => r.includes(PAIR_HEADER))).toBe(true);
+    const paired = pairHeaders(PAIR);
+    for (const [p, q] of [["/api/stats", "?range=week"], ["/api/transfer", ""], ["/api/recaps", "?limit=3"]] as const) {
+      for (const pub of [{ ...NGROK, host: PUBLIC }, { ...NGROK, host: `127.0.0.1:${s.port}` }, { host: PUBLIC }]) {
+        const none = await raw(s.port, p + q, { headers: pub });
+        expect(none.status, `${p} without the token`).toBe(403);
+        expect(JSON.parse(none.text).error).toBe("forbidden");
+        expect((await raw(s.port, p + q, { headers: { ...pub, ...pairHeaders("wrong-token-wrong-token") } })).status, `${p} with a wrong token`).toBe(403);
+        // the raw token instead of its base64url form, and the token in the URL instead of the header
+        expect((await raw(s.port, p + q, { headers: { ...pub, [PAIR_HEADER]: PAIR } })).status).toBe(403);
+        expect((await raw(s.port, `${p}${q ? `${q}&` : "?"}k=${PAIR}`, { headers: pub })).status, `${p} with ?k=`).toBe(403);
+        const ok = await raw(s.port, p + q, { headers: { ...pub, ...paired } });
+        expect(ok.status, `${p} with the token`).toBe(200);
+        expect(ok.text).not.toContain(PAIR);
+        expect(ok.text).not.toContain(paired[PAIR_HEADER]!);
+      }
+    }
+    // the token opens nothing else: other reads, the recap by id, SSE, health, the TV and every write
+    for (const [method, p] of [["GET", "/api/live"], ["GET", "/api/recaps/rcp_demo_0001"], ["GET", "/api/settings"], ["GET", "/api/instrument"], ["GET", "/api/events"], ["GET", "/api/events/recent"], ["GET", "/api/health"], ["GET", "/api/state"], ["GET", "/api/attempts"], ["GET", "/tv/"], ["HEAD", "/api/stats"], ["POST", "/api/stats"], ["POST", "/api/attempt"], ["POST", "/api/session/start"], ["POST", "/api/sessions/demo-bee-1017/setting"], ["POST", "/api/live/mode"]] as const) {
+      const r = await raw(s.port, p, { method, headers: { ...NGROK, host: PUBLIC, ...paired, "content-type": "application/json" }, body: method === "POST" ? "{}" : undefined });
+      expect(r.status, `${method} ${p}`).toBe(403);
+    }
+    // a foreign web page holding the token is still refused by the Origin check, with no CORS header
+    const evil = await raw(s.port, "/api/stats", { headers: { ...NGROK, host: PUBLIC, ...paired, origin: "https://evil.example" } });
+    expect(evil.status).toBe(403);
+    expect(JSON.parse(evil.text).error).toBe("forbidden_origin");
+    expect(evil.headers["access-control-allow-origin"]).toBeUndefined();
+    // LAN and loopback need no token, as before
+    expect((await raw(s.port, "/api/recaps?limit=3", { headers: { host: `192.168.1.20:${s.port}` } })).status).toBe(200);
+  });
+  it("x-pair-token: base64url of the token, as the phone page encodes it", () => {
+    expect(headerToken(pairHeaders("tök en/+=")[PAIR_HEADER])).toBe("tök en/+=");
+    expect(headerToken(pairHeaders(PAIR)[PAIR_HEADER])).toBe(PAIR);
+    expect(headerToken([pairHeaders(PAIR)[PAIR_HEADER]!, "x"])).toBe(PAIR);
+    for (const bad of [undefined, "", "  ", "a+b/c=", "with space", "%2F"]) expect(headerToken(bad), String(bad)).toBeNull();
+    expect(pairHeaders(null)).toEqual({});
+    expect(pairHeaders("")).toEqual({});
   });
   it("never puts a token in a response", async () => {
     for (const p of ["/api/health", "/api/live", "/api/state", "/api/nope"]) {

@@ -15,6 +15,9 @@
 //      /ws (WebSocket upgrade)                      with the pair token: the subprotocol
 //                                                   "k.<base64url(PAIR_TOKEN)>" (the phone page), or
 //                                                   ?k=$PAIR_TOKEN (older clients)
+//      GET /api/stats, /api/transfer, /api/recaps   with the pair token in the header
+//                                                   x-pair-token: <base64url(PAIR_TOKEN)> (the phone's
+//                                                   Progress tab; read-only, never in the URL)
 //    Anything else gets 403 {error:"forbidden"}; a refused upgrade gets its socket destroyed.
 //    A TCP tunnel (ngrok tcp, ssh -R) carries no proxy header and arrives from loopback, so it would
 //    be trusted: use `ngrok http` only. With PUBLIC_BASE_URL set, /alexa and /mcp authenticate
@@ -48,7 +51,7 @@ import { forwardedClient } from "tv-voice-bridge/hub";
 import { WS_TOKEN_PREFIX } from "./contract.js";
 import type { Duplex } from "node:stream";
 
-export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (pair token as subprotocol k.<base64url> or ?k=)"];
+export const PUBLIC_ROUTES = ["POST /alexa", "GET /p/*", "GET /sim/*", "/mcp (Authorization: Bearer $MCP_TOKEN)", "/ws upgrade (pair token as subprotocol k.<base64url> or ?k=)", "GET /api/stats, /api/transfer, /api/recaps (pair token as x-pair-token: <base64url>)"];
 export const PROXY_HEADERS = ["x-forwarded-for", "forwarded", "x-forwarded-host", "x-real-ip", "cf-connecting-ip"];
 // Vite dev servers that proxy /api, /ws and /mcp to the hub (tv/web, web/phone, web/sim).
 export const DEV_ORIGIN_PORTS = [5183, 5184, 5175];
@@ -296,7 +299,25 @@ export function gateHttp(req: IncomingMessage, path: string, tokens: GateTokens,
     if (bearerOk(req.headers.authorization, tokens.mcpToken)) return { allow: true, public: true };
     return { allow: false, public: true, reason: "mcp needs Authorization: Bearer <MCP_TOKEN>" };
   }
+  if (method === "GET" && PAIRED_READS.includes(path)) {
+    if (tokenEquals(headerToken(req.headers[PAIR_HEADER]), tokens.pairToken)) return { allow: true, public: true };
+    return { allow: false, public: true, reason: `this read needs the pair token in ${PAIR_HEADER}` };
+  }
   return { allow: false, public: true, reason: "not reachable through a public tunnel" };
+}
+
+// The phone page's Progress tab reads these through a tunnel (or from the LAN without --lan) with the
+// pair token in PAIR_HEADER. Read-only and exact: not /api/recaps/<id>, /api/live, /api/settings, SSE
+// or any POST. The Origin check above still runs first, so a foreign page holding the token is refused.
+export const PAIRED_READS = ["/api/stats", "/api/transfer", "/api/recaps"];
+export const PAIR_HEADER = "x-pair-token";
+
+// The pair token from PAIR_HEADER (base64url, as in the WebSocket subprotocol, so any token value is
+// header-safe), or null. Never read from the URL: tunnel and proxy access logs record URLs.
+export function headerToken(header: string | string[] | undefined): string | null {
+  const v = (Array.isArray(header) ? header[0] : header)?.trim();
+  if (!v || !/^[A-Za-z0-9_-]+$/.test(v)) return null;
+  return Buffer.from(v, "base64url").toString("utf8") || null;
 }
 
 // The pair token offered as a WebSocket subprotocol ("k.<base64url>", next to WS_PROTOCOL), or null.
