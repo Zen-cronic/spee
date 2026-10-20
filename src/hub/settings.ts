@@ -22,7 +22,7 @@ import type { CalendarFn } from "./brief.js";
 import { CONVERSATION_SETTINGS, SETTING_NAME, type ConversationSetting, type SettingBeforeAfter, type SettingRates, type SettingReason, type SettingsResponse, type SettingTag } from "./contract.js";
 import type { CoachHub } from "./core.js";
 import { habitTitle } from "./habitNames.js";
-import { fromSource, habitRates, period, type SourceSel, type StatSession } from "./stats.js";
+import { habitRates, period, type SourceSel, type StatSession } from "./stats.js";
 
 export { CONVERSATION_SETTINGS, SETTING_NAME };
 export type { ConversationSetting, SettingTag };
@@ -332,8 +332,8 @@ export class SettingsBook {
 
   private sessionsOf(setting: ConversationSetting, source: SourceSel): StatSession[] {
     const tags = this.tags();
-    // Drill lines are left out exactly as in the transfer (CoachHub.everydaySessions).
-    return fromSource(this.o.hub.everydaySessions(), source).filter((s) => tags.get(s.id)?.setting === setting);
+    // Drill lines are left out exactly as in the transfer (CoachHub.sessionsFor, computed once per data version).
+    return this.o.hub.sessionsFor(source).filter((s) => tags.get(s.id)?.setting === setting);
   }
 
   /** The wearer's usual rates in one setting (Bee conversations; this week, else all), or null with too little speech. */
@@ -362,7 +362,7 @@ export class SettingsBook {
     const tags = this.tags();
     const t = hub.transfer(source);
     const minWords = t?.minWordsPerPeriod ?? SETTING_MIN_WORDS;
-    const inSrc = fromSource(hub.everydaySessions(), source);
+    const inSrc = hub.sessionsFor(source);
     const present = CONVERSATION_SETTINGS.filter((st) => inSrc.some((s) => tags.get(s.id)?.setting === st));
     const rates: SettingRates[] = present.map((setting) => {
       const ss = this.sessionsOf(setting, source);

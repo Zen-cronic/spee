@@ -17,7 +17,7 @@ import { attemptSpan } from "./fuzzy.js";
 import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
-import { habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
+import { fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
 import { failReason } from "./failReason.js";
 
 export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed";
@@ -624,7 +624,7 @@ export class CoachHub extends EventEmitter {
 
   stats(range: RangeSpec, source: SourceSel = "bee") {
     const now = this.clock();
-    const ss = selectSessions(this.everydaySessions(), range, now, this.tz, source);
+    const ss = selectSessions(this.everydaySessions(), range, now, this.tz, source, range.kind === "session" ? undefined : this.sessionsFor(source));
     const today = this.today();
     // Drill counts belong to a period (today, the week, all time). A conversation or meeting range has
     // no drill period, so its practice block is null rather than every drill ever.
@@ -645,7 +645,7 @@ export class CoachHub extends EventEmitter {
       habits: habitRates(ss),
       talk: talkSummary(ss),
       practice: as && practiceCounts(as),
-      drilledVsNextSession: nextSessionDeltas(this.everydaySessions(), this.drillEvents(), this.tz, source).map((d) => ({
+      drilledVsNextSession: nextSessionDeltas(this.sessionsFor(source), this.drillEvents(), this.tz, source, true).map((d) => ({
         ...d,
         preregistered: !!this.prereg && isRegistered(d.habit, new Set([...this.prereg.drilled, ...this.prereg.control].map((h) => h.habit))),
         note: "one session either side of the first drill: a glance, not a test (see /api/transfer)",
@@ -668,14 +668,40 @@ export class CoachHub extends EventEmitter {
 
   transfer(source: SourceSel = "bee") {
     if (!this.prereg) return null;
-    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessions, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source, drillLines: this.drillLines() }) };
+    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessionsFor(source), selected: true, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source }) };
   }
 
   // The sessions with every drill line left out (stats.ts withoutDrillLines, by id, time and text):
   // what "non-drill" means everywhere. /api/stats habits (and so the live baseline), the settings
   // view, the next-session glance and the transfer all count these.
   everydaySessions(): StatSession[] {
-    return withoutDrillLines(this.sessions, this.drillLines());
+    return this.views().everyday;
+  }
+
+  // The everyday sessions a source counts (stats.ts fromSource: with "all", a meeting both heard
+  // counted once). Every stats view, the transfer and the settings view read these.
+  sessionsFor(source: SourceSel): StatSession[] {
+    const v = this.views();
+    return (v.bySource[source] ??= fromSource(v.everyday, source));
+  }
+
+  // The drill lines, the everyday sessions and each source's selection, computed once per version of
+  // the data: the sessions (a new list on addSessions, or another line count) and the attempts (what
+  // each one holds that a drill span is made from). Every screen refetches several views on each
+  // stats.updated; they share one computation.
+  private viewCache: { sessions: StatSession[]; key: string; drill: DrillLines; everyday: StatSession[]; bySource: Partial<Record<SourceSel, StatSession[]>> } | null = null;
+  private views() {
+    let lines = 0;
+    for (const s of this.sessions) lines += s.lines.length;
+    const key = `${this.sessions.length}:${lines}|${this.attempts.map((a) => `${a.id}:${a.status}:${a.bee ? `${a.bee.text}:${a.bee.utteranceIds?.join(",")}:${a.bee.spokenFromMs ?? ""}:${a.bee.spokenToMs ?? ""}:${a.bee.conversationId ?? ""}:${a.bee.latencyMs ?? ""}` : ""}:${a.provisional ? `${a.provisional.text}:${a.provisional.speechEndAt}` : ""}`).join("|")}`;
+    const c = this.viewCache;
+    if (c && c.sessions === this.sessions && c.key === key) return c;
+    const drill = this.computeDrillLines();
+    return (this.viewCache = { sessions: this.sessions, key, drill, everyday: withoutDrillLines(this.sessions, drill), bySource: {} });
+  }
+
+  drillLines(): DrillLines {
+    return this.views().drill;
   }
 
   // The Bee lines that were drill attempts, which are not everyday speech: by utterance id, and by
@@ -684,7 +710,7 @@ export class CoachHub extends EventEmitter {
   // confirmed (unverified, or still pending or polling) was still said: Bee's final transcript may
   // hold it later, so its provisional text and speech end make a span too (any conversation; the
   // text match guards against everyday lines).
-  drillLines(): DrillLines {
+  private computeDrillLines(): DrillLines {
     const keys = new Set<string>();
     const spans: DrillSpan[] = [];
     for (const a of this.attempts) {

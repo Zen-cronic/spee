@@ -169,10 +169,11 @@ export function parseRange(s: string | null | undefined): RangeSpec | null {
   return m ? { kind: "session", id: m[1]!, label: v } : null;
 }
 
-export function selectSessions(all: StatSession[], r: RangeSpec, nowMs: number, tz?: string, source: SourceSel = "bee"): StatSession[] {
+// `sourced`: `fromSource(all, source)` when the caller already has it (CoachHub.sessionsFor).
+export function selectSessions(all: StatSession[], r: RangeSpec, nowMs: number, tz?: string, source: SourceSel = "bee", sourced?: StatSession[]): StatSession[] {
   const today = localDate(nowMs, tz);
   // A single session asked for by id is returned whatever the source (a meeting's own captions too).
-  const ss = r.kind === "session" ? all.filter((s) => NON_DRILL_KINDS.has(s.kind)) : fromSource(all, source);
+  const ss = r.kind === "session" ? all.filter((s) => NON_DRILL_KINDS.has(s.kind)) : (sourced ?? fromSource(all, source));
   if (r.kind === "all") return ss;
   if (r.kind === "session") return ss.filter((s) => s.id === r.id);
   const from = r.kind === "today" ? today : addDays(today, -6);
@@ -360,7 +361,10 @@ export function isDrillLine(session: string, l: StatLine, d: DrillLines): boolea
 }
 export function withoutDrillLines(ss: StatSession[], d: DrillLines | undefined): StatSession[] {
   if (!d || (!d.keys.size && !d.spans.length)) return ss;
-  return ss.map((s) => (s.lines.some((l) => isDrillLine(s.id, l, d)) ? { ...s, lines: s.lines.filter((l) => !isDrillLine(s.id, l, d)) } : s));
+  return ss.map((s) => {
+    const kept = s.lines.filter((l) => !isDrillLine(s.id, l, d)); // one test per line
+    return kept.length === s.lines.length ? s : { ...s, lines: kept };
+  });
 }
 
 const f1 = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
@@ -430,15 +434,13 @@ export function period(sessions: StatSession[], key: string, tz?: string): Perio
 
 // `drillLines`: the lines Bee heard as drill attempts (DrillLines). They are left out of both
 // periods: a card sentence said for a drill is not everyday speech, and counting it would make the
-// "after" rate look better just because drills were recorded.
-export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel; drillLines?: DrillLines }): TransferReport {
+// "after" rate look better just because drills were recorded. With `selected`, `sessions` are
+// already the source's, with the drill lines left out (CoachHub.sessionsFor).
+export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg; preregPath: string; drills: DrillEvent[]; nowMs: number; tz?: string; source?: SourceSel; drillLines?: DrillLines; selected?: boolean }): TransferReport {
   const { prereg } = opts;
   const source = opts.source ?? "bee";
   const minWords = prereg.min_words_per_period;
-  const ss = withoutDrillLines(
-    fromSource(opts.sessions, source),
-    opts.drillLines,
-  ).sort((a, b) => a.startMs - b.startMs);
+  const ss = (opts.selected ? [...opts.sessions] : withoutDrillLines(fromSource(opts.sessions, source), opts.drillLines)).sort((a, b) => a.startMs - b.startMs);
   const registeredAt = Date.parse(prereg.registered_at);
   const firstDrill = (key: string) => {
     const ts = opts.drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at);
@@ -571,10 +573,11 @@ export function sourceBreakdown(ss: StatSession[], tz?: string) {
 }
 
 // The same pair as the first signal (signalPair), for every drilled habit key, pre-registered or not.
-// Pass the sessions with the drill lines already left out (withoutDrillLines). deltaPer100 only when
-// both sides have FIRST_SIGNAL_MIN_WORDS words.
-export function nextSessionDeltas(sessions: StatSession[], drills: DrillEvent[], tz?: string, source: SourceSel = "bee") {
-  const ss = fromSource(sessions, source);
+// Pass the sessions with the drill lines already left out (withoutDrillLines), and `selected` when
+// they are already the source's (CoachHub.sessionsFor). deltaPer100 only when both sides have
+// FIRST_SIGNAL_MIN_WORDS words.
+export function nextSessionDeltas(sessions: StatSession[], drills: DrillEvent[], tz?: string, source: SourceSel = "bee", selected = false) {
+  const ss = selected ? sessions : fromSource(sessions, source);
   const keys = [...new Set(drills.flatMap((d) => d.habitKeys))];
   return keys.map((key) => {
     const first = Math.min(...drills.filter((d) => d.habitKeys.includes(key)).map((d) => d.at));
