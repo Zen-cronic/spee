@@ -430,6 +430,7 @@ Each meeting caption session is paired with every Bee conversation that overlaps
 ```
 
 - Live mode reads `bee today --json` (`calendar_events`), caches it for 5 minutes, and ignores emails. Calendar titles are never persisted.
+- `event` is the next meeting, or one that started up to 5 minutes ago (`startsInMin` below 0). `?upcoming=1` gives only a meeting that has not started yet: the coaching skill's heartbeat uses it, so a meeting under way never hides the next one. Any other value is `400 bad_request`.
 - With no calendar connected, `event` is null and `eventNote` says why.
 - Top habit: hedges or vague answers win when they have at least 3 occurrences this week (otherwise all data). Fillers and restarts are the fallback.
 

@@ -23,7 +23,7 @@ Run from the repo root: `node skills/speaking-coach/scripts/coach.mjs <command>`
 | `brief` | "Warm me up", "I have a meeting soon" | Reads `GET /api/brief`: when the next meeting starts (never its title), the habit to watch, and one warm-up line to say aloud |
 | `goal` | "What's my speaking goal?" | Reads `GET /api/coach/facts`: the coach's one goal fact in Bee, whether Bee has confirmed it, and Bee's fact and insight counts |
 | `cue [--in N]` | "Remind me on my wrist before the call" | `POST /api/coach/cue`: one if-then cue, at most 60 characters, through the hub's wrist queue, with its alarm N minutes from now (default 0) |
-| `heartbeat [--dry-run]` | On a schedule, every 2 to 4 minutes | Reads the brief and sends one cue when the next meeting starts in 8 to 12 minutes, once per meeting. `--dry-run` only says whether it would |
+| `heartbeat [--dry-run]` | On a schedule, every 2 to 4 minutes | Reads the brief's next meeting that has not started (`GET /api/brief?upcoming=1`) and sends one cue when it starts in 8 to 12 minutes, once per meeting. `--dry-run` only says whether it would |
 
 The hub picks the cue's habit and words. A cue only ever names a habit the user has already practised, never the one kept unpractised for comparison, and the hub refuses it during quiet hours, over its cap, or when cues are off. A cue whose alarm is within 10 minutes of an earlier cue's alarm is a repeat and comes back as "nothing new reached the wrist".
 

@@ -6,8 +6,8 @@
 //   brief      GET  /api/brief         the next meeting (its time, never its title), the habit to watch, a warm-up line
 //   goal       GET  /api/coach/facts   the coach's goal fact in Bee, and Bee's fact and insight counts
 //   cue        POST /api/coach/cue     one if-then cue on the wrist (the hub picks the habit, caps and dedupes it)
-//   heartbeat  GET  /api/brief, then POST /api/coach/cue, 8 to 12 min before the next meeting, until
-//              a to-do is set for it
+//   heartbeat  GET  /api/brief?upcoming=1 (the next meeting that has not started), then
+//              POST /api/coach/cue, 8 to 12 min before it, until a to-do is set for it
 //
 // Calendar titles never leave this script: no output line and no saved state carries one.
 import { createHash } from "node:crypto";
@@ -216,7 +216,8 @@ const commands = {
     return 0;
   },
   async heartbeat(io, opts) {
-    const r = await call(io, "GET", "/api/brief");
+    // Only a meeting that has not started: one under way must not hide the next one's window.
+    const r = await call(io, "GET", "/api/brief?upcoming=1");
     if (failed(r)) return refusal(io, r, "brief");
     const statePath = opts.state ? resolve(opts.state) : defaultStatePath(io.env);
     const sent = loadSent(statePath, io.now());

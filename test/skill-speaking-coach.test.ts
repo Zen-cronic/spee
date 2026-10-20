@@ -262,8 +262,9 @@ describe("the commands against a fake hub", () => {
 
 describe("the commands against the demo hub", () => {
   let s: HubServer;
+  let setup: ReturnType<typeof demoSetup>;
   beforeAll(async () => {
-    const setup = demoSetup({ pace: 0.05, stateDir: null });
+    setup = demoSetup({ pace: 0.05, stateDir: null });
     s = await startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
     // a meeting 10 minutes from the demo clock, with a title that must never be printed
     setup.calendar = async () => ({ events: [{ title: TITLE, startsAt: setup.hub.clock() + 10 * 60_000 }], source: "test calendar" });
@@ -284,6 +285,24 @@ describe("the commands against the demo hub", () => {
     expect(out).toContain("Would send a cue now (next meeting in 10 min).");
     expect(out).not.toContain("Dana");
     expect(out).not.toContain("Quarterly");
+  });
+  it("heartbeat: a meeting that started 3 min ago never hides the next one, 10 min away (GET /api/brief?upcoming=1)", async () => {
+    const calendar = setup.calendar;
+    const now = setup.hub.clock();
+    setup.calendar = async () => ({ events: [{ title: "Invented sync", startsAt: now - 3 * 60_000 }, { title: TITLE, startsAt: now + 10 * 60_000 }], source: "test calendar" });
+    try {
+      const brief = async (q: string) => (await (await fetch(`${s.url}/api/brief${q}`)).json()) as Brief;
+      expect((await brief("")).event?.startsInMin).toBe(-3); // the brief itself still shows the one under way
+      expect((await brief("?upcoming=1")).event).toMatchObject({ title: TITLE, startsInMin: 10 });
+      expect((await brief("?upcoming=0")).event?.startsInMin).toBe(-3);
+      expect((await fetch(`${s.url}/api/brief?upcoming=yes`)).status).toBe(400);
+      expect(await run(["heartbeat", "--dry-run", "--hub", s.url, "--state", join(tmpdir(), "coach-skill-unused.json")], { out: (l) => void (out += `${l}\n`), err: () => {}, env: {} })).toBe(0);
+      expect(out).toContain("Would send a cue now (next meeting in 10 min).");
+      expect(out).not.toContain("the meeting has started");
+      expect(out).not.toContain("Dana");
+    } finally {
+      setup.calendar = calendar;
+    }
   });
   // The cross-packet check with the live plugin's Bee memory and cue routes: skipped only while the
   // hub has no such route (404 not_found); once it does, the skill must render its real answers.

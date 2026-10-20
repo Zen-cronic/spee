@@ -480,7 +480,7 @@ export interface SettingsResponse extends Labelled {
   line: string | null;
 }
 
-// GET /api/brief
+// GET /api/brief (?upcoming=1: the event is only a meeting that has not started yet)
 export interface Brief {
   dataLabel: string;
   generatedAt: string;

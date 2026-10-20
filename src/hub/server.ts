@@ -508,8 +508,11 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       }
       case "GET /api/instrument":
         return send(res, 200, instrumentReport(hub.everydaySessions(), { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }));
-      case "GET /api/brief":
-        return send(res, 200, await buildBrief(hub, setup.calendar));
+      case "GET /api/brief": {
+        const upcoming = url.searchParams.get("upcoming");
+        if (upcoming !== null && upcoming !== "0" && upcoming !== "1") return fail(res, 400, "bad_request", "upcoming must be 0 or 1");
+        return send(res, 200, await buildBrief(hub, setup.calendar, { upcoming: upcoming === "1" }));
+      }
       case "GET /api/events/recent":
         return send(res, 200, { events: hub.recent });
       case "GET /api/events": {

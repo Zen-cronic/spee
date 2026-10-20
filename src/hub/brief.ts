@@ -67,10 +67,17 @@ export function beeCalendar(bin = process.env.BEE_BIN ?? "bee", timeoutMs = 10_0
 export const HERO_MIN_COUNT = 3;
 const HABIT_FOR: Record<string, HabitKind> = { hedges: "hedge", vague: "vague", fillers: "filler", restarts: "restart" };
 
-export async function buildBrief(hub: CoachHub, calendar: CalendarFn) {
+export const STARTED_KEEP_MS = 5 * 60_000; // a meeting that started this recently is still the next one
+
+/**
+ * The brief. Its event is the next meeting, or one that started up to STARTED_KEEP_MS ago; with
+ * `upcoming` (GET /api/brief?upcoming=1, the skill's heartbeat), only one that has not started, so a
+ * meeting that is under way never hides the next one.
+ */
+export async function buildBrief(hub: CoachHub, calendar: CalendarFn, o: { upcoming?: boolean } = {}) {
   const now = hub.clock();
   const cal = await calendar();
-  const next = cal.events.filter((e) => e.startsAt >= now - 5 * 60_000).sort((a, b) => a.startsAt - b.startsAt)[0] ?? null;
+  const next = cal.events.filter((e) => (o.upcoming ? e.startsAt > now : e.startsAt >= now - STARTED_KEEP_MS)).sort((a, b) => a.startsAt - b.startsAt)[0] ?? null;
   let st = hub.stats({ kind: "week" });
   let range = "week";
   if (!st.habits.words) (st = hub.stats({ kind: "all" })), (range = "all");
