@@ -59,7 +59,7 @@ export const liveModeOff: LiveModeResponse = { mode: modeOff, narration: "Live c
 
 // The live window
 
-export const baseline: LiveBaseline = { source: "bee week (non-drill conversations; synthetic)", words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, fillersPer100: 2.43, wpm: 140 };
+export const baseline: LiveBaseline = { source: "bee week (non-drill conversations; synthetic)", range: "week", words: 1400, hedgesPer100: 1.43, likesPer100: 1.79, fillersPer100: 2.43, wpm: 140 };
 
 const rule = (r: RuleState["rule"], value: number, threshold: number, unit: RuleState["unit"]): RuleState => ({ rule: r, value, threshold, unit, over: value >= threshold });
 

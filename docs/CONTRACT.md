@@ -818,12 +818,13 @@ Request: `{"enabled": true, "minutes": 60, "by": "alexa"}`. Response:
 
 ### `GET /api/live`
 
-[`live.json`](../fixtures/contract-v2/live.json) is a snapshot taken mid-conversation, just after the nudge. It has the `mode`, the current `conversation` (`LiveWindow`, or null), `drillActive`, `baseline`, `wrist` (`WristStatus`), `lastNudge`, `recentNudges`, `recentSkips` (newest first, at most 10) and `lastRecapId`. The baseline:
+[`live.json`](../fixtures/contract-v2/live.json) is a snapshot taken mid-conversation, just after the nudge. It has the `mode`, the current `conversation` (`LiveWindow`, or null), `drillActive`, `baseline`, `wrist` (`WristStatus`), `lastNudge`, `recentNudges`, `recentSkips` (newest first, at most 10) and `lastRecapId`. The baseline (`range`, additive: `"week"`, or `"all"` when the week holds too few words and every Bee conversation is used):
 
 <!-- fixture: live.json#/baseline -->
 ```json
 {
   "source": "bee week (non-drill conversations; synthetic)",
+  "range": "week",
   "words": 1400,
   "hedgesPer100": 1.43,
   "likesPer100": 1.79,

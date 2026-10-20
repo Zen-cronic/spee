@@ -106,6 +106,7 @@
   "drillActive": false,
   "baseline": {
     "source": "bee week (non-drill conversations; synthetic)",
+    "range": "week",
     "words": 1400,
     "hedgesPer100": 1.43,
     "likesPer100": 1.79,

@@ -31,6 +31,7 @@ export function computeBaseline(hub: CoachHub, opts: { wpm: number | null; synth
   const per100 = (n: number) => (h.words ? r2((n / h.words) * 100) : 0);
   return {
     source: `bee ${range} (non-drill conversations${opts.synthetic ? "; synthetic" : ""})`,
+    range: range === "week" ? "week" : "all",
     words: h.words,
     hedgesPer100: h.hedges.per100,
     likesPer100: per100(h.fillers.breakdown.like ?? 0),

@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { FirstSignal, GradeCheck, GradeResult, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
+import type { FirstSignal, GradeCheck, GradeResult, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -199,6 +199,12 @@ export function plainReason(f: GradeFailure | null): string | null {
     default:
       return null;
   }
+}
+
+/** What the usual word count covers: this week, or every conversation when the week is too quiet. */
+export function baselineWordsLabel(b: Pick<LiveBaseline, 'source'> & { range?: LiveBaseline['range'] }): string {
+  const week = b.range ? b.range === 'week' : /^bee week\b/.test(b.source);
+  return week ? 'your words this week' : 'your words so far';
 }
 
 /** A verdict in plain words, as Progress shows it: a percent only for a decided change. */

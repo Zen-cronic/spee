@@ -1,7 +1,7 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { changeLabel, fmtDay, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText } from "../tv/web/src/mirror/format.js";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -181,5 +181,15 @@ describe("first signal on Progress: numbers only when the hub measured them, alw
     expect(firstSignalLine([wait(hedges), { ...like, status: "too-few-words", before: side(309, 5), after: side(60, 0) }])!.text).toMatch(/too short to compare \(60 words\)$/);
     expect(firstSignalLine([])).toBeNull();
     expect(firstSignalLine(undefined)).toBeNull();
+  });
+});
+
+describe("Live between conversations", () => {
+  it("labels the usual word count by what it covers", () => {
+    expect(baselineWordsLabel({ source: "bee week (non-drill conversations)", range: "week" })).toBe("your words this week");
+    expect(baselineWordsLabel({ source: "bee all Bee conversations (non-drill conversations)", range: "all" })).toBe("your words so far");
+    // an older hub without `range`: read from the source
+    expect(baselineWordsLabel({ source: "bee all Bee conversations (non-drill conversations)" })).toBe("your words so far");
+    expect(baselineWordsLabel({ source: "bee week (non-drill conversations)" })).toBe("your words this week");
   });
 });

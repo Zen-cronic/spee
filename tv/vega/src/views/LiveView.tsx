@@ -2,7 +2,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { HopTimeline } from '../components/HopTimeline';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
+import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, overruleText, plainReason, RULE_LABEL, sessionTally, SKIP_LABEL } from '../mirror/format';
 import { drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, R, SP, SPLIT, T } from '../theme';
@@ -198,7 +198,7 @@ function ConversationPanel({ live, last }: { live: LiveSlice; last: Recap | null
         </View>
         <View style={styles.stat}>
           <Text style={[styles.statBig, idle && styles.usual]}>{w ? fmtPct(w.talkShare) : b ? fmtWords(b.words) : '–'}</Text>
-          <Text style={styles.statLabel} numberOfLines={1}>{idle ? 'your words this week' : 'you talked'}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{idle ? (b ? baselineWordsLabel(b) : 'your words this week') : 'you talked'}</Text>
         </View>
       </View>
       <Text style={styles.sub}>{idle ? 'Usually, out of every 100 words you say' : 'Last 2 minutes'}</Text>

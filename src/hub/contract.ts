@@ -502,6 +502,7 @@ export interface WristStatus {
 }
 export interface LiveBaseline {
   source: string; // e.g. "bee week (non-drill conversations)"
+  range?: "week" | "all"; // additive: this week, or every Bee conversation when the week has too few words
   words: number;
   hedgesPer100: number;
   likesPer100: number;
