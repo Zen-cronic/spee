@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { BridgeClient } from 'tv-voice-bridge';
-import type { HubState, LiveState, PracticeMeters, Recap, RecapList, StatsResponse, TransferResponse } from '../contract';
+import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, StatsResponse, TransferResponse } from '../contract';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
 
 /**
  * The mirror's connection to the hub, shared by the web TV and the Vega app (only MirrorConfig
  * differs). Joins the bridge as a `screen`, feeds sequenced events and `hub.state` to the reducer,
  * batches the room-scoped meters at `metersHz` (10 on the web, 5 on Vega), and fetches the week's
- * stats and the transfer result on start and after every `stats.updated` (today's drill tally on
+ * stats and the transfer result (and its secondary captions-included view) on start and after every `stats.updated` (today's drill tally on
  * start; `stats.updated` carries it after that).
  *
  * Privacy: nothing is written to storage. The room code lives in this module for the app run
@@ -44,6 +44,8 @@ export function useMirror(cfg: MirrorConfig) {
   const [partial, setPartial] = useState<{ text: string; at: number } | null>(null);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [transfer, setTransfer] = useState<TransferResponse | null>(null);
+  // Secondary, labelled: the same before/after with meeting captions, and the Bee-vs-captions check.
+  const [captions, setCaptions] = useState<{ all: TransferResponse | null; instrument: InstrumentResponse | null }>({ all: null, instrument: null });
   const [rttMs, setRttMs] = useState<number | null>(null);
   const clientRef = useRef<BridgeClient | null>(null);
   const meterBuf = useRef<PracticeMeters[]>([]);
@@ -98,6 +100,7 @@ export function useMirror(cfg: MirrorConfig) {
     let alive = true;
     void getJson<StatsResponse>(`${cfg.httpBase}/api/stats?range=week`).then((r) => alive && r && setStats(r));
     void getJson<TransferResponse>(`${cfg.httpBase}/api/transfer`).then((r) => alive && r && setTransfer(r));
+    void Promise.all([getJson<TransferResponse>(`${cfg.httpBase}/api/transfer?source=all`), getJson<InstrumentResponse>(`${cfg.httpBase}/api/instrument`)]).then(([all, instrument]) => alive && setCaptions({ all, instrument }));
     return () => {
       alive = false;
     };
@@ -123,7 +126,7 @@ export function useMirror(cfg: MirrorConfig) {
 
   const show = useCallback((view: ScreenView) => dispatch({ type: 'show', view }), []);
   const dismissRecap = useCallback(() => dispatch({ type: 'dismissRecap' }), []);
-  return { state, status, code, joinUrl, mics, partial, stats, transfer, rttMs, show, dismissRecap };
+  return { state, status, code, joinUrl, mics, partial, stats, transfer, captions, rttMs, show, dismissRecap };
 }
 
 export type Mirror = ReturnType<typeof useMirror>;

@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { ConversationEnded, FirstSignal, GradeCheck, GradeResult, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
+import type { ConversationEnded, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, NudgeHops, NudgeRule, NudgeSkipReason, PracticeFlag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
 export const fmt2 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 100) / 100).toFixed(2));
@@ -352,4 +352,33 @@ export function firstSignalText(f: SignalIn): { text: string; measured: boolean 
     default:
       return { text: `${name}: your next conversation after practising shows here`, measured: false };
   }
+}
+
+/**
+ * Progress's secondary line: the same before/after with meeting captions included
+ * (`/api/transfer?source=all`), never the pre-registered result. Null without a caption session.
+ * Only the habits captions are shown to transcribe like Bee are listed: the practised ones (unsure
+ * words, filler "like") and the one you didn't practise; filler words and "um"/"uh" are left out,
+ * because captions miss some of them. `agree` is said only when the hub's instrument check finds the
+ * practised habits within its tolerance on meetings both heard; otherwise it is null and not shown.
+ */
+export interface CaptionsLine {
+  label: string;
+  habits: { habit: string; title: string; before: string; after: string; role: TransferHabit['role']; unchecked: boolean }[];
+  agree: string | null;
+}
+const CAPTION_STABLE = ['hedges', 'filler:like'];
+export function captionsLine(all: TransferResponse | null | undefined, inst: InstrumentResponse | null | undefined): CaptionsLine | null {
+  const m = all?.source === 'all' ? all.sources?.meeting : undefined;
+  if (!all || !m || !(m.sessions > 0)) return null;
+  const since = m.from ? ` since ${fmtDate(m.from)}` : '';
+  // The first row leads with "Including meeting captions"; this second row says which and how secondary.
+  const label = `${m.sessions} captioned meeting${m.sessions === 1 ? '' : 's'}${since} · not the pre-registered check`;
+  const agreeOn = (k: string) => inst?.habits?.find((h) => h.habit === k)?.agree === true;
+  const habits = all.habits
+    .filter((h) => (h.role === 'drilled' ? CAPTION_STABLE.includes(h.habit) : true))
+    .map((h) => ({ habit: h.habit, title: habitTitle(h.habit, h.label), before: fmt1(h.before.per100), after: fmt1(h.after.per100), role: h.role, unchecked: h.role !== 'drilled' && !agreeOn(h.habit) }));
+  const n = inst?.pairs ?? 0;
+  const agree = inst?.claim === 'practised-agree' ? curly(`Captions and Bee agree on unsure words and filler "like" (${n} meeting${n === 1 ? '' : 's'} both heard)`) : null;
+  return { label, habits, agree };
 }

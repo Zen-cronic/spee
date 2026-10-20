@@ -43,7 +43,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
   let screen;
   switch (s.view) {
     case 'transfer':
-      screen = <TransferView transfer={m.transfer} />;
+      screen = <TransferView transfer={m.transfer} captions={m.captions} />;
       break;
     case 'live':
     case 'drill':

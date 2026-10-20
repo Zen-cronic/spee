@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { TransferHabit, TransferResponse } from '../contract';
+import type { InstrumentResponse, TransferHabit, TransferResponse } from '../contract';
+import { CaptionsLine } from '../components/CaptionsLine';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
-import { fmt1, fmtDate, fmtWords, habitTitle, transferTitle, verdictWords } from '../mirror/format';
+import { captionsLine, fmt1, fmtDate, fmtWords, habitTitle, transferTitle, verdictWords } from '../mirror/format';
 import { C, F, R, SP, T } from '../theme';
 import { Empty } from './WeekView';
 
@@ -10,14 +11,17 @@ import { Empty } from './WeekView';
  * Did the drilling carry over into real speech? Each pre-registered drilled habit's rate before
  * and after its first drill, and the control habit that was never drilled. The verdict words come
  * from the hub (non-overlapping 95% intervals, minimum words); the screen only says them plainly.
+ * Under them, a secondary strip (CaptionsLine) with meeting captions included, labelled as such.
  */
-export function TransferView({ transfer }: { transfer: TransferResponse | null }) {
+export function TransferView({ transfer, captions }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null } }) {
   const debug = useDebug();
   if (!transfer) return <Empty text="Loading your progress…" />;
   const drilled = transfer.habits.filter((x) => x.role === 'drilled');
   const control = transfer.habits.filter((x) => x.role !== 'drilled');
   // The hub's own claim decides the plain line; the screen never re-derives it from the verdicts.
   const title = transferTitle(transfer);
+  // The secondary captions rows take the note's top margin, so the cards keep their height.
+  const withCaptions = !!captionsLine(captions?.all, captions?.instrument);
   return (
     <View style={styles.wrap} testID="view-transfer">
       <Text style={styles.kicker}>Since you started practising · your real conversations, heard by Bee</Text>
@@ -32,7 +36,8 @@ export function TransferView({ transfer }: { transfer: TransferResponse | null }
         ))}
       </View>
       <FirstSignalLines signals={transfer.firstSignal} />
-      <Text style={styles.note} numberOfLines={1}>{`Plan set ${fmtDate(transfer.prereg.registeredAt)}, before your first practice. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and a clear gap between them.`}</Text>
+      <CaptionsLine all={captions?.all ?? null} instrument={captions?.instrument ?? null} />
+      <Text style={[styles.note, withCaptions && styles.noteTight]} numberOfLines={1}>{`Plan set ${fmtDate(transfer.prereg.registeredAt)}, before your first practice. A change counts only with ${fmtWords(transfer.minWordsPerPeriod)}+ words on each side and a clear gap between them.`}</Text>
       {debug ? <Text style={styles.debug} numberOfLines={2}>{transfer.habits.map((x) => `${x.habit} ${x.before.ci95.join('–')} → ${x.after.ci95.join('–')} (${x.before.words}/${x.after.words} w)`).join('  ·  ')}{transfer.unregistered.length ? `  ·  unregistered: ${transfer.unregistered.map((u) => u.habit).join(', ')}` : ''}</Text> : null}
     </View>
   );
@@ -88,5 +93,6 @@ const styles = StyleSheet.create({
   pillDark: { backgroundColor: C.surface2 },
   pillText: { fontSize: T.body, fontWeight: '700', fontFamily: F.family },
   note: { color: C.faint, fontSize: T.label, marginTop: SP.m, fontFamily: F.family },
+  noteTight: { marginTop: SP.xs },
   debug: { color: C.faint, fontSize: 20, marginTop: SP.xs, fontFamily: F.mono },
 });
