@@ -21,7 +21,7 @@ Run from the repo root: `node skills/speaking-coach/scripts/coach.mjs <command>`
 |---|---|---|
 | `status` | "How is my speaking going?" | Reads `GET /api/coach/now`: the coach's summary, whether live coaching is on, and how many practice lines are due |
 | `brief` | "Warm me up", "I have a meeting soon" | Reads `GET /api/brief`: when the next meeting starts (never its title), the habit to watch, and one warm-up line to say aloud |
-| `goal` | "What's my speaking goal?" | Reads `GET /api/coach/facts`: the coach's one goal fact in Bee, whether Bee has confirmed it, and Bee's fact and insight counts |
+| `goal` | "What's my speaking goal?" | Reads `GET /api/coach/facts`: the coach's one goal fact in Bee, whether Bee has confirmed it (or that the coach stopped trying to save it because Bee never listed it, so it may not be in Bee), and Bee's fact and insight counts |
 | `cue [--in N]` | "Remind me on my wrist before the call" | `POST /api/coach/cue`: one if-then cue, at most 60 characters, through the hub's wrist queue, with its alarm N minutes from now (default 0) |
 | `heartbeat [--dry-run]` | On a schedule, every 2 to 4 minutes | Reads the brief's next meeting that has not started (`GET /api/brief?upcoming=1`) and sends one cue when it starts in 8 to 12 minutes, once per meeting. `--dry-run` only says whether it would |
 
@@ -35,7 +35,7 @@ The heartbeat remembers which meetings had their cue by a hash of the start time
 
 If Bee's official Agent Skill is installed, use it for the user's day, conversations, facts and to-dos in general. Use this skill for speaking practice. Two rules keep them from stepping on each other:
 
-- Don't write speaking goals as Bee facts yourself. The hub keeps exactly one goal fact and updates it; `goal` shows it.
+- Don't write speaking goals as Bee facts yourself. The hub keeps exactly one goal fact and updates it; `goal` shows it. That holds when `goal` says the coach stopped trying too: the operator starts it over.
 - Don't create wrist reminders about speaking with `bee todos create`. Use `cue`: the hub's queue applies the caps, the dedupe and quiet hours.
 
 ## Rules

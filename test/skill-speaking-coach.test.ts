@@ -243,6 +243,22 @@ describe("the commands against a fake hub", () => {
     expect(on.out).toContain("It is a confirmed Bee fact.");
     expect(on.out).toContain("Bee holds 12 facts and 0 insights (counts only).");
   });
+  it("goal: after the coach stopped trying, it never says the goal is in Bee (an older hub without `stopped` reads as false)", async () => {
+    const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';
+    f.memory = { ...f.memory, enabled: true, status: "failed", goal: { factId: null, text, confirmed: false, updatedAt: null }, stopped: true };
+    const gaveUp = await cli(f.url, ["goal"]);
+    expect(gaveUp.code).toBe(0);
+    expect(gaveUp.out).not.toContain("Goal in Bee");
+    expect(gaveUp.out).not.toContain("Bee has not confirmed it yet.");
+    expect(gaveUp.out).toContain(`Goal the coach tried to save in Bee: ${text}`);
+    expect(gaveUp.out).toContain("Bee never listed it, so it may not be in Bee at all. The coach stopped trying");
+    expect(gaveUp.out).toContain(BEE_MEMORY_NOTE);
+    const { stopped: _, ...older } = f.memory;
+    f.memory = older as BeeMemory;
+    const old = await cli(f.url, ["goal"]);
+    expect(old.out).toContain(`Goal in Bee: ${text}`);
+    expect(old.out).not.toContain("stopped trying");
+  });
   it("status, usage errors and an absent hub", async () => {
     const s = await cli(f.url, ["status"]);
     expect(s.out).toContain("unsure words are at 2.6");

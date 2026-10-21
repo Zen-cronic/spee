@@ -109,10 +109,17 @@ export function statusLines(c) {
   return lines;
 }
 
+/**
+ * The goal fact, as GET /api/coach/facts reports it. `stopped`: the coach gave up on a create Bee
+ * never listed, so the goal may not be in Bee at all (an older hub sends no `stopped`: read as false).
+ */
 export function goalLines(m) {
   if (!m || typeof m !== "object") return ["The hub sent no Bee memory."];
   const lines = [];
-  if (m.goal?.text) lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
+  if (m.stopped === true) {
+    if (m.goal?.text) lines.push(`Goal the coach tried to save in Bee: ${m.goal.text}`);
+    lines.push("Bee never listed it, so it may not be in Bee at all. The coach stopped trying and never makes a second copy; docs/live.md (Bee memory) says how to start over.");
+  } else if (m.goal?.text) lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
   else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
   else lines.push(`No goal fact yet (status: ${m.status}). It is written after a practice line Bee checked.`);
   const counts = [m.facts ? `${m.facts.count} facts` : null, m.insights ? `${m.insights.count} insights` : null].filter(Boolean);
