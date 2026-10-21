@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { backAction, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, ROUND_OVER_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
+import { roundLastLine } from "../tv/web/src/mirror/format.js";
 
 const fx = loadFixtureV2();
 const ev = (seq: number, topic: string, payload: Record<string, unknown> = {}): SeqEvent => ({ topic, payload: { seq, at: 1792517400000 + seq, ...payload } });
@@ -416,5 +417,100 @@ describe("Round over (packet S)", () => {
     s = run(s, { type: "event", event: ev(4, "attempt.graded", graded("agree", true)), now: 3 });
     expect(drillPhase(s.drill)).toBe("over");
     expect(s.drill.graded?.pass).toBe(true);
+  });
+});
+
+describe("Round over across a reconnect (hub.state lastSession)", () => {
+  const T = 1_792_600_000_000; // this screen's clock
+  const HUB = T - 86_400_000 + 4321; // the hub's clock (the demo clock runs a day behind)
+  const OFFSET = HUB - T; // hub minus screen, as the bridge client estimates it
+  const k1 = { id: "k1", resay: "The migration is not done yet." } as any;
+  const k2 = { id: "k2", resay: "The dashboard loads slowly on Mondays." } as any;
+  const deck = { date: "2026-10-20", total: 6, dueNow: 3, boxes: {}, dueByDate: {}, nextDueDate: null };
+  const perCard = (l1: string, l2: string) => [{ cardId: "k1", habit: "unsure words", attempts: l1 === "passed" ? 1 : 0, passed: l1 === "passed" ? 1 : 0, box: 1, due: null, line: l1 }, { cardId: "k2", habit: "vague words", attempts: 0, passed: 0, box: 1, due: null, line: l2 }];
+  // k1 said and still with Bee; k2 opened last and never said
+  const summary = { sessionId: "s1", by: "alexa", startedAt: HUB - 60_000, endedAt: HUB, cards: 2, attempts: 1, counted: 0, passed: 0, failed: 0, unverified: 0, pending: 1, beeOverrules: 0, lines: { passed: 0, failed: 0, unverified: 0, pending: 1, untried: 1 }, perCard: perCard("pending", "untried") } as any;
+  const settled = { ...summary, counted: 1, passed: 1, pending: 0, lines: { passed: 1, failed: 0, unverified: 0, pending: 0, untried: 1 }, perCard: perCard("passed", "untried") };
+  const hubState = (lastSeq: number, lastSession: unknown, bootId = "boot_a") => ({ mode: "demo", dataLabel: "SYNTHETIC DEMO DATA (invented; not anyone's real results)", bootId, lastSeq, state: "idle", narration: "", verdictReady: false, retryAfterMs: null, session: null, openCard: null, lastAttempt: null, deck, bee: { replay: true, pendingVerifications: 1, lastEventAt: null, counters: {} }, ...(lastSession === undefined ? {} : { lastSession }) }) as any;
+  const graded = (cardId: string, card: any) => ({ attempt: { id: `a_${cardId}`, cardId, status: "graded", agreement: "agree", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } }, final: { pass: true, grade: { reasons: [] } }, bee: { text: card.resay } }, card, deck });
+  const lastLine = (s: MirrorState) => roundLastLine({ graded: s.drill.graded as any, stage: s.drill.stage, previewSource: s.drill.provisional?.source ?? null });
+  const theRound = () => {
+    const prov = { attempt: { id: "a_k1", cardId: "k1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card: k1 };
+    let s = run(initialMirror(), { type: "hubState", state: hubState(0, null), now: T - 70_000, offsetMs: OFFSET });
+    s = run(s, { type: "event", event: ev(1, "session.started", { session: { id: "s1", by: "alexa" } }), now: T - 60_000 }, { type: "event", event: ev(2, "card.open", { card: k1, sessionId: "s1" }), now: T - 50_000 }, { type: "event", event: ev(3, "attempt.provisional", prov), now: T - 40_000 });
+    return run(s, { type: "event", event: ev(4, "card.open", { card: k2, sessionId: "s1" }), now: T - 30_000 }, { type: "event", event: ev(5, "session.ended", { summary }), now: T });
+  };
+
+  it("R3: the TV reconnects 10 s after the round, Bee settles the earlier line at 30 s, the hub re-sends the summary: Round over stays, its last line is still the last one, and its 15 minutes still run from the round's end", () => {
+    let s = theRound();
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ overAt: T, overCard: "k2", card: null });
+    s = run(s, { type: "hubState", state: hubState(5, { summary, endedAt: HUB, lastCardId: "k2" }), now: T + 10_000, offsetMs: OFFSET }); // the socket reconnects
+    expect(drillPhase(s.drill)).toBe("over"); // not the idle panel
+    expect(s.drill).toMatchObject({ overAt: T, overCard: "k2", card: null, summary: { sessionId: "s1" } });
+    s = run(s, { type: "event", event: ev(6, "attempt.graded", graded("k1", k1)), now: T + 30_000 }); // Bee settles k1, an earlier line
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ card: null, graded: null, stage: "idle" });
+    s = run(s, { type: "event", event: ev(7, "session.ended", { summary: settled }), now: T + 30_001 });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill.summary?.lines.passed).toBe(1); // the tally has it
+    expect(lastLine(s)).toBeNull(); // never "Last line: passed" for k1
+    expect(s.drill.overAt).toBe(T); // not a fresh 15 minutes
+    s = run(s, { type: "tick", now: T + ROUND_OVER_MS - 1 });
+    expect(drillPhase(s.drill)).toBe("over");
+    s = run(s, { type: "tick", now: T + ROUND_OVER_MS });
+    expect(drillPhase(s.drill)).toBe("idle");
+    // it timed out: neither a re-sent summary nor another reconnect brings it back
+    s = run(s, { type: "event", event: ev(8, "session.ended", { summary: settled }), now: T + ROUND_OVER_MS + 5 });
+    expect(drillPhase(s.drill)).toBe("idle");
+    s = run(s, { type: "hubState", state: hubState(8, { summary: settled, endedAt: HUB, lastCardId: "k2" }), now: T + ROUND_OVER_MS + 10, offsetMs: OFFSET });
+    expect(drillPhase(s.drill)).toBe("idle");
+    s = run(s, { type: "event", event: ev(9, "session.ended", { summary: settled }), now: T + ROUND_OVER_MS + 20 });
+    expect(drillPhase(s.drill)).toBe("idle");
+  });
+  it("a screen that joins after the round restores Round over from the hub, on its own clock, with the last line the hub names", () => {
+    let s = run(initialMirror(), { type: "hubState", state: hubState(5, { summary, endedAt: HUB, lastCardId: "k2" }), now: T + 10_000, offsetMs: OFFSET });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ sessionId: "s1", overAt: T, overCard: "k2", card: null, stage: "idle" });
+    s = run(s, { type: "event", event: ev(6, "attempt.graded", graded("k1", k1)), now: T + 30_000 }); // an earlier line: the tally only
+    expect(lastLine(s)).toBeNull();
+    s = run(s, { type: "event", event: ev(7, "session.ended", { summary: settled }), now: T + 30_001 });
+    expect(s.drill.summary?.passed).toBe(1);
+    s = run(s, { type: "event", event: ev(8, "attempt.graded", graded("k2", k2)), now: T + 40_000 }); // the last line: it lands
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(lastLine(s)).toBe("Last line: passed. Bee heard it.");
+    s = run(s, { type: "tick", now: T + ROUND_OVER_MS });
+    expect(drillPhase(s.drill)).toBe("idle");
+  });
+  it("a round past its 15 minutes, or one this screen already timed out, is not restored, and its re-sent summary never brings it back", () => {
+    let s = run(initialMirror(), { type: "hubState", state: hubState(5, { summary, endedAt: HUB }), now: T + ROUND_OVER_MS, offsetMs: OFFSET });
+    expect(drillPhase(s.drill)).toBe("idle");
+    s = run(s, { type: "event", event: ev(6, "session.ended", { summary: settled }), now: T + ROUND_OVER_MS + 1 });
+    expect(drillPhase(s.drill)).toBe("idle");
+    let t = run(theRound(), { type: "tick", now: T + ROUND_OVER_MS });
+    expect(t.drill.overDone).toBe("s1");
+    // the hub's clock runs behind this screen's: by the hub, the round is not 15 minutes old yet
+    t = run(t, { type: "hubState", state: hubState(5, { summary, endedAt: HUB, lastCardId: "k2" }), now: T + ROUND_OVER_MS + 1, offsetMs: OFFSET - 60_000 });
+    expect(drillPhase(t.drill)).toBe("idle");
+  });
+  it("Bee settled the last line while the screen was away: its \"still checking\" is dropped, the tally has it", () => {
+    const prov = { attempt: { id: "a_k2", cardId: "k2", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card: k2 };
+    let s = run(theRound(), { type: "event", event: ev(6, "session.started", { session: { id: "s2", by: "alexa" } }), now: T + 1000 }, { type: "event", event: ev(7, "card.open", { card: k2, sessionId: "s2" }), now: T + 2000 }, { type: "event", event: ev(8, "attempt.provisional", prov), now: T + 3000 });
+    const s2 = { ...summary, sessionId: "s2", endedAt: HUB + 4000, perCard: [{ ...perCard("pending", "pending")[1] }] };
+    s = run(s, { type: "event", event: ev(9, "session.ended", { summary: s2 }), now: T + 4000 });
+    expect(lastLine(s)).toBe("Bee is still checking your last line. Its result lands here.");
+    s = run(s, { type: "hubState", state: hubState(11, { summary: { ...s2, perCard: [{ ...s2.perCard[0], line: "passed" }] }, endedAt: HUB + 4000, lastCardId: "k2" }), now: T + 20_000, offsetMs: OFFSET });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ overAt: T + 4000, overCard: "k2", card: null, stage: "idle" });
+    expect(lastLine(s)).toBeNull();
+  });
+  it("a card open or a round under way wins; an older hub without lastSession keeps the Round over a screen shows, unless it restarted", () => {
+    const open = { ...hubState(5, null), openCard: k1 };
+    expect(drillPhase(run(theRound(), { type: "hubState", state: open, now: T + 10_000, offsetMs: OFFSET }).drill)).toBe("line");
+    expect(drillPhase(run(theRound(), { type: "hubState", state: hubState(5, null), now: T + 10_000, offsetMs: OFFSET }).drill)).toBe("idle"); // a card opened and closed since
+    const older = run(theRound(), { type: "hubState", state: hubState(5, undefined), now: T + 10_000 });
+    expect(drillPhase(older.drill)).toBe("over");
+    expect(older.drill).toMatchObject({ overAt: T, overCard: "k2" });
+    expect(drillPhase(run(theRound(), { type: "hubState", state: hubState(0, undefined, "boot_b"), now: T + 10_000 }).drill)).toBe("idle");
   });
 });

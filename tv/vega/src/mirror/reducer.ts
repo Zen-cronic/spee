@@ -64,7 +64,7 @@ export interface DrillState {
   verified: { status: 'verified' | 'unverified'; via: string | null; speakerScore: number | null; latencyMs: number | null; beeText: string | null; replay: boolean; reason: string } | null;
   graded: { pass: boolean; reasons: string[]; failure: GradeFailure | null; agreement: string | null; counted: boolean; boxFrom: number | null; boxTo: number | null; dueAfter: string | null; beeText: string | null } | null;
   summary: SessionSummary | null;
-  overAt: number | null; // when this screen got the round's end (its clock): Round over shows until ROUND_OVER_MS after
+  overAt: number | null; // when this screen got the round's end, or the hub's end time after a join (its clock): Round over shows until ROUND_OVER_MS after
   overDone: string | null; // a session whose Round over timed out: a summary the hub re-sends for it never brings it back
   overCard: string | null; // the last line opened when the round ended (closed if nobody said it): Round over's "last line"
 }
@@ -133,7 +133,8 @@ export interface MirrorState {
 }
 
 export type MirrorAction =
-  | { type: 'hubState'; state: HubState; now: number }
+  // offsetMs: the hub clock minus this screen's (the bridge client's estimate); 0 when not known
+  | { type: 'hubState'; state: HubState; now: number; offsetMs?: number }
   | { type: 'event'; event: SeqEvent; now: number }
   | { type: 'meters'; frames: PracticeMeters[]; now: number }
   | { type: 'tick'; now: number }
@@ -232,7 +233,7 @@ export const practiceActive = (p: PracticeSlice, now: number) => p.lastFrameAt !
 export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
   switch (a.type) {
     case 'hubState':
-      return onHubState(s, a.state);
+      return onHubState(s, a.state, a.now, a.offsetMs ?? 0);
     case 'event':
       return onSeqEvent(s, a.event, a.now);
     case 'meters':
@@ -278,8 +279,8 @@ export const newerRecap = (have: Recap | null, got: Recap): Recap => (!have || g
 // The live mode with the later change; a refetch with the same change refreshes the counts.
 export const newerMode = (have: LiveMode | null, got: LiveMode): LiveMode => (!have || (got.changedAt ?? 0) >= (have.changedAt ?? 0) ? got : have);
 
-function onHubState(s: MirrorState, h: HubState): MirrorState {
-  const d: DrillState = { ...emptyDrill(), sessionId: h.session?.id ?? null, card: h.openCard, deck: h.deck, stage: h.openCard ? 'card' : 'idle' };
+function onHubState(s: MirrorState, h: HubState, now: number, offsetMs: number): MirrorState {
+  const d: DrillState = { ...emptyDrill(), sessionId: h.session?.id ?? null, card: h.openCard, deck: h.deck, stage: h.openCard ? 'card' : 'idle', overDone: s.drill.overDone };
   const la = h.lastAttempt;
   if (la && h.openCard && la.cardId === h.openCard.id) Object.assign(d, drillFromAttempt(la));
   // A lone card Bee passed is closed (the hub re-sends hub.state): the snapshot carries that pass, so
@@ -303,8 +304,34 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
     replay: s.replay || !!h.bee?.replay,
     // In the same snapshot as lastSeq, so a later stats.updated (seq above it) always wins.
     practiceToday: h.practiceToday ?? s.practiceToday,
-    drill: d,
+    drill: roundOverOnJoin(s.drill, h, d, restarted, now, offsetMs) ?? d,
   };
+}
+
+const WITH_BEE: DrillStage[] = ['provisional', 'checking', 'verified'];
+// Round over survives a (re)join. While no round and no card is open, the hub sends the round that
+// ended last (`lastSession`), and its ROUND_OVER_MS run from the hub's end time, on this screen's
+// clock. The screen that showed it keeps its own drill (the last line's result, and when Round over
+// began), less a "still checking" for a last line Bee settled while it was away: the tally has it.
+// Another screen starts from the summary, with the last line the hub names, so a verdict Bee
+// settles later for an earlier line still never reads as the last line. A round that timed out
+// here, or is past its 15 minutes, never comes back. An older hub sends no lastSession: the screen
+// keeps the Round over it shows, unless the hub restarted.
+function roundOverOnJoin(have: DrillState, h: HubState, d: DrillState, restarted: boolean, now: number, offsetMs: number): DrillState | null {
+  if (h.session || h.openCard) return null;
+  const last = h.lastSession;
+  const summary = last ? last.summary : last === undefined && !restarted ? have.summary : null;
+  if (!summary) return null;
+  const sid = summary.sessionId;
+  const mine = have.summary?.sessionId === sid;
+  const overAt = mine ? have.overAt : last ? last.endedAt - offsetMs : null;
+  if (sid === have.overDone || overAt === null || now - overAt >= ROUND_OVER_MS) return { ...d, overDone: sid };
+  if (mine) {
+    const line = summary.perCard?.find((c) => c.cardId === have.card?.id)?.line;
+    const settled = WITH_BEE.includes(have.stage) && !!line && line !== 'pending';
+    return { ...have, deck: h.deck, summary, ...(settled ? { card: null, attemptId: null, stage: 'idle' as const, provisional: null, checking: null, verified: null, graded: null } : {}) };
+  }
+  return { ...emptyDrill(), sessionId: sid, deck: h.deck, summary, overAt, overCard: last?.lastCardId ?? null, overDone: have.overDone };
 }
 
 // A verdict for a card other than the one on screen: an attempt Bee was still checking when the

@@ -73,7 +73,7 @@ export function useMirror(cfg: MirrorConfig) {
       client.on('app', (m) => {
         const p = m.payload as Record<string, unknown> | null;
         if (!p || typeof p !== 'object') return;
-        if (m.topic === 'hub.state') dispatch({ type: 'hubState', state: p as unknown as HubState, now: Date.now() });
+        if (m.topic === 'hub.state') dispatch({ type: 'hubState', state: p as unknown as HubState, now: Date.now(), offsetMs: client.offsetMs });
         else if (m.topic === 'practice.meters') meterBuf.current.push(p as unknown as PracticeMeters);
         else if (typeof p.seq === 'number') dispatch({ type: 'event', event: { topic: m.topic, payload: p as { seq: number } }, now: Date.now() });
       }),
