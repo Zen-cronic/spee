@@ -2,8 +2,8 @@
 // (alexa/skill-package). Alexa takes one invocation name per skill and locale, so Spee's names are
 // separate development skills that share everything else: the manifest (display name, listing,
 // endpoint, screens) and the interaction model (intents and samples). Only the invocation name
-// differs, and the example phrases and testing instructions are rewritten to use it, so the skills
-// never drift apart.
+// differs, and the example phrases and testing instructions are rewritten to use it (the testing
+// instructions also carry the deploy's marker), so the skills never drift apart.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "../hub/static.js";
@@ -74,14 +74,27 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // `text` with every whole-word `from` (any case) replaced by `to`.
 export const swapName = (text: string, from: string, to: string) => text.replace(new RegExp(`\\b${escapeRe(from)}\\b`, "gi"), to);
 
-// The package for one invocation name: the checked-in one with this name, and `endpoint` when given.
+// The deploy's marker in each generated manifest's testing instructions: the invocation name the
+// skill was set up for. Every skill is listed as Spee, so the marker is how alexa:deploy recognises
+// a skill on the account, and its name, even one whose id was never recorded or whose model never
+// uploaded (scripts/alexa-deploy.ts).
+export const deployMarker = (name: string) => `Set up by npm run alexa:deploy for the invocation name "${name}".`;
+const MARKER_RE = /Set up by npm run alexa:deploy for the invocation name "([a-z][a-z'. ]*)"\./;
+/** The invocation name a manifest's marker names, or null for a manifest the deploy did not write. */
+export function markedName(m: { manifest?: { publishingInformation?: { testingInstructions?: unknown } } } | null | undefined): string | null {
+  const t = m?.manifest?.publishingInformation?.testingInstructions;
+  return typeof t === "string" ? (MARKER_RE.exec(t)?.[1] ?? null) : null;
+}
+
+// The package for one invocation name: the checked-in one with this name, the deploy's marker, and
+// `endpoint` when given.
 export function packageFor(base: SkillPackage, name: string, endpoint?: string): SkillPackage {
   const manifest = structuredClone(base.manifest);
   const pub = manifest.manifest.publishingInformation;
   for (const listing of Object.values(pub.locales)) {
     if (listing.examplePhrases) listing.examplePhrases = listing.examplePhrases.map((p) => swapName(p, base.invocationName, name));
   }
-  if (pub.testingInstructions) pub.testingInstructions = swapName(pub.testingInstructions, base.invocationName, name);
+  pub.testingInstructions = [pub.testingInstructions ? swapName(pub.testingInstructions, base.invocationName, name) : "", deployMarker(name)].filter(Boolean).join(" ");
   if (endpoint) manifest.manifest.apis.custom.endpoint = { uri: endpoint, sslCertificateType: "Wildcard" };
   const models: Record<string, InteractionModel> = {};
   for (const [locale, m] of Object.entries(base.models)) {

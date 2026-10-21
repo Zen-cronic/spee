@@ -77,6 +77,14 @@ export interface SkillIds {
   warnings: string[];
 }
 
+// ALEXA_SKILL_IDS: comma-separated skill ids. An entry that is not one is skipped with a warning.
+export function parseSkillIdList(raw: string | undefined): { ids: string[]; warnings: string[] } {
+  const list = (raw ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  const warnings: string[] = [];
+  const ids = list.filter((id, i) => isSkillId(id) || void warnings.push(`ALEXA_SKILL_IDS: entry ${i + 1} is not an amzn1.ask.skill.* id; skipped`));
+  return { ids, warnings };
+}
+
 export function resolveSkillIds(env: Record<string, string | undefined> = process.env, paths: { config?: string; local?: string } = {}): SkillIds {
   const ids = new Set<string>();
   const sources: string[] = [];
@@ -84,9 +92,10 @@ export function resolveSkillIds(env: Record<string, string | undefined> = proces
   const primary = env.ALEXA_SKILL_ID?.trim();
   ids.add(resolveSkillId(env, paths.config));
   sources.push(primary ? "ALEXA_SKILL_ID" : label(paths.config ?? SKILL_CONFIG_PATH));
-  const list = (env.ALEXA_SKILL_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  list.forEach((id, i) => (isSkillId(id) ? ids.add(id) : warnings.push(`ALEXA_SKILL_IDS: entry ${i + 1} is not an amzn1.ask.skill.* id; skipped`)));
-  if (list.length) sources.push("ALEXA_SKILL_IDS");
+  const listed = parseSkillIdList(env.ALEXA_SKILL_IDS);
+  listed.ids.forEach((id) => ids.add(id));
+  warnings.push(...listed.warnings);
+  if (listed.ids.length + listed.warnings.length) sources.push("ALEXA_SKILL_IDS");
   const local = readLocalSkills(paths.local);
   warnings.push(...local.warnings);
   const names: Record<string, string> = {};
