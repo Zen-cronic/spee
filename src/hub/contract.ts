@@ -214,6 +214,15 @@ export interface HubState {
   // and the hub publishes stats.updated again when the local day turns. Optional: older hubs omit it.
   practiceToday?: PracticeCounts;
   bee: BeeFeedStatus;
+  // The round that ended last, while no round and no card is open (null otherwise, and once a card
+  // has opened since). A screen that (re)joins restores Round over from it. Additive: older hubs
+  // omit it, and older screens ignore it.
+  lastSession?: LastSession | null;
+}
+export interface LastSession {
+  summary: SessionSummary;
+  endedAt: number; // hub clock: Round over lasts 15 min from here, on the screen's clock via its offset
+  lastCardId: string | null; // the last line opened in the round (Round over's "last line"); perCard lists a line once, at its first opening
 }
 export interface SessionResponse extends HubState {
   lastSessionSummary: SessionSummary | null;

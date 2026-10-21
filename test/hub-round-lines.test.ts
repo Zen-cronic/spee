@@ -48,6 +48,29 @@ describe("a round's lines", () => {
     expect(resent.perCard.map((p) => p.line)).toEqual(["passed", "passed", "unverified", "untried"]);
     hub.dispose();
   });
+  it("the round that ended last rides in hub.state while nothing is open, with the last line opened (a line opened again is not perCard's last entry)", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const { card: a } = hub.startSession({ by: "tv", size: 3 });
+    expect(hub.lastSessionState()).toBeNull(); // a round is open
+    const b = DUE.find((id) => id !== a!.id)!;
+    hub.openCard({ cardId: b, by: "tv" });
+    hub.openCard({ cardId: a!.id, by: "tv" }); // line A again, after B
+    const s = hub.endSession()!;
+    const last = hub.lastSessionState()!;
+    expect(last).toMatchObject({ endedAt: s.endedAt, lastCardId: a!.id, summary: { sessionId: s.sessionId, cards: 2 } });
+    expect(last.summary.perCard.map((p) => p.cardId)).toEqual([a!.id, b]); // B is perCard's last entry; A was opened last
+    // a lone card opened since: Round over is over, also once that card closes
+    hub.openCard({ by: "tv" });
+    expect(hub.lastSessionState()).toBeNull();
+    hub.expireIdle(0);
+    expect(hub.open).toBeNull();
+    expect(hub.lastSessionState()).toBeNull();
+    // the next round's end is the round that ended last
+    hub.startSession({ by: "tv", size: 1 });
+    const s2 = hub.endSession()!;
+    expect(hub.lastSessionState()).toMatchObject({ summary: { sessionId: s2.sessionId } });
+    hub.dispose();
+  });
   it("a line still with Bee after a try Bee didn't catch is still with Bee; the lines add up to the cards", () => {
     const { hub } = demoSetup({ pace: 0.01, stateDir: null });
     const { card } = hub.startSession({ by: "tv", size: 1 });

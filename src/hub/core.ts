@@ -14,7 +14,7 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEven
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
-import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LastSession, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
@@ -106,6 +106,8 @@ export class CoachHub extends EventEmitter {
   passedClose: { cardId: string; attemptId: string; at: number } | null = null;
   session: DrillSession | null = null;
   lastSession: DrillSession | null = null;
+  // The round that ended last, until a card opens: hub.state's lastSession (lastSessionState).
+  private roundOver: { sessionId: string; lastCardId: string | null } | null = null;
   private seq = 0;
   readonly recent: HubEvent[] = []; // last 50 events (GET /api/events/recent, contract examples)
   // This hub process: a new id on every start, so a screen can tell a restart (seq back at 1)
@@ -308,6 +310,7 @@ export class CoachHub extends EventEmitter {
     if (!c) return null;
     this.open = { cardId: c.id, openedAt: this.clock(), by: opts.by ?? "http", seq: ++this.openings };
     this.passedClose = null;
+    this.roundOver = null;
     this.touch();
     if (this.session && !this.session.cardIds.includes(c.id)) this.session.cardIds.push(c.id);
     this.verifier.openCard({ cardId: c.id, resay: c.resay, lang: c.lang, openedAt: this.open.openedAt, seq: this.open.seq });
@@ -516,12 +519,25 @@ export class CoachHub extends EventEmitter {
     if (!s) return this.lastSession ? this.sessionSummary(this.lastSession) : null;
     s.endedAt = this.clock();
     this.lastSession = s;
+    this.roundOver = { sessionId: s.id, lastCardId: this.open?.cardId ?? null };
     this.session = null;
     this.open = null;
     this.verifier.closeCards();
     const summary = this.sessionSummary(s);
     this.publish("session.ended", { summary });
     return summary;
+  }
+
+  // The round that ended last, for a screen that (re)joins while no round and no card is open
+  // (hub.state's lastSession), so its Round over survives a reconnect. None once a card has opened
+  // since. `lastCardId` is the last line opened in the round, the one Round over's last line is
+  // about: perCard lists a line once, at its first opening, so a line opened again later is not
+  // the summary's last entry.
+  lastSessionState(): LastSession | null {
+    const s = this.lastSession;
+    const r = this.roundOver;
+    if (!s || !r || r.sessionId !== s.id || s.endedAt === null || this.session || this.open) return null;
+    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId: r.lastCardId };
   }
 
   // The round's counts per try, and `lines`: each line once, by its best result (a pass, else a try

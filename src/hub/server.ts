@@ -348,7 +348,8 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
     res.write(frame);
   };
 
-  const stateSnapshot = () => ({ mode: hub.mode, dataLabel: hub.dataLabel, bootId: hub.bootId, lastSeq: hub.lastSeq, ...hub.sessionState() });
+  // lastSession: the round that ended last, while nothing is open (a screen restores Round over from it)
+  const stateSnapshot = () => ({ mode: hub.mode, dataLabel: hub.dataLabel, bootId: hub.bootId, lastSeq: hub.lastSeq, ...hub.sessionState(), lastSession: hub.lastSessionState() });
   // The home page's status line (home.ts): never a token, only counts and a TV's pair code.
   const homeStatus = (): HomeStatus => {
     const rooms = [...bridge.rooms.values()];

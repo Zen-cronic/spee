@@ -264,6 +264,13 @@ check(end.body.summary?.counted >= 3 && end.body.summary.unverified >= 1 && end.
 const perLine = (end.body.summary?.perCard ?? []) as { line?: string }[];
 check(perLine.length === end.body.summary?.cards && Object.entries(end.body.summary?.lines ?? {}).every(([k, n]) => perLine.filter((c) => c.line === k).length === n), "each perCard entry names its line's result, and they count up to `lines` (the TV colours Round over's segments by them)");
 await waitFor((e) => e.topic === "session.ended", "session.ended");
+// A screen that (re)joins now gets the round that ended last in hub.state, and restores Round over from it.
+const rejoin = bridgeClient("screen", "tv-rejoin");
+await rejoin.welcome;
+for (let i = 0; i < 100 && !rejoin.events.some((e) => e.topic === "hub.state"); i++) await sleep(20);
+const rejoined = rejoin.events.find((e) => e.topic === "hub.state")?.payload.lastSession;
+check(rejoined?.summary?.sessionId === end.body.summary?.sessionId && rejoined.endedAt === end.body.summary.endedAt && rejoined.summary.perCard.some((c: { cardId: string }) => c.cardId === rejoined.lastCardId), "hub.state after a round carries lastSession (the summary, its end and the last line opened), so a screen that reconnects keeps Round over");
+rejoin.ws.close();
 examples["WS session.started"] = tv.events.find((e) => e.topic === "session.started");
 examples["WS session.ended"] = tv.events.find((e) => e.topic === "session.ended");
 
