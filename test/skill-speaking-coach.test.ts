@@ -275,6 +275,18 @@ describe("the commands against a fake hub", () => {
     expect(upd).toContain(`Goal in Bee: ${text}`);
     expect(upd).toContain("The coach's last change to it didn't save to Bee; the hub tries again.");
   });
+  it("goal: a demo hub's goal is what the coach would save, nothing written, with the data label", async () => {
+    const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';
+    f.memory = { ...f.memory, enabled: true, status: "demo", goal: { factId: null, text, confirmed: false, updatedAt: null }, stopped: false };
+    const demo = (await cli(f.url, ["goal"])).out;
+    expect(demo).toContain(`Demo: the coach would save this goal in Bee as a fact (nothing is written): ${text}`);
+    expect(demo).not.toContain("Goal the coach is saving to Bee");
+    expect(demo).toContain("(SYNTHETIC DEMO DATA)");
+    f.memory = { ...f.memory, goal: null };
+    const none = (await cli(f.url, ["goal"])).out;
+    expect(none).toContain("Demo: after a line Bee passes, the coach would save your speaking goal in Bee (nothing is written).");
+    expect(none).not.toContain("the coach saves it after");
+  });
   it("status, usage errors and an absent hub", async () => {
     const s = await cli(f.url, ["status"]);
     expect(s.out).toContain("unsure words are at 2.6");
@@ -347,6 +359,10 @@ describe("the commands against the demo hub", () => {
     expect(await run(["goal", "--hub", s.url], io)).toBe(0);
     expect(out).toContain(BEE_MEMORY_NOTE);
     expect(out).not.toContain("The hub sent no Bee memory.");
+    // the demo hub writes nothing: its goal is the text the coach would save, in the TV's words
+    expect(out).toContain("Demo: the coach would save this goal in Bee as a fact (nothing is written): Speaking goal (Speaking Mirror): fewer ");
+    expect(out).not.toMatch(/Goal in Bee|Goal the coach is saving|the coach saves it after/);
+    expect(out).toMatch(/^\(SYNTHETIC DEMO DATA.*\)$/m);
     out = "";
     const code = await run(["cue", "--hub", s.url], io);
     if (code === 0) {

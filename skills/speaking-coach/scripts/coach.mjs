@@ -114,12 +114,15 @@ export function statusLines(c) {
  * on a create Bee never listed, so the goal may or may not be in Bee (a create that exited 0 without
  * an id did land; an older hub sends no `stopped`: read as false). A goal with no fact id is such a
  * create: while it fails, the coach is still checking whether Bee has it. No goal: nothing is being
- * saved, and the next practice line Bee passes saves it.
+ * saved, and the next practice line Bee passes saves it. The demo hub writes nothing: its goal is
+ * only the text the coach would save.
  */
 export function goalLines(m) {
   if (!m || typeof m !== "object") return ["The hub sent no Bee memory."];
   const lines = [];
-  if (m.stopped === true) {
+  if (m.status === "demo") {
+    lines.push(m.goal?.text ? `Demo: the coach would save this goal in Bee as a fact (nothing is written): ${m.goal.text}` : "Demo: after a line Bee passes, the coach would save your speaking goal in Bee (nothing is written).");
+  } else if (m.stopped === true) {
     if (m.goal?.text) lines.push(`Goal the coach tried to save in Bee: ${m.goal.text}`);
     lines.push("Bee never listed it, so the coach stopped trying (it never makes a second copy). It may or may not be in Bee; docs/live.md (Bee memory) says how to check and start over.");
   } else if (m.goal?.text && m.goal.factId === null) {
@@ -134,6 +137,7 @@ export function goalLines(m) {
   const counts = [m.facts ? `${m.facts.count} facts` : null, m.insights ? `${m.insights.count} insights` : null].filter(Boolean);
   if (counts.length) lines.push(`Bee holds ${counts.join(" and ")} (counts only).`);
   if (m.note) lines.push(m.note);
+  if (m.dataLabel && /synthetic/i.test(m.dataLabel)) lines.push(`(${m.dataLabel})`);
   return lines;
 }
 
