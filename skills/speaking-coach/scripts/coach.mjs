@@ -132,7 +132,8 @@ export function goalLines(m) {
 export function cueLines(r) {
   if (!r || typeof r !== "object" || !r.cue) return ["The hub sent no cue."];
   const lines = [r.narration || `Cue: ${r.cue.text}`];
-  if (r.deduped) lines.push("The same cue went out recently, so nothing new reached the wrist.");
+  // the hub dedupes on the alarm, not on when a cue was asked for (docs/live.md "Wrist cue")
+  if (r.deduped) lines.push("A cue for the same habit has its alarm within 10 minutes of this one, so this is that cue and nothing new reached the wrist.");
   else if (r.wrist?.status === "failed") lines.push(`The wrist call failed${r.wrist.error ? `: ${r.wrist.error}` : ""}.`);
   else if (r.wrist?.status === "replay") lines.push("Demo hub: the cue was replayed, not sent to a wrist.");
   return lines;

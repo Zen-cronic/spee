@@ -228,7 +228,10 @@ describe("the commands against a fake hub", () => {
     expect(f.cues).toEqual([{ inMinutes: 5, by: "skill" }]);
     expect(r.out).toContain("Cue set");
     f.cueBody = { cue: { id: "cue_1", habit: "hedges", text: "[coach] x", alarmAt: null, by: "skill" }, wrist: { channel: "replay", status: "replay", todoId: null, error: null }, deduped: true, narration: "Already sent." } satisfies CueResponse;
-    expect((await cli(f.url, ["cue"])).out).toContain("nothing new reached the wrist");
+    // the dedupe compares alarms, not when each cue was asked for: the line says so, never "went out recently"
+    const dup = (await cli(f.url, ["cue"])).out;
+    expect(dup).toContain("A cue for the same habit has its alarm within 10 minutes of this one, so this is that cue and nothing new reached the wrist.");
+    expect(dup).not.toMatch(/recently/);
     expect((await cli(f.url, ["cue", "--in", "-3"])).code).toBe(2);
     expect((await cli(f.url, ["cue", "--in", "1.5"])).code).toBe(2);
     expect(f.cues).toHaveLength(2);
