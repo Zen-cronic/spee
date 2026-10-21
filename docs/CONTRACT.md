@@ -786,7 +786,7 @@ A plugin that throws gets `500 {"error":"plugin_error"}`.
 | `GET /api/recaps?limit=10` | A (`live`) | `limit` 1-50 | `200 RecapList {dataLabel, synthetic, recaps[]}` (newest first) | |
 | `GET /api/recaps/<id>` | A (`live`) | | `200 Recap` | `404 unknown_recap` |
 | `GET /api/coach/now` | A (`live`) | | `200 CoachNow` | |
-| `GET /api/coach/facts` | W (`live`) | | `200 BeeMemory {dataLabel, synthetic, enabled, status, goal, insights, facts, note}`; `status: "off"` (the default) makes no Bee call | |
+| `GET /api/coach/facts` | W (`live`) | | `200 BeeMemory {dataLabel, synthetic, enabled, status, goal, insights, facts, note, stopped}`; `status: "off"` (the default) makes no Bee call | |
 | `POST /api/coach/cue` | W (`live`) | `CueRequest {inMinutes? (0-180, default 0), by?}` | `200 CueResponse {cue, wrist, deduped, narration}` | `400 bad_request`, `409 cues_off`, `409 no_practised_habit`, `409 quiet_hours`, `429 cue_cap`, `503 wrist_down` |
 | `GET /api/settings?source=bee` | A (`live`) | `source` bee (default) or all | `200 SettingsResponse` (conversation settings; a secondary view) | `400 bad_source` |
 | `POST /api/sessions/<id>/setting` | A (`live`) | `SettingRequest {setting: "meeting" \| "work" \| "casual" \| null}`; `<id>` a stats session id, a recap's `conversationId` or a recap id | `200 SettingResponse {id, tag, recapIds}`, then `stats.updated` | `400 bad_request`, `404 unknown_session` |
@@ -1024,6 +1024,8 @@ The coach's one goal fact in Bee, and Bee's insight and fact counts (`BeeMemory`
 - `"synced"`: the goal fact exists in Bee, confirmed, with this text.
 - `"failed"`: the last write failed, a create Bee does not list yet or never listed (looked for at most 5 times, never made again), or the facts breaker is open (3 failed calls, 30 min). Live coaching is not affected.
 
+`stopped` (additive, always sent) tells the failures apart. It is `true` only when the status is `"failed"` because the coach stopped looking for a create Bee never listed: nothing tries it again on its own, also after a restart, until the operator follows the reset steps in [live.md](live.md) "Bee memory". It is `false` for every other status and for every failure the hub tries again (a failed write, a look still due, the open breaker). A hub from before the field sends no `stopped`; a screen reads that as `false`.
+
 `goal.text` is template text only (numbers, the fixed habit names, the transfer verdicts; `GOAL_TEXT_RE`). `insights` and `facts` are counts read every 6 h, never their text. `note` is always `BEE_MEMORY_NOTE`. When the memory changes the hub re-sends `stats.updated`.
 
 Demo hub:
@@ -1042,7 +1044,8 @@ Demo hub:
   "updatedAt": 1792411626000
  },
  "insights": null,
- "facts": null
+ "facts": null,
+ "stopped": false
 }
 ```
 
@@ -1052,7 +1055,16 @@ Live, after a pass (illustrative ids and counts):
 { "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
   "enabled": true, "status": "synced",
   "goal": { "factId": "901", "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": true, "updatedAt": 1792530000000 },
-  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 } }
+  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": false }
+```
+
+Live, after the coach stopped looking for a create Bee never listed (illustrative counts):
+
+```json
+{ "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
+  "enabled": true, "status": "failed",
+  "goal": { "factId": null, "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": false, "updatedAt": null },
+  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": true }
 ```
 
 ### `POST /api/coach/cue` (the if-then wrist cue; packet W)
