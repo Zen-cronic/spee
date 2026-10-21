@@ -3,7 +3,7 @@ import { HopTimeline } from '../components/HopTimeline';
 import { SettingChip } from '../components/SettingChip';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundTally, RULE_LABEL, sessionTally, skipLine, usualWindow } from '../mirror/format';
+import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundTally, RULE_LABEL, sessionTally, skipLine, statTone, usualWindow } from '../mirror/format';
 import { drillPhase, drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
@@ -218,12 +218,17 @@ function Mode({ mode }: { mode: LiveMode | null }) {
   );
 }
 
-/** One number with its words beside it ("140 words a minute"); a habit's count in its own hue, coral (and "high") once its nudge rule is crossed. */
+/**
+ * One number with its words beside it ("140 words a minute"). While you talk a habit's count is in
+ * its own hue, coral (and "high") once its nudge rule is crossed; your usual numbers between
+ * conversations are all dimmed, the habits' too (statTone).
+ */
 function Stat({ value, label, habit, over, usual }: { value: string; label: string; habit?: string; over?: boolean; usual?: boolean }) {
-  const hue = habit ? habitHue(habit).hue : null;
+  const tone = statTone({ habit, usual, over });
+  const color = tone === 'over' ? { color: C.coral } : tone === 'usual' ? styles.usual : tone === 'habit' ? { color: habitHue(habit).hue } : null;
   return (
     <View style={styles.stat}>
-      <Text style={[styles.statValue, hue ? { color: hue } : usual ? styles.usual : null, over && { color: C.coral }]} numberOfLines={1}>{value}</Text>
+      <Text style={[styles.statValue, color]} numberOfLines={1}>{value}</Text>
       <Text style={[styles.statWords, over && { color: C.coral }]} numberOfLines={1}>{over ? `${label} · high` : label}</Text>
     </View>
   );
@@ -270,9 +275,9 @@ function NudgeCard({ nudge }: { nudge: Nudge }) {
 
 /**
  * The conversation card keeps one layout in every state: the status line, one row of four numbers
- * (each with its window: this conversation and its last 2 minutes, or your usual this week), then
- * one slot for the moment: the wrist nudge, when nudges fire, the last conversation, or a hint.
- * A nudge the coach held back is one quiet line under it.
+ * (each with its window: this conversation and its last 2 minutes, or your usual this week, all four
+ * dimmed until you talk), then one slot for the moment: the wrist nudge, when nudges fire, the last
+ * conversation, or a hint. A nudge the coach held back is one quiet line under it.
  */
 function ConversationPanel({ live, last, onCycleSetting }: { live: LiveSlice; last: Recap | null; onCycleSetting?: () => void }) {
   const debug = useDebug();
@@ -312,8 +317,8 @@ function ConversationPanel({ live, last, onCycleSetting }: { live: LiveSlice; la
         </View>
         <View style={[styles.column, styles.columnRight]}>
           <Text style={styles.groupLabel} numberOfLines={1}>{idle ? 'Out of every 100 words' : windowLabel}</Text>
-          <Stat habit="hedges" value={w ? String(w.recent.hedges) : fmt1(b?.hedgesPer100)} label={unsure} over={over('hedge-streak')} />
-          <Stat habit="filler:like" value={w ? String(w.recent.likes) : fmt1(b?.likesPer100)} label={like} over={over('like-streak')} />
+          <Stat usual={idle} habit="hedges" value={w ? String(w.recent.hedges) : fmt1(b?.hedgesPer100)} label={unsure} over={over('hedge-streak')} />
+          <Stat usual={idle} habit="filler:like" value={w ? String(w.recent.likes) : fmt1(b?.likesPer100)} label={like} over={over('like-streak')} />
         </View>
       </View>
       {debug && w ? <Text style={styles.debugDark} numberOfLines={1}>{`fillers ${w.recent.fillers} · vague ${w.recent.vague} · restarts ${w.recent.restarts} · turn ${fmtMs(w.monologue.currentMs)} (max ${fmtMs(w.monologue.longestMs)}) · ${w.pauses.count} pauses · others ${w.others.lines} lines`}</Text> : null}

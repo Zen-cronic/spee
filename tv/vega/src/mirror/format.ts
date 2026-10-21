@@ -147,6 +147,17 @@ export function usualWindow(b: Pick<LiveBaseline, 'source'> & { range?: LiveBase
   return baselineWordsLabel(b) === 'your words this week' ? 'this week' : 'so far';
 }
 
+/**
+ * The colour of one number on Live's conversation card: "over" (coral, a nudge rule is crossed),
+ * "usual" (your usual numbers between conversations, a habit's included, dimmed so the numbers
+ * light up only when you talk), "habit" (a habit's count in its hue while you talk) or "plain".
+ */
+export function statTone(o: { habit?: string; usual?: boolean; over?: boolean }): 'over' | 'usual' | 'habit' | 'plain' {
+  if (o.over) return 'over';
+  if (o.usual) return 'usual';
+  return o.habit ? 'habit' : 'plain';
+}
+
 export type Tone = 'good' | 'bad' | 'neutral' | 'wait' | 'bee';
 
 export function verdictTone(v: TransferVerdict | string): Tone {

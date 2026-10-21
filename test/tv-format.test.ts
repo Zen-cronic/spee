@@ -1,7 +1,8 @@
 // TV time formatting (review L3): round first, then split into minutes and seconds.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, statTone, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 
 describe("fmtMs", () => {
@@ -350,5 +351,23 @@ describe("Round over", () => {
     expect(roundLastLine({ graded: { ...g, agreement: "agree", pass: true }, stage: "graded", previewSource: "alexa" })).toBe("Last line: passed. Bee heard it.");
     expect(roundLastLine({ graded: null, stage: "checking", previewSource: null })).toMatch(/still checking/);
     expect(roundLastLine({ graded: null, stage: "idle", previewSource: null })).toBeNull();
+  });
+});
+
+describe("Live's numbers: your usual ones are dimmed until you talk (statTone)", () => {
+  it("between conversations every number is dimmed, a habit's too; while you talk a habit has its hue, coral once over", () => {
+    expect(statTone({ habit: "hedges", usual: true })).toBe("usual");
+    expect(statTone({ habit: "filler:like", usual: true })).toBe("usual");
+    expect(statTone({ usual: true })).toBe("usual");
+    expect(statTone({ habit: "hedges", usual: false })).toBe("habit");
+    expect(statTone({ habit: "hedges", over: true })).toBe("over");
+    expect(statTone({})).toBe("plain");
+  });
+  it("all four numbers on the conversation card pass usual={idle}, on the web TV and on Vega", () => {
+    for (const file of ["tv/web/src/views/LiveView.tsx", "tv/vega/src/views/LiveView.tsx"]) {
+      const stats = [...readFileSync(file, "utf8").matchAll(/<Stat\s[^>]*\/>/g)].map((m) => m[0]);
+      expect(stats, file).toHaveLength(4);
+      for (const s of stats) expect(s, file).toContain("usual={idle}");
+    }
   });
 });
