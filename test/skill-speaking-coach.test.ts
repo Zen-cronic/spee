@@ -227,14 +227,18 @@ describe("the commands against a fake hub", () => {
     expect(r.code).toBe(0);
     expect(f.cues).toEqual([{ inMinutes: 5, by: "skill" }]);
     expect(r.out).toContain("Cue set");
-    f.cueBody = { cue: { id: "cue_1", habit: "hedges", text: "[coach] x", alarmAt: null, by: "skill" }, wrist: { channel: "replay", status: "replay", todoId: null, error: null }, deduped: true, narration: "Already sent." } satisfies CueResponse;
-    // the dedupe compares alarms, not when each cue was asked for: the line says so, never "went out recently"
+    f.cueBody = { cue: { id: "cue_1", habit: "hedges", text: "[coach] x", alarmAt: null, by: "skill" }, wrist: { channel: "replay", status: "replay", todoId: null, error: null }, deduped: true, narration: "That cue is already set for 3:40 PM, so I didn't send another." } satisfies CueResponse;
+    // the hub's narration already says it is the cue already set: printed once, never repeated
+    expect((await cli(f.url, ["cue"])).out).toBe("That cue is already set for 3:40 PM, so I didn't send another.");
+    // only a hub without a narration gets the skill's own line: the dedupe compares alarms, with no
+    // window of its own (the hub sets it), never "went out recently"
+    f.cueBody = { ...(f.cueBody as CueResponse), narration: "" };
     const dup = (await cli(f.url, ["cue"])).out;
-    expect(dup).toContain("A cue for the same habit has its alarm within 10 minutes of this one, so this is that cue and nothing new reached the wrist.");
-    expect(dup).not.toMatch(/recently/);
+    expect(dup).toBe("Cue: [coach] x\nA cue for the same habit already has its alarm near this one, so this is that cue and nothing new reached the wrist.");
+    expect(dup).not.toMatch(/recently|\d+ min/);
     expect((await cli(f.url, ["cue", "--in", "-3"])).code).toBe(2);
     expect((await cli(f.url, ["cue", "--in", "1.5"])).code).toBe(2);
-    expect(f.cues).toHaveLength(2);
+    expect(f.cues).toHaveLength(3);
   });
   it("goal: off, then a confirmed goal with Bee's counts and the note", async () => {
     const off = await cli(f.url, ["goal"]);

@@ -25,7 +25,7 @@ Run from the repo root: `node skills/speaking-coach/scripts/coach.mjs <command>`
 | `cue [--in N]` | "Remind me on my wrist before the call" | `POST /api/coach/cue`: one if-then cue, at most 60 characters, through the hub's wrist queue, with its alarm N minutes from now (default 0) |
 | `heartbeat [--dry-run]` | On a schedule, every 2 to 4 minutes | Reads the brief's next meeting that has not started (`GET /api/brief?upcoming=1`) and sends one cue when it starts in 8 to 12 minutes, once per meeting. `--dry-run` only says whether it would |
 
-The hub picks the cue's habit and words. A cue only ever names a habit the user has already practised, never the one kept unpractised for comparison, and the hub refuses it during quiet hours, over its cap, or when cues are off. A cue whose alarm is within 10 minutes of an earlier cue's alarm is a repeat and comes back as "nothing new reached the wrist".
+The hub picks the cue's habit and words. A cue only ever names a habit the user has already practised, never the one kept unpractised for comparison, and the hub refuses it during quiet hours, over its cap, or when cues are off. A cue whose alarm is close to an earlier cue's alarm for the same habit (within 10 minutes, the hub's default) is a repeat: the hub says that cue is already set (or went off), and nothing new reaches the wrist.
 
 A meeting counts as cued only when the hub set a to-do for it: a new cue, or the same cue already set with its alarm in the 12 minutes before the meeting. After a refusal, a failed send or a cue for an earlier meeting, the next heartbeat in the window asks again.
 
