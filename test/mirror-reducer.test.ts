@@ -392,6 +392,21 @@ describe("Round over (packet S)", () => {
     s = run(s, { type: "event", event: ev(7, "session.started", { session: { id: "s2", by: "alexa" } }), now: T + ROUND_OVER_MS + 10 }, { type: "event", event: ev(8, "session.ended", { summary: { ...summary, sessionId: "s2" } }), now: T + ROUND_OVER_MS + 20 });
     expect(drillPhase(s.drill)).toBe("over");
   });
+  it("a verdict Bee settles after the round for an earlier line updates the tally only: Round over's last line stays the last line opened", () => {
+    const k2 = { id: "k2", resay: "The dashboard loads slowly on Mondays." } as any;
+    const prov = { attempt: { id: "a1", cardId: "k1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
+    // k1 said and still with Bee; k2 opened last and never said
+    let s = run(initialMirror(), { type: "event", event: ev(1, "session.started", { session: { id: "s1", by: "alexa" } }), now: 0 }, { type: "event", event: ev(2, "card.open", { card, sessionId: "s1" }), now: 1 }, { type: "event", event: ev(3, "attempt.provisional", prov), now: 2 });
+    s = run(s, { type: "event", event: ev(4, "card.open", { card: k2, sessionId: "s1" }), now: 3 }, { type: "event", event: ev(5, "session.ended", { summary: { ...summary, pending: 1 } }), now: 4 });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ card: null, stage: "idle", overCard: "k2" });
+    const deck = { date: "2026-10-21", total: 6, dueNow: 2, boxes: {}, dueByDate: {}, nextDueDate: null };
+    s = run(s, { type: "event", event: ev(6, "attempt.verified", { attemptId: "a1", cardId: "k1", status: "verified", via: "stream" }), now: 5 }, { type: "event", event: ev(7, "attempt.graded", { ...graded("agree", true), deck }), now: 6 });
+    expect(s.drill).toMatchObject({ graded: null, verified: null, stage: "idle", deck: { dueNow: 2 } }); // never "Last line: passed"
+    s = run(s, { type: "event", event: ev(8, "session.ended", { summary: { ...summary, passed: 2, failed: 0, pending: 0 } }), now: 7 });
+    expect(s.drill.summary?.passed).toBe(2); // the re-sent summary still updates the tally
+    expect(drillPhase(s.drill)).toBe("over");
+  });
   it("Bee still checking at the end stays over, and the late verdict lands in it", () => {
     const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
     let s = run(initialMirror(), { type: "event", event: ev(1, "card.open", { card }), now: 0 }, { type: "event", event: ev(2, "attempt.provisional", prov), now: 1 });

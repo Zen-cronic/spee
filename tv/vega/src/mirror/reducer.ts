@@ -66,6 +66,7 @@ export interface DrillState {
   summary: SessionSummary | null;
   overAt: number | null; // when this screen got the round's end (its clock): Round over shows until ROUND_OVER_MS after
   overDone: string | null; // a session whose Round over timed out: a summary the hub re-sends for it never brings it back
+  overCard: string | null; // the last line opened when the round ended (closed if nobody said it): Round over's "last line"
 }
 
 export interface LiveSlice {
@@ -180,7 +181,7 @@ export function drillPhase(d: Pick<DrillState, 'card' | 'stage' | 'summary'>): D
   return 'line';
 }
 
-const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null, overAt: null, overDone: null });
+const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null, overAt: null, overDone: null, overCard: null });
 const emptyPractice = (): PracticeSlice => ({ takeId: null, from: null, latest: null, history: [], caption: null, lastFrameAt: null, frames: 0, summary: null });
 
 export function initialMirror(view: ScreenView = 'week'): MirrorState {
@@ -308,7 +309,9 @@ function onHubState(s: MirrorState, h: HubState): MirrorState {
 
 // A verdict for a card other than the one on screen: an attempt Bee was still checking when the
 // next card opened. The open card stays; the hub re-sends the session summary when it settles one.
-const otherCard = (s: MirrorState, cardId: unknown) => !!s.drill.card && typeof cardId === 'string' && cardId !== s.drill.card.id;
+// After the round, the line on screen is the last one opened (overCard), also when it was closed
+// unsaid: a verdict Bee settles later for an earlier line never reads as the last line.
+const otherCard = (s: MirrorState, cardId: unknown) => typeof cardId === 'string' && (s.drill.card ? cardId !== s.drill.card.id : !!s.drill.summary && cardId !== s.drill.overCard);
 
 function drillFromAttempt(at: any): Partial<DrillState> {
   const out: Partial<DrillState> = { attemptId: at.id };
@@ -410,7 +413,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       // after the session ends), stays on screen with the summary under it; a card nobody attempted
       // is closed, so the summary shows instead.
       const keep = s.drill.stage !== 'card' && s.drill.stage !== 'idle';
-      return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle', overAt: p.summary ? now : null } };
+      return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle', overAt: p.summary ? now : null, overCard: s.drill.card?.id ?? null } };
     }
     case 'conversation.started':
       return { ...s, live: { ...s.live, conversationId: p.conversationId, startedAt: p.startedAt ?? null, window: null, ended: null, nudges: [], skips: [] }, ...switched(s, liveView(s, now), 'conversation started', 'Bee') };
