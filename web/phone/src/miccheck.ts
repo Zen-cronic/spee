@@ -95,7 +95,7 @@ export async function runPhase(order: MicPhase["order"], onTick: (msg: string) =
 }
 
 export function reportText(env: EnvReport, parts: (MicPhase & MicVerdict)[]): string {
-  const lines = [`Speaking Mirror mic check, ${new Date().toISOString()}`, `UA: ${navigator.userAgent}`, `secure ${env.secure} · getUserMedia ${env.getUserMedia} · speech ${env.speech}${env.why ? ` · ${env.why}` : ""}`];
+  const lines = [`Spee mic check, ${new Date().toISOString()}`, `UA: ${navigator.userAgent}`, `secure ${env.secure} · getUserMedia ${env.getUserMedia} · speech ${env.speech}${env.why ? ` · ${env.why}` : ""}`];
   for (const p of parts) lines.push(`${p.order}: ${p.pass ? "PASS" : "FAIL"} · speech results ${p.speechResults}${p.speechError ? ` (error ${p.speechError})` : ""} · mic blocks ${p.micBlocks} · peak ${p.peakDbfs.toFixed(0)} dBFS · span ${p.levelSpanDb.toFixed(0)} dB · track ${p.trackLive ? "live" : "muted/ended"}${p.reasons.length ? ` · ${p.reasons.join("; ")}` : ""}`);
   return lines.join("\n");
 }

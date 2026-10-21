@@ -1,4 +1,4 @@
-// The Speaking Mirror phone page (/p/<code>?k=...): the phone is the microphone.
+// The Spee phone page (/p/<code>?k=...): the phone is the microphone.
 //   Drill     Web Speech -> transcript.final over the bridge (a provisional attempt); the page then
 //             follows the attempt through Bee's verdict (sequenced hub events).
 //   Practice  getUserMedia (AGC, noise suppression and echo cancellation off) -> the prosody engine
@@ -398,7 +398,7 @@ async function connect(code: string) {
 }
 
 function setup() {
-  document.title = "Speaking Mirror";
+  document.title = PRODUCT_NAME;
   document.querySelectorAll(".brand").forEach((el) => (el.textContent = PRODUCT_NAME));
   setupDrillVoice();
   setupCheck();

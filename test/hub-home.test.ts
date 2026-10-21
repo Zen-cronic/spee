@@ -24,7 +24,7 @@ describe("hub home page", () => {
     const r = await raw(s.port, "/", { headers: { host: `127.0.0.1:${s.port}` } });
     expect(r.status).toBe(200);
     expect(r.headers["content-type"]).toMatch(/text\/html/);
-    expect(r.text).toContain("Speaking Mirror");
+    expect(r.text).toContain("Spee hub");
     expect(r.text).toContain('href="/tv/"');
     expect(r.text).toContain('href="/sim/"');
     expect(r.text).not.toContain(PAIR);

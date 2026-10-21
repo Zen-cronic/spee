@@ -30,8 +30,7 @@ describe("Speaking Mirror branding", () => {
     expect(app.displayName).toBe("Spee");
     expect(manifest).not.toMatch(/w3cmedia|media\.server/); // the mirror is silent: no media player
   });
-  it("the wordmark is Spee on the TV and Speaking Mirror on the phone", () => {
-    for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Spee["']/);
-    expect(readFileSync(join(ROOT, "web/phone/src/brand.ts"), "utf8")).toMatch(/PRODUCT_NAME = ["']Speaking Mirror["']/);
+  it("the wordmark is Spee on the TV and the phone", () => {
+    for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts", "web/phone/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Spee["']/);
   });
 });
