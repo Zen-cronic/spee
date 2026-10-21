@@ -47,6 +47,9 @@ export const PRACTICE_HISTORY = 50; // 5 s at 10 Hz
 export const PRACTICE_ACTIVE_MS = 3000;
 export const RECAP_VISIBLE_MS = 30_000;
 export const KEEP_NUDGES = 5;
+// Round over stays on Live this long after the round ended (the moment to film), then Live's
+// drill panel goes back to the idle panel with the lines due.
+export const ROUND_OVER_MS = 15 * 60_000;
 
 export type DrillStage = 'idle' | 'card' | 'provisional' | 'checking' | 'verified' | 'unverified' | 'graded';
 
@@ -61,6 +64,8 @@ export interface DrillState {
   verified: { status: 'verified' | 'unverified'; via: string | null; speakerScore: number | null; latencyMs: number | null; beeText: string | null; replay: boolean; reason: string } | null;
   graded: { pass: boolean; reasons: string[]; failure: GradeFailure | null; agreement: string | null; counted: boolean; boxFrom: number | null; boxTo: number | null; dueAfter: string | null; beeText: string | null } | null;
   summary: SessionSummary | null;
+  overAt: number | null; // when this screen got the round's end (its clock): Round over shows until ROUND_OVER_MS after
+  overDone: string | null; // a session whose Round over timed out: a summary the hub re-sends for it never brings it back
 }
 
 export interface LiveSlice {
@@ -163,7 +168,8 @@ export function drillSteps(d: Pick<DrillState, 'stage' | 'provisional' | 'verifi
 /**
  * What Live's drill panel shows: no line yet, a line to say, Bee checking, the result, or the
  * round over (the session ended: its tally, with the last line's result kept beside it, and a
- * verdict Bee settles after the end still lands there).
+ * verdict Bee settles after the end still lands there). Round over lasts ROUND_OVER_MS (the tick
+ * clears it), then the panel is idle again with the lines due.
  */
 export type DrillPhase = 'idle' | 'line' | 'checking' | 'result' | 'over';
 export function drillPhase(d: Pick<DrillState, 'card' | 'stage' | 'summary'>): DrillPhase {
@@ -174,7 +180,7 @@ export function drillPhase(d: Pick<DrillState, 'card' | 'stage' | 'summary'>): D
   return 'line';
 }
 
-const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null });
+const emptyDrill = (): DrillState => ({ sessionId: null, card: null, deck: null, attemptId: null, stage: 'idle', provisional: null, checking: null, verified: null, graded: null, summary: null, overAt: null, overDone: null });
 const emptyPractice = (): PracticeSlice => ({ takeId: null, from: null, latest: null, history: [], caption: null, lastFrameAt: null, frames: 0, summary: null });
 
 export function initialMirror(view: ScreenView = 'week'): MirrorState {
@@ -349,6 +355,9 @@ function onTick(s: MirrorState, now: number): MirrorState {
   let cur = s;
   if (cur.pending.length && cur.pendingSince !== null && now - cur.pendingSince >= GAP_WAIT_MS) cur = flushGap(cur, now);
   if (cur.recapVisible && cur.recapShownAt !== null && now - cur.recapShownAt >= RECAP_VISIBLE_MS) cur = { ...cur, recapVisible: false };
+  // an old Round over yields to the idle panel, with the lines due (the deck stays)
+  const d = cur.drill;
+  if (d.summary && d.overAt !== null && now - d.overAt >= ROUND_OVER_MS) cur = { ...cur, drill: { ...emptyDrill(), sessionId: d.sessionId, deck: d.deck, overDone: d.summary.sessionId } };
   return cur;
 }
 
@@ -396,11 +405,12 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       // attempts late: replace the summary only.
       const sum = p.summary as SessionSummary | null | undefined;
       if (sum && s.drill.summary && sum.sessionId === s.drill.summary.sessionId) return { ...s, drill: { ...s.drill, summary: sum } };
+      if (sum && sum.sessionId === s.drill.overDone) return s; // its Round over already timed out
       // The hub closed the card. A verdict, or an attempt Bee is still checking (its verdict can land
       // after the session ends), stays on screen with the summary under it; a card nobody attempted
       // is closed, so the summary shows instead.
       const keep = s.drill.stage !== 'card' && s.drill.stage !== 'idle';
-      return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle' } };
+      return { ...s, drill: { ...s.drill, card: keep ? s.drill.card : null, summary: p.summary ?? null, stage: keep ? s.drill.stage : 'idle', overAt: p.summary ? now : null } };
     }
     case 'conversation.started':
       return { ...s, live: { ...s.live, conversationId: p.conversationId, startedAt: p.startedAt ?? null, window: null, ended: null, nudges: [], skips: [] }, ...switched(s, liveView(s, now), 'conversation started', 'Bee') };

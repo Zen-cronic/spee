@@ -1,4 +1,4 @@
-import {drillPhase, initialMirror, mirrorReducer, type MirrorAction, type MirrorState} from '../src/mirror/reducer';
+import {drillPhase, initialMirror, mirrorReducer, ROUND_OVER_MS, type MirrorAction, type MirrorState} from '../src/mirror/reducer';
 import {beeMemoryLine, fmtMs, habitPill, habitRole, niceMax, nudgeHopsLine, roundHeadline, roundTally, skipLine, topBreakdown, verdictTone} from '../src/mirror/format';
 import {PRODUCT_NAME, WORDMARK} from '../src/brand';
 import {MIRROR_CONFIG} from '../src/platform/config';
@@ -58,6 +58,9 @@ describe('the wrist moment and the round on Vega (synced from tv/web)', () => {
     expect(drillPhase(s.drill)).toBe('result');
     s = run(s, {type: 'event', event: ev(3, 'session.ended', {summary}), now: 2});
     expect(drillPhase(s.drill)).toBe('over');
+    // an old Round over yields to the idle panel (the lines due), as on the web TV
+    expect(drillPhase(run(s, {type: 'tick', now: 2 + ROUND_OVER_MS - 1}).drill)).toBe('over');
+    expect(drillPhase(run(s, {type: 'tick', now: 2 + ROUND_OVER_MS}).drill)).toBe('idle');
   });
   it('counts the round per line in the headline and the tally, the same as the web TV', () => {
     // line A missed, then passed on a retry; line B missed: 2 lines, 3 tries

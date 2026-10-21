@@ -2,7 +2,7 @@
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";
-import { backAction, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
+import { backAction, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, ROUND_OVER_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
 
 const fx = loadFixtureV2();
@@ -367,6 +367,30 @@ describe("Round over (packet S)", () => {
     expect(drillPhase(s.drill)).toBe("idle");
     s = run(s, { type: "event", event: ev(4, "card.open", { card, sessionId: "s2" }), now: 3 });
     expect(drillPhase(s.drill)).toBe("line");
+  });
+  it("Round over shows right after the round, then yields to the idle panel with the lines due after ROUND_OVER_MS; a re-sent summary never brings it back", () => {
+    const deck = { date: "2026-10-20", total: 6, dueNow: 3, boxes: {}, dueByDate: {}, nextDueDate: null };
+    const T = 1_792_600_000_000;
+    let s = run(initialMirror(), { type: "event", event: ev(1, "session.started", { session: { id: "s1", by: "alexa" } }), now: T - 60_000 }, { type: "event", event: ev(2, "card.open", { card, sessionId: "s1", deck }), now: T - 50_000 });
+    s = run(s, { type: "event", event: ev(3, "attempt.graded", graded("agree", true)), now: T - 10_000 }, { type: "event", event: ev(4, "session.ended", { summary }), now: T });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill.overAt).toBe(T);
+    s = run(s, { type: "tick", now: T + ROUND_OVER_MS - 1 });
+    expect(drillPhase(s.drill)).toBe("over"); // still the filmed beat
+    // Bee settles a late try: the hub re-sends the summary, which replaces it and keeps the clock
+    s = run(s, { type: "event", event: ev(5, "session.ended", { summary: { ...summary, passed: 2, failed: 0 } }), now: T + 60_000 });
+    expect(s.drill.summary?.passed).toBe(2);
+    expect(s.drill.overAt).toBe(T);
+    const before = s;
+    expect(run(s, { type: "tick", now: T + ROUND_OVER_MS - 1 })).toBe(before); // nothing to redraw yet
+    s = run(s, { type: "tick", now: T + ROUND_OVER_MS });
+    expect(drillPhase(s.drill)).toBe("idle");
+    expect(s.drill).toMatchObject({ summary: null, card: null, graded: null, stage: "idle", deck: { dueNow: 3 }, overAt: null });
+    s = run(s, { type: "event", event: ev(6, "session.ended", { summary: { ...summary, passed: 2, failed: 0 } }), now: T + ROUND_OVER_MS + 5 });
+    expect(drillPhase(s.drill)).toBe("idle");
+    // the next round's end shows Round over again
+    s = run(s, { type: "event", event: ev(7, "session.started", { session: { id: "s2", by: "alexa" } }), now: T + ROUND_OVER_MS + 10 }, { type: "event", event: ev(8, "session.ended", { summary: { ...summary, sessionId: "s2" } }), now: T + ROUND_OVER_MS + 20 });
+    expect(drillPhase(s.drill)).toBe("over");
   });
   it("Bee still checking at the end stays over, and the late verdict lands in it", () => {
     const prov = { attempt: { id: "a1", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card };
