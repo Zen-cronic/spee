@@ -443,6 +443,24 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
     expect(f.memory()).toMatchObject({ status: "failed", stopped: true });
   });
+  it("a look timer that fires while the breaker is open looks once it closes, still with no pass", async () => {
+    let down = true;
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "timeout-landed" : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });
+    const h = hub();
+    const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-open-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9, lookFirstMs: 20, breakerOpenMs: 300 });
+    f.start();
+    stops.push(() => f.stop());
+    pass(h);
+    await f.settle(); // the create timed out (1) and both lists failed (2, 3): the breaker opens, the look is due in 20 ms
+    expect(f.circuitOpenUntil()).not.toBeNull();
+    down = false;
+    await new Promise((r) => setTimeout(r, 80)); // the look timer fired inside the breaker's window: no call
+    expect(bee.factCalls()).toEqual(["facts create --text", "facts list --unconfirmed", "facts list --limit"]);
+    for (let i = 0; i < 200 && f.memory().status !== "synced"; i++) await new Promise((r) => setTimeout(r, 10));
+    expect(f.circuitOpenUntil()).toBeNull();
+    expect(bee.factCalls()).toEqual(["facts create --text", "facts list --unconfirmed", "facts list --limit", "facts list --unconfirmed", "facts confirm 901"]);
+    expect(f.memory()).toMatchObject({ status: "synced", stopped: false, goal: { factId: "901", confirmed: true } });
+  });
   it("stopped only after the last look: never while a look is due or the breaker is open", async () => {
     let down = true;
     const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });

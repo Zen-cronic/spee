@@ -20,7 +20,8 @@
 // (a restart keeps that schedule), never on stats.updated, and then the status stays "failed" with
 // `stopped` until the operator clears it. Every call, the goal's and the count read's, runs on one
 // chain: serialized, 1.5 s apart, 10 s timeout each. Its own breaker (3 consecutive failed calls
-// open it for 30 min) never touches the wrist, so live coaching carries on.
+// open it for 30 min; a look that falls due meanwhile runs when it closes) never touches the wrist,
+// so live coaching carries on.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -393,7 +394,14 @@ export class BeeFacts {
   }
 
   private async syncNow(reason: SyncReason): Promise<void> {
-    if (this.stopped || this.circuitOpenUntil() != null) return;
+    if (this.stopped) return;
+    const open = this.circuitOpenUntil();
+    if (open != null) {
+      // The look timer fired inside the breaker's window: it looks again once the breaker closes.
+      const p = this.ledger.pendingCreate;
+      if (reason === "look" && p && !this.ledger.goal && p.nextLookAt !== null) this.scheduleLook(open - this.now());
+      return;
+    }
     const L = this.ledger;
     const before = JSON.stringify(this.memory());
     try {
