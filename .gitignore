@@ -73,3 +73,5 @@ dist/web/
 # Alexa skill tooling state and generated packages
 alexa/.ask/
 out/alexa/
+# The skill ids alexa:deploy set up, by invocation name (written by the deploy, read by the hub)
+alexa/*.local.json

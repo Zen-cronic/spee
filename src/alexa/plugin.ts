@@ -1,8 +1,8 @@
 // Alexa plugin: POST /alexa, the custom skill endpoint. A PUBLIC request (through the
 // tunnel) must carry Amazon's request signature (./signature.ts), on by default; set
 // ALEXA_VERIFY_SIGNATURE=0 to turn that off for local fixture runs only. Loopback and LAN requests are
-// never signature-checked. The skill id and timestamp are then checked (./verify.ts; 400
-// alexa_rejected otherwise), then ./skill.ts maps the
+// never signature-checked. The skill id (one of Spee's skills, ./verify.ts) and timestamp are then
+// checked (400 alexa_rejected otherwise), then ./skill.ts maps the
 // intent onto the hub routes through the loopback hub client. No model call in a request; logs
 // carry intent names and timings only, never what was said.
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -14,13 +14,14 @@ import { maskDeep, maskOut } from "../hub/mask.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, OutputSpeech } from "./types.js";
 import { signatureVerifier, type SigResult } from "./signature.js";
 import { deviceRecorder } from "./device.js";
-import { isAlexaApiEndpoint, resolveSkillId, verifyAlexaRequest } from "./verify.js";
+import { isAlexaApiEndpoint, skillIdSource, verifyAlexaRequest, type SkillIds } from "./verify.js";
 
 export const ALEXA_PREFIXES = ["/alexa"];
 export const ALEXA_ROUTES = ["POST /alexa"];
 
 export interface AlexaPluginOptions {
-  skillId?: string; // default: ALEXA_SKILL_ID, else alexa/skill-id.json
+  skillId?: string | string[]; // fixed ids; default: skillIds
+  skillIds?: () => SkillIds; // default: skillIdSource() (ALEXA_SKILL_ID or alexa/skill-id.json, ALEXA_SKILL_IDS, alexa/skill-ids.local.json)
   now?: () => number; // wall clock for the timestamp window and the poll budget
   sleep?: (ms: number) => Promise<void>;
   hub?: HubClient;
@@ -82,7 +83,6 @@ export function maskSpoken(env: AlexaResponseEnvelope): AlexaResponseEnvelope {
 }
 
 export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
-  let skillId: string | null = null;
   let hub: HubClient | null = opts.hub ?? null;
   let served = 0;
   let rejected = 0;
@@ -92,29 +92,39 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
   const newDevice = deviceRecorder();
   const sigOpt = opts.verifySignature ?? process.env.ALEXA_VERIFY_SIGNATURE?.trim() !== "0";
   const checkSignature = typeof sigOpt === "function" ? sigOpt : sigOpt ? signatureVerifier() : null;
-  const loadSkillId = () => {
-    if (skillId) return skillId;
+  const fixed: SkillIds | null = opts.skillId === undefined ? null : { ids: [opts.skillId].flat(), names: {}, sources: ["options"], warnings: [] };
+  const source = opts.skillIds ?? (fixed ? () => fixed : skillIdSource());
+  let last: SkillIds | null = null;
+  const answered = new Set<string>(); // skills that have passed the checks, each logged once
+  // The accepted ids (re-read when the deploy writes alexa/skill-ids.local.json), logged as counts and
+  // sources whenever they change, never the ids.
+  const loadSkillIds = (log?: PluginCtx["log"]): SkillIds | null => {
     try {
-      skillId = opts.skillId ?? resolveSkillId();
+      const s = source();
       configError = null;
+      if (log && s !== last) {
+        log("alexa.skill-ids", { accepted: s.ids.length, sources: s.sources, ...(s.warnings.length ? { warnings: s.warnings } : {}) });
+        last = s;
+      }
+      return s;
     } catch (err) {
       configError = (err as Error).message;
+      return null;
     }
-    return skillId;
   };
   return {
     name: "alexa",
     prefixes: ALEXA_PREFIXES,
     attach(ctx) {
       hub ??= new HubClient(() => ctx.selfUrl());
-      loadSkillId();
+      loadSkillIds(ctx.log);
       if (!checkSignature) ctx.log("alexa.signature-off", { note: "ALEXA_VERIFY_SIGNATURE=0: public /alexa requests are not signature-checked; never run a tunnel like this" });
     },
     async route(req: IncomingMessage, res: ServerResponse, url: URL, ctx: PluginCtx) {
       if (url.pathname !== "/alexa") return false;
       if (req.method !== "POST") return ctx.json(res, 405, { error: "method_not_allowed", message: "POST /alexa only" }), true;
-      const id = loadSkillId();
-      if (!id) return ctx.json(res, 503, { error: "alexa_unconfigured", message: configError ?? "no skill id" }), true;
+      const skills = loadSkillIds(ctx.log);
+      if (!skills) return ctx.json(res, 503, { error: "alexa_unconfigured", message: configError ?? "no skill id" }), true;
       let raw: Buffer;
       try {
         raw = await rawBody(req);
@@ -136,13 +146,21 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
           return ctx.json(res, 400, { error: "alexa_rejected", message: sig.reason }), true;
         }
       }
-      const v = verifyAlexaRequest(body, { skillId: id, now: now() });
+      const v = verifyAlexaRequest(body, { skillId: skills.ids, now: now() });
       if (!v.ok) {
         rejected++;
         ctx.log("alexa.rejected", { reason: v.reason, public: ctx.isPublic(req) });
         return ctx.json(res, 400, { error: "alexa_rejected", message: v.reason }), true;
       }
-      const device = newDevice(body as unknown as AlexaRequestEnvelope);
+      const envelope = body as unknown as AlexaRequestEnvelope;
+      // Which invocation name was used: the first request through each skill logs its name (as the
+      // deploy recorded it), so a name tried on a device shows up in the hub log.
+      const appId = envelope.session?.application?.applicationId ?? envelope.context?.System?.application?.applicationId;
+      if (appId && !answered.has(appId)) {
+        answered.add(appId);
+        ctx.log("alexa.skill", { name: skills.names[appId] ?? null });
+      }
+      const device = newDevice(envelope);
       if (device) ctx.log("alexa.device", { ...device });
       const deps: SkillDeps = {
         hub: (hub ??= new HubClient(() => ctx.selfUrl())),
@@ -153,18 +171,21 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
         pollBudgetMs: opts.pollBudgetMs,
         pollEveryMs: opts.pollEveryMs,
       };
-      const out = await handleAlexa(body as unknown as AlexaRequestEnvelope, deps);
+      const out = await handleAlexa(envelope, deps);
       served++;
       ctx.json(res, 200, maskSpoken(out.envelope), { premasked: true });
       return true;
     },
-    describe: () => ({
-      owner: "Alexa skill",
-      status: configError ? "degraded" : "ready",
-      routes: ALEXA_ROUTES,
-      note: configError
-        ? `no skill id: ${configError}`
-        : `skill id from ${opts.skillId ? "options" : process.env.ALEXA_SKILL_ID ? "ALEXA_SKILL_ID" : "alexa/skill-id.json"}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
-    }),
+    describe: () => {
+      const s = loadSkillIds();
+      return {
+        owner: "Alexa skill",
+        status: configError ? "degraded" : "ready",
+        routes: ALEXA_ROUTES,
+        note: !s
+          ? `no skill id: ${configError}`
+          : `${s.ids.length} skill id${s.ids.length === 1 ? "" : "s"} from ${s.sources.join(", ")}${s.warnings.length ? ` (${s.warnings.length} skipped)` : ""}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
+      };
+    },
   };
 }
