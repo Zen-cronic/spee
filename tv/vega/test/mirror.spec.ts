@@ -64,6 +64,9 @@ describe('the wrist moment and the round on Vega (synced from tv/web)', () => {
     expect(nudgeHopsLine(nudge)).toBe('You said it → Bee 5.9 s → wrist alarm 17.4 s');
     expect(skipLine({reason: 'cooldown', retryAfterMs: 120000})).toBe('Stayed quiet: cooldown between nudges · again in 2 min');
     expect(beeMemoryLine({enabled: false, status: 'off', goal: null, insights: null, facts: null, note: ''})).toBeNull();
+    const failed = {enabled: true, status: 'failed' as const, goal: null, insights: null, facts: null, note: ''};
+    expect(beeMemoryLine(failed)?.text).toBe('Your speaking goal didn’t save to Bee this time; the hub tries again.');
+    expect(beeMemoryLine({...failed, stopped: true})?.text).toBe('Your speaking goal didn’t save to Bee; the coach stopped trying, so it never makes a second copy.');
     const waiting = {role: 'drilled' as const, verdict: 'not drilled yet' as const, before: {per100: 2, words: 900} as any, after: {per100: 0, words: 0} as any};
     expect(habitRole(waiting)).toBe('To practise');
     expect(habitPill({...waiting, role: 'control'})).toBe('Starts at your first practice');

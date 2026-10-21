@@ -326,6 +326,17 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(beeMemoryLine(mem({ note: "" }))!.caveat).toBe(BEE_MEMORY_NOTE);
     expect(beeMemoryLine(mem({ facts: null, insights: null }))!.counts).toBeNull();
   });
+  it("a failed save says the hub tries again only while it does: a goal the coach stopped looking for says so", () => {
+    expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal didn’t save to Bee this time; the hub tries again.");
+    expect(beeMemoryLine(mem({ status: "failed", stopped: true }))!.text).toBe("Your speaking goal didn’t save to Bee; the coach stopped trying, so it never makes a second copy.");
+    expect(beeMemoryLine(mem({ status: "failed", stopped: true }))!.text).not.toMatch(/tries again/);
+  });
+  it("an older hub sends no stopped: a failure reads as one the hub tries again, never as stopped", () => {
+    const older: BeeMemoryIn = { enabled: true, status: "failed", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null }, insights: null, facts: null, note: "Bee's chat and Alexa+ may not read coach-written facts." };
+    expect("stopped" in older).toBe(false);
+    expect(beeMemoryLine(older)).toEqual(beeMemoryLine({ ...older, stopped: false }));
+    expect(beeMemoryLine(older)!.text).not.toBe(beeMemoryLine({ ...older, stopped: true })!.text);
+  });
 });
 
 describe("before the first practice: the cards never say Practised beside Not practised yet (the phone's rule)", () => {

@@ -373,9 +373,10 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
 /**
  * Bee memory, as the hub reports it (GET /api/coach/facts): the coach's one goal fact in Bee and
  * Bee's fact and insight counts. Null when the hub has it off (or does not report it), so the row
- * hides. Counts only: no fact text but the coach's own goal.
+ * hides. Counts only: no fact text but the coach's own goal. A failure says the hub tries again
+ * unless `stopped` says the coach stopped looking; an older hub sends no `stopped`, read as false.
  */
-export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'>;
+export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
 export const BEE_MEMORY_NOTE = HUB_BEE_MEMORY_NOTE.replace(/'/g, '’');
 const dayOf = (ms: number | null | undefined) => (ms === null || ms === undefined || !Number.isFinite(ms) ? null : fmtDate(new Date(ms).toISOString()));
@@ -387,7 +388,9 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
     m.status === 'pending'
       ? 'Saving your speaking goal to Bee…'
       : m.status === 'failed'
-        ? 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
+        ? m.stopped === true
+          ? 'Your speaking goal didn’t save to Bee; the coach stopped trying, so it never makes a second copy.'
+          : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
         : m.status === 'demo'
           ? m.goal
             ? 'Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.'
