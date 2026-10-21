@@ -119,6 +119,7 @@ interface PendingCreate {
   outcome: "unknown" | "landed";
   looks?: number; // how many times the coach looked for it in Bee's lists
   nextLookAt?: number | null; // when the next look is due; null: it stopped looking (status "failed", `stopped`)
+  lastRead?: boolean; // the last look read both of Bee's lists (false: an outage); a ledger from before it goes by `looks`
 }
 interface FactsLedger {
   goal: GoalEntry | null;
@@ -384,6 +385,7 @@ export class BeeFacts {
   private notListed(p: PendingCreate, read: boolean) {
     const looks = (p.looks ?? 0) + (read ? 1 : 0);
     p.looks = looks;
+    p.lastRead = read;
     if (looks >= (this.o.looksMax ?? LOOKS_MAX)) p.nextLookAt = null;
     else {
       const wait = (this.o.lookFirstMs ?? LOOK_FIRST_MS) * 2 ** Math.max(0, looks - 1);
@@ -445,7 +447,7 @@ export class BeeFacts {
           // and the status stays failed for the reason the last look gave.
           if (reason === "start" && p.nextLookAt != null) {
             this.scheduleLook(p.nextLookAt - this.now());
-            this.goalError = this.notListedReason(p, (p.looks ?? 0) > 0);
+            this.goalError = this.notListedReason(p, p.lastRead ?? (p.looks ?? 0) > 0);
             this.log("facts.goal.failed", { error: this.goalError });
           } else if (reason === "look" && p.nextLookAt != null && !this.lookTimer) this.scheduleLook(p.nextLookAt - this.now()); // a timer that fired far too early
           return;

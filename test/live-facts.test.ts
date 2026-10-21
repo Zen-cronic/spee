@@ -3,7 +3,7 @@
 // Bee-verified pass, the same id updated, restarts and timed-out creates that never make a second
 // fact, the breaker that leaves live coaching alone, counts only, and a planted marker that never
 // reaches Bee, the ledger, the route or the logs. No real Bee call is ever made here.
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -377,6 +377,35 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     await r.f.settle();
     expect(r.ledger().pendingCreate).toMatchObject({ looks: 1, nextLookAt: expect.any(Number) });
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+  });
+  it("a restart after a look that could not read Bee's lists says so, not that Bee does not list it (a ledger from before `lastRead` goes by the looks)", async () => {
+    let down = false;
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });
+    const logs: { event: string; data?: Record<string, unknown> }[] = [];
+    const r = rig(bee, { breakerThreshold: 99 });
+    pass(r.h);
+    await r.f.settle(); // look 1 reads both lists: Bee does not list it
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 1, lastRead: true });
+    down = true; // a Bee outage at look 2
+    r.advance(LOOK_FIRST_MS);
+    pass(r.h);
+    await r.f.settle();
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 1, lastRead: false, nextLookAt: expect.any(Number) });
+    r.f.stop();
+    const failed = () => logs.filter((l) => l.event === "facts.goal.failed").at(-1)?.data?.error;
+    const b = rig(bee, { dir: r.dir, hub: r.h, breakerThreshold: 99, logs });
+    await b.f.settle(); // before look 3 is due: no call
+    expect(failed()).toBe("create timed out and Bee's lists could not be read; it is never created again");
+    expect(b.f.memory()).toMatchObject({ status: "failed", stopped: false });
+    b.f.stop();
+    const file = join(r.dir, "live", "facts.json");
+    const old = JSON.parse(readFileSync(file, "utf8"));
+    delete old.pendingCreate.lastRead;
+    writeFileSync(file, JSON.stringify(old));
+    const c = rig(bee, { dir: r.dir, hub: r.h, breakerThreshold: 99, logs });
+    await c.f.settle();
+    expect(failed()).toBe("create timed out and Bee does not list it yet (look 1 of 5); it is never created again");
+    expect(bee.calls.filter((x) => x[1] === "create")).toHaveLength(1);
   });
   it("the look follows Bee's list past its first page (the cursor), and adopts the fact it finds there", async () => {
     const others = Array.from({ length: 100 }, (_, i) => ({ id: 100 + i, text: `Invented fact ${i}`, confirmed: true }));
