@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { deploy, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
+import { deploy, DeployStop, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
 import { checkInvocationName, DEFAULT_INVOCATION_NAMES, examplePhraseOk, loadSkillPackage, packageFor, swapName } from "../src/alexa/skillPackage.js";
 import { readSkillConfig, resolveSkillIds } from "../src/alexa/verify.js";
 
@@ -232,6 +232,33 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(readFileSync(cfg.localPath, "utf8")).toBe(before);
     expect(readdirSync(dir)).toEqual(["skill-ids.local.json"]);
   });
+
+  // A local file the deploy cannot trust (review L193): read as "no skills", it would create a second
+  // skill for each name it lost, and saving would overwrite the ids it still holds.
+  const BAD_FILES: [string, string][] = [
+    ["does not parse (a trailing comma)", `{ "skills": { "speech coach": "${MAIN}", "spee coach": "amzn1.ask.skill.22222222-2222-2222-2222-222222222222", } }\n`],
+    ["has an entry that is not a skill id", JSON.stringify({ skills: { "spee coach": "amzn1.ask.skill.22222222-2222-2222-2222-222222222222", spee: "not-an-id" } })],
+    ["has no skills object", JSON.stringify({ spee: "amzn1.ask.skill.33333333-3333-3333-3333-333333333333" })],
+  ];
+  for (const [what, text] of BAD_FILES) {
+    it(`a local file that ${what} stops the deploy before any ask call, in a real run and a dry run, and is never overwritten`, async () => {
+      writeFileSync(cfg.localPath, text);
+      for (const dry of [false, true]) {
+        lines = [];
+        const results = await deploy(cfg, deps(() => {
+          throw new Error("a stopped deploy must not call ask");
+        }), { dry });
+        expect(results).toEqual([]);
+        expect(lines).toHaveLength(1);
+        expect(lines[0]).toMatch(/^alexa:deploy: stopped: skill-ids\.local\.json( does not parse|: the skill for "spee" is not an amzn1\.ask\.skill\.\* id| has no "skills" object)/);
+        expect(lines[0]).toContain("never read as empty or overwritten");
+        expect(lines[0]).toContain("Nothing was run or written.");
+        expect(readFileSync(cfg.localPath, "utf8")).toBe(text);
+        expect(existsSync(cfg.outDir)).toBe(false);
+      }
+      expect(() => plan(cfg)).toThrow(DeployStop);
+    });
+  }
 
   it("plan: the checked-in name is the existing skill, a recorded name reuses its skill, the rest are new", () => {
     writeFileSync(cfg.localPath, JSON.stringify({ skills: { spee: "amzn1.ask.skill.33333333-3333-3333-3333-333333333333" } }));

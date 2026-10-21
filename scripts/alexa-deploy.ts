@@ -9,7 +9,9 @@
 // (docs/alexa.md, "Skill names"). The names, in priority order, default to "speech coach", "spee
 // coach" and "spee". The checked-in model's name ("speech coach") is the existing skill
 // (ALEXA_SKILL_ID, else alexa/skill-id.json); a name recorded in alexa/skill-ids.local.json
-// (git-ignored) reuses its skill; any other name gets a new development skill.
+// (git-ignored) reuses its skill; any other name gets a new development skill. A local file that does
+// not parse, or holds an entry that is not a skill id, stops the deploy before any ask call, in a dry
+// run too, and is never overwritten.
 //
 // For each name, with the ASK CLI profile from alexa/skill-id.json ("default"):
 //   1. writes out/alexa/<name>/: skill.json (the checked-in manifest with the endpoint
@@ -89,8 +91,22 @@ export function parseNames(args: string[], env: Record<string, string | undefine
   return [...new Set(list.length ? list : DEFAULT_INVOCATION_NAMES)];
 }
 
+// A reason the deploy stops before any ask call or write. The message says what to fix.
+export class DeployStop extends Error {}
+
+// The skills recorded in the local file. A file that does not parse, has no "skills" object or holds
+// an entry that is not a skill id stops the deploy: read as "no skills", it would make a second
+// skill for a name it lost, and saving would overwrite the ids it still holds.
+export function readLocalOrStop(path: string): Record<string, string> {
+  const { skills, warnings } = readLocalSkills(path);
+  if (warnings.length) {
+    throw new DeployStop(`${warnings.join("; ")}. It is the record of which skill serves each name, so it is never read as empty or overwritten. Fix it by hand, then run again. Nothing was run or written.`);
+  }
+  return skills;
+}
+
 export function plan(cfg: Pick<DeployConfig, "names" | "base" | "primary" | "localPath">): PlannedSkill[] {
-  const local = readLocalSkills(cfg.localPath).skills;
+  const local = readLocalOrStop(cfg.localPath);
   return cfg.names.map((name) => {
     const { problems, oneWord } = checkInvocationName(name);
     if (name === cfg.base.invocationName) return { name, skillId: cfg.primary.skillId, from: cfg.primary.source, problems, oneWord };
@@ -113,7 +129,7 @@ export function describePlan(cfg: DeployConfig, planned: PlannedSkill[], print: 
 }
 
 function saveLocal(path: string, name: string, skillId: string): void {
-  const { skills } = readLocalSkills(path);
+  const skills = readLocalOrStop(path);
   if (skills[name] === skillId) return;
   writeJsonAtomic(path, { note: LOCAL_NOTE, skills: { ...skills, [name]: skillId } });
 }
@@ -138,7 +154,14 @@ const errorText = (u: LastUpdate | undefined) =>
 
 export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: boolean } = {}): Promise<DeployResult[]> {
   const pollMs = deps.pollMs ?? 4000;
-  const planned = plan(cfg);
+  let planned: PlannedSkill[];
+  try {
+    planned = plan(cfg);
+  } catch (e) {
+    if (!(e instanceof DeployStop)) throw e;
+    deps.print(`alexa:deploy: stopped: ${e.message}`);
+    return [];
+  }
   describePlan(cfg, planned, deps.print);
   const ask = (args: string[], quiet = false): AskResult => {
     const full = [...args, "--profile", cfg.profile];
@@ -310,7 +333,15 @@ async function main(): Promise<number> {
     const cfg = deployConfig(args, process.env, "");
     const run = askCli();
     let bad = 0;
-    for (const p of plan(cfg)) {
+    let planned: PlannedSkill[];
+    try {
+      planned = plan(cfg);
+    } catch (e) {
+      if (!(e instanceof DeployStop)) throw e;
+      console.error(`alexa:deploy: stopped: ${e.message}`);
+      return 2;
+    }
+    for (const p of planned) {
       if (!p.skillId) {
         console.log(`${p.name}: no skill yet`);
         continue;
