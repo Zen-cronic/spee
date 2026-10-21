@@ -76,6 +76,8 @@ describe('the wrist moment and the round on Vega (synced from tv/web)', () => {
     const failed = {enabled: true, status: 'failed' as const, goal: null, insights: null, facts: null, note: ''};
     expect(beeMemoryLine(failed)?.text).toBe('Your speaking goal didn’t save to Bee this time; the hub tries again.');
     expect(beeMemoryLine({...failed, stopped: true})?.text).toBe('Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).');
+    const unlisted = {...failed, goal: {factId: null, text: 'Speaking goal (Speaking Mirror): ...', confirmed: false, updatedAt: null}};
+    expect(beeMemoryLine(unlisted)?.text).toBe('Bee hasn’t listed your speaking goal yet; the coach keeps checking (it never makes a second copy).');
     expect(beeMemoryLine({...failed, status: 'pending' as const})?.text).toBe('No speaking goal in Bee yet: the coach saves it after your next line Bee passes.');
     const waiting = {role: 'drilled' as const, verdict: 'not drilled yet' as const, before: {per100: 2, words: 900} as any, after: {per100: 0, words: 0} as any};
     expect(habitRole(waiting)).toBe('To practise');

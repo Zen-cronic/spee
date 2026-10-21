@@ -377,8 +377,10 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * hides. Counts only: no fact text but the coach's own goal. A failure says the hub tries again
  * unless `stopped` says the coach stopped looking; an older hub sends no `stopped`, read as false.
  * Stopped never says the goal didn't save: a create that exited 0 without an id did land, and Bee
- * may hold it without listing it, so the row says only that Bee never listed it. With no goal and
- * nothing being saved, the row says when the goal goes to Bee, never "Saving…".
+ * may hold it without listing it, so the row says only that Bee never listed it. The same holds
+ * while the coach still looks for such a create (a goal with no fact id, failed, not stopped): it
+ * may be in Bee. Only a write that failed outright says it didn't save. With no goal and nothing
+ * being saved, the row says when the goal goes to Bee, never "Saving…".
  */
 export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
@@ -389,6 +391,7 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
   const updated = dayOf(m.goal?.updatedAt);
   const saved = m.goal?.confirmed ? 'saved in Bee as a confirmed fact' : 'saved in Bee, not confirmed yet';
   const none = 'No speaking goal in Bee yet: the coach saves it after your next line Bee passes.';
+  const unlisted = !!m.goal && m.goal.factId === null; // a create Bee has not listed: it may be in Bee
   const text =
     m.status === 'pending'
       ? m.goal
@@ -397,7 +400,9 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
       : m.status === 'failed'
         ? m.stopped === true
           ? 'Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).'
-          : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
+          : unlisted
+            ? 'Bee hasn’t listed your speaking goal yet; the coach keeps checking (it never makes a second copy).'
+            : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
         : m.status === 'demo'
           ? m.goal
             ? 'Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.'

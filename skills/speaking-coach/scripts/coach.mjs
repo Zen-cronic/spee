@@ -112,8 +112,9 @@ export function statusLines(c) {
 /**
  * The goal fact, as GET /api/coach/facts reports it, in the TV's words. `stopped`: the coach gave up
  * on a create Bee never listed, so the goal may or may not be in Bee (a create that exited 0 without
- * an id did land; an older hub sends no `stopped`: read as false). No goal: nothing is being saved,
- * and the next practice line Bee passes saves it.
+ * an id did land; an older hub sends no `stopped`: read as false). A goal with no fact id is such a
+ * create: while it fails, the coach is still checking whether Bee has it. No goal: nothing is being
+ * saved, and the next practice line Bee passes saves it.
  */
 export function goalLines(m) {
   if (!m || typeof m !== "object") return ["The hub sent no Bee memory."];
@@ -121,8 +122,13 @@ export function goalLines(m) {
   if (m.stopped === true) {
     if (m.goal?.text) lines.push(`Goal the coach tried to save in Bee: ${m.goal.text}`);
     lines.push("Bee never listed it, so the coach stopped trying (it never makes a second copy). It may or may not be in Bee; docs/live.md (Bee memory) says how to check and start over.");
-  } else if (m.goal?.text) lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
-  else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
+  } else if (m.goal?.text && m.goal.factId === null) {
+    if (m.status === "failed") lines.push(`Goal the coach tried to save in Bee: ${m.goal.text}`, "Bee hasn't listed it yet; the coach keeps checking whether Bee has it (it never makes a second copy).");
+    else lines.push(`Goal the coach is saving to Bee: ${m.goal.text}`);
+  } else if (m.goal?.text) {
+    lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
+    if (m.status === "failed") lines.push("The coach's last change to it didn't save to Bee; the hub tries again.");
+  } else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
   else if (m.status === "failed") lines.push("No goal fact yet: the coach's try to save it didn't work, and it tries again after your next practice line Bee passes.");
   else lines.push("No goal fact yet: the coach saves it after your next practice line Bee passes.");
   const counts = [m.facts ? `${m.facts.count} facts` : null, m.insights ? `${m.insights.count} insights` : null].filter(Boolean);
