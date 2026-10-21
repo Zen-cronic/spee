@@ -326,10 +326,12 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(beeMemoryLine(mem({ note: "" }))!.caveat).toBe(BEE_MEMORY_NOTE);
     expect(beeMemoryLine(mem({ facts: null, insights: null }))!.counts).toBeNull();
   });
-  it("a failed save says the hub tries again only while it does: a goal the coach stopped looking for says so", () => {
+  it("a failed save says the hub tries again only while it does: a goal the coach stopped looking for says so, never that it didn't save", () => {
     expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal didn’t save to Bee this time; the hub tries again.");
-    expect(beeMemoryLine(mem({ status: "failed", stopped: true }))!.text).toBe("Your speaking goal didn’t save to Bee; the coach stopped trying, so it never makes a second copy.");
-    expect(beeMemoryLine(mem({ status: "failed", stopped: true }))!.text).not.toMatch(/tries again/);
+    // the create may have landed (it exited 0 without an id): Bee never listed it, which is all the coach knows
+    const stopped = beeMemoryLine(mem({ status: "failed", stopped: true, goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null } }))!.text;
+    expect(stopped).toBe("Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).");
+    expect(stopped).not.toMatch(/tries again|didn’t save|not saved/);
   });
   it("an older hub sends no stopped: a failure reads as one the hub tries again, never as stopped", () => {
     const older: BeeMemoryIn = { enabled: true, status: "failed", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null }, insights: null, facts: null, note: "Bee's chat and Alexa+ may not read coach-written facts." };

@@ -375,6 +375,8 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * Bee's fact and insight counts. Null when the hub has it off (or does not report it), so the row
  * hides. Counts only: no fact text but the coach's own goal. A failure says the hub tries again
  * unless `stopped` says the coach stopped looking; an older hub sends no `stopped`, read as false.
+ * Stopped never says the goal didn't save: a create that exited 0 without an id did land, and Bee
+ * may hold it without listing it, so the row says only that Bee never listed it.
  */
 export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
@@ -389,7 +391,7 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
       ? 'Saving your speaking goal to Bee…'
       : m.status === 'failed'
         ? m.stopped === true
-          ? 'Your speaking goal didn’t save to Bee; the coach stopped trying, so it never makes a second copy.'
+          ? 'Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).'
           : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
         : m.status === 'demo'
           ? m.goal

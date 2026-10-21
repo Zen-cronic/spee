@@ -251,7 +251,7 @@ describe("the commands against a fake hub", () => {
     expect(gaveUp.out).not.toContain("Goal in Bee");
     expect(gaveUp.out).not.toContain("Bee has not confirmed it yet.");
     expect(gaveUp.out).toContain(`Goal the coach tried to save in Bee: ${text}`);
-    expect(gaveUp.out).toContain("Bee never listed it, so it may not be in Bee at all. The coach stopped trying");
+    expect(gaveUp.out).toContain("Bee never listed it, so the coach stopped trying (it never makes a second copy). It may or may not be in Bee;");
     expect(gaveUp.out).toContain(BEE_MEMORY_NOTE);
     const { stopped: _, ...older } = f.memory;
     f.memory = older as BeeMemory;

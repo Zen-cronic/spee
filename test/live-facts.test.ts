@@ -323,6 +323,21 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(r.f.calls.filter((c) => c.args[1] === "create")).toHaveLength(1);
     expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null, confirmed: false } });
   });
+  it("a create that landed without an id and that Bee never lists: once the coach stops, the TV never says it didn't save", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "landed-no-id" : null) });
+    const blind: ExecFn = async (f, a, o) => (a[1] === "list" ? { stdout: "[]" } : bee.exec(f, a, o)); // past the pages the coach reads
+    const r = rig({ ...bee, exec: blind }, { looksMax: 2 });
+    pass(r.h);
+    await r.f.settle();
+    r.advance(LOOK_FIRST_MS);
+    pass(r.h);
+    await r.f.settle();
+    expect(r.ledger().pendingCreate).toMatchObject({ outcome: "landed", nextLookAt: null });
+    expect(bee.facts).toHaveLength(1); // it is in Bee
+    const m = r.f.memory();
+    expect(m).toMatchObject({ status: "failed", stopped: true });
+    expect(beeMemoryLine(m)!.text).toBe("Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).");
+  });
   it("a create that timed out and never shows up is never made again: looked for at most 5 times, further apart, then failed", async () => {
     const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : null) }); // it did not land
     const logs: { event: string; data?: Record<string, unknown> }[] = [];
