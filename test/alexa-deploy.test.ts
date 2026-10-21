@@ -265,17 +265,33 @@ describe("alexa:deploy with a fake ask CLI", () => {
     }), { dry: true });
     expect(results.every((r) => r.ok)).toBe(true);
     const out = lines.join("\n");
-    expect(out).toMatch(/speech coach {2}existing skill amzn1\.ask\.skill\.11111111… \(alexa\/skill-id\.json\): update/);
-    expect(out).toMatch(/spee coach {4}existing skill amzn1\.ask\.skill\.22222222… \(alexa\/skill-ids\.local\.json\): update/);
-    expect(out).toMatch(/spee {10}no skill yet: create a development skill .*\(one word: .*the build may refuse it/);
-    expect(out).toContain("$ ask smapi get-vendor-list --profile default");
+    expect(out).toMatch(/speech coach {2}UPDATE skill amzn1\.ask\.skill\.11111111… \(alexa\/skill-id\.json\)\n/);
+    expect(out).toMatch(/spee coach {4}UPDATE skill amzn1\.ask\.skill\.22222222… \(alexa\/skill-ids\.local\.json\)\n/);
+    expect(out).toMatch(/spee {10}CREATE a development skill, unless the account already has one for this name \(one word: .*the build may refuse it/);
+    expect(out).not.toContain("Warning:"); // the local file is here
+    // the account lookup comes before any change, and the dry run shows it
+    expect(out).toContain('Before creating anything, the deploy looks on the account for a skill already set up for "spee":\n$ ask smapi get-vendor-list --profile default\n$ ask smapi list-skills-for-vendor --profile default');
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill listed as Spee> -g development --profile default");
+    expect(out.indexOf("list-skills-for-vendor")).toBeLessThan(out.indexOf("update-skill-manifest"));
     expect(out).toContain(`$ ask smapi create-skill-for-vendor --manifest file:${join(cfg.outDir, "spee/skill.json")} --profile default`);
     expect(out).toContain("$ ask smapi get-skill-status -s <new skill id> --resource manifest --profile default");
     expect(out).toContain("$ ask smapi set-skill-enablement -s <new skill id> -g development --profile default");
-    expect(out).toContain("dry run, nothing was run or written");
+    expect(out).toContain("dry run, nothing was run or written\n  speech coach: would be updated\n  spee coach: would be updated\n  spee: would be CREATED, unless the account already has one");
     expect(existsSync(cfg.outDir)).toBe(false);
     expect(readFileSync(cfg.localPath, "utf8")).toBe(before);
     expect(readdirSync(dir)).toEqual(["skill-ids.local.json"]);
+  });
+
+  it("--dry-run in a checkout with no local file warns that the names it would create may have been set up elsewhere", async () => {
+    cfg.envIds = ["amzn1.ask.skill.22222222-2222-2222-2222-222222222222"];
+    await deploy(cfg, deps(() => {
+      throw new Error("a dry run must not call ask");
+    }), { dry: true });
+    const out = lines.join("\n");
+    expect(out).toMatch(/spee coach {4}CREATE a development skill/);
+    expect(out).toContain('Warning: this checkout has no alexa/skill-ids.local.json, so "spee coach" and "spee" have no recorded skill and are planned as CREATE. If they were set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout\'s file). Before any create, the deploy adopts a skill it finds on the account, so it never makes a second one for a name.');
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill listed as Spee, and each id in ALEXA_SKILL_IDS (1)> -g development --profile default");
+    expect(existsSync(cfg.localPath)).toBe(false);
   });
 
   // A local file the deploy cannot trust (review L193): read as "no skills", it would create a second

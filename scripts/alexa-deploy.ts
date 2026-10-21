@@ -1,7 +1,7 @@
 // Set up Spee's development Alexa skills, one per invocation name, all pointing at this hub.
 //
 //   PUBLIC_BASE_URL=https://<id>.ngrok-free.app npm run alexa:deploy
-//   npm run alexa:deploy -- --dry-run          # the plan and the commands; runs and writes nothing
+//   npm run alexa:deploy -- --dry-run          # the plan (each name UPDATE or CREATE) and the commands; runs and writes nothing
 //   npm run alexa:deploy -- --status           # read-only: each skill's build status
 //   npm run alexa:deploy -- --names "speech coach,spee coach"   # or ALEXA_INVOCATION_NAMES
 //
@@ -35,11 +35,11 @@
 //   4. polls ask smapi get-skill-status until every locale's build SUCCEEDED (or FAILED; 180 s cap)
 //   5. ask smapi set-skill-enablement       (testing on, development stage; idempotent)
 // A name that fails at any step is reported and skipped, and the next name goes on. The exit status
-// is 0 when the first name is ready. The hub accepts every skill in alexa/skill-ids.local.json and
-// reads the file again when it changes, so it needs no restart. This script never touches the live
-// stage, deletes nothing and never starts a tunnel.
+// is 0 when the first name is ready. A hub running from this checkout accepts every skill in
+// alexa/skill-ids.local.json and reads the file again when it changes, so it needs no restart. This
+// script never touches the live stage, deletes nothing and never starts a tunnel.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeJsonAtomic } from "../src/hub/atomic.js";
@@ -127,16 +127,23 @@ export function plan(cfg: Pick<DeployConfig, "names" | "base" | "primary" | "loc
   });
 }
 
-export function describePlan(cfg: DeployConfig, planned: PlannedSkill[], print: (line: string) => void): void {
+// Each name as UPDATE (a recorded skill) or CREATE (none recorded: the account is looked up first),
+// and a warning when names would be created in a checkout with no local file: they may have been
+// set up from another checkout, whose hub reads its own file.
+export function describePlan(cfg: DeployConfig, planned: PlannedSkill[], print: (line: string) => void, localExists = existsSync(cfg.localPath)): void {
   print(`alexa:deploy: ${planned.length} name${planned.length === 1 ? "" : "s"}, profile ${cfg.profile}, stage ${cfg.stage}, locales ${cfg.locales.join(", ")}, endpoint ${cfg.endpoint}`);
   const w = Math.max(...planned.map((p) => p.name.length));
   for (const p of planned) {
     const what = p.problems.length
-      ? `skipped: ${p.problems.join("; ")}`
+      ? `SKIPPED: ${p.problems.join("; ")}`
       : p.skillId
-        ? `existing skill ${shortId(p.skillId)} (${p.from}): update`
-        : `no skill yet: create a development skill and save its id in ${LOCAL_LABEL}`;
+        ? `UPDATE skill ${shortId(p.skillId)} (${p.from})`
+        : `CREATE a development skill, unless the account already has one for this name`;
     print(`  ${p.name.padEnd(w)}  ${what}${p.oneWord && !p.problems.length ? " (one word: Alexa allows it only for a registered brand, so the build may refuse it; the other names go on)" : ""}`);
+  }
+  const creating = planned.filter((p) => !p.problems.length && !p.skillId).map((p) => `"${p.name}"`);
+  if (creating.length && !localExists) {
+    print(`Warning: this checkout has no ${LOCAL_LABEL}, so ${creating.join(" and ")} ${creating.length === 1 ? "has" : "have"} no recorded skill and ${creating.length === 1 ? "is" : "are"} planned as CREATE. If ${creating.length === 1 ? "it was" : "they were"} set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout's file). Before any create, the deploy adopts a skill it finds on the account, so it never makes a second one for a name.`);
   }
 }
 
@@ -385,12 +392,12 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
 
   deps.print(`\nalexa:deploy: ${opts.dry ? "dry run, nothing was run or written" : "summary"}`);
   for (const r of results) {
-    deps.print(`  ${r.name}: ${r.ok ? (opts.dry ? "planned" : `ready${r.created ? " (new skill)" : ""}`) : `FAILED at ${r.step}: ${r.reason}`}`);
+    deps.print(`  ${r.name}: ${r.ok ? (opts.dry ? (r.created ? "would be CREATED, unless the account already has one" : "would be updated") : `ready${r.created ? " (new skill)" : ""}`) : `FAILED at ${r.step}: ${r.reason}`}`);
   }
   const ready = results.filter((r) => r.ok);
   if (ready.length && !opts.dry) {
     deps.print(`In the Alexa app (the developer account): ${ready.map((r) => `"Alexa, ask ${r.name} to quiz me"`).join(" or ")}.`);
-    deps.print(`The hub accepts every skill in ${LOCAL_LABEL} and reads it again when it changes. Check the endpoint: curl -s -o /dev/null -w '%{http_code}\\n' -X POST ${cfg.endpoint} -d '{}'  (expect 400: alexa_rejected)`);
+    deps.print(`A hub running from this checkout accepts every skill in ${LOCAL_LABEL} and reads it again when it changes; a hub in another checkout needs their ids in ALEXA_SKILL_IDS. Check the endpoint: curl -s -o /dev/null -w '%{http_code}\\n' -X POST ${cfg.endpoint} -d '{}'  (expect 400: alexa_rejected)`);
   }
   return results;
 }
@@ -439,7 +446,7 @@ async function main(): Promise<number> {
     }
     for (const p of planned) {
       if (!p.skillId) {
-        console.log(`${p.name}: no skill yet`);
+        console.log(`${p.name}: no skill recorded in this checkout (a deploy looks on the account before creating one)`);
         continue;
       }
       const r = run(["smapi", "get-skill-status", "-s", p.skillId, "--profile", cfg.profile]);
