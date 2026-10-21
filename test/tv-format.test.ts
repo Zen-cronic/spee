@@ -345,6 +345,12 @@ describe("beeMemoryLine is null when disabled", () => {
   it("the TV's refetch goes through memoryAfterFetch (web TV and Vega)", () => {
     for (const file of ["tv/web/src/mirror/useMirror.ts", "tv/vega/src/mirror/useMirror.ts"]) expect(readFileSync(file, "utf8"), file).toContain("setMemory((have) => memoryAfterFetch(have, r))");
   });
+  it("with no goal and nothing being saved, the row says when the goal goes to Bee, never Saving…", () => {
+    const none = "No speaking goal in Bee yet: the coach saves it after your next line Bee passes.";
+    expect(beeMemoryLine(mem({ status: "pending", goal: null }))!.text).toBe(none); // before the first pass, or the breaker open
+    expect(beeMemoryLine(mem({ status: "synced", goal: null }))!.text).toBe(none);
+    expect(beeMemoryLine(mem({ status: "pending", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null } }))!.text).toBe("Saving your speaking goal to Bee…"); // a create on its way
+  });
   it("an older hub sends no stopped: a failure reads as one the hub tries again, never as stopped", () => {
     const older: BeeMemoryIn = { enabled: true, status: "failed", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null }, insights: null, facts: null, note: "Bee's chat and Alexa+ may not read coach-written facts." };
     expect("stopped" in older).toBe(false);

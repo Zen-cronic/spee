@@ -110,9 +110,10 @@ export function statusLines(c) {
 }
 
 /**
- * The goal fact, as GET /api/coach/facts reports it. `stopped`: the coach gave up on a create Bee
- * never listed, so the goal may or may not be in Bee (a create that exited 0 without an id did land),
- * as the TV says it (an older hub sends no `stopped`: read as false).
+ * The goal fact, as GET /api/coach/facts reports it, in the TV's words. `stopped`: the coach gave up
+ * on a create Bee never listed, so the goal may or may not be in Bee (a create that exited 0 without
+ * an id did land; an older hub sends no `stopped`: read as false). No goal: nothing is being saved,
+ * and the next practice line Bee passes saves it.
  */
 export function goalLines(m) {
   if (!m || typeof m !== "object") return ["The hub sent no Bee memory."];
@@ -122,7 +123,8 @@ export function goalLines(m) {
     lines.push("Bee never listed it, so the coach stopped trying (it never makes a second copy). It may or may not be in Bee; docs/live.md (Bee memory) says how to check and start over.");
   } else if (m.goal?.text) lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
   else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
-  else lines.push(`No goal fact yet (status: ${m.status}). It is written after a practice line Bee checked.`);
+  else if (m.status === "failed") lines.push("No goal fact yet: the coach's try to save it didn't work, and it tries again after your next practice line Bee passes.");
+  else lines.push("No goal fact yet: the coach saves it after your next practice line Bee passes.");
   const counts = [m.facts ? `${m.facts.count} facts` : null, m.insights ? `${m.insights.count} insights` : null].filter(Boolean);
   if (counts.length) lines.push(`Bee holds ${counts.join(" and ")} (counts only).`);
   if (m.note) lines.push(m.note);

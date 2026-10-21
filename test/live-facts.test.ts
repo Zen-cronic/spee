@@ -648,7 +648,7 @@ describe("the breaker", () => {
       vi.useRealTimers();
     }
   });
-  it("before any goal, the open breaker reads as failed, and its close reaches the screens (stop() clears that timer)", async () => {
+  it("before any goal, an open breaker is no failed save: the status stays pending with no goal, and the next pass after it closes saves the goal", async () => {
     const h = hub();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
     try {
@@ -660,22 +660,21 @@ describe("the breaker", () => {
       stops.push(() => f.stop());
       await f.tick();
       await f.tick(); // three failed count reads: the breaker opens before any pass
-      expect(f.memory()).toMatchObject({ status: "failed", stopped: false, goal: null });
-      expect(changes).toBe(1);
-      down = false;
-      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS - 1);
-      expect(changes).toBe(1);
-      await vi.advanceTimersByTimeAsync(1); // it closes: no call, and the screens hear of it
+      expect(f.circuitOpenUntil()).not.toBeNull();
+      expect(f.memory()).toMatchObject({ status: "pending", stopped: false, goal: null });
+      expect(beeMemoryLine(f.memory())!.text).toBe("No speaking goal in Bee yet: the coach saves it after your next line Bee passes.");
+      pass(h); // a pass while it is open saves nothing, and nothing says it did or failed to
+      await f.settle();
       expect(f.memory()).toMatchObject({ status: "pending", goal: null });
-      expect(changes).toBe(2);
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1); // it closes: nothing a screen shows changed
+      expect(changes).toBe(0);
       expect(bee.factCalls()).toHaveLength(3);
-      down = true;
-      await f.tick(); // a fourth failure opens it again at once
-      expect(f.memory().status).toBe("failed");
-      expect(changes).toBe(3);
+      pass(h); // the next pass after it closes creates the goal, then confirms it
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+      expect(changes).toBe(1);
       f.stop();
-      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1);
-      expect(changes).toBe(3);
       expect(vi.getTimerCount()).toBe(0);
     } finally {
       vi.useRealTimers();

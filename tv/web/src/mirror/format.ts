@@ -377,7 +377,8 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * hides. Counts only: no fact text but the coach's own goal. A failure says the hub tries again
  * unless `stopped` says the coach stopped looking; an older hub sends no `stopped`, read as false.
  * Stopped never says the goal didn't save: a create that exited 0 without an id did land, and Bee
- * may hold it without listing it, so the row says only that Bee never listed it.
+ * may hold it without listing it, so the row says only that Bee never listed it. With no goal and
+ * nothing being saved, the row says when the goal goes to Bee, never "Saving…".
  */
 export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
@@ -387,9 +388,12 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
   if (!m || !m.enabled || m.status === 'off') return null;
   const updated = dayOf(m.goal?.updatedAt);
   const saved = m.goal?.confirmed ? 'saved in Bee as a confirmed fact' : 'saved in Bee, not confirmed yet';
+  const none = 'No speaking goal in Bee yet: the coach saves it after your next line Bee passes.';
   const text =
     m.status === 'pending'
-      ? 'Saving your speaking goal to Bee…'
+      ? m.goal
+        ? 'Saving your speaking goal to Bee…'
+        : none
       : m.status === 'failed'
         ? m.stopped === true
           ? 'Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).'
@@ -400,7 +404,7 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
             : 'Demo: after a line Bee passes, the coach would save your speaking goal in Bee.'
           : m.goal
             ? `Your speaking goal is ${saved}${updated ? `, updated ${updated}` : ''}.`
-            : 'No speaking goal in Bee yet: it is saved after your first line Bee passes.';
+            : none;
   const read = dayOf(m.facts?.readAt ?? m.insights?.readAt);
   const counts = m.facts || m.insights ? `Bee holds ${[m.facts ? `${m.facts.count} fact${m.facts.count === 1 ? '' : 's'}` : null, m.insights ? `${m.insights.count} insight${m.insights.count === 1 ? '' : 's'}` : null].filter(Boolean).join(' and ')}${read ? `, read ${read}` : ''}` : null;
   return { text, counts, caveat: m.note?.trim() ? m.note.trim().replace(/'/g, '’') : BEE_MEMORY_NOTE };
