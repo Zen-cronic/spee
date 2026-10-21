@@ -273,7 +273,7 @@ describe("the commands against a fake hub", () => {
     expect(await say({ status: "failed", goal: null })).toContain("No goal fact yet: the coach's try to save it didn't work, and it tries again after your next practice line Bee passes.");
     const upd = await say({ status: "failed", goal: { factId: "f1", text, confirmed: true, updatedAt: T0 } });
     expect(upd).toContain(`Goal in Bee: ${text}`);
-    expect(upd).toContain("The coach's last change to it didn't save to Bee; the hub tries again.");
+    expect(upd).toContain("The coach's last change to it didn't save; the hub tries again.");
   });
   it("goal: a demo hub's goal is what the coach would save, nothing written, with the data label", async () => {
     const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';

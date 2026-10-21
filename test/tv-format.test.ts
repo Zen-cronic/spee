@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
 import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, memoryAfterFetch, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
+import { goalLines } from "../skills/speaking-coach/scripts/coach.mjs";
 
 describe("fmtMs", () => {
   it("never shows 60 s or 1 min 60 s", () => {
@@ -327,7 +328,7 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(beeMemoryLine(mem({ facts: null, insights: null }))!.counts).toBeNull();
   });
   it("a failed save says the hub tries again only while it does: a goal the coach stopped looking for says so, never that it didn't save", () => {
-    expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal didn’t save to Bee this time; the hub tries again.");
+    expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal is in Bee, but the coach’s last change to it didn’t save; the hub tries again.");
     // the create may have landed (it exited 0 without an id): Bee never listed it, which is all the coach knows
     const stopped = beeMemoryLine(mem({ status: "failed", stopped: true, goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null } }))!.text;
     expect(stopped).toBe("Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).");
@@ -356,7 +357,20 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(looking).toBe("Bee hasn’t listed your speaking goal yet; the coach keeps checking (it never makes a second copy).");
     expect(looking).not.toMatch(/didn’t save|tries again/);
     expect(beeMemoryLine(mem({ status: "failed", stopped: false, goal: null }))!.text).toBe("Your speaking goal didn’t save to Bee this time; the hub tries again."); // the create failed
-    expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal didn’t save to Bee this time; the hub tries again."); // an update or confirm failed
+  });
+  it("a goal with its fact id is in Bee: a failed confirm or update says the coach's last change didn't save, as the skill says", () => {
+    const text = "Speaking goal (Speaking Mirror): ...";
+    const updated = beeMemoryLine(mem({ status: "failed", stopped: false }))!.text; // an update failed
+    expect(updated).toBe("Your speaking goal is in Bee, but the coach’s last change to it didn’t save; the hub tries again.");
+    expect(updated).not.toMatch(/didn’t save to Bee|not saved/);
+    const unconfirmed = mem({ status: "failed", stopped: false, goal: { factId: "901", text, confirmed: false, updatedAt: null } }); // the confirm failed
+    expect(beeMemoryLine(unconfirmed)!.text).toBe("Your speaking goal is in Bee, not confirmed yet, and the coach’s last change to it didn’t save; the hub tries again.");
+    // the skill reads the same fields: in Bee, not confirmed yet, the last change didn't save
+    const skill = goalLines({ ...unconfirmed, stopped: false });
+    expect(skill).toContain(`Goal in Bee: ${text}`);
+    expect(skill).toContain("Bee has not confirmed it yet.");
+    expect(skill).toContain("The coach's last change to it didn't save; the hub tries again.");
+    expect(goalLines({ ...mem({ status: "failed", stopped: false }), stopped: false })).toContain("It is a confirmed Bee fact.");
   });
   it("an older hub sends no stopped: a failure reads as one the hub still works on, never as stopped", () => {
     const older: BeeMemoryIn = { enabled: true, status: "failed", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null }, insights: null, facts: null, note: "Bee's chat and Alexa+ may not read coach-written facts." };

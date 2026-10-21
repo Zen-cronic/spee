@@ -130,7 +130,7 @@ export function goalLines(m) {
     else lines.push(`Goal the coach is saving to Bee: ${m.goal.text}`);
   } else if (m.goal?.text) {
     lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
-    if (m.status === "failed") lines.push("The coach's last change to it didn't save to Bee; the hub tries again.");
+    if (m.status === "failed") lines.push("The coach's last change to it didn't save; the hub tries again.");
   } else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
   else if (m.status === "failed") lines.push("No goal fact yet: the coach's try to save it didn't work, and it tries again after your next practice line Bee passes.");
   else lines.push("No goal fact yet: the coach saves it after your next practice line Bee passes.");

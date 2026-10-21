@@ -379,8 +379,10 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * Stopped never says the goal didn't save: a create that exited 0 without an id did land, and Bee
  * may hold it without listing it, so the row says only that Bee never listed it. The same holds
  * while the coach still looks for such a create (a goal with no fact id, failed, not stopped): it
- * may be in Bee. Only a write that failed outright says it didn't save. With no goal and nothing
- * being saved, the row says when the goal goes to Bee, never "Saving…".
+ * may be in Bee. Only a write that failed outright says it didn't save: the create, with no goal;
+ * for a goal with its fact id, which is in Bee, the coach's last change to it (a confirm or an
+ * update), and whether Bee has confirmed it. With no goal and nothing being saved, the row says
+ * when the goal goes to Bee, never "Saving…".
  */
 export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
@@ -402,7 +404,9 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
           ? 'Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).'
           : unlisted
             ? 'Bee hasn’t listed your speaking goal yet; the coach keeps checking (it never makes a second copy).'
-            : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
+            : m.goal
+              ? `Your speaking goal is in Bee${m.goal.confirmed ? ', but' : ', not confirmed yet, and'} the coach’s last change to it didn’t save; the hub tries again.`
+              : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
         : m.status === 'demo'
           ? m.goal
             ? 'Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.'
