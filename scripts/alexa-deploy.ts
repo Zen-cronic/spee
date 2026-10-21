@@ -119,12 +119,16 @@ function saveLocal(path: string, name: string, skillId: string): void {
 }
 
 type LastUpdate = { lastUpdateRequest?: { status?: string; errors?: { message?: string }[] } };
+// The JSON body the ask CLI prints, tolerating a line of other text around it.
 const parse = <T>(text: string): T | null => {
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
+  for (const t of [text, text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)]) {
+    try {
+      return JSON.parse(t) as T;
+    } catch {
+      /* try the next */
+    }
   }
+  return null;
 };
 const errorText = (u: LastUpdate | undefined) =>
   (u?.lastUpdateRequest?.errors ?? [])

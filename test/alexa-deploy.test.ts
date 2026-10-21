@@ -73,7 +73,8 @@ describe("the skill package for each name", () => {
 });
 
 // A fake ask CLI: creates numbered skills, reports builds as SUCCEEDED after one poll unless the
-// skill's model is set up to fail, and records every call.
+// skill's model is set up to fail, and records every call. The vendor list comes with a line of other
+// text around its JSON, as a CLI notice would.
 function fakeAsk(o: { failBuild?: (invocationName: string) => string | null; refuse?: (args: string[]) => boolean; vendors?: number } = {}) {
   const calls: string[][] = [];
   const models = new Map<string, string>(); // skill id -> invocation name
@@ -86,7 +87,7 @@ function fakeAsk(o: { failBuild?: (invocationName: string) => string | null; ref
     const flag = (f: string) => args[args.indexOf(f) + 1]!;
     switch (args[1]) {
       case "get-vendor-list":
-        return ok({ vendors: Array.from({ length: o.vendors ?? 1 }, () => ({ name: "Me", id: "VENDOR", roles: ["ROLE_ADMINISTRATOR"] })) });
+        return ok(`Some notice from the CLI\n${JSON.stringify({ vendors: Array.from({ length: o.vendors ?? 1 }, () => ({ name: "Me", id: "VENDOR", roles: ["ROLE_ADMINISTRATOR"] })) }, null, 2)}\n`);
       case "create-skill-for-vendor":
         n++;
         return ok({ skillId: `amzn1.ask.skill.00000000-0000-0000-0000-00000000000${n}` });
