@@ -14,7 +14,7 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEven
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
-import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type SequencedTopic } from "./contract.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
@@ -526,18 +526,21 @@ export class CoachHub extends EventEmitter {
 
   // The round's counts per try, and `lines`: each line once, by its best result (a pass, else a try
   // Bee graded, else one still with Bee, else one Bee didn't catch), so a retried line counts once.
+  // Each perCard entry names its line's result (`line`), so a screen colours that line by it.
   sessionSummary(s: DrillSession) {
     const as = this.attempts.filter((a) => s.attemptIds.includes(a.id));
     const counted = as.filter((a) => a.counted);
-    const lines = { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 0 };
-    for (const id of s.cardIds) {
+    const lineOf = (id: string): RoundLine => {
       const ca = as.filter((a) => a.cardId === id);
-      if (ca.some((a) => a.counted && a.final?.pass)) lines.passed++;
-      else if (ca.some((a) => a.counted)) lines.failed++;
-      else if (ca.some((a) => a.status === "pending_bee" || a.status === "polling")) lines.pending++;
-      else if (ca.some((a) => a.status === "unverified")) lines.unverified++;
-      else lines.untried++;
-    }
+      if (ca.some((a) => a.counted && a.final?.pass)) return "passed";
+      if (ca.some((a) => a.counted)) return "failed";
+      if (ca.some((a) => a.status === "pending_bee" || a.status === "polling")) return "pending";
+      if (ca.some((a) => a.status === "unverified")) return "unverified";
+      return "untried";
+    };
+    const line = new Map(s.cardIds.map((id) => [id, lineOf(id)] as const));
+    const lines: Record<RoundLine, number> = { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 0 };
+    for (const id of s.cardIds) lines[line.get(id)!]++;
     return {
       sessionId: s.id,
       by: s.by,
@@ -555,7 +558,7 @@ export class CoachHub extends EventEmitter {
       perCard: s.cardIds.map((id) => {
         const ca = counted.filter((a) => a.cardId === id);
         const c = this.card(id);
-        return { cardId: id, habit: c ? habitOf(c).label : id, attempts: ca.length, passed: ca.filter((a) => a.final?.pass).length, box: c?.box ?? null, due: c?.due ?? null };
+        return { cardId: id, habit: c ? habitOf(c).label : id, attempts: ca.length, passed: ca.filter((a) => a.final?.pass).length, box: c?.box ?? null, due: c?.due ?? null, line: line.get(id)! };
       }),
     };
   }

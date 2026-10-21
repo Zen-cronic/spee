@@ -1,5 +1,5 @@
 // Display helpers for the mirror's screens. Pure; shared by the web TV and the Vega app.
-import type { BeeMemory, ConversationEnded, ConversationSetting, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, LiveMode, Nudge, NudgeHops, NudgeRule, NudgeSkipped, NudgeSkipReason, PracticeFlag, RuleState, SessionSummary, SettingTag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
+import type { BeeMemory, ConversationEnded, ConversationSetting, FirstSignal, GradeCheck, GradeResult, InstrumentResponse, LiveBaseline, LiveMode, Nudge, NudgeHops, NudgeRule, NudgeSkipped, NudgeSkipReason, PracticeFlag, RoundLine, RuleState, SessionSummary, SettingTag, TransferClaim, TransferHabit, TransferResponse, TransferVerdict, Recap } from '../contract';
 import { BEE_MEMORY_NOTE as HUB_BEE_MEMORY_NOTE, CONVERSATION_SETTINGS, SETTING_NAME } from '../contract';
 
 export const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '–' : (Math.round(n * 10) / 10).toFixed(1));
@@ -430,6 +430,20 @@ export function roundTally(s: Pick<SessionSummary, 'passed' | 'failed' | 'unveri
     return `${tries} ${tries === 1 ? 'try' : 'tries'}: ${words(s)}`;
   }
   return `${words(l)}${l.untried ? `, ${l.untried} not tried` : ''}`;
+}
+
+/**
+ * Round over's segments, one per line (ten at most), each by its line's result (`perCard[].line`):
+ * lime passed, coral not yet, an open sky ring while Bee still checks it, a faint bar for a line Bee
+ * didn't catch and a faint ring for one not tried. Only a line still with Bee wears Bee's colour.
+ * An older hub sends no `line`: a graded try still decides, and a line without one is still with
+ * Bee only while the round has a try with Bee (it can't say which), else Bee didn't catch it if a
+ * try went uncaught, else not tried.
+ */
+type PerCardIn = Pick<SessionSummary['perCard'][number], 'cardId' | 'attempts' | 'passed'> & Partial<Pick<SessionSummary['perCard'][number], 'line'>>;
+export function roundSegments(s: Pick<SessionSummary, 'pending' | 'unverified'> & { perCard?: PerCardIn[] | null }): { cardId: string; line: RoundLine }[] {
+  const ungraded: RoundLine = s.pending > 0 ? 'pending' : s.unverified > 0 ? 'unverified' : 'untried';
+  return (s.perCard ?? []).slice(0, 10).map((c) => ({ cardId: c.cardId, line: c.line ?? (c.passed > 0 ? 'passed' : c.attempts > 0 ? 'failed' : ungraded) }));
 }
 
 /** The first few words of what Bee heard, quoted: "“Um, the migration is not…”". */

@@ -3,7 +3,7 @@ import { HopTimeline } from '../components/HopTimeline';
 import { SettingChip } from '../components/SettingChip';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundTally, RULE_LABEL, sessionTally, skipLine, statTone, usualWindow } from '../mirror/format';
+import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, RULE_LABEL, sessionTally, skipLine, statTone, usualWindow } from '../mirror/format';
 import { drillPhase, drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
@@ -54,9 +54,10 @@ function Tracker({ steps }: { steps: { label: string; state: StepState; bee?: bo
 
 /**
  * The round is over (the session ended): the headline, one segment per line (lime passed, coral
- * not yet, an open sky ring while Bee still checks it) and the tally in words, all three counting
- * lines, then the last line's result in one sentence, and how to start the next round. Same frame
- * as an open line, so nothing moves.
+ * not yet, an open sky ring only while Bee still checks it, a faint bar for a line Bee didn't catch,
+ * a faint ring for one not tried) and the tally in words, all three counting lines, then the last
+ * line's result in one sentence, and how to start the next round. Same frame as an open line, so
+ * nothing moves.
  */
 function RoundOver({ d }: { d: DrillState }) {
   const s = d.summary!;
@@ -65,7 +66,7 @@ function RoundOver({ d }: { d: DrillState }) {
   const overrules = g?.agreement === 'bee-overrules';
   const checking = !g && (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified');
   const last = roundLastLine({ graded: g, stage: d.stage, previewSource: d.provisional?.source ?? null });
-  const segs = (s.perCard ?? []).slice(0, 10);
+  const segs = roundSegments(s);
   const { heard, checked, graded } = drillSteps(d);
   return (
     <View style={styles.fill} testID="round-over">
@@ -75,7 +76,7 @@ function RoundOver({ d }: { d: DrillState }) {
         {segs.length ? (
           <View style={styles.segs} testID="round-segments">
             {segs.map((c, i) => (
-              <View key={`${c.cardId}:${i}`} style={[styles.seg, c.passed > 0 ? styles.segPass : c.attempts > 0 ? styles.segFail : styles.segOpen, i === segs.length - 1 && { marginRight: 0 }]} />
+              <View key={`${c.cardId}:${i}`} testID={`round-seg-${c.line}`} style={[styles.seg, SEG[c.line], i === segs.length - 1 && { marginRight: 0 }]} />
             ))}
           </View>
         ) : null}
@@ -448,8 +449,13 @@ const styles = StyleSheet.create({
   segPass: { backgroundColor: C.limeOnLight },
   segFail: { backgroundColor: C.coral },
   segOpen: { borderWidth: 3, borderColor: C.beeOnLight },
+  segMissed: { backgroundColor: C.faint },
+  segUntried: { borderWidth: 3, borderColor: C.inkFaint },
   tally: { color: C.ink, fontSize: T.title, lineHeight: 48, fontWeight: '700', fontFamily: F.family },
   lastLine: { marginTop: SP.m },
   beeTagInline: { marginBottom: SP.xs },
   beeTagWait: { backgroundColor: C.beeWash },
 });
+
+// A Round over segment's look by its line's result (roundSegments).
+const SEG = { passed: styles.segPass, failed: styles.segFail, pending: styles.segOpen, unverified: styles.segMissed, untried: styles.segUntried } as const;

@@ -268,7 +268,7 @@ Card fields:
 
 ### `POST /api/session/end`
 
-`attempts` to `beeOverrules` count tries, and a missed line stays open for another try. `lines` (additive) counts each line (card) of the round once, by its best result: `passed` if Bee passed a try at it, else `failed` if Bee graded one, else `pending` while one is still with Bee, else `unverified` if Bee didn't catch it, else `untried`. They add up to `cards`. The TV's Round over, the phone's "Session over" line, Alexa's "That's the round" and the MCP `end_drill` narration count these, so a line missed and then passed on a retry is one line passed: the TV shows "1 of 2 lines passed." over "1 passed, 1 not yet", never "1 passed, 2 not yet". A screen talking to a hub from before `lines` falls back to the tries and says so.
+`attempts` to `beeOverrules` count tries, and a missed line stays open for another try. `lines` (additive) counts each line (card) of the round once, by its best result: `passed` if Bee passed a try at it, else `failed` if Bee graded one, else `pending` while one is still with Bee, else `unverified` if Bee didn't catch it, else `untried`. They add up to `cards`. The TV's Round over, the phone's "Session over" line, Alexa's "That's the round" and the MCP `end_drill` narration count these, so a line missed and then passed on a retry is one line passed: the TV shows "1 of 2 lines passed." over "1 passed, 1 not yet", never "1 passed, 2 not yet". A screen talking to a hub from before `lines` falls back to the tries and says so. Each `perCard` entry names its line's result in `line` (additive; one of the `lines` keys), and the TV colours that line's Round over segment by it: lime passed, coral not yet, an open sky ring only while Bee still checks it, a faint bar for a line Bee didn't catch, a faint ring for one not tried. Its `attempts` and `passed` count Bee-graded tries. A hub from before `line` leaves the TV to go by the graded tries: a line without one shows the sky ring only while the round has a try still with Bee.
 
 ```json
 { "summary": {
@@ -276,9 +276,9 @@ Card fields:
   "cards": 3, "attempts": 6, "counted": 5, "passed": 3, "failed": 2, "unverified": 1, "pending": 0, "beeOverrules": 1,
   "lines": { "passed": 3, "failed": 0, "unverified": 0, "pending": 0, "untried": 0 },
   "perCard": [
-   { "cardId": "demo:vague-referent", "habit": "vague: \"that thing\"", "attempts": 1, "passed": 1, "box": 2, "due": "2026-10-22" },
-   { "cardId": "demo:vague-status", "habit": "vague: \"it's getting there\"", "attempts": 2, "passed": 1, "box": 2, "due": "2026-10-22" },
-   { "cardId": "demo:hedge-i-guess", "habit": "hedges: \"i guess\"", "attempts": 2, "passed": 1, "box": 1, "due": "2026-10-20" }
+   { "cardId": "demo:vague-referent", "habit": "vague: \"that thing\"", "attempts": 1, "passed": 1, "box": 2, "due": "2026-10-22", "line": "passed" },
+   { "cardId": "demo:vague-status", "habit": "vague: \"it's getting there\"", "attempts": 2, "passed": 1, "box": 2, "due": "2026-10-22", "line": "passed" },
+   { "cardId": "demo:hedge-i-guess", "habit": "hedges: \"i guess\"", "attempts": 2, "passed": 1, "box": 1, "due": "2026-10-20", "line": "passed" }
   ] } }
 ```
 

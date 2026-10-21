@@ -38,11 +38,14 @@ describe("a round's lines", () => {
     expect(s).toMatchObject({ cards: 4, attempts: 5, counted: 3, passed: 1, failed: 2, unverified: 1, pending: 1 });
     expect(s.lines).toEqual({ passed: 1, failed: 1, unverified: 1, pending: 0, untried: 1 });
     expect(s.perCard.map((p) => [p.attempts, p.passed])).toEqual([[2, 1], [1, 0], [0, 0], [0, 0]]);
+    // each line names its result, the key of `lines` it counts toward (the TV colours its segment by it)
+    expect(s.perCard.map((p) => p.line)).toEqual(["passed", "failed", "unverified", "untried"]);
     // Bee passes line B's retry after the round: the summary the hub re-sends has it passed
     heard(hub, retry, vb.resay);
     const resent = events.filter((e) => e.topic === "session.ended").at(-1)!.payload.summary as typeof s;
     expect(resent).toMatchObject({ sessionId: s.sessionId, passed: 2, failed: 2, pending: 0 });
     expect(resent.lines).toEqual({ passed: 2, failed: 0, unverified: 1, pending: 0, untried: 1 });
+    expect(resent.perCard.map((p) => p.line)).toEqual(["passed", "passed", "unverified", "untried"]);
     hub.dispose();
   });
   it("a line still with Bee after a try Bee didn't catch is still with Bee; the lines add up to the cards", () => {
@@ -52,6 +55,7 @@ describe("a round's lines", () => {
     hub.submit({ text: card!.resay, source: "phone" });
     const s = hub.endSession()!;
     expect(s.lines).toEqual({ passed: 0, failed: 0, unverified: 0, pending: 1, untried: 0 });
+    expect(s.perCard.map((p) => p.line)).toEqual(["pending"]);
     expect(Object.values(s.lines).reduce((x, y) => x + y, 0)).toBe(s.cards);
     hub.dispose();
   });

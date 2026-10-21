@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 
 describe("fmtMs", () => {
@@ -389,6 +389,33 @@ describe("Today's since-you-started cells: a cell without a number still names i
 });
 
 describe("Round over", () => {
+  it("only a line still with Bee gets Bee's open ring: a line Bee didn't catch and one never tried are faint, each named in the tally", () => {
+    // A retried and passed, B not yet, C still with Bee, D not caught, E opened and never said
+    const s = { cards: 5, passed: 1, failed: 2, unverified: 1, pending: 1, lines: { passed: 1, failed: 1, unverified: 1, pending: 1, untried: 1 }, perCard: [
+      { cardId: "A", attempts: 2, passed: 1, line: "passed" as const },
+      { cardId: "B", attempts: 1, passed: 0, line: "failed" as const },
+      { cardId: "C", attempts: 0, passed: 0, line: "pending" as const },
+      { cardId: "D", attempts: 0, passed: 0, line: "unverified" as const },
+      { cardId: "E", attempts: 0, passed: 0, line: "untried" as const },
+    ] };
+    expect(roundSegments(s).map((x) => x.line)).toEqual(["passed", "failed", "pending", "unverified", "untried"]);
+    expect(roundTally(s)).toBe("1 passed, 1 not yet, 1 Bee didn’t catch, 1 still with Bee, 1 not tried");
+    // an older hub sends no `line`: a graded try decides; an ungraded line is with Bee only while a try is
+    const older = (pending: number, unverified: number) => roundSegments({ pending, unverified, perCard: s.perCard.map(({ line: _, ...c }) => c) }).map((x) => x.line);
+    expect(older(0, 0)).toEqual(["passed", "failed", "untried", "untried", "untried"]);
+    expect(older(0, 1)).toEqual(["passed", "failed", "unverified", "unverified", "unverified"]);
+    expect(older(1, 1)).toEqual(["passed", "failed", "pending", "pending", "pending"]);
+    expect(roundSegments({ pending: 0, unverified: 0, perCard: Array.from({ length: 12 }, (_, i) => ({ cardId: `c${i}`, attempts: 1, passed: 1 })) })).toHaveLength(10);
+  });
+  it("Round over draws its segments from roundSegments, one look per result (web TV and Vega)", () => {
+    for (const file of ["tv/web/src/views/LiveView.tsx", "tv/vega/src/views/LiveView.tsx"]) {
+      const src = readFileSync(file, "utf8");
+      expect(src, file).toContain("const segs = roundSegments(s);");
+      expect(src, file).toMatch(/const SEG = \{ passed: styles\.segPass, failed: styles\.segFail, pending: styles\.segOpen, unverified: styles\.segMissed, untried: styles\.segUntried \}/);
+      expect(src, file).toContain("segOpen: { borderWidth: 3, borderColor: C.beeOnLight }"); // Bee's colour: the one still checking
+      expect(src, file).not.toMatch(/segMissed: \{[^}]*C\.bee|segUntried: \{[^}]*C\.bee/);
+    }
+  });
   it("the round's headline, tally and last line", () => {
     expect(roundHeadline({ cards: 2, passed: 1 })).toBe("1 of 2 lines passed.");
     expect(roundHeadline({ cards: 1, passed: 1 })).toBe("1 of 1 line passed.");
@@ -414,6 +441,8 @@ describe("Round over", () => {
     expect(roundHeadline(three)).toBe("1 of 3 lines passed.");
     expect(roundTally(three)).toBe("1 passed, 1 not yet, 1 not tried");
     expect(roundTally({ ...s, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("0 passed, 1 Bee didn’t catch, 1 still with Bee");
+    // each segment is coloured by its line's result, so lime and coral match the tally's passed and not yet
+    expect(roundSegments({ ...s, perCard: [{ cardId: "A", attempts: 2, passed: 1, line: "passed" }, { cardId: "B", attempts: 1, passed: 0, line: "failed" }] }).map((x) => x.line)).toEqual(["passed", "failed"]);
     // an older hub sends no lines: its counts are tries, and the tally says so
     const { lines: _, ...older } = s;
     expect(roundHeadline(older)).toBe("1 of 2 lines passed.");

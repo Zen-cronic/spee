@@ -177,9 +177,13 @@ export interface SessionSummary {
   // Additive: each line (card) of the round once, by its best result: passed if Bee passed a try at
   // it, else failed (not yet) if Bee graded one, else pending (still with Bee), else unverified (Bee
   // didn't catch it), else untried. They add up to `cards`; a round's tally on a screen counts these.
-  lines: { passed: number; failed: number; unverified: number; pending: number; untried: number };
-  perCard: { cardId: string; habit: string; attempts: number; passed: number; box: number | null; due: string | null }[];
+  lines: Record<RoundLine, number>;
+  // attempts and passed count Bee-graded tries. `line` (additive) is the key of `lines` this line
+  // counts toward; the TV colours the line's Round over segment by it.
+  perCard: { cardId: string; habit: string; attempts: number; passed: number; box: number | null; due: string | null; line: RoundLine }[];
 }
+// A line's result in a round, by its best try (SessionSummary.lines, perCard[].line).
+export type RoundLine = "passed" | "failed" | "unverified" | "pending" | "untried";
 
 export type VoiceState = "idle" | "card_open" | AttemptStatus;
 export interface BeeFeedStatus {
