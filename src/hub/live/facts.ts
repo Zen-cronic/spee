@@ -175,7 +175,7 @@ export class BeeFacts {
   private statsTimer: NodeJS.Timeout | null = null;
   private lookTimer: NodeJS.Timeout | null = null;
   private unsubscribe: (() => void) | null = null;
-  private stopped = false;
+  private closed = false; // stop() ran: this instance makes no more calls (not BeeMemory.stopped)
   private saveFailed = false;
   readonly calls: { args: string[]; ok: boolean }[] = []; // the command and subcommand only (tests, describe)
 
@@ -239,7 +239,7 @@ export class BeeFacts {
   }
 
   stop() {
-    this.stopped = true;
+    this.closed = true;
     this.unsubscribe?.();
     for (const t of this.timers) clearTimeout(t);
     if (this.statsTimer) clearTimeout(this.statsTimer);
@@ -248,7 +248,7 @@ export class BeeFacts {
   }
 
   onEvent(ev: HubEvent) {
-    if (this.o.mode !== "live" || this.stopped) return;
+    if (this.o.mode !== "live" || this.closed) return;
     if (ev.topic === "attempt.graded" && beePass((ev.payload as { attempt?: Attempt }).attempt)) void this.sync("pass");
     else if (ev.topic === "stats.updated") {
       if (this.statsTimer) clearTimeout(this.statsTimer);
@@ -271,7 +271,7 @@ export class BeeFacts {
 
   /** Queue a goal sync (coalesced per reason); resolves when the queue is idle. */
   sync(reason: SyncReason): Promise<void> {
-    if (this.o.mode !== "live" || this.stopped) return Promise.resolve();
+    if (this.o.mode !== "live" || this.closed) return Promise.resolve();
     if (!this.queued.has(reason)) {
       this.queued.add(reason);
       return this.enqueue(() => (this.queued.delete(reason), this.syncNow(reason)), (e) => this.log("facts.sync.error", { reason, error: callError(e) }));
@@ -371,7 +371,7 @@ export class BeeFacts {
   }
 
   private scheduleLook(ms: number) {
-    if (this.stopped) return;
+    if (this.closed) return;
     if (this.lookTimer) clearTimeout(this.lookTimer);
     this.lookTimer = setTimeout(() => ((this.lookTimer = null), void this.sync("look")), ms);
     this.lookTimer.unref?.();
@@ -394,7 +394,7 @@ export class BeeFacts {
   }
 
   private async syncNow(reason: SyncReason): Promise<void> {
-    if (this.stopped) return;
+    if (this.closed) return;
     const open = this.circuitOpenUntil();
     if (open != null) {
       // The look timer fired inside the breaker's window: it looks again once the breaker closes.
@@ -513,13 +513,13 @@ export class BeeFacts {
 
   /** Read Bee's insight and fact counts, on the call chain after any goal sync; resolves when it is idle. */
   readCounts(): Promise<void> {
-    if (this.o.mode !== "live" || this.stopped) return Promise.resolve();
+    if (this.o.mode !== "live" || this.closed) return Promise.resolve();
     return this.enqueue(() => this.countsNow(), (e) => this.log("facts.counts.error", { error: callError(e) }));
   }
 
   // Counts only: the items are dropped as soon as they are counted.
   private async countsNow(): Promise<void> {
-    if (this.stopped || this.circuitOpenUntil() != null) return;
+    if (this.closed || this.circuitOpenUntil() != null) return;
     const before = JSON.stringify(this.memory());
     const insights = await this.countPages(["insights", "list"], (out) => parseInsightCount(out));
     const facts = await this.countPages(["facts", "list"], (out) => {
