@@ -162,7 +162,7 @@ export const EMPTY = {
   noDrill: () => emptyScreen("You’re not practising right now.", "A round gives you a line to say, and Bee checks it.", "Say: quiz me"),
   noAttempt: () => emptyScreen("Nothing to check yet.", "Say a line first, then ask how you did.", "Say: quiz me"),
   hubDown: () => emptyScreen("The coach hub didn’t answer.", "Try again in a moment.", ""),
-  help: () => emptyScreen("Practise speaking, checked by Bee.", "Alexa gives you a line. Say it out loud, and Bee checks it in your own voice.", "Say: quiz me, or how am I doing?"),
+  help: () => emptyScreen("Practise speaking, checked by Bee.", "Alexa gives you a line. Say it out loud, and Bee checks it from what it heard you say.", "Say: quiz me, or how am I doing?"),
 };
 
 /** The RenderDocument directive for one screen, its datasource masked for a screen. `end`: the session closes with this turn. */

@@ -211,6 +211,9 @@ describe("other intents", () => {
     expect(text(fb)).toBe(SPEECH.fallbackCard);
     expect(text(await handleAlexa(env("fallback"), fake().deps))).toBe(SPEECH.fallbackIdle);
     expect(text(await handleAlexa(env("help"), fake().deps))).toBe(SPEECH.help);
+    // Bee grades the words it transcribed, never the sound of a voice
+    expect(SPEECH.help).toContain("Bee checks every line from what it heard you say.");
+    expect(SPEECH.help).not.toMatch(/voice/i);
     const stop = await handleAlexa(env("stop", { attrs: { cardId: open.id, attemptId: "att_x" } }), fake().deps);
     expect(stop.envelope.response.shouldEndSession).toBe(true);
     expect(stop.envelope.sessionAttributes).toEqual({});

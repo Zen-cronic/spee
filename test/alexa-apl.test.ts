@@ -219,6 +219,9 @@ describe("screens", () => {
   it("caught up and no line: a friendly empty state", () => {
     expect(EMPTY.caughtUp()).toMatchObject({ kind: "empty", headline: "You’re all caught up.", hint: "Ask: how am I doing?" });
     expect(EMPTY.noLine()).toMatchObject({ kind: "empty", hint: "Say: quiz me" });
+    // help: Bee grades the words it transcribed, never the sound of a voice
+    expect(EMPTY.help()).toMatchObject({ kind: "empty", line: "Alexa gives you a line. Say it out loud, and Bee checks it from what it heard you say." });
+    expect(JSON.stringify(EMPTY.help())).not.toMatch(/voice/i);
     expect(emptyScreen('a "b"', "c")).toMatchObject({ headline: "a “b”", line: "c" });
   });
 });

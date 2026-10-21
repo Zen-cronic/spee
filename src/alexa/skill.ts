@@ -40,7 +40,7 @@ export const SPEECH = {
   noCard: "There's no line to say right now. Say quiz me to start practising.",
   noDrill: "You're not practising right now. Say quiz me to start.",
   hubDown: "The coach hub didn't answer. Try again in a moment.",
-  help: "I help you practise speaking, and Bee checks every line in your own voice. Say quiz me, how am I doing, or turn on live coaching.",
+  help: "I help you practise speaking, and Bee checks every line from what it heard you say. Say quiz me, how am I doing, or turn on live coaching.",
   helpReprompt: "Say quiz me, or how am I doing.",
   fallbackCard: "I didn't catch that. Say the sentence again, or ask how did I do.",
   fallbackIdle: "Say quiz me to practise, or ask how am I doing.",
