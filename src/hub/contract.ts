@@ -504,6 +504,10 @@ export interface BeeMemory extends Labelled {
   insights: { count: number; readAt: number } | null;
   facts: { count: number; readAt: number } | null;
   note: string; // always BEE_MEMORY_NOTE
+  // true only when status is "failed" because the coach stopped looking for a goal fact Bee never
+  // listed: it never retries on its own (docs/live.md gives the reset steps). false otherwise,
+  // including every failure the hub retries (the breaker, a look still due, a failed write).
+  stopped: boolean;
 }
 // The habits a wrist cue may name: the pre-registered drilled habits, once practised. Never the
 // control (restart), never an unpractised habit.

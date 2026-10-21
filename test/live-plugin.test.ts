@@ -81,7 +81,7 @@ describe("live routes (demo hub)", () => {
   it("GET /api/coach/facts (demo): the goal it would write, nothing written, the note", async () => {
     const r = await get("/api/coach/facts");
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ synthetic: true, enabled: true, status: "demo", goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE });
+    expect(r.body).toMatchObject({ synthetic: true, enabled: true, status: "demo", goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false });
     expect(r.text).not.toContain(PLANTED_OTHER_MARKER);
   });
   it("POST /api/coach/cue (demo): one cue on the replay wrist, deduped on a repeat, 400 on a bad body", async () => {

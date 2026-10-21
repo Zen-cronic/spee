@@ -138,7 +138,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   // Bee memory and the wrist cue: the demo hub writes nothing to Bee
   console.log("\nv2: Bee memory and the wrist cue");
   const mem = await ctx.get("/api/coach/facts", "GET /api/coach/facts");
-  c(mem.status === 200 && mem.body.status === "demo" && mem.body.enabled === true && mem.body.synthetic === true && mem.body.note === BEE_MEMORY_NOTE && mem.body.goal?.factId === null && GOAL_TEXT_RE.test(mem.body.goal?.text ?? "") && mem.body.insights === null && mem.body.facts === null, "GET /api/coach/facts: demo BeeMemory with the template goal, nothing written, and the note");
+  c(mem.status === 200 && mem.body.status === "demo" && mem.body.enabled === true && mem.body.synthetic === true && mem.body.note === BEE_MEMORY_NOTE && mem.body.goal?.factId === null && GOAL_TEXT_RE.test(mem.body.goal?.text ?? "") && mem.body.insights === null && mem.body.facts === null && mem.body.stopped === false, "GET /api/coach/facts: demo BeeMemory with the template goal, nothing written, the note, and stopped false");
   c((await ctx.post("/api/coach/cue", { inMinutes: 500 })).body?.error === "bad_request", "POST /api/coach/cue: inMinutes 0-180 (400 bad_request)");
   const cue = await ctx.post("/api/coach/cue", { inMinutes: 0, by: "check" }, "POST /api/coach/cue");
   const cueText: string = cue.body?.cue?.text ?? "";

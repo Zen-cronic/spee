@@ -11,7 +11,7 @@ import { BEE_MEMORY_NOTE, type Attempt } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
 import type { LiveEngine } from "../src/hub/live/engine.js";
-import { assertGoalText, BeeFacts, beePass, composeGoal, factsModeFor, GOAL_TEXT_RE, LOOK_FIRST_MS, LOOKS_MAX, UPDATE_MIN_MS, type BeeFactsOptions } from "../src/hub/live/facts.js";
+import { assertGoalText, BeeFacts, beePass, composeGoal, FACTS_BREAKER_OPEN_MS, factsModeFor, GOAL_TEXT_RE, LOOK_FIRST_MS, LOOKS_MAX, UPDATE_MIN_MS, type BeeFactsOptions } from "../src/hub/live/facts.js";
 import { INSPECT_CALLS, inspect, jsonShape, outputShape, parseFact, parseFactList, parseInsightCount } from "../src/hub/live/factsParse.js";
 import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type ExecFn } from "../src/hub/live/wrist.js";
@@ -146,7 +146,7 @@ describe("off by default", () => {
       expect(facts!.mode).toBe("off");
       expect(bee.factCalls()).toEqual([]);
       expect(bee.calls.every((c) => c[0] === "todos")).toBe(true); // only the wrist's start-up sweep
-      expect(facts!.memory()).toEqual({ dataLabel: s.hub.dataLabel, synthetic: false, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE });
+      expect(facts!.memory()).toEqual({ dataLabel: s.hub.dataLabel, synthetic: false, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false });
     } finally {
       if (prev === undefined) delete process.env.COACH_FACTS;
       else process.env.COACH_FACTS = prev;
@@ -160,7 +160,7 @@ describe("off by default", () => {
     pass(h);
     await f.tick();
     expect(bee.calls).toEqual([]);
-    expect(f.memory()).toMatchObject({ enabled: true, status: "demo", synthetic: true, goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE });
+    expect(f.memory()).toMatchObject({ enabled: true, status: "demo", synthetic: true, goal: { factId: null, confirmed: false, text: expect.stringMatching(GOAL_TEXT_RE) }, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false });
   });
 });
 
@@ -181,7 +181,7 @@ describe("one goal fact (COACH_FACTS=1)", () => {
       ["facts", "confirm", "901", "--json"],
     ]);
     expect(bee.facts).toEqual([{ id: 901, text, confirmed: true }]);
-    expect(r.f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", text, confirmed: true, updatedAt: expect.any(Number) }, note: BEE_MEMORY_NOTE });
+    expect(r.f.memory()).toMatchObject({ status: "synced", stopped: false, goal: { factId: "901", text, confirmed: true, updatedAt: expect.any(Number) }, note: BEE_MEMORY_NOTE });
     expect(r.ledger().goal).toMatchObject({ factId: "901", text, confirmed: true });
     expect(r.ledger().pendingCreate).toBeNull();
   });
@@ -286,7 +286,7 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     await r.f.settle();
     expect(bee.factCalls()).toEqual(["facts create --text", "facts list --unconfirmed", "facts list --limit"]); // look 1, at once
     expect(r.ledger().pendingCreate).toMatchObject({ outcome: "unknown", looks: 1, nextLookAt: expect.any(Number) });
-    expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null } });
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: false, goal: { factId: null } }); // a look is still due
     pass(r.h); // before the next look is due: no call at all
     await r.f.settle();
     expect(looks()).toBe(1);
@@ -295,6 +295,7 @@ describe("one goal fact (COACH_FACTS=1)", () => {
       pass(r.h);
       await r.f.settle();
       expect(looks(), `look ${i}`).toBe(i);
+      expect(r.f.memory().stopped, `look ${i}`).toBe(i === LOOKS_MAX);
     }
     expect(r.ledger().pendingCreate).toMatchObject({ looks: LOOKS_MAX, nextLookAt: null });
     expect(r.f.describe()).toBe("live (failed: Bee never listed the goal create, so it is not made again; see docs/live.md)");
@@ -306,15 +307,15 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(looks()).toBe(LOOKS_MAX);
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
     expect(bee.facts).toHaveLength(0);
-    expect(r.f.memory()).toMatchObject({ status: "failed", goal: { factId: null, confirmed: false } });
-    // a restart keeps it: no look, no create, still failed
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: true, goal: { factId: null, confirmed: false } });
+    // a restart keeps it: no look, no create, still failed and stopped
     r.f.stop();
     const b = rig(bee, { dir: r.dir, hub: r.h });
     pass(r.h);
     await b.f.settle();
     expect(looks()).toBe(LOOKS_MAX);
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
-    expect(b.f.memory().status).toBe("failed");
+    expect(b.f.memory()).toMatchObject({ status: "failed", stopped: true });
   });
   it("a look that could not read Bee's lists does not count toward the 5", async () => {
     let down = true;
@@ -323,7 +324,7 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     pass(r.h);
     await r.f.settle();
     expect(r.ledger().pendingCreate).toMatchObject({ looks: 0, nextLookAt: expect.any(Number) });
-    expect(r.f.memory().status).toBe("failed");
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: false });
     down = false;
     r.advance(LOOK_FIRST_MS);
     pass(r.h);
@@ -395,7 +396,30 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     await f.settle();
     expect(bee.factCalls().filter((c) => c === "facts list --unconfirmed")).toHaveLength(3);
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
-    expect(f.memory().status).toBe("failed");
+    expect(f.memory()).toMatchObject({ status: "failed", stopped: true });
+  });
+  it("stopped only after the last look: never while a look is due or the breaker is open", async () => {
+    let down = true;
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });
+    const r = rig(bee, { looksMax: 2 });
+    pass(r.h);
+    await r.f.settle(); // the create timed out (1) and both lists failed (2, 3): the breaker is open, a look is due
+    expect(r.f.circuitOpenUntil()).not.toBeNull();
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 0, nextLookAt: expect.any(Number) });
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: false });
+    down = false;
+    r.advance(FACTS_BREAKER_OPEN_MS);
+    pass(r.h);
+    await r.f.settle(); // look 1 of 2 reads both lists: Bee does not list it yet
+    expect(r.f.circuitOpenUntil()).toBeNull();
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 1, nextLookAt: expect.any(Number) });
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: false });
+    r.advance(LOOK_FIRST_MS);
+    pass(r.h);
+    await r.f.settle(); // look 2 of 2: the coach stops looking
+    expect(r.ledger().pendingCreate).toMatchObject({ looks: 2, nextLookAt: null });
+    expect(r.f.memory()).toMatchObject({ status: "failed", stopped: true, goal: { factId: null } });
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
   });
   it("a fact deleted in the Bee app is forgotten, and the next pass writes one goal fact again", async () => {
     const bee = fakeBee();
@@ -440,7 +464,7 @@ describe("the breaker", () => {
     await facts!.settle();
     await facts!.tick();
     expect(bee.factCalls().length).toBe(n); // open: no call
-    expect(facts!.memory().status).toBe("failed");
+    expect(facts!.memory()).toMatchObject({ status: "failed", stopped: false }); // the hub tries again once it closes
     // live coaching carries on: mode still on, the wrist healthy and still creating to-dos
     expect(engine!.state().mode).toMatchObject({ enabled: true, reason: "on" });
     expect(engine!.state().wrist).toMatchObject({ healthy: true, failures: 0, circuitOpenUntil: null });

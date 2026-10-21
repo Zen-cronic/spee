@@ -102,7 +102,7 @@ interface Fake {
 async function fakeHub(): Promise<Fake> {
   const f = {
     brief: brief(10),
-    memory: { dataLabel: "SYNTHETIC DEMO DATA", synthetic: true, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE },
+    memory: { dataLabel: "SYNTHETIC DEMO DATA", synthetic: true, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false },
     cueStatus: 200,
     cueBody: null as unknown,
     cues: [] as unknown[],

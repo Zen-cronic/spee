@@ -17,10 +17,10 @@
 // restart or a create that timed out never makes a second fact: the coach looks for its own text in
 // `bee facts list` (up to COUNT_PAGES pages) and adopts the fact it finds. A create whose outcome is
 // not known is never made again: it is looked for at most LOOKS_MAX times, further apart each time,
-// never on stats.updated, and then the status stays "failed" until the operator clears it. Every
-// call, the goal's and the count read's, runs on one chain: serialized, 1.5 s apart, 10 s timeout
-// each. Its own breaker (3 consecutive failed calls open it for 30 min) never touches the wrist, so
-// live coaching carries on.
+// never on stats.updated, and then the status stays "failed" with `stopped` until the operator
+// clears it. Every call, the goal's and the count read's, runs on one chain: serialized, 1.5 s
+// apart, 10 s timeout each. Its own breaker (3 consecutive failed calls open it for 30 min) never
+// touches the wrist, so live coaching carries on.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -115,7 +115,7 @@ interface PendingCreate {
   at: number;
   outcome: "unknown" | "landed";
   looks?: number; // how many times the coach looked for it in Bee's lists
-  nextLookAt?: number | null; // when the next look is due; null: it stopped looking (status "failed")
+  nextLookAt?: number | null; // when the next look is due; null: it stopped looking (status "failed", `stopped`)
 }
 interface FactsLedger {
   goal: GoalEntry | null;
@@ -209,18 +209,18 @@ export class BeeFacts {
   memory(): BeeMemory {
     const hub = this.o.hub;
     const base = { dataLabel: hub.dataLabel, synthetic: this.o.mode === "demo", note: BEE_MEMORY_NOTE };
-    if (this.o.mode === "off") return { ...base, enabled: false, status: "off", goal: null, insights: null, facts: null };
+    if (this.o.mode === "off") return { ...base, enabled: false, status: "off", goal: null, insights: null, facts: null, stopped: false };
     if (this.o.mode === "demo") {
       // What the coach would write; nothing is written in demo.
       const d = composeGoal(hub);
       const last = hub.attempts.filter(beePass).at(-1);
-      return { ...base, enabled: true, status: "demo", goal: d ? { factId: null, text: d.text, confirmed: false, updatedAt: last?.settledAt ?? null } : null, insights: null, facts: null };
+      return { ...base, enabled: true, status: "demo", goal: d ? { factId: null, text: d.text, confirmed: false, updatedAt: last?.settledAt ?? null } : null, insights: null, facts: null, stopped: false };
     }
     const L = this.ledger;
-    const gaveUp = L.pendingCreate?.nextLookAt === null; // a create Bee never listed: not made again
+    const gaveUp = L.pendingCreate?.nextLookAt === null; // a create Bee never listed: not made again, and nothing retries it
     const status: BeeMemory["status"] = this.circuitOpenUntil() != null || this.goalError || gaveUp ? "failed" : L.goal && L.goal.confirmed && !L.pendingCreate ? "synced" : "pending";
     const goal = L.goal ? { factId: L.goal.factId, text: L.goal.text, confirmed: L.goal.confirmed, updatedAt: L.goal.updatedAt } : L.pendingCreate ? { factId: null, text: L.pendingCreate.text, confirmed: false, updatedAt: null } : null;
-    return { ...base, enabled: true, status, goal, insights: L.insights, facts: L.facts };
+    return { ...base, enabled: true, status, goal, insights: L.insights, facts: L.facts, stopped: gaveUp };
   }
 
   start() {
@@ -536,7 +536,7 @@ export class BeeFacts {
 
   describe(): string {
     if (this.o.mode !== "live") return this.o.mode;
-    const gaveUp = this.ledger.pendingCreate?.nextLookAt === null;
-    return `live (${this.memory().status}${gaveUp ? ": Bee never listed the goal create, so it is not made again; see docs/live.md" : ""}${this.circuitOpenUntil() != null ? ", circuit open" : ""})`;
+    const m = this.memory();
+    return `live (${m.status}${m.stopped ? ": Bee never listed the goal create, so it is not made again; see docs/live.md" : ""}${this.circuitOpenUntil() != null ? ", circuit open" : ""})`;
   }
 }
