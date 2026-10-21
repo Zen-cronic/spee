@@ -4,15 +4,15 @@
       "locales": {
         "en-CA": {
           "name": "Speech Coach",
-          "summary": "Speaking drills graded from your own wearable.",
-          "description": "A personal speaking coach. It runs short drills that your Bee wearable grades from your own voice, tells you how you are doing, and turns opt-in live coaching on or off. Development skill.",
+          "summary": "Learns how you usually speak from your conversations in Bee, and suggests what to change.",
+          "description": "A personal speaking coach. It learns how you usually speak from your real conversations in Bee, and suggests what to change. Ask how you are doing to hear about your current conversation or your last recap. Practise your own lines in short drills, graded from Bee's transcript of your words. Turn opt-in live coaching on or off, or ask whether practice carried over. Development skill.",
           "examplePhrases": ["Alexa, open speech coach", "Alexa, ask speech coach how am I doing", "Alexa, ask speech coach to turn on live coaching"],
           "keywords": ["speaking", "coach", "drill"]
         },
         "en-US": {
           "name": "Speech Coach",
-          "summary": "Speaking drills graded from your own wearable.",
-          "description": "A personal speaking coach. It runs short drills that your Bee wearable grades from your own voice, tells you how you are doing, and turns opt-in live coaching on or off. Development skill.",
+          "summary": "Learns how you usually speak from your conversations in Bee, and suggests what to change.",
+          "description": "A personal speaking coach. It learns how you usually speak from your real conversations in Bee, and suggests what to change. Ask how you are doing to hear about your current conversation or your last recap. Practise your own lines in short drills, graded from Bee's transcript of your words. Turn opt-in live coaching on or off, or ask whether practice carried over. Development skill.",
           "examplePhrases": ["Alexa, open speech coach", "Alexa, ask speech coach how am I doing", "Alexa, ask speech coach to turn on live coaching"],
           "keywords": ["speaking", "coach", "drill"]
         }
