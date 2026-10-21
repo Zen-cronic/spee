@@ -44,6 +44,7 @@ export const COUNT_LIMIT = 100;
 export const COUNT_PAGES = 5;
 export const LOOK_FIRST_MS = 60_000; // a create of unknown outcome is looked for again after 1, 2, 4 and 8 min
 export const LOOKS_MAX = 5; // looks for it, the first right after the create; then the coach stops looking
+export const LOOK_EARLY_MS = 50; // the look timer still looks when it fires up to this early
 
 export type FactsMode = "off" | "demo" | "live";
 type Log = (event: string, data?: Record<string, unknown>) => void;
@@ -342,9 +343,11 @@ export class BeeFacts {
   // A look for a create of unknown outcome, once its time has come: at a pass, the tick, the look
   // timer or a restart. A hub stopped during the create, or a ledger from before `looks`, has no
   // time yet and looks at once. Never on stats.updated, and never after the coach stopped looking.
+  // The timer's own look keeps the time too (LOOK_EARLY_MS of slack for a timer that fires early):
+  // a pass queued behind a busy chain may have looked first and moved the time on.
   private lookDue(p: PendingCreate, reason: SyncReason): boolean {
     if (p.nextLookAt === null || reason === "stats") return false;
-    return reason === "look" || this.now() >= (p.nextLookAt ?? 0);
+    return this.now() >= (p.nextLookAt ?? 0) - (reason === "look" ? LOOK_EARLY_MS : 0);
   }
 
   // Bee does not list it: look again later (twice as long each time), or stop after LOOKS_MAX looks.
@@ -416,7 +419,7 @@ export class BeeFacts {
             this.scheduleLook(p.nextLookAt - this.now());
             this.goalError = this.notListedReason(p, (p.looks ?? 0) > 0);
             this.log("facts.goal.failed", { error: this.goalError });
-          }
+          } else if (reason === "look" && p.nextLookAt != null && !this.lookTimer) this.scheduleLook(p.nextLookAt - this.now()); // a timer that fired far too early
           return;
         }
         const { hit, read } = await this.findOwn(p.text);

@@ -443,6 +443,44 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
     expect(f.memory()).toMatchObject({ status: "failed", stopped: true });
   });
+  it("the timer's look keeps the schedule: a pass queued behind a slow count read looks first, and the timer never looks again straight after", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? timeoutErr("facts create") : null) }); // it did not land
+    const looked: number[] = [];
+    let slow = false;
+    const exec: ExecFn = async (f, a, o) => {
+      if (a[0] === "insights" && slow) await new Promise((r) => setTimeout(r, 250));
+      if (a[1] === "list" && a.includes("--unconfirmed")) looked.push(Date.now());
+      return bee.exec(f, a, o);
+    };
+    const h = hub();
+    const dir = mkdtempSync(join(tmpdir(), "facts-queued-"));
+    const f = new BeeFacts({ hub: h, mode: "live", stateDir: dir, exec, minGapMs: 0, countsFirstMs: 1e9, lookFirstMs: 200 });
+    f.start();
+    stops.push(() => f.stop());
+    const pending = () => JSON.parse(readFileSync(join(dir, "live", "facts.json"), "utf8")).pendingCreate;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
+    pass(h);
+    await f.settle(); // look 1, right after the create
+    const due = pending().nextLookAt as number;
+    await sleep(due - Date.now() - 100);
+    slow = true;
+    void f.readCounts(); // a count read holds the chain across the time look 2 is due
+    await sleep(20);
+    pass(h); // its sync waits behind the count read and runs once look 2 is due; the timer's look queues behind it
+    await sleep(due + 200 - Date.now());
+    await f.settle();
+    expect(looked).toHaveLength(2); // look 2 only: the timer's look found the next one not due yet
+    const next = pending().nextLookAt as number;
+    expect(pending()).toMatchObject({ looks: 2 });
+    expect(next - looked[1]!).toBeGreaterThanOrEqual(400);
+    // the timer the pass's look set makes look 3 when it is due
+    for (let i = 0; i < 150 && looked.length < 3; i++) await sleep(10);
+    await f.settle();
+    expect(looked).toHaveLength(3);
+    expect(looked[2]!).toBeGreaterThanOrEqual(next - 50);
+    expect(pending()).toMatchObject({ looks: 3 });
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+  });
   it("a look timer that fires while the breaker is open looks once it closes, still with no pass", async () => {
     let down = true;
     const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "timeout-landed" : a[1] === "list" && down ? new Error("bee: 503 Service Unavailable") : null) });
