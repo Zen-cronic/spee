@@ -20,7 +20,7 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 | Fact | Source | Checked by |
 |---|---|---|
 | Registered on 2026-10-16, before any practice | `prereg/transfer.json` (`registered_local`) | `test/claims.test.ts` |
-| Practised habits: `hedges` (unsure words) and `filler:like`. The one habit you don't practise: `restart` (repeating words, like "the the") | `prereg/transfer.json` (`drilled`, `control`) | `test/claims.test.ts` |
+| Practised habits: `hedges` (unsure words) and `filler:like`. The one habit you don't practise: `restart` (starting over, like "the the") | `prereg/transfer.json` (`drilled`, `control`) | `test/claims.test.ts` |
 | At least 400 words on each side before a verdict | `prereg/transfer.json` (`min_words_per_period`) | `test/claims.test.ts` |
 | It is a two-tier pilot, not proof: two practised habits against one control is one tier short of the three staggered tiers that the What Works Clearinghouse standard for a multiple-baseline design asks for | WWC Standards Handbook v5.0 | `test/claims.test.ts` (the README says "two-tier pilot", and no doc claims proof) |
 
