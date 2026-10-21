@@ -368,10 +368,15 @@ describe("Today's since-you-started cells: a cell without a number still names i
     expect(workingCell(h("control", "not drilled yet"))).toEqual({ value: null, status: "Starts at your first practice", role: "Not practised" });
   });
   it("a number keeps the card's own words; an undecided result is Progress's words in its place", () => {
-    expect(workingCell(h("drilled", "dropped", 0.57))).toEqual({ value: "−73%", status: null, role: "practised" });
-    expect(workingCell(h("control", "no change", 2.2))).toEqual({ value: "Flat", status: null, role: "not practised" });
+    expect(workingCell(h("drilled", "dropped", 0.57))).toEqual({ value: "−73%", status: null, role: "Practised" });
+    expect(workingCell(h("control", "no change", 2.2))).toEqual({ value: "Flat", status: null, role: "Not practised" });
     expect(workingCell(h("drilled", "no change", 2.0))).toEqual({ value: null, status: "No change", role: "Practised" });
     expect(workingCell(h("control", "invalid"))).toEqual({ value: null, status: "Not counted", role: "Not practised" });
+  });
+  it("one row reads in one case: a decided change beside one that needs more speech and the control", () => {
+    const row = [workingCell(h("drilled", "dropped", 0.57)), workingCell(h("drilled", "too little data")), workingCell(h("control", "no change", 2.2))];
+    expect(row.map((c) => c.role)).toEqual(["Practised", "Practised", "Not practised"]);
+    expect(row.map((c) => c.value ?? c.status)).toEqual(["−73%", "Needs speech", "Flat"]);
   });
   it("Today draws every cell, the control's too, from workingCell and always shows its role (web TV and Vega)", () => {
     for (const file of ["tv/web/src/views/WeekView.tsx", "tv/vega/src/views/WeekView.tsx"]) {
