@@ -1,8 +1,8 @@
 # Alexa skill, MCP server and simulator
 
-Spee's Alexa skill is called Speech Coach (invocation name "speech coach"). Three voice surfaces share one hub and one contract ([CONTRACT.md](CONTRACT.md), v2):
+On Alexa, Spee answers to "speech coach", the skill tested on a real device. `npm run alexa:deploy` also sets up "spee coach" and "spee" as extra development skills, not yet tried on a device ([Skill names](#skill-names)). Three voice surfaces share one hub and one contract ([CONTRACT.md](CONTRACT.md), v2):
 
-- **`POST /alexa`**: the custom skill endpoint for the development skill "speech coach".
+- **`POST /alexa`**: the custom skill endpoint for every Spee development skill, whatever name it answers to.
 - **`/mcp`**: a stateless Streamable HTTP MCP server, with the tools an Alexa+ model would call.
 - **`/sim/`**: a web simulator. It is a real MCP client with a mic and a voice; a keyword router stands in for Alexa+'s model.
 
@@ -17,7 +17,7 @@ All three reach the hub through one loopback client, [`src/mcp/hubClient.ts`](..
 | `src/mcp/hubClient.ts` | Typed loopback HTTP client over the v1 + v2 routes. Never throws: a timeout or unreachable hub comes back as `{ok:false, status:0}` |
 | `src/mcp/tools.ts` | The 12 MCP tools (`MCP_TOOLS`), one hub route each, with deterministic narration |
 | `src/mcp/plugin.ts` | `createMcpPlugin`: `/mcp` (POST JSON-RPC; GET/DELETE 405; OPTIONS 204 CORS) |
-| `src/alexa/verify.ts` | Skill id (`ALEXA_SKILL_ID`, else [`alexa/skill-id.json`](../alexa/skill-id.json)), the 150 s timestamp window, and the progressive-response host allow-list |
+| `src/alexa/verify.ts` | The accepted skill ids (`ALEXA_SKILL_ID`, else [`alexa/skill-id.json`](../alexa/skill-id.json); `ALEXA_SKILL_IDS`; `alexa/skill-ids.local.json`), the 150 s timestamp window, and the progressive-response host allow-list |
 | `src/alexa/route.ts` | Intent routing and the catch-all rescue |
 | `src/alexa/skill.ts` | `handleAlexa`: a pure handler (hub client, clock, sleep and progressive sender injected) |
 | `src/alexa/speech.ts` | Short lines: at most 2 sentences, quoted card sentences kept whole, SSML escaping, spoken fail reasons |
@@ -27,13 +27,38 @@ All three reach the hub through one loopback client, [`src/mcp/hubClient.ts`](..
 | `src/alexa/signature.ts` | Request signature verification (on by default for public requests) |
 | `src/alexa/device.ts` | The `alexa.device` log: each kind of device's interfaces, APL version and viewport, once |
 | `src/alexa/plugin.ts` | `createAlexaPlugin`: `POST /alexa` |
-| `alexa/skill-package/` | `skill.json` (endpoint placeholder, `Wildcard` certificate) and the en-CA and en-US interaction models (generic sample values only, never deck sentences) |
-| `alexa/ask-resources.json`, `alexa/skill-id.json` | ASK CLI layout, and the existing dev skill's id, stage, profile and locales |
+| `alexa/skill-package/` | The one checked-in package: `skill.json` (listed as Spee, endpoint placeholder, `Wildcard` certificate) and the en-CA and en-US interaction models (generic sample values only, never deck sentences) |
+| `src/alexa/skillPackage.ts` | The package for each invocation name, generated from `alexa/skill-package/` (only the invocation name, the example phrases and the testing instructions change), and Amazon's invocation name rules |
+| `alexa/ask-resources.json`, `alexa/skill-id.json` | ASK CLI layout, and the "speech coach" dev skill's id, stage, profile and locales |
+| `alexa/skill-ids.local.json` | Git-ignored. The dev skill for each invocation name, written by `npm run alexa:deploy` and read by the hub |
 | `alexa/fixtures/*.json` | Synthetic request envelopes, one per intent (placeholder ids) |
-| `scripts/alexa-deploy.ts` | `npm run alexa:deploy`: points the existing dev skill at `PUBLIC_BASE_URL/alexa` |
+| `scripts/alexa-deploy.ts` | `npm run alexa:deploy`: points one dev skill per invocation name at `PUBLIC_BASE_URL/alexa`, creating the ones that do not exist yet |
 | `web/sim/` | The simulator (Vite, `base: "/sim/"`, built to `dist/web/sim`) |
 | `scripts/checks/alexa.ts`, `scripts/checks/mcp.ts` | The Alexa and MCP modules of `npm run contract:check` |
 | `test/alexa-*.test.ts`, `test/mcp-*.test.ts` | Unit and in-process HTTP tests |
+
+## Skill names
+
+An Alexa custom skill has one invocation name per locale, and a name-free skill launch phrase needs a published skill with usage history, which a development skill does not have. So each name Spee answers to is its own development skill. All of them use this hub's `POST /alexa` and the same interaction model; only the invocation name differs. Every one is listed as "Spee" in en-CA and en-US.
+
+| Invocation name | Skill | Tried on a device |
+|---|---|---|
+| "speech coach" | the existing skill (`alexa/skill-id.json`, or `ALEXA_SKILL_ID`) | yes: the Alexa app in Canada and the Fire TV |
+| "spee coach" | created by `npm run alexa:deploy` | not yet |
+| "spee" | created by `npm run alexa:deploy`, best effort | not yet. Alexa allows a one-word name only for a registered brand, so the model build may refuse it, and a short made-up word is easy to mishear |
+
+"speech coach" is the one tested on a real device. Until the others have been tried, the TV and the phone page keep saying "Alexa, ask Speech Coach to quiz me".
+
+**How the deploy sets them up.** `npm run alexa:deploy` takes the names in priority order: "speech coach", "spee coach", "spee" by default, or `--names "speech coach,spee coach"` (or `ALEXA_INVOCATION_NAMES`). Each name's package is generated from the one in `alexa/skill-package/` (`src/alexa/skillPackage.ts`): the same manifest and model, with this invocation name, and the example phrases and testing instructions rewritten to use it. Edit only `alexa/skill-package/`, and the skills cannot drift apart. For each name:
+
+1. "speech coach" (the checked-in model's name) updates the existing skill, and a name already in `alexa/skill-ids.local.json` updates its skill (`ask smapi update-skill-manifest`).
+2. Any other name gets a new development skill. `ask smapi get-vendor-list` checks once that the ASK CLI profile has a vendor, `ask smapi create-skill-for-vendor` creates the skill under the profile's vendor, and its id goes into `alexa/skill-ids.local.json` (git-ignored) at once, so a later run reuses it instead of making another. The deploy then waits for the manifest (`ask smapi get-skill-status --resource manifest`).
+3. Each locale's model (`ask smapi set-interaction-model`), then the builds (`ask smapi get-skill-status`, every 4 s, 180 s cap).
+4. Testing on, in the development stage (`ask smapi set-skill-enablement`).
+
+A name that fails any step (a refused name, a failed build, a timeout) is reported and skipped, and the next name goes on. The exit status is 0 when the first name is ready. `npm run alexa:deploy -- --dry-run` prints the plan (which names have a skill and which would be created) and every command, and runs and writes nothing. `npm run alexa:deploy -- --status` prints each skill's build status.
+
+**Which skills the hub answers.** `POST /alexa` accepts `ALEXA_SKILL_ID` (else `alexa/skill-id.json`), each id in `ALEXA_SKILL_IDS` (comma-separated), and every skill in `alexa/skill-ids.local.json`. The hub reads that file again when it changes, so a deploy needs no restart. Run the deploy in the same checkout as the hub, or put the ids in `ALEXA_SKILL_IDS`. Any other id is refused as before (`400 alexa_rejected`, "wrong skill id"), and an entry that is not an `amzn1.ask.skill.*` id is skipped and named in the `alexa.skill-ids` log line. The first request through each skill logs `alexa.skill {name}`, so the hub log shows which names were heard on a device. No log line carries a skill id.
 
 ## Alexa intents
 
@@ -65,7 +90,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 
 **Progressive response.** Sent as `VoicePlayer.Speak` to `{apiEndpoint}/v1/directives`, and only to `https://api[.eu|.fe].amazonalexa.com`. A forged request cannot point the hub at another host.
 
-**Request checks.** `400 alexa_rejected` when the application id is not the skill's, or when the timestamp is more than 150 s off the hub's wall clock (the real clock, not the demo clock).
+**Request checks.** `400 alexa_rejected` when the application id is not one of Spee's skills ([Skill names](#skill-names)), or when the timestamp is more than 150 s off the hub's wall clock (the real clock, not the demo clock).
 
 **Signature verification (on by default).** Every public request (through the tunnel) must carry Amazon's signature:
 
@@ -77,7 +102,7 @@ Loopback and LAN requests (tests, the contract check, the simulator on this mach
 
 ## Screens (APL)
 
-On a device with a screen (Fire TV, Echo Show), Alexa shows its own card with just "Speech Coach" while the skill speaks and listens, unless the skill sends a document. So every turn that has something to show also sends an `Alexa.Presentation.APL.RenderDocument` directive with a Spee screen. The speech, the reprompts, the hub calls and the two-turn timing do not change. Amazon's guidance for screen devices is followed throughout ([APL for screen devices](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-for-screen-devices.html), [Configure your skill with the APL interface](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-support-for-your-skill.html), [Select the viewport profiles](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-select-the-viewport-profiles-your-skill-supports.html), [RenderDocument](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-interface.html)).
+On a device with a screen (Fire TV, Echo Show), Alexa shows its own card with just the skill's name while the skill speaks and listens, unless the skill sends a document. So every turn that has something to show also sends an `Alexa.Presentation.APL.RenderDocument` directive with a Spee screen. The speech, the reprompts, the hub calls and the two-turn timing do not change. Amazon's guidance for screen devices is followed throughout ([APL for screen devices](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-for-screen-devices.html), [Configure your skill with the APL interface](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-support-for-your-skill.html), [Select the viewport profiles](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-select-the-viewport-profiles-your-skill-supports.html), [RenderDocument](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-interface.html)).
 
 - **Only for screens.** The manifest declares `ALEXA_PRESENTATION_APL` in `apis.custom.interfaces`. The directive goes out only when the request's `context.System.device.supportedInterfaces` lists `Alexa.Presentation.APL`. A voice-only device, or one with only a character display (`Alexa.Presentation.APLT`, an Echo Dot with clock), gets exactly the response it got before.
 - **One document, five screens.** `alexa/apl/speaking-mirror.json` (APL `2023.2`) is sent inline (`document.type: "APL"`). `payload.screen.kind` picks the screen, and the directive's token names it (`speakingMirror.<kind>`):
@@ -152,11 +177,11 @@ These steps were prepared and not run here: they need the operator's tunnel. The
    npm run hub
    ```
    Use `npm run hub` for live Bee, or `npm run hub -- --demo` for a rehearsal. In demo mode the Bee replay answers, not your Watch.
-4. **Deploy the skill** (terminal 3):
+4. **Deploy the skills** (terminal 3, in the same checkout as the hub):
    ```bash
    PUBLIC_BASE_URL=https://<id>.ngrok-free.app npm run alexa:deploy
    ```
-   It updates the existing dev skill (`amzn1.ask.skill.<your-skill-id>...`, ASK profile `default`), waits for both locales to report `SUCCEEDED`, and turns testing on. To preview the commands only, run `npm run alexa:deploy -- --dry-run`; to check the build status, `npm run alexa:deploy -- --status`.
+   It updates the existing "speech coach" dev skill (`amzn1.ask.skill.<your-skill-id>...`, ASK profile `default`), creates the "spee coach" and "spee" skills on the first run (their ids go to `alexa/skill-ids.local.json`), waits for both locales of each to report `SUCCEEDED`, and turns testing on. A name that fails is reported and skipped ([Skill names](#skill-names)). To preview the plan and the commands only, run `npm run alexa:deploy -- --dry-run`; to check the build status, `npm run alexa:deploy -- --status`. If a new skill is not found on the device, open it in the developer console and set the Test tab to Development.
 5. **Reachability:**
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<id>.ngrok-free.app/alexa -d '{}'
@@ -172,12 +197,14 @@ These steps were prepared and not run here: they need the operator's tunnel. The
    5. "Stop." It reads the drill summary.
    6. "Alexa, ask speech coach how am I doing."
    7. "Alexa, ask speech coach to turn on live coaching for 30 minutes", then later "...to turn off live coaching".
+   8. The other names, for each one the deploy reported ready: "Alexa, ask spee coach to quiz me", then "Alexa, ask spee to quiz me". The hub log shows `alexa.skill` with the name for each one Alexa sent; a name Alexa mishears goes elsewhere and logs nothing.
 7. **Simulator.** Open `https://<id>.ngrok-free.app/sim/#t=<MCP_TOKEN>` on a phone or laptop. ngrok's free tier may show its browser warning page once; choose "Visit Site". Run the same drill with "quiz me", the sentence, then "how did I do?". On this machine, `http://127.0.0.1:8791/sim/` also shows the hub event feed; while `PUBLIC_BASE_URL` is set it needs `#t=<MCP_TOKEN>` too (a TCP tunnel would look local, so `/mcp` and `/alexa` authenticate every request while a tunnel is declared).
 8. **Which surfaces rendered.** Copy each `alexa.device` line from the hub log (one per kind of device) into the dated device table. A device whose line shows `apl: null` got speech only.
 9. **Signature check.** It is on for step 6. If Alexa answers "There was a problem with the requested skill's response", read the hub log line `alexa.rejected` for the reason. Do not turn the check off while the tunnel is up.
 
 ## Known limits
 
+- **The extra names** ("spee coach", "spee") have not been tried on a device. "spee" is one word, which Alexa allows only for a registered brand, so its build may fail; if it builds, Alexa may still mishear it.
 - **Signature verification** is on by default for public requests (see above), but it has not yet been run against Amazon's live certificate chain. With `ALEXA_VERIFY_SIGNATURE=0`, anyone who knows both the tunnel URL and the skill id could drive the skill and hear card sentences.
 - **Progressive responses** depend on Alexa's `apiAccessToken` and have not been exercised on a device yet. The real-device spike proved the two-turn flow without them.
 - **`end_drill` and Stop** report the last session's summary when no session is running. The MCP tool maps 1:1 to `POST /api/session/end`, which returns it; Alexa checks `GET /api/session` first and just says "Bye."

@@ -1550,7 +1550,7 @@ The mirror plays a synthetic practice take: meter frames to the screens at 10 Hz
 
 ## Alexa and MCP (packet C)
 
-**Alexa** (`POST /alexa`). The skill checks the skill id (`ALEXA_SKILL_ID`) and that the timestamp is within 150 s, then maps each intent onto a hub route through a loopback hub client (`ctx.selfUrl()`):
+**Alexa** (`POST /alexa`). The skill checks the skill id (one of Spee's skills: `ALEXA_SKILL_ID`, `ALEXA_SKILL_IDS` and the ones `npm run alexa:deploy` set up; [alexa.md](alexa.md#skill-names)) and that the timestamp is within 150 s, then maps each intent onto a hub route through a loopback hub client (`ctx.selfUrl()`):
 
 | Intent | Route |
 |---|---|

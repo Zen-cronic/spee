@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SCREEN_TEXT } from "../src/alexa/apl.js";
 import { POLL_BUDGET_MS } from "../src/alexa/skill.js";
+import { DEFAULT_INVOCATION_NAMES } from "../src/alexa/skillPackage.js";
 import { WRIST_TEXT_MAX } from "../src/hub/contract.js";
 import { BEE_LINE_LAG_MS } from "../src/hub/live/demoScripts.js";
 import { DEFAULT_POLICY } from "../src/hub/live/policy.js";
@@ -134,10 +135,15 @@ describe("the same words on every surface", () => {
     }
     expect(FACTS).toContain(`"${SCREEN_TEXT.steps.join(", ")}"`);
   });
-  it("the Alexa skill is called Speech Coach, and the docs say so once", () => {
+  it('Alexa answers to "speech coach" (tried on a device), and the deploy adds "spee coach" and "spee"; the docs say which is which', () => {
     for (const locale of ["en-CA", "en-US"]) expect(JSON.parse(read(`alexa/skill-package/interactionModels/custom/${locale}.json`)).interactionModel.languageModel.invocationName).toBe("speech coach");
-    expect(read("README.md")).toContain("Spee's Alexa skill is called Speech Coach");
-    expect(read("docs/alexa.md")).toContain("Spee's Alexa skill is called Speech Coach");
+    expect([...DEFAULT_INVOCATION_NAMES]).toEqual(["speech coach", "spee coach", "spee"]);
+    expect(read("README.md")).toContain('On Alexa, say "Alexa, ask Speech Coach to quiz me". `npm run alexa:deploy` also sets up "Spee Coach" and "Spee" as extra development skills, not yet tried on a device');
+    expect(read("docs/alexa.md")).toContain('On Alexa, Spee answers to "speech coach", the skill tested on a real device. `npm run alexa:deploy` also sets up "spee coach" and "spee" as extra development skills, not yet tried on a device');
+    expect(read("docs/alexa.md")).toContain('"speech coach" is the one tested on a real device.');
+    for (const doc of ["README.md", "docs/alexa.md"]) expect(read(doc), doc).not.toContain("skill is called Speech Coach");
+    // The phrase tried on a device stays on the TV and the phone page until the other names are tried.
+    for (const f of ["tv/web/src/views/WeekView.tsx", "tv/vega/src/views/WeekView.tsx", "web/phone/index.html"]) expect(read(f), f).toContain("Alexa, ask Speech Coach to quiz me");
   });
 });
 

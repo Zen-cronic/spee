@@ -36,7 +36,7 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 
 | Fact | Source | Checked by |
 |---|---|---|
-| The product is Spee; its Alexa skill is called Speech Coach | `tv/web/src/brand.ts` (`PRODUCT_NAME`), `alexa/skill-package/interactionModels/custom/en-CA.json` (`invocationName`) | `test/tv-brand.test.ts`, `test/claims.test.ts` |
+| The product is Spee. On Alexa it answers to "speech coach", the skill tried on a device; `npm run alexa:deploy` also sets up "spee coach" and "spee" as extra development skills, not yet tried. Every skill is listed as Spee | `tv/web/src/brand.ts` (`PRODUCT_NAME`), `alexa/skill-package/interactionModels/custom/en-CA.json` (`invocationName`), `alexa/skill-package/skill.json` (`name`), `DEFAULT_INVOCATION_NAMES` in `src/alexa/skillPackage.ts` | `test/tv-brand.test.ts`, `test/claims.test.ts`, `test/alexa-deploy.test.ts` |
 | The drill tracker reads "You said it, Checked by Bee, Result" on the TV and on Alexa screens | `tv/web/src/views/LiveView.tsx`, `SCREEN_TEXT.steps` in `src/alexa/apl.ts` | `test/claims.test.ts` |
 | Fixed word lists count the habits. A model only drafts vague-answer practice lines and, when turned on, rewords a recap | `src/hub/habits.ts`, `src/hub/realCards.ts`, `src/hub/live/recapPrompt.ts` | `test/claims.test.ts` (the counting, grading and nudge-policy files import no model client) |
 
