@@ -406,6 +406,16 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
 }
 
 /**
+ * Bee memory after a fetch of GET /api/coach/facts: a failed one (null: offline, a timeout, an
+ * error status, or a hub without the route) keeps what the row showed, as the other refetches keep
+ * their last good answer; an answer that is not Bee memory hides the row.
+ */
+export function memoryAfterFetch(have: BeeMemoryIn | null, got: unknown): BeeMemoryIn | null {
+  if (!got || typeof got !== 'object') return have;
+  return typeof (got as Partial<BeeMemoryIn>).enabled === 'boolean' ? (got as BeeMemoryIn) : null;
+}
+
+/**
  * The Round over headline: "1 of 2 lines passed." A line is a card opened this round, and it
  * passed when Bee passed a try at it (the hub's `lines`; an older hub sends none, and its passes
  * stand in: a pass closes the line).

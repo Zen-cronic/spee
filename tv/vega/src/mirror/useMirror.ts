@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { BridgeClient } from 'tv-voice-bridge';
 import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, StatsResponse, TransferResponse } from '../contract';
-import { nextSetting, type BeeMemoryIn } from './format';
+import { memoryAfterFetch, nextSetting, type BeeMemoryIn } from './format';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';
 import { createSettingSender } from './settingSender';
 
@@ -108,8 +108,9 @@ export function useMirror(cfg: MirrorConfig) {
     void Promise.all([getJson<TransferResponse>(`${cfg.httpBase}/api/transfer?source=all`), getJson<InstrumentResponse>(`${cfg.httpBase}/api/instrument`)]).then(([all, instrument]) => alive && setCaptions({ all, instrument }));
     // the per-setting view: secondary, so an older hub without it just leaves the strip hidden
     void getJson<SettingsResponse>(`${cfg.httpBase}/api/settings`).then((r) => alive && r && setSettings(r));
-    // optional too: a hub without it (404), or with it off, leaves the Bee memory row hidden
-    void getJson<BeeMemoryIn>(`${cfg.httpBase}/api/coach/facts`).then((r) => alive && setMemory(r && typeof r.enabled === 'boolean' ? r : null));
+    // optional too: a hub without it (404), or with it off, leaves the Bee memory row hidden; a
+    // failed refetch keeps the last good one, as the stats, transfer and settings refetches do
+    void getJson<BeeMemoryIn>(`${cfg.httpBase}/api/coach/facts`).then((r) => alive && setMemory((have) => memoryAfterFetch(have, r)));
     return () => {
       alive = false;
     };

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, memoryAfterFetch, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 
 describe("fmtMs", () => {
@@ -332,6 +332,18 @@ describe("beeMemoryLine is null when disabled", () => {
     const stopped = beeMemoryLine(mem({ status: "failed", stopped: true, goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null } }))!.text;
     expect(stopped).toBe("Bee never listed your speaking goal, so the coach stopped trying (it never makes a second copy).");
     expect(stopped).not.toMatch(/tries again|didn’t save|not saved/);
+  });
+  it("a failed refetch keeps the row's last good memory; an answer that is not Bee memory hides it", () => {
+    const good = mem();
+    expect(memoryAfterFetch(good, null)).toBe(good); // offline, a timeout or an error status
+    expect(memoryAfterFetch(null, null)).toBeNull(); // nothing yet: still hidden
+    const next = mem({ status: "pending" });
+    expect(memoryAfterFetch(good, next)).toBe(next);
+    expect(memoryAfterFetch(good, { error: "not_found" })).toBeNull();
+    expect(beeMemoryLine(memoryAfterFetch(good, null))!.text).toBe(beeMemoryLine(good)!.text);
+  });
+  it("the TV's refetch goes through memoryAfterFetch (web TV and Vega)", () => {
+    for (const file of ["tv/web/src/mirror/useMirror.ts", "tv/vega/src/mirror/useMirror.ts"]) expect(readFileSync(file, "utf8"), file).toContain("setMemory((have) => memoryAfterFetch(have, r))");
   });
   it("an older hub sends no stopped: a failure reads as one the hub tries again, never as stopped", () => {
     const older: BeeMemoryIn = { enabled: true, status: "failed", goal: { factId: null, text: "Speaking goal (Speaking Mirror): ...", confirmed: false, updatedAt: null }, insights: null, facts: null, note: "Bee's chat and Alexa+ may not read coach-written facts." };
