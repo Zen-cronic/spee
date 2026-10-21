@@ -20,9 +20,10 @@
 // (a restart keeps that schedule), never on stats.updated, and then the status stays "failed" with
 // `stopped` until the operator clears it. Every call, the goal's and the count read's, runs on one
 // chain: serialized, 1.5 s apart, 10 s timeout each. Its own breaker (3 consecutive failed calls
-// open it for 30 min; a look that falls due meanwhile runs when it closes) never touches the wrist,
-// so live coaching carries on. The breaker alone never makes the status "failed": that is for a
-// goal write or look that failed, so failed count reads never read as a save that failed.
+// open it for 30 min; a look that falls due meanwhile, and a pass that would have written the goal,
+// run when it closes) never touches the wrist, so live coaching carries on. The breaker alone never
+// makes the status "failed": that is for a goal write or look that failed, so failed count reads
+// never read as a save that failed.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -177,6 +178,11 @@ export class BeeFacts {
   private timers: NodeJS.Timeout[] = [];
   private statsTimer: NodeJS.Timeout | null = null;
   private lookTimer: NodeJS.Timeout | null = null;
+  // A pass that would have written the first goal hit the open breaker: it runs when the breaker
+  // closes (its timer), and stays owed while the breaker is open again by then. In memory only: a
+  // restart forgets it, and the next pass writes the goal.
+  private passOwed = false;
+  private passTimer: NodeJS.Timeout | null = null;
   private unsubscribe: (() => void) | null = null;
   private closed = false; // stop() ran: this instance makes no more calls (not BeeMemory.stopped)
   private saveFailed = false;
@@ -255,6 +261,7 @@ export class BeeFacts {
     for (const t of this.timers) clearTimeout(t);
     if (this.statsTimer) clearTimeout(this.statsTimer);
     if (this.lookTimer) clearTimeout(this.lookTimer);
+    if (this.passTimer) clearTimeout(this.passTimer);
     this.timers = [];
   }
 
@@ -391,6 +398,17 @@ export class BeeFacts {
     this.lookTimer.unref?.();
   }
 
+  // A pass while the breaker is open with no goal yet: owed, never dropped. It runs once the breaker
+  // closes, as a pass (a create happens only then, and only with no goal and no create in flight).
+  private owePass(ms: number) {
+    if (this.closed) return;
+    if (!this.passOwed) this.log("facts.pass.owed", { inMs: ms });
+    this.passOwed = true;
+    if (this.passTimer) clearTimeout(this.passTimer);
+    this.passTimer = setTimeout(() => ((this.passTimer = null), void this.sync("pass")), ms);
+    this.passTimer.unref?.();
+  }
+
   private fail(reason: string) {
     this.goalError = reason;
     this.save();
@@ -414,7 +432,15 @@ export class BeeFacts {
       // The look timer fired inside the breaker's window: it looks again once the breaker closes.
       const p = this.ledger.pendingCreate;
       if (reason === "look" && p && !this.ledger.goal && p.nextLookAt !== null) this.scheduleLook(open - this.now());
+      // A pass that would write the goal is owed: it runs once the breaker closes.
+      if (reason === "pass" && !this.ledger.goal && !p) this.owePass(open - this.now());
       return;
+    }
+    // This pass gets through, so an owed one is paid: its timer has nothing left to do.
+    if (reason === "pass" && this.passOwed) {
+      this.passOwed = false;
+      if (this.passTimer) clearTimeout(this.passTimer);
+      this.passTimer = null;
     }
     const L = this.ledger;
     const before = JSON.stringify(this.memory());
@@ -574,6 +600,6 @@ export class BeeFacts {
   describe(): string {
     if (this.o.mode !== "live") return this.o.mode;
     const m = this.memory();
-    return `live (${m.status}${m.stopped ? ": Bee never listed the goal create, so it is not made again; see docs/live.md" : ""}${this.circuitOpenUntil() != null ? ", circuit open" : ""})`;
+    return `live (${m.status}${m.stopped ? ": Bee never listed the goal create, so it is not made again; see docs/live.md" : ""}${this.circuitOpenUntil() != null ? `, circuit open${this.passOwed ? ", a pass owed" : ""}` : ""})`;
   }
 }

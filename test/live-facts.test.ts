@@ -648,7 +648,7 @@ describe("the breaker", () => {
       vi.useRealTimers();
     }
   });
-  it("before any goal, an open breaker is no failed save: the status stays pending with no goal, and the next pass after it closes saves the goal", async () => {
+  it("before any goal, an open breaker is no failed save: the status stays pending with no goal, and a pass while it is open writes the goal once it closes", async () => {
     const h = hub();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
     try {
@@ -663,19 +663,103 @@ describe("the breaker", () => {
       expect(f.circuitOpenUntil()).not.toBeNull();
       expect(f.memory()).toMatchObject({ status: "pending", stopped: false, goal: null });
       expect(beeMemoryLine(f.memory())!.text).toBe("No speaking goal in Bee yet: the coach saves it after your next line Bee passes.");
-      pass(h); // a pass while it is open saves nothing, and nothing says it did or failed to
+      pass(h); // a pass while it is open makes no call, and nothing says it did or failed to: it is owed
+      await f.settle();
+      pass(h); // a second one is the same owed pass, not a second goal
       await f.settle();
       expect(f.memory()).toMatchObject({ status: "pending", goal: null });
-      down = false;
-      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1); // it closes: nothing a screen shows changed
-      expect(changes).toBe(0);
       expect(bee.factCalls()).toHaveLength(3);
-      pass(h); // the next pass after it closes creates the goal, then confirms it
+      expect(f.describe()).toBe("live (pending, circuit open, a pass owed)");
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1); // it closes: the owed pass creates the goal, then confirms it, with no new pass
       await f.settle();
       expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+      expect(beeMemoryLine(f.memory())!.text).toMatch(/^Your speaking goal is saved in Bee as a confirmed fact/);
+      expect(bee.factCalls().slice(3)).toEqual(["facts create --text", "facts confirm 901"]);
       expect(changes).toBe(1);
+      expect(f.describe()).toBe("live (synced)");
+      pass(h); // the next pass finds the goal: never a second copy
+      await f.settle();
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS);
+      expect(bee.facts).toHaveLength(1);
+      expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
       f.stop();
       expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("a pass owed while the breaker is open", () => {
+  it("stays owed while the breaker is open again when its timer fires, and writes the goal once, when it gets through", async () => {
+    const h = hub();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
+    try {
+      let down = true;
+      const bee = fakeBee({ hook: (a) => (down && a[0] !== "todos" ? new Error("bee: 503 Service Unavailable") : null) });
+      const logs: string[] = [];
+      // the count read falls due as the breaker closes, just ahead of the owed pass
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-owed-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9, countsEveryMs: FACTS_BREAKER_OPEN_MS, log: (e) => logs.push(e) });
+      f.start();
+      stops.push(() => f.stop());
+      await f.tick();
+      await f.tick(); // three failed count reads: the breaker opens
+      pass(h);
+      await f.settle(); // owed
+      expect(f.describe()).toBe("live (pending, circuit open, a pass owed)");
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS); // Bee is still down: the count read opens the breaker again, then the owed pass's timer fires
+      await f.settle();
+      expect(f.circuitOpenUntil()).not.toBeNull();
+      expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(0);
+      expect(f.describe()).toBe("live (pending, circuit open, a pass owed)"); // still owed, not dropped
+      expect(f.memory()).toMatchObject({ status: "pending", goal: null });
+      expect(logs.filter((e) => e === "facts.pass.owed")).toHaveLength(1);
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS); // the new window closes: the owed pass writes the goal, once
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+      expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+      expect(f.describe()).toBe("live (synced)");
+      f.stop();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("a pass with the goal in Bee owes nothing; stop() clears an owed pass's timer, and it never writes", async () => {
+    const h = hub();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
+    try {
+      let down = false;
+      const bee = fakeBee({ hook: (a) => (down && a[0] !== "todos" ? new Error("bee: 503 Service Unavailable") : null) });
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-owed-goal-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9 });
+      f.start();
+      stops.push(() => f.stop());
+      pass(h);
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901" } });
+      down = true;
+      await f.tick();
+      await f.tick(); // the breaker opens with the goal in Bee
+      pass(h);
+      await f.settle();
+      expect(f.describe()).toBe("live (synced, circuit open)");
+      f.stop();
+      expect(vi.getTimerCount()).toBe(0);
+      const g = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-owed-stop-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9 });
+      g.start();
+      stops.push(() => g.stop());
+      await g.tick();
+      await g.tick();
+      pass(h);
+      await g.settle();
+      expect(g.describe()).toMatch(/a pass owed/);
+      g.stop();
+      expect(vi.getTimerCount()).toBe(0);
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS * 2);
+      expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1); // the stopped one never writes
     } finally {
       vi.useRealTimers();
     }
