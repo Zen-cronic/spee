@@ -1045,7 +1045,7 @@ Demo hub:
  "status": "demo",
  "goal": {
   "factId": null,
-  "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 4 lines passed, checked by Bee.",
+  "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 4 lines passed, checked by Bee.",
   "confirmed": false,
   "updatedAt": 1792411626000
  },
@@ -1060,7 +1060,7 @@ Live, after a pass (illustrative ids and counts):
 ```json
 { "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
   "enabled": true, "status": "synced",
-  "goal": { "factId": "901", "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": true, "updatedAt": 1792530000000 },
+  "goal": { "factId": "901", "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": true, "updatedAt": 1792530000000 },
   "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": false }
 ```
 
@@ -1069,7 +1069,7 @@ Live, after the coach stopped looking for a create Bee never listed (illustrativ
 ```json
 { "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
   "enabled": true, "status": "failed",
-  "goal": { "factId": null, "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": false, "updatedAt": null },
+  "goal": { "factId": null, "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": false, "updatedAt": null },
   "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": true }
 ```
 

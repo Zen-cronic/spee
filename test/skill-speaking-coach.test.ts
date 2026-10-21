@@ -244,14 +244,14 @@ describe("the commands against a fake hub", () => {
     const off = await cli(f.url, ["goal"]);
     expect(off.out).toContain("Bee memory is off on this hub");
     expect(off.out).toContain(BEE_MEMORY_NOTE);
-    f.memory = { ...f.memory, enabled: true, status: "synced", goal: { factId: "f1", text: 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".', confirmed: true, updatedAt: T0 }, facts: { count: 12, readAt: T0 }, insights: { count: 0, readAt: T0 } };
+    f.memory = { ...f.memory, enabled: true, status: "synced", goal: { factId: "f1", text: 'Speaking goal (Spee): fewer unsure words and filler "like".', confirmed: true, updatedAt: T0 }, facts: { count: 12, readAt: T0 }, insights: { count: 0, readAt: T0 } };
     const on = await cli(f.url, ["goal"]);
-    expect(on.out).toContain("Goal in Bee: Speaking goal (Speaking Mirror)");
+    expect(on.out).toContain("Goal in Bee: Speaking goal (Spee)");
     expect(on.out).toContain("It is a confirmed Bee fact.");
     expect(on.out).toContain("Bee holds 12 facts and 0 insights (counts only).");
   });
   it("goal: after the coach stopped trying, it never says the goal is in Bee (an older hub without `stopped` reads as false)", async () => {
-    const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';
+    const text = 'Speaking goal (Spee): fewer unsure words and filler "like".';
     f.memory = { ...f.memory, enabled: true, status: "failed", goal: { factId: null, text, confirmed: false, updatedAt: null }, stopped: true };
     const gaveUp = await cli(f.url, ["goal"]);
     expect(gaveUp.code).toBe(0);
@@ -270,7 +270,7 @@ describe("the commands against a fake hub", () => {
     expect(old.out).not.toContain("stopped trying");
   });
   it("goal: no goal and nothing being saved says when it goes to Bee; a create on its way, and writes that failed, say so", async () => {
-    const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';
+    const text = 'Speaking goal (Spee): fewer unsure words and filler "like".';
     const say = async (m: Partial<BeeMemory>) => ((f.memory = { ...f.memory, enabled: true, stopped: false, ...m } as BeeMemory), (await cli(f.url, ["goal"])).out);
     expect(await say({ status: "pending", goal: null })).toContain("No goal fact yet: the coach saves it after your next practice line Bee passes.");
     expect(await say({ status: "pending", goal: { factId: null, text, confirmed: false, updatedAt: null } })).toContain(`Goal the coach is saving to Bee: ${text}`);
@@ -280,7 +280,7 @@ describe("the commands against a fake hub", () => {
     expect(upd).toContain("The coach's last change to it didn't save; the hub tries again.");
   });
   it("goal: a demo hub's goal is what the coach would save, nothing written, with the data label", async () => {
-    const text = 'Speaking goal (Speaking Mirror): fewer unsure words and filler "like".';
+    const text = 'Speaking goal (Spee): fewer unsure words and filler "like".';
     f.memory = { ...f.memory, enabled: true, status: "demo", goal: { factId: null, text, confirmed: false, updatedAt: null }, stopped: false };
     const demo = (await cli(f.url, ["goal"])).out;
     expect(demo).toContain(`Demo: the coach would save this goal in Bee as a fact (nothing is written): ${text}`);
@@ -364,7 +364,7 @@ describe("the commands against the demo hub", () => {
     expect(out).toContain(BEE_MEMORY_NOTE);
     expect(out).not.toContain("The hub sent no Bee memory.");
     // the demo hub writes nothing: its goal is the text the coach would save, in the TV's words
-    expect(out).toContain("Demo: the coach would save this goal in Bee as a fact (nothing is written): Speaking goal (Speaking Mirror): fewer ");
+    expect(out).toContain("Demo: the coach would save this goal in Bee as a fact (nothing is written): Speaking goal (Spee): fewer ");
     expect(out).not.toMatch(/Goal in Bee|Goal the coach is saving|the coach saves it after/);
     expect(out).toMatch(/^\(SYNTHETIC DEMO DATA.*\)$/m);
     out = "";

@@ -66,7 +66,7 @@ const literal = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const NAME = `(?:${[...new Set(Object.values(HABIT_NAME))].map(literal).join("|")})`;
 const PART = `${NAME} (?:\\d+\\.\\d → \\d+\\.\\d per 100 words|needs more speech|not practised yet|can't be compared yet)`;
 // The only text the coach ever writes to Bee.
-export const GOAL_TEXT_RE = new RegExp(`^Speaking goal \\(Speaking Mirror\\): fewer ${NAME}(?:(?:, | and )${NAME})*\\. (?:Since [A-Z][a-z]{2,3} \\d{1,2}|So far): ${PART}(?:; ${PART})*; \\d+ lines? passed, checked by Bee\\.$`);
+export const GOAL_TEXT_RE = new RegExp(`^Speaking goal \\(Spee\\): fewer ${NAME}(?:(?:, | and )${NAME})*\\. (?:Since [A-Z][a-z]{2,3} \\d{1,2}|So far): ${PART}(?:; ${PART})*; \\d+ lines? passed, checked by Bee\\.$`);
 
 export function assertGoalText(text: string): void {
   if (text.length > FACT_TEXT_MAX || !GOAL_TEXT_RE.test(text)) throw new Error("goal text must be the coach's template (numbers and habit names only)");
@@ -96,7 +96,7 @@ export function composeGoal(hub: Pick<CoachHub, "transfer" | "attempts" | "tz">)
   });
   const passes = hub.attempts.filter(beePass).length;
   const since = Number.isFinite(first) ? `Since ${monthDay(first, hub.tz)}` : "So far";
-  const text = `Speaking goal (Speaking Mirror): fewer ${listNames(drilled.map((h) => habitNameOf(h.habit)))}. ${since}: ${parts.join("; ")}; ${passes} ${passes === 1 ? "line" : "lines"} passed, checked by Bee.`;
+  const text = `Speaking goal (Spee): fewer ${listNames(drilled.map((h) => habitNameOf(h.habit)))}. ${since}: ${parts.join("; ")}; ${passes} ${passes === 1 ? "line" : "lines"} passed, checked by Bee.`;
   return { text, verdictKey: drilled.map((h) => `${h.habit}:${h.verdict}`).join("|") };
 }
 

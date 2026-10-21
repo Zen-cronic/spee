@@ -115,14 +115,14 @@ describe("factsModeFor: opt-in, live mode only", () => {
 describe("the goal text", () => {
   it("is the template, from the transfer's numbers, the habit names and Bee's passes", () => {
     const d = composeGoal(hub())!;
-    expect(d.text).toBe('Speaking goal (Speaking Mirror): fewer unsure words and filler "like". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler "like" 2.5 → 0.8 per 100 words; 4 lines passed, checked by Bee.');
+    expect(d.text).toBe('Speaking goal (Spee): fewer unsure words and filler "like". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler "like" 2.5 → 0.8 per 100 words; 4 lines passed, checked by Bee.');
     expect(d.verdictKey).toBe("hedges:dropped|filler:like:dropped");
     expect(GOAL_TEXT_RE.test(d.text)).toBe(true);
     // the plan's example passes the same guard
-    expect(() => assertGoalText('Speaking goal (Speaking Mirror): fewer unsure words and filler "like". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler "like" needs more speech; 3 lines passed, checked by Bee.')).not.toThrow();
+    expect(() => assertGoalText('Speaking goal (Spee): fewer unsure words and filler "like". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler "like" needs more speech; 3 lines passed, checked by Bee.')).not.toThrow();
   });
   it("the guard refuses anything else: a transcript line, a name, another speaker's words", () => {
-    for (const t of ["I guess we could maybe ship it", `Speaking goal (Speaking Mirror): fewer unsure words. Since Oct 15: unsure words 2.1 → 0.6 per 100 words; 4 lines passed, checked by Bee. ${PLANTED_OTHER_MARKER}`, 'Speaking goal (Speaking Mirror): fewer Jordan. So far: unsure words needs more speech; 1 line passed, checked by Bee.']) expect(() => assertGoalText(t)).toThrow();
+    for (const t of ["I guess we could maybe ship it", `Speaking goal (Spee): fewer unsure words. Since Oct 15: unsure words 2.1 → 0.6 per 100 words; 4 lines passed, checked by Bee. ${PLANTED_OTHER_MARKER}`, 'Speaking goal (Spee): fewer Jordan. So far: unsure words needs more speech; 1 line passed, checked by Bee.']) expect(() => assertGoalText(t)).toThrow();
   });
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The speaking-coach Agent Skill's one script: each command is one call to the Speaking Mirror hub on
+// The speaking-coach Agent Skill's one script: each command is one call to the Spee hub on
 // this machine (its /api routes answer loopback and LAN only). Node built-ins only.
 //
 //   status     GET  /api/coach/now     how the speaking is going, and whether live coaching is on

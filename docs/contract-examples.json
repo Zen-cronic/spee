@@ -5961,7 +5961,7 @@
     "status": "demo",
     "goal": {
      "factId": null,
-     "text": "Speaking goal (Speaking Mirror): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 8 lines passed, checked by Bee.",
+     "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 8 lines passed, checked by Bee.",
      "confirmed": false,
      "updatedAt": 1792517403030
     },
