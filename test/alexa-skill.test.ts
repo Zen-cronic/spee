@@ -72,9 +72,15 @@ async function verdictReady(id: string, ms = 5000) {
 
 describe("the round's summary", () => {
   it("names the round, not the day: a second round's tally is not today's", () => {
-    expect(summaryLine({ passed: 1, counted: 1, attempts: 1 })).toBe("That's the round: 1 of 1 lines passed, checked by Bee");
-    expect(summaryLine({ passed: 0, counted: 0, attempts: 0 })).toBe("That's the round");
-    expect(summaryLine({ passed: 0, counted: 0, attempts: 2 })).not.toMatch(/today/i);
+    const none = { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 0 };
+    expect(summaryLine({ counted: 1, attempts: 1, cards: 1, lines: { ...none, passed: 1 } })).toBe("That's the round: 1 of 1 line passed, checked by Bee");
+    expect(summaryLine({ counted: 0, attempts: 0, cards: 0, lines: none })).toBe("That's the round");
+    expect(summaryLine({ counted: 0, attempts: 2, cards: 1, lines: { ...none, unverified: 1 } })).not.toMatch(/today/i);
+  });
+  it("counts each line once, as the TV's Round over does: a retried line is one line (review L164)", () => {
+    // line A missed, then passed on a retry; line B missed: 2 lines, 3 tries Bee graded
+    const s = { counted: 3, attempts: 3, cards: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } };
+    expect(summaryLine(s)).toBe("That's the round: 1 of 2 lines passed, checked by Bee");
   });
 });
 

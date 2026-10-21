@@ -108,7 +108,8 @@ describe("MCP over Streamable HTTP (stateless)", () => {
     const next = await run("next_card");
     expect(next.structuredContent!.done).toBe(false);
     const end = await run("end_drill");
-    expect(end.content[0]!.text).toMatch(/^Practice done: 1 of 1 lines passed, checked by Bee/);
+    // the second line was opened and never said: each line once, as the TV's Round over counts it
+    expect(end.content[0]!.text).toBe("Practice done: 1 of 2 lines passed, checked by Bee, 1 not tried.");
     const how = await run("how_am_i_doing");
     expect(how.structuredContent!.basis).toBe("recap");
     expect(how.content[0]!.text).toBe(how.structuredContent!.narration);

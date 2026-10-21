@@ -49,7 +49,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 | `LiveCoachOnIntent` (`{minutes}` optional), `LiveCoachOffIntent` | `POST /api/live/mode {enabled, minutes?, by:"alexa"}` | the `narration` | one-shot ends, else open |
 | `DidItTransferIntent` | `GET /api/transfer` | the `headline` (2 sentences at most) | one-shot ends, else open |
 | `AMAZON.NextIntent` | `POST /api/session/next` | `Next, say: "<card>"`, or the drill summary | open; ends when done |
-| `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.NavigateHomeIntent` | `GET /api/session`, then `POST /api/session/end` if one is running | `That's the drill: 2 of 3 Bee-graded attempts passed. Bye.` | ends |
+| `AMAZON.StopIntent`, `AMAZON.CancelIntent`, `AMAZON.NavigateHomeIntent` | `GET /api/session`, then `POST /api/session/end` if one is running | `That's the round: 2 of 3 lines passed, checked by Bee. Bye.` Each line counts once, as on the TV's Round over: a line missed and then passed on a retry is one line passed | ends |
 | `AMAZON.HelpIntent` | none | how to use it | open |
 | `AMAZON.FallbackIntent` | none | asks for the sentence again, or how to start | open |
 | `SessionEndedRequest` | `GET /api/session`, then `POST /api/session/end` only for the drill this skill session started (its id rides in the session attributes) | (empty response) | |
@@ -112,7 +112,7 @@ Each result is `content: [{type:"text", text: <narration>}]` plus `structuredCon
 | `get_verdict` | `attempt_id` | `GET /api/attempts/<id>` | route `narration` |
 | `drill_status` | | `GET /api/session` | route `narration` |
 | `next_card` | | `POST /api/session/next` | route `narration`, or the summary when done |
-| `end_drill` | | `POST /api/session/end` | "Drill ended: N of M Bee-graded attempts passed." |
+| `end_drill` | | `POST /api/session/end` | "Practice done: N of M lines passed, checked by Bee.", each line once (the summary's `lines`), then how many Bee didn't confirm, are still waiting for Bee or were not tried |
 | `how_am_i_doing` | | `GET /api/coach/now` | route `narration` |
 | `habit_stats` | `range?`, `source?` | `GET /api/stats` (`range` defaults to `week`) | rates per 100 words |
 | `did_it_transfer` | `habit?` | `GET /api/transfer` | `headline`, or one habit's verdict |

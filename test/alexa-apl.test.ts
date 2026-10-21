@@ -89,7 +89,7 @@ const ALL_SCREENS: Screen[] = [
   verdictScreen({ kind: "unverified", next: null, hint: "Say: quiz me" }),
   progressScreen({ narration: "This week you said unsure words less. Keep going.", week: { words: 900, hedgesPer100: 1.2, likesPer100: 0.4, vaguePer100: 0.1, topHabit: { key: "hedges", label: "unsure words", per100: 1.24 } }, drills: { dueNow: 2, nextCardId: null } }),
   EMPTY.caughtUp(),
-  summaryScreen({ passed: 2, counted: 3, attempts: 3 }),
+  summaryScreen({ counted: 3, attempts: 3, cards: 3, lines: { passed: 2, failed: 1, unverified: 0, pending: 0, untried: 0 } }),
 ];
 
 describe("APL document", () => {
@@ -369,8 +369,10 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
   });
 
   it("the round's end: a summary screen", () => {
-    expect(summaryScreen({ passed: 2, counted: 3, attempts: 3 })).toMatchObject({ headline: "That’s the round.", line: "2 of 3 lines passed, checked by Bee." });
-    expect(summaryScreen({ passed: 0, counted: 0, attempts: 0 }).line).toBe("");
+    expect(summaryScreen({ counted: 3, attempts: 3, cards: 3, lines: { passed: 2, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toMatchObject({ headline: "That’s the round.", line: "2 of 3 lines passed, checked by Bee." });
+    // a line missed and then passed on a retry is one line, as on the TV (review L164)
+    expect(summaryScreen({ counted: 3, attempts: 3, cards: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } }).line).toBe("1 of 2 lines passed, checked by Bee.");
+    expect(summaryScreen({ counted: 0, attempts: 0, cards: 0, lines: { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 0 } }).line).toBe("");
   });
 
   it("over HTTP, POST /alexa carries the directive for a screen device", async () => {

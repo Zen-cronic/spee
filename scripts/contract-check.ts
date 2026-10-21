@@ -258,7 +258,8 @@ examples["WS attempt.graded (merged line)"] = gG;
 
 console.log("\nSession end");
 const end = await post("/api/session/end", {}, "POST /api/session/end");
-check(end.body.summary?.counted >= 3 && end.body.summary.unverified >= 1 && end.body.summary.beeOverrules >= 1, "session summary counts counted / unverified / bee-overrules");
+const lineSum = Object.values((end.body.summary?.lines ?? {}) as Record<string, number>).reduce((x, y) => x + y, 0);
+check(end.body.summary?.counted >= 3 && end.body.summary.unverified >= 1 && end.body.summary.beeOverrules >= 1 && lineSum === end.body.summary.cards && end.body.summary.lines?.passed <= end.body.summary.passed, "session summary counts counted / unverified / bee-overrules, and each line once (lines add up to cards)");
 await waitFor((e) => e.topic === "session.ended", "session.ended");
 examples["WS session.started"] = tv.events.find((e) => e.topic === "session.started");
 examples["WS session.ended"] = tv.events.find((e) => e.topic === "session.ended");

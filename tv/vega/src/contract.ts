@@ -166,6 +166,7 @@ export interface SessionSummary {
   startedAt: number;
   endedAt: number | null;
   cards: number;
+  // attempts to beeOverrules count tries: a missed line stays open, so a retry is another try at it
   attempts: number;
   counted: number;
   passed: number;
@@ -173,6 +174,10 @@ export interface SessionSummary {
   unverified: number;
   pending: number;
   beeOverrules: number;
+  // Additive: each line (card) of the round once, by its best result: passed if Bee passed a try at
+  // it, else failed (not yet) if Bee graded one, else pending (still with Bee), else unverified (Bee
+  // didn't catch it), else untried. They add up to `cards`; a round's tally on a screen counts these.
+  lines: { passed: number; failed: number; unverified: number; pending: number; untried: number };
   perCard: { cardId: string; habit: string; attempts: number; passed: number; box: number | null; due: string | null }[];
 }
 

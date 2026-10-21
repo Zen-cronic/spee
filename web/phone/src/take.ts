@@ -92,10 +92,15 @@ export function judgePhase(p: MicPhase): MicVerdict {
   return { pass: reasons.length === 0, reasons };
 }
 
-// The line the phone shows when a drill session ends (the TV's wording).
+// The line the phone shows when a drill session ends: each line once, as the TV's Round over counts
+// it (a line missed and then passed on a retry is one passed), and Bee's overrules as tries. An
+// older hub sends no `lines`, so its counts are tries.
 export function sessionOverLine(s: Partial<SessionSummary> | null | undefined): string {
   if (!s) return "Session over.";
-  return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.pending ? `, ${s.pending} still with Bee` : ""}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
+  const l = s.lines;
+  if (!l) return `Session over: ${s.passed ?? 0} passed, ${s.failed ?? 0} failed, ${s.unverified ?? 0} unverified${s.pending ? `, ${s.pending} still with Bee` : ""}${s.beeOverrules ? `, Bee overruled ${s.beeOverrules}` : ""}.`;
+  const n = s.beeOverrules ?? 0;
+  return `Session over: ${l.passed} passed, ${l.failed} failed, ${l.unverified} unverified${l.pending ? `, ${l.pending} still with Bee` : ""}${l.untried ? `, ${l.untried} not tried` : ""}${n ? `, Bee overruled ${n} ${n === 1 ? "try" : "tries"}` : ""}.`;
 }
 
 // The dictation language for a drill card: French cards in French, everything else in US English.

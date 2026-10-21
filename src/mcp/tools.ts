@@ -26,9 +26,12 @@ const errText = (r: HubResult<unknown>) => (r.ok ? "" : `${r.body.message} (${r.
 const outcome = (route: string, result: HubResult<unknown>, ok: (b: any) => string): ToolOutcome => ({ route, result, text: result.ok ? ok(result.body) : errText(result) });
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+// Each line once, as the TV's Round over counts it (a line missed and then passed on a retry is one
+// line passed, never two tries).
 export function summaryText(s: SessionEndResponse["summary"]): string {
   if (!s) return "You're not practising right now.";
-  return `Practice done: ${s.passed} of ${s.counted} lines passed, checked by Bee${s.unverified ? `, ${s.unverified} Bee didn't confirm` : ""}${s.pending ? `, ${s.pending} still waiting for Bee` : ""}.`;
+  const l = s.lines;
+  return `Practice done: ${l.passed} of ${s.cards} line${s.cards === 1 ? "" : "s"} passed, checked by Bee${l.unverified ? `, ${l.unverified} Bee didn't confirm` : ""}${l.pending ? `, ${l.pending} still waiting for Bee` : ""}${l.untried ? `, ${l.untried} not tried` : ""}.`;
 }
 export function statsText(s: StatsResponse): string {
   const h = s.habits;

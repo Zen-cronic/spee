@@ -386,12 +386,32 @@ describe("Round over", () => {
     expect(roundHeadline({ cards: 2, passed: 1 })).toBe("1 of 2 lines passed.");
     expect(roundHeadline({ cards: 1, passed: 1 })).toBe("1 of 1 line passed.");
     expect(roundHeadline({ cards: 0, passed: 0 })).toBe("No lines this round.");
-    expect(roundTally({ passed: 1, failed: 1, unverified: 0, pending: 1 })).toBe("1 passed, 1 not yet, 1 still with Bee");
+    const lines = { passed: 1, failed: 1, unverified: 0, pending: 1, untried: 0 };
+    expect(roundTally({ passed: 1, failed: 1, unverified: 0, pending: 1, lines })).toBe("1 passed, 1 not yet, 1 still with Bee");
     const g = { pass: false, agreement: "bee-overrules", beeText: "Um, the migration is not done yet.", failure: null };
     expect(roundLastLine({ graded: g, stage: "graded", previewSource: "phone" })).toBe("The phone heard a pass on your last line; Bee heard “Um, the migration is…”.");
     expect(roundLastLine({ graded: { ...g, agreement: "agree", pass: true }, stage: "graded", previewSource: "alexa" })).toBe("Last line: passed. Bee heard it.");
     expect(roundLastLine({ graded: null, stage: "checking", previewSource: null })).toMatch(/still checking/);
     expect(roundLastLine({ graded: null, stage: "idle", previewSource: null })).toBeNull();
+  });
+  it("the headline and the tally under it both count lines: a retried line is one line (review L164)", () => {
+    // line A missed, then passed on a retry; line B missed: 2 lines, 3 tries
+    const s = { cards: 2, attempts: 3, counted: 3, passed: 1, failed: 2, unverified: 0, pending: 0, beeOverrules: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 }, perCard: [{ cardId: "A", attempts: 2, passed: 1 }, { cardId: "B", attempts: 1, passed: 0 }] };
+    expect(roundHeadline(s)).toBe("1 of 2 lines passed.");
+    expect(roundTally(s)).toBe("1 passed, 1 not yet");
+    // the tally's parts add up to the headline's lines, and match the segments (lime passed, coral not yet)
+    expect(s.perCard.filter((c) => c.passed > 0)).toHaveLength(s.lines.passed);
+    expect(s.perCard.filter((c) => !c.passed && c.attempts > 0)).toHaveLength(s.lines.failed);
+    // a line opened and never said is named, so the parts still add up
+    const three = { ...s, cards: 3, lines: { ...s.lines, untried: 1 } };
+    expect(roundHeadline(three)).toBe("1 of 3 lines passed.");
+    expect(roundTally(three)).toBe("1 passed, 1 not yet, 1 not tried");
+    expect(roundTally({ ...s, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("0 passed, 1 Bee didn’t catch, 1 still with Bee");
+    // an older hub sends no lines: its counts are tries, and the tally says so
+    const { lines: _, ...older } = s;
+    expect(roundHeadline(older)).toBe("1 of 2 lines passed.");
+    expect(roundTally(older)).toBe("3 tries: 1 passed, 2 not yet");
+    expect(roundTally({ passed: 1, failed: 0, unverified: 0, pending: 0 })).toBe("1 try: 1 passed");
   });
 });
 

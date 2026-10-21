@@ -268,10 +268,13 @@ Card fields:
 
 ### `POST /api/session/end`
 
+`attempts` to `beeOverrules` count tries, and a missed line stays open for another try. `lines` (additive) counts each line (card) of the round once, by its best result: `passed` if Bee passed a try at it, else `failed` if Bee graded one, else `pending` while one is still with Bee, else `unverified` if Bee didn't catch it, else `untried`. They add up to `cards`. The TV's Round over, the phone's "Session over" line, Alexa's "That's the round" and the MCP `end_drill` narration count these, so a line missed and then passed on a retry is one line passed: the TV shows "1 of 2 lines passed." over "1 passed, 1 not yet", never "1 passed, 2 not yet". A screen talking to a hub from before `lines` falls back to the tries and says so.
+
 ```json
 { "summary": {
   "sessionId": "ses_mvgyktyz000", "by": "alexa", "startedAt": 1792517400251, "endedAt": 1792517402655,
   "cards": 3, "attempts": 6, "counted": 5, "passed": 3, "failed": 2, "unverified": 1, "pending": 0, "beeOverrules": 1,
+  "lines": { "passed": 3, "failed": 0, "unverified": 0, "pending": 0, "untried": 0 },
   "perCard": [
    { "cardId": "demo:vague-referent", "habit": "vague: \"that thing\"", "attempts": 1, "passed": 1, "box": 2, "due": "2026-10-22" },
    { "cardId": "demo:vague-status", "habit": "vague: \"it's getting there\"", "attempts": 2, "passed": 1, "box": 2, "due": "2026-10-22" },
@@ -592,7 +595,7 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
 5. **Bee-only.** A Bee-only attempt is graded from Bee's text.
 6. **Negative control.** The hedge is kept, so the preview and the final grade both fail on the `habit` rule.
 7. **Two-turn Alexa drill.** Turn 1 returns 202 `pending_bee` with `verdictUrl` in under 1 s. The verdict is not ready early. Bee's merged line lands at +16.5 s (scaled), and the verdict is then ready and narrated. The merged "How did I do?" is cut (`extraText`). The TV gets `attempt.verified`.
-8. **Session summary.** The summary counts counted, unverified and bee-overrules attempts.
+8. **Session summary.** The summary counts counted, unverified and bee-overrules attempts, and each line once (`lines` add up to `cards`).
 9. **Stats, transfer, brief and deck.**
    - Stats: Bee-only by default; meetings are labelled secondary with `source=all`; `range=session:<id>` works.
    - Transfer: drilled habits `dropped`, control `no change`, unregistered `vague` refused, and `?habit=vague` returns 422.

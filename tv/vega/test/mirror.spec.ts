@@ -1,5 +1,5 @@
 import {drillPhase, initialMirror, mirrorReducer, type MirrorAction, type MirrorState} from '../src/mirror/reducer';
-import {beeMemoryLine, fmtMs, habitPill, habitRole, niceMax, nudgeHopsLine, skipLine, topBreakdown, verdictTone} from '../src/mirror/format';
+import {beeMemoryLine, fmtMs, habitPill, habitRole, niceMax, nudgeHopsLine, roundHeadline, roundTally, skipLine, topBreakdown, verdictTone} from '../src/mirror/format';
 import {PRODUCT_NAME, WORDMARK} from '../src/brand';
 import {MIRROR_CONFIG} from '../src/platform/config';
 import {CONTRACT_VERSION, ROOM_TOPICS} from '../src/contract';
@@ -58,6 +58,12 @@ describe('the wrist moment and the round on Vega (synced from tv/web)', () => {
     expect(drillPhase(s.drill)).toBe('result');
     s = run(s, {type: 'event', event: ev(3, 'session.ended', {summary}), now: 2});
     expect(drillPhase(s.drill)).toBe('over');
+  });
+  it('counts the round per line in the headline and the tally, the same as the web TV', () => {
+    // line A missed, then passed on a retry; line B missed: 2 lines, 3 tries
+    const round = {cards: 2, passed: 1, failed: 2, unverified: 0, pending: 0, lines: {passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0}};
+    expect(roundHeadline(round)).toBe('1 of 2 lines passed.');
+    expect(roundTally(round)).toBe('1 passed, 1 not yet');
   });
   it('words the nudge hops, the quiet line, Bee memory and the early cards the same as the web TV', () => {
     const nudge = {hops: {spokenAt: 0, beeAt: 5900, detectedAt: 5950, todoAt: 7400, alarmAt: 17400}, latencyMs: {bee: 5900, detect: 50, todo: 1450, total: 17400}, wrist: {channel: 'bee-todo' as const, status: 'scheduled' as const, todoId: null, leadMs: 10000, error: null}};

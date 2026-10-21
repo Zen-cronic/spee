@@ -53,9 +53,10 @@ function Tracker({ steps }: { steps: { label: string; state: StepState; bee?: bo
 }
 
 /**
- * The round is over (the session ended): the tally is the headline, one segment per line (lime
- * passed, coral not yet, an open sky ring while Bee still checks it), the last line's result in
- * one sentence, and how to start the next round. Same frame as an open line, so nothing moves.
+ * The round is over (the session ended): the headline, one segment per line (lime passed, coral
+ * not yet, an open sky ring while Bee still checks it) and the tally in words, all three counting
+ * lines, then the last line's result in one sentence, and how to start the next round. Same frame
+ * as an open line, so nothing moves.
  */
 function RoundOver({ d }: { d: DrillState }) {
   const s = d.summary!;

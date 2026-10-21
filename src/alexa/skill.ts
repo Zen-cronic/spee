@@ -9,7 +9,7 @@
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
 // On a device with a screen (Fire TV, Echo Show) each turn also renders a Speaking Mirror screen
 // (./apl.ts); the speech, the reprompts and the timing are the same with or without one.
-import type { CardView, VerdictResponse } from "../hub/contract.js";
+import type { CardView, SessionSummary, VerdictResponse } from "../hub/contract.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
 import { clampMinutes, routeRequest, type Routed } from "./route.js";
 import { EMPTY, checkingScreen, drillScreen, emptyScreen, progressScreen, renderDirective, supportsApl, verdictScreen, type Screen } from "./apl.js";
@@ -246,13 +246,18 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   return { envelope, routed, hubCalls };
 }
 
+type RoundEnd = Pick<SessionSummary, "counted" | "attempts" | "cards" | "lines">;
+// Each line once, as the TV's Round over counts it: "1 of 2 lines passed" (a line missed and then
+// passed on a retry is one line passed, never two tries).
+const linesPassed = (s: RoundEnd) => `${s.lines.passed} of ${s.cards} line${s.cards === 1 ? "" : "s"} passed`;
+
 /** The end of a round, on a screen. */
-export function summaryScreen(s: { passed: number; counted: number; attempts: number }): Screen {
+export function summaryScreen(s: RoundEnd): Screen {
   if (!s.counted) return emptyScreen("That’s the round.", s.attempts ? "Bee didn’t confirm any of those this time." : "");
-  return emptyScreen("That’s the round.", `${s.passed} of ${s.counted} lines passed, checked by Bee.`);
+  return emptyScreen("That’s the round.", `${linesPassed(s)}, checked by Bee.`);
 }
 
-export function summaryLine(s: { passed: number; counted: number; attempts: number }): string {
+export function summaryLine(s: RoundEnd): string {
   if (!s.counted) return s.attempts ? "Bee didn't confirm any of those this time" : "That's the round";
-  return `That's the round: ${s.passed} of ${s.counted} lines passed, checked by Bee`;
+  return `That's the round: ${linesPassed(s)}, checked by Bee`;
 }

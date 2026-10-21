@@ -403,15 +403,31 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
   return { text, counts, caveat: m.note?.trim() ? m.note.trim().replace(/'/g, '’') : BEE_MEMORY_NOTE };
 }
 
-/** The Round over headline: "1 of 2 lines passed." (a line is a card opened this round). */
-export function roundHeadline(s: Pick<SessionSummary, 'cards' | 'passed'>): string {
-  const cards = Math.max(s.cards, s.passed);
+/**
+ * The Round over headline: "1 of 2 lines passed." A line is a card opened this round, and it
+ * passed when Bee passed a try at it (the hub's `lines`; an older hub sends none, and its passes
+ * stand in: a pass closes the line).
+ */
+export function roundHeadline(s: Pick<SessionSummary, 'cards' | 'passed'> & Partial<Pick<SessionSummary, 'lines'>>): string {
+  const passed = s.lines?.passed ?? s.passed;
+  const cards = Math.max(s.cards, passed);
   if (!cards) return 'No lines this round.';
-  return `${s.passed} of ${cards} line${cards === 1 ? '' : 's'} passed.`;
+  return `${passed} of ${cards} line${cards === 1 ? '' : 's'} passed.`;
 }
-/** The Round over tally in words: "1 passed, 1 not yet" (zero parts left out; Bee's calls are tagged on the last line). */
-export function roundTally(s: Pick<SessionSummary, 'passed' | 'failed' | 'unverified' | 'pending'>): string {
-  return sessionTally('Round', { passed: s.passed, failed: s.failed, unverified: s.unverified, pending: s.pending }).replace(/^Round: /, '').replace(/\.$/, '');
+/**
+ * The Round over tally under the headline, per line like it and the segments: "1 passed, 1 not yet"
+ * (zero parts left out; Bee's calls are tagged on the last line). A line missed and then passed on
+ * a retry is one line passed. An older hub sends no `lines`, so its counts are tries, and the tally
+ * says so: "3 tries: 1 passed, 2 not yet".
+ */
+export function roundTally(s: Pick<SessionSummary, 'passed' | 'failed' | 'unverified' | 'pending'> & Partial<Pick<SessionSummary, 'lines'>>): string {
+  const words = (c: { passed: number; failed: number; unverified: number; pending: number }) => sessionTally('Round', { passed: c.passed, failed: c.failed, unverified: c.unverified, pending: c.pending }).replace(/^Round: /, '').replace(/\.$/, '');
+  const l = s.lines;
+  if (!l) {
+    const tries = s.passed + s.failed + s.unverified + s.pending;
+    return `${tries} ${tries === 1 ? 'try' : 'tries'}: ${words(s)}`;
+  }
+  return `${words(l)}${l.untried ? `, ${l.untried} not tried` : ''}`;
 }
 
 /** The first few words of what Bee heard, quoted: "“Um, the migration is not…”". */
