@@ -64,7 +64,7 @@ export async function run(ctx: CheckCtx): Promise<CheckResult> {
   const launch = await alexa(envelope("launch"));
   const open = await tvFrom(tvAt, (e) => e.topic === "card.open" && e.payload.by === "alexa", 1500);
   let card = open?.payload.card;
-  if (card) ctx.check(launch.status === 200 && launch.speech === `Speech coach. Say this: "${card.resay}"` && launch.attrs.cardId === card.id, "Launch: starts a session, speaks the card, and the TV gets card.open by alexa");
+  if (card) ctx.check(launch.status === 200 && launch.speech === `Spee. Say this: "${card.resay}"` && launch.attrs.cardId === card.id, "Launch: starts a session, speaks the card, and the TV gets card.open by alexa");
   else {
     // An earlier module drilled every due card: Launch must say so, and the drill goes on with a
     // practice card (opened over HTTP), which exercises the same two turns.

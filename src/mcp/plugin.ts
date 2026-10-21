@@ -26,7 +26,7 @@ export const MCP_CORS: Record<string, string> = {
 };
 
 export const MCP_INSTRUCTIONS =
-  "Speech coach. Drills take two turns: submit_attempt returns at once (status pending_bee) because Bee, the wearable, is the grader of record and its line lands 5-20 s later. End the turn, then call get_verdict when the user asks how they did. Never present a provisional grade as the result.";
+  "Spee, a speech coach. Drills take two turns: submit_attempt returns at once (status pending_bee) because Bee, the wearable, is the grader of record and its line lands 5-20 s later. End the turn, then call get_verdict when the user asks how they did. Never present a provisional grade as the result.";
 
 // A fresh server per request (stateless), with every tool bound to the loopback hub client.
 export function buildMcpServer(hub: HubClient, log?: PluginCtx["log"]): McpServer {

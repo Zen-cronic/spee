@@ -391,8 +391,8 @@ describe("POST /alexa with masking on (in-process demo hub)", () => {
   let s: HubServer;
   beforeAll(async () => {
     const plugins = createPlugins().map((p) => (p.name === "alexa" ? createAlexaPlugin({ skillId: SKILL }) : p));
-    // "Lime" and "Coral" are also resource names in the document (@lime, @coral); "coach" is in the launch line
-    s = await startHubServer({ maskTerms: ["Lime", "Coral", "coach"], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
+    // "Lime" and "Coral" are also resource names in the document (@lime, @coral); "invoice" is in the demo's first line
+    s = await startHubServer({ maskTerms: ["Lime", "Coral", "invoice"], port: 0, host: "127.0.0.1", quiet: true, setup: demoSetup({ pace: 0.05, stateDir: null }), fixtureV2: true, plugins, pairToken: "p".repeat(20), mcpToken: "m".repeat(20), publicBaseUrl: null });
   });
   afterAll(async () => {
     await s.close();
@@ -402,8 +402,8 @@ describe("POST /alexa with masking on (in-process demo hub)", () => {
     await fetch(s.url + "/api/session/end", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     const r = await fetch(s.url + "/alexa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(env("launch")) });
     const j = (await r.json()) as AlexaResponseEnvelope;
-    expect(j.response.outputSpeech?.text).toMatch(/^Speech name\. Say this:/);
-    expect(j.response.reprompt?.outputSpeech.text).toMatch(/^Say:/);
+    expect(j.response.outputSpeech?.text).toBe('Spee. Say this: "I fixed the name retry job this morning."');
+    expect(j.response.reprompt?.outputSpeech.text).toMatch(/^Say: "I fixed the name retry job/);
     const d = j.response.directives?.[0];
     expect(d).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill" });
     expect(d!.document).toEqual(DOC);

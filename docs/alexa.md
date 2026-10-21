@@ -66,7 +66,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 
 | Intent | Hub route(s) | Says (examples) | Session |
 |---|---|---|---|
-| `LaunchRequest` | `POST /api/session/start {by:"alexa"}` | `Speech coach. Say this: "<card>"`; with nothing due: "No cards are due right now..." | open |
+| `LaunchRequest` | `POST /api/session/start {by:"alexa"}` | `Spee. Say this: "<card>"`, whatever name opened the skill (every one is listed as Spee); with nothing due: "No cards are due right now..." | open |
 | `StartDrillIntent` ("quiz me") | `POST /api/session/start` | `Here's your first card. Say: "<card>"` | open |
 | `AttemptIntent` (catch-all `{attempt}`) | `POST /api/attempt {source:"alexa", text}` (202 at once) | "Got it, checking with Bee. Ask me how you did in about 15 seconds." | open, `attemptId` kept |
 | `HowDidIDoIntent` | `GET /api/attempts/<id>`. If not ready: a progressive response ("Checking with Bee.") and polling every 600 ms for at most 6.5 s. Pass: then `POST /api/session/next` | pass: `Bee heard it: a pass. Next, say: "<card>"`; fail: `Not yet: Bee heard a filler, "um". Say it again: "<card>"`; not confirmed: "Bee didn't confirm that one, so it doesn't count..."; still waiting: "Bee hasn't sent that line yet. Ask me again in a few seconds." | open (ends when the drill is done) |

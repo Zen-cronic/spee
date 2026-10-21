@@ -200,7 +200,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     const card = r.body.card;
     if (!card) return { text: SPEECH.launchNoCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId", "cardId", "drillSessionId"), screen: await screen(EMPTY.caughtUp) };
     return {
-      text: line([sayCard(kind === "launch" ? "Speech coach. Say this:" : "Here's your first line. Say:", card.resay)]),
+      text: line([sayCard(kind === "launch" ? "Spee. Say this:" : "Here's your first line. Say:", card.resay)]),
       reprompt: sayCard("Say:", card.resay),
       attrs: { ...without(attrs, "attemptId"), cardId: card.id, drillSessionId: r.body.session.id },
       screen: await screen(() => drillScreen(card)),

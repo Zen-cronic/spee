@@ -93,7 +93,7 @@ describe("two-turn drill", () => {
     const state = await get("/api/session");
     const resay: string = state.openCard.resay;
     expect(state.session.by).toBe("alexa");
-    expect(text(launch)).toBe(`Speech coach. Say this: "${resay}"`);
+    expect(text(launch)).toBe(`Spee. Say this: "${resay}"`); // the brand, whatever name opened the skill
     expect(launch.envelope.response.shouldEndSession).toBe(false);
     expect(launch.envelope.sessionAttributes).toEqual({ cardId: state.openCard.id, drillSessionId: state.session.id });
     expect(launch.hubCalls).toEqual(["POST /api/session/start 200"]);
