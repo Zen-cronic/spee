@@ -236,19 +236,64 @@ describe("one goal fact (COACH_FACTS=1)", () => {
     expect(r.f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
     expect(logs.map((l) => l.event)).toContain("facts.goal.adopted");
   });
-  it("a restart during a create looks for it first and adopts it (the intent was written before the call)", async () => {
-    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "timeout-landed" : a[1] === "list" ? new Error("network down") : null) });
-    const a = rig(bee);
+  it("a restart during a create looks for it at once and adopts it (the intent was written before the call; a ledger from before `looks` reads the same)", async () => {
+    const bee = fakeBee();
+    // the create lands in Bee, but the hub stops before the CLI answers
+    const held: ExecFn = (f, a, o) => (a[1] === "create" ? (void bee.exec(f, a, o), new Promise(() => {})) : bee.exec(f, a, o));
+    const a = rig({ ...bee, exec: held });
     pass(a.h);
-    await a.f.settle();
+    await new Promise((res) => setTimeout(res, 20));
     expect(a.ledger().pendingCreate).toMatchObject({ outcome: "unknown" });
-    expect(a.f.memory().status).toBe("failed");
+    expect(a.ledger().pendingCreate).not.toHaveProperty("looks");
+    expect(a.ledger().pendingCreate).not.toHaveProperty("nextLookAt");
     a.f.stop();
     const ok = fakeBee({ others: bee.facts.map((f) => ({ ...f })) });
     const b = rig(ok, { dir: a.dir, hub: a.h });
     await b.f.settle(); // start() adopts it without a pass
     expect(ok.factCalls()).toEqual(["facts list --unconfirmed", "facts confirm 901"]);
     expect(b.f.memory()).toMatchObject({ status: "synced", goal: { factId: "901" } });
+  });
+  it("a restart looks only once a look is due, and its timer waits out the time left: restarts never use up the 5 looks", async () => {
+    const bee = fakeBee({ hook: (a) => (a[1] === "create" ? "timeout-landed" : null) }); // it landed
+    let listed = false; // Bee lists it only later
+    const lookedAt: number[] = [];
+    const late: ExecFn = async (f, a, o) => {
+      if (a[1] === "list") {
+        lookedAt.push(Date.now());
+        if (!listed) return { stdout: "[]" };
+      }
+      return bee.exec(f, a, o);
+    };
+    const h = hub();
+    const dir = mkdtempSync(join(tmpdir(), "facts-restart-"));
+    const start = () => {
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: dir, exec: late, minGapMs: 0, countsFirstMs: 1e9, lookFirstMs: 300 });
+      f.start();
+      stops.push(() => f.stop());
+      return f;
+    };
+    const pending = () => JSON.parse(readFileSync(join(dir, "live", "facts.json"), "utf8")).pendingCreate;
+    let f = start();
+    pass(h);
+    await f.settle(); // look 1, right after the create: Bee does not list it yet
+    expect(pending()).toMatchObject({ looks: 1, nextLookAt: expect.any(Number) });
+    const due = pending().nextLookAt as number;
+    for (let i = 0; i < 4; i++) {
+      f.stop(); // four quick restarts between takes, before the next look is due
+      f = start();
+      await new Promise((res) => setTimeout(res, 5));
+      await f.settle();
+    }
+    expect(lookedAt).toHaveLength(2);
+    expect(pending()).toMatchObject({ looks: 1, nextLookAt: due });
+    expect(f.memory()).toMatchObject({ status: "failed", stopped: false });
+    listed = true;
+    for (let i = 0; i < 200 && f.memory().status !== "synced"; i++) await new Promise((res) => setTimeout(res, 10));
+    // the last hub's own timer made look 2 when it was due, with no pass, and adopted the fact
+    expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+    expect(lookedAt).toHaveLength(3);
+    expect(lookedAt[2]).toBeGreaterThanOrEqual(due - 5);
+    expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
   });
   it("the create's intent is on disk before the call returns (a hub stopped mid-call looks for it, never creates again)", async () => {
     const bee = fakeBee();

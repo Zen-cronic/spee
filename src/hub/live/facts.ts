@@ -16,11 +16,11 @@
 // Idempotent. The ledger (<stateDir>/live/facts.json) records the intent before every create, so a
 // restart or a create that timed out never makes a second fact: the coach looks for its own text in
 // `bee facts list` (up to COUNT_PAGES pages) and adopts the fact it finds. A create whose outcome is
-// not known is never made again: it is looked for at most LOOKS_MAX times, further apart each time,
-// never on stats.updated, and then the status stays "failed" with `stopped` until the operator
-// clears it. Every call, the goal's and the count read's, runs on one chain: serialized, 1.5 s
-// apart, 10 s timeout each. Its own breaker (3 consecutive failed calls open it for 30 min) never
-// touches the wrist, so live coaching carries on.
+// not known is never made again: it is looked for at most LOOKS_MAX times, further apart each time
+// (a restart keeps that schedule), never on stats.updated, and then the status stays "failed" with
+// `stopped` until the operator clears it. Every call, the goal's and the count read's, runs on one
+// chain: serialized, 1.5 s apart, 10 s timeout each. Its own breaker (3 consecutive failed calls
+// open it for 30 min) never touches the wrist, so live coaching carries on.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -338,29 +338,35 @@ export class BeeFacts {
     return { hit: null, read };
   }
 
-  // A look for a create of unknown outcome: at a restart, else once its time has come (a pass, the
-  // tick or the look timer). Never on stats.updated, and never after the coach stopped looking.
+  // A look for a create of unknown outcome, once its time has come: at a pass, the tick, the look
+  // timer or a restart. A hub stopped during the create, or a ledger from before `looks`, has no
+  // time yet and looks at once. Never on stats.updated, and never after the coach stopped looking.
   private lookDue(p: PendingCreate, reason: SyncReason): boolean {
     if (p.nextLookAt === null || reason === "stats") return false;
-    return reason === "start" || reason === "look" || this.now() >= (p.nextLookAt ?? 0);
+    return reason === "look" || this.now() >= (p.nextLookAt ?? 0);
   }
 
   // Bee does not list it: look again later (twice as long each time), or stop after LOOKS_MAX looks.
   // Only a look that read Bee's lists counts (a Bee outage never uses them up). It is never created
   // again either way.
   private notListed(p: PendingCreate, read: boolean) {
-    const what = p.outcome === "landed" ? "create printed no fact id" : "create timed out";
-    const max = this.o.looksMax ?? LOOKS_MAX;
     const looks = (p.looks ?? 0) + (read ? 1 : 0);
     p.looks = looks;
-    if (looks >= max) {
-      p.nextLookAt = null;
-      return this.fail(`${what} and Bee never listed it (${looks} looks); the coach stopped looking and never creates it again`);
+    if (looks >= (this.o.looksMax ?? LOOKS_MAX)) p.nextLookAt = null;
+    else {
+      const wait = (this.o.lookFirstMs ?? LOOK_FIRST_MS) * 2 ** Math.max(0, looks - 1);
+      p.nextLookAt = this.now() + wait;
+      this.scheduleLook(wait);
     }
-    const wait = (this.o.lookFirstMs ?? LOOK_FIRST_MS) * 2 ** Math.max(0, looks - 1);
-    p.nextLookAt = this.now() + wait;
-    this.scheduleLook(wait);
-    return this.fail(`${what} and ${read ? `Bee does not list it yet (look ${looks} of ${max})` : "Bee's lists could not be read"}; it is never created again`);
+    return this.fail(this.notListedReason(p, read));
+  }
+
+  // Why the goal is not in Bee yet (the status's failure and the log line).
+  private notListedReason(p: PendingCreate, read: boolean): string {
+    const what = p.outcome === "landed" ? "create printed no fact id" : "create timed out";
+    const looks = p.looks ?? 0;
+    if (p.nextLookAt === null) return `${what} and Bee never listed it (${looks} looks); the coach stopped looking and never creates it again`;
+    return `${what} and ${read ? `Bee does not list it yet (look ${looks} of ${this.o.looksMax ?? LOOKS_MAX})` : "Bee's lists could not be read"}; it is never created again`;
   }
 
   private scheduleLook(ms: number) {
@@ -395,7 +401,16 @@ export class BeeFacts {
       // when a look is due; it is never created again.
       if (L.pendingCreate && !L.goal) {
         const p = L.pendingCreate;
-        if (!this.lookDue(p, reason)) return;
+        if (!this.lookDue(p, reason)) {
+          // A restart before the look is due keeps the schedule: the timer waits out the time left,
+          // and the status stays failed for the reason the last look gave.
+          if (reason === "start" && p.nextLookAt != null) {
+            this.scheduleLook(p.nextLookAt - this.now());
+            this.goalError = this.notListedReason(p, (p.looks ?? 0) > 0);
+            this.log("facts.goal.failed", { error: this.goalError });
+          }
+          return;
+        }
         const { hit, read } = await this.findOwn(p.text);
         if (!hit) return this.notListed(p, read);
         this.adopt(hit, p, "adopted");
