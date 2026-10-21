@@ -497,6 +497,26 @@ export function controlWord(h: Pick<TransferHabit, 'verdict' | 'before' | 'after
   return { text: verdictWords(h), word: true };
 }
 
+/**
+ * One cell of Today's "since you started practising" card. `value` is its big number: a practised
+ * habit's change, or Flat, Down or Up for the one you don't practise. Without one, `status` takes
+ * its place in Progress's pill words ("Starts at your first practice", "No change"; "Needs speech"
+ * for "Needs more speech", to fit a third of the card; none before a practised habit's first
+ * practice, so a dash), and the line under the name is the role in Progress's words ("To practise",
+ * "Practised", "Not practised"), so the one you don't practise is always marked. With a number the
+ * line stays "practised" or "not practised".
+ */
+export function workingCell(h: Pick<TransferHabit, 'role' | 'verdict' | 'before' | 'after'>): { value: string | null; status: string | null; role: string } {
+  if (h.role === 'drilled') {
+    const c = changeLabel(h);
+    if (c.pct) return { value: c.text, status: null, role: 'practised' };
+  } else {
+    const w = controlWord(h);
+    if (!w.word) return { value: w.text, status: null, role: 'not practised' };
+  }
+  return { value: null, status: h.verdict === 'too little data' ? 'Needs speech' : habitPill(h), role: habitRole(h) };
+}
+
 /** The first failed check of a grade, with the words behind it (from what was graded, never from a label). */
 export interface GradeFailure {
   rule: GradeCheck['rule'];

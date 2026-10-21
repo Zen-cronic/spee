@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, statTone, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 
 describe("fmtMs", () => {
@@ -337,6 +337,36 @@ describe("before the first practice: the cards never say Practised beside Not pr
     expect(habitPill(h("control", "not drilled yet"))).toBe("Starts at your first practice");
     expect(habitRole(h("drilled", "dropped"))).toBe("Practised");
     expect(habitPill(h("control", "no change"))).toBe("No change");
+  });
+});
+
+describe("Today's since-you-started cells: a cell without a number still names its role (Progress's words)", () => {
+  const h = (role: "drilled" | "control", verdict: TransferHabit["verdict"], after = 0.6) => ({ role, verdict, before: { per100: 2.1, words: 900 } as any, after: { per100: after, words: 900 } as any });
+  it("too little speech everywhere: the three cells are never alike, the one you don't practise says so", () => {
+    const cells = [workingCell(h("drilled", "too little data")), workingCell(h("drilled", "too little data")), workingCell(h("control", "too little data"))];
+    expect(cells).toEqual([
+      { value: null, status: "Needs speech", role: "Practised" },
+      { value: null, status: "Needs speech", role: "Practised" },
+      { value: null, status: "Needs speech", role: "Not practised" },
+    ]);
+  });
+  it("before the first practice: a dash and To practise; the one you don't practise starts at your first practice", () => {
+    expect(workingCell(h("drilled", "not drilled yet"))).toEqual({ value: null, status: null, role: "To practise" });
+    expect(workingCell(h("control", "not drilled yet"))).toEqual({ value: null, status: "Starts at your first practice", role: "Not practised" });
+  });
+  it("a number keeps the card's own words; an undecided result is Progress's words in its place", () => {
+    expect(workingCell(h("drilled", "dropped", 0.57))).toEqual({ value: "−73%", status: null, role: "practised" });
+    expect(workingCell(h("control", "no change", 2.2))).toEqual({ value: "Flat", status: null, role: "not practised" });
+    expect(workingCell(h("drilled", "no change", 2.0))).toEqual({ value: null, status: "No change", role: "Practised" });
+    expect(workingCell(h("control", "invalid"))).toEqual({ value: null, status: "Not counted", role: "Not practised" });
+  });
+  it("Today draws every cell, the control's too, from workingCell and always shows its role (web TV and Vega)", () => {
+    for (const file of ["tv/web/src/views/WeekView.tsx", "tv/vega/src/views/WeekView.tsx"]) {
+      const src = readFileSync(file, "utf8");
+      expect(src.match(/<WorkCell\b/g), file).toHaveLength(2); // the practised habits, and the control
+      expect(src, file).toContain("const c = workingCell(h);");
+      expect(src, file).toMatch(/numberOfLines=\{1\}>\{c\.role\}<\/Text>/);
+    }
   });
 });
 

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { DeckSummary, PracticeCounts, StatsResponse, TransferResponse } from '../contract';
-import { changeLabel, controlWord, fmt1, habitRole, habitTitle, topWord, transferWorking, WEEK_HABITS } from '../mirror/format';
+import type { DeckSummary, PracticeCounts, StatsResponse, TransferHabit, TransferResponse } from '../contract';
+import { fmt1, habitTitle, topWord, transferWorking, WEEK_HABITS, workingCell } from '../mirror/format';
 import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
 
 /**
@@ -99,7 +99,6 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
   const drilled = transfer.habits.filter((x) => x.role === 'drilled');
   const control = transfer.habits.find((x) => x.role === 'control');
   const shown = transferWorking(transfer.claim);
-  const cw = control ? controlWord(control) : null;
   return (
     <View style={[styles.card, styles.working]} testID="week-transfer">
       <View style={styles.cardHead}>
@@ -107,35 +106,39 @@ function Working({ transfer }: { transfer: TransferResponse | null }) {
         {shown ? <Text style={styles.cardNote} numberOfLines={1}>since you started practising</Text> : null}
       </View>
       <View style={styles.workRow}>
-        {drilled.map((x) => {
-          const change = changeLabel(x);
-          return (
-            <View key={x.habit} style={styles.workItem} testID={`week-change-${x.habit}`}>
-              <View style={styles.workValue}>
-                <Text style={[styles.workNum, x.verdict === 'dropped' && { color: C.lime }, !change.pct && styles.workNone]}>{change.pct ? change.text : '—'}</Text>
-              </View>
-              <HabitLabel habit={x.habit} label={x.label} />
-              <Text style={styles.workWords} numberOfLines={1}>{change.pct ? 'practised' : x.verdict === 'not drilled yet' ? habitRole(x) : shortWords(x.verdict, change.text)}</Text>
-            </View>
-          );
-        })}
-        {control && cw ? (
-          <View style={styles.workItem}>
-            <View style={styles.workValue}>
-              <Text style={[styles.workNum, styles.workFlat, cw.word && styles.workNone]} numberOfLines={1}>{cw.word ? '—' : cw.text}</Text>
-            </View>
-            <HabitLabel habit={control.habit} label={control.label} />
-            <Text style={styles.workWords} numberOfLines={1}>{cw.word ? shortWords(control.verdict, cw.text) : 'not practised'}</Text>
-          </View>
-        ) : null}
+        {drilled.map((x) => (
+          <WorkCell key={x.habit} h={x} />
+        ))}
+        {control ? <WorkCell h={control} /> : null}
       </View>
     </View>
   );
 }
 
-/** Today's one-word-ish status under a dash (Progress says it in full): it must fit a third of the card on one line. A practised habit not started yet says "To practise", as on Progress. */
-const SHORT: Record<string, string> = { 'too little data': 'Needs speech', 'not drilled yet': 'Not started' };
-const shortWords = (verdict: string, text: string): string => SHORT[verdict] ?? text;
+/**
+ * One habit: its number, or without one Progress's words in its place (a dash when there are none),
+ * then its name and its role (workingCell). The card's height never changes: the words take the
+ * number's slot, in two lines at most.
+ */
+function WorkCell({ h }: { h: TransferHabit }) {
+  const c = workingCell(h);
+  const control = h.role !== 'drilled';
+  return (
+    <View style={styles.workItem} testID={`week-change-${h.habit}`}>
+      <View style={styles.workValue}>
+        {c.value !== null ? (
+          <Text style={[styles.workNum, control ? styles.workFlat : h.verdict === 'dropped' && { color: C.lime }]} numberOfLines={1}>{c.value}</Text>
+        ) : c.status ? (
+          <Text style={styles.workStatus} numberOfLines={2}>{c.status}</Text>
+        ) : (
+          <Text style={[styles.workNum, styles.workNone]}>—</Text>
+        )}
+      </View>
+      <HabitLabel habit={h.habit} label={h.label} />
+      <Text style={styles.workWords} numberOfLines={1}>{c.role}</Text>
+    </View>
+  );
+}
 
 /** A habit's name with its hue as a small dot (the colour repeats the name, never replaces it). */
 function HabitLabel({ habit, label }: { habit: string; label: string }) {
@@ -196,6 +199,8 @@ const styles = StyleSheet.create({
   workItem: { flex: 1, paddingRight: SP.m },
   workValue: { height: 68, justifyContent: 'flex-end' },
   workNum: { color: C.text, fontSize: 60, lineHeight: 68, fontWeight: '700', fontFamily: F.family },
+  // Progress's words in the number's slot when there is no number yet (two even lines at most)
+  workStatus: { maxWidth: '85%', color: C.dim, fontSize: T.label, lineHeight: 30, fontFamily: F.family },
   workWords: { color: C.faint, fontSize: T.label, marginTop: 2, fontFamily: F.family },
   workNone: { color: C.faint },
   workFlat: { color: C.dim },
