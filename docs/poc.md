@@ -1,6 +1,6 @@
 # The drill-coach proof of concept (history)
 
-Speaking Mirror grew out of this time-boxed proof of concept. Everything below still runs; the live coach, the TV, Alexa and MCP are in the [README](../README.md).
+Spee grew out of this time-boxed proof of concept. Everything below still runs; the live coach, the TV, Alexa and MCP are in the [README](../README.md).
 
 ## What it was
 

@@ -1,6 +1,6 @@
-# The Speaking Mirror (Fire TV) and the phone page
+# Spee on Fire TV, and the phone page
 
-Packet B of the coach hub (contract v2, [`docs/CONTRACT.md`](CONTRACT.md)). The mirror is a 10-foot app that shows:
+Packet B of the coach hub (contract v2, [`docs/CONTRACT.md`](CONTRACT.md)). The TV app is a 10-foot app that shows:
 
 - the week's habit rates from Bee;
 - the pre-registered transfer result;
@@ -40,7 +40,7 @@ curl -X POST localhost:8791/api/demo/mirror -d '{}'                 # a practice
 ```
 
 - **Fixture mode** (`--fixture-v2`): the frozen fixture router answers `/api/demo/mirror` with the fixture's ten frames.
-- **Demo mode without the fixture** (`--demo`): the mirror plugin answers it with a synthetic voice metered by the phone's own prosody engine: 60 frames at 10 Hz, then `practice.summary`. `{"script":"focus","view":"transfer"}` switches every mirror to a screen.
+- **Demo mode without the fixture** (`--demo`): the mirror plugin answers it with a synthetic voice metered by the phone's own prosody engine: 60 frames at 10 Hz, then `practice.summary`. `{"script":"focus","view":"transfer"}` switches every TV to a screen.
 
 On the web TV, the arrow keys and Enter move along the tabs. Left or Right at either end of the row switches screens. Back or Escape closes the recap, then returns to the week; on the week screen, Back is left to the platform (on Vega it exits the app). `?debug=1` or `D` shows the seq counters.
 
@@ -59,7 +59,7 @@ vega device terminate-app -d VirtualDevice --appName com.beecoach.mirror.main   
 vega run-app tv/vega/build/x86_64-release/speakingmirror_x86_64.vpkg com.beecoach.mirror.main -d VirtualDevice
 ```
 
-- **Package.** `com.beecoach.mirror` ("Speaking Mirror"), component `com.beecoach.mirror.main`. The mirror is silent, so it has no media player and no media services in `manifest.toml`.
+- **Package.** `com.beecoach.mirror` (titled "Spee"), component `com.beecoach.mirror.main`. The TV app is silent, so it has no media player and no media services in `manifest.toml`.
 - **Hub address.** `tv/vega/src/hub.json` (`npm --prefix tv/vega run hub -- <host:port>`, then rebuild).
   - On the VVD, use `127.0.0.1:8791` with the reverse port forward. Never use the NAT address `10.0.2.2`: frames over about 1.4 kB get dropped there.
   - On a stick on Wi-Fi, use the dev machine's LAN IP, and start the hub with `npm run hub -- --lan` (or `HUB_TRUST_LAN=1`). Without it, the gate treats other LAN devices as public, and the stick gets 403s. Use `--lan` on your own Wi-Fi only.

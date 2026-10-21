@@ -1,10 +1,10 @@
 # Coach hub contract (v2)
 
-Contract v2 (frozen 2026-10-16) keeps every v1 route, event and payload below unchanged and adds live coaching, practice meters, the speaking mirror, Alexa and MCP: see [Contract v2](#contract-v2). The types for both are in [`src/hub/contract.ts`](../src/hub/contract.ts) (import-free, so surfaces can copy it).
+Contract v2 (frozen 2026-10-16) keeps every v1 route, event and payload below unchanged and adds live coaching, practice meters, the TV app, Alexa and MCP: see [Contract v2](#contract-v2). The types for both are in [`src/hub/contract.ts`](../src/hub/contract.ts) (import-free, so surfaces can copy it).
 
 The coach hub is the one shared state behind every surface:
 
-- **Fire TV "speaking mirror"** (phase 2). It shows the week's habit rates, the drilled-vs-control transfer chart, and live sync: an attempt, then "graded", then "verified by Bee", then the numbers update. It also mirrors the drill that Alexa is running.
+- **Spee on Fire TV** (phase 2). It shows the week's habit rates, the drilled-vs-control transfer chart, and live sync: an attempt, then "graded", then "verified by Bee", then the numbers update. It also mirrors the drill that Alexa is running.
 - **Alexa+ drill session** (phase 3, MCP server over Streamable HTTP plus a web simulator). It runs drills by voice: next card, the user re-says it, the attempt is graded, and the schedule is updated.
 - **Phone** (optional): a fast microphone through the tv-voice-bridge WebSocket.
 
@@ -606,7 +606,7 @@ The check starts the hub in demo mode (pace 0.02) as a child process. It connect
 
 ## Notes for the surfaces
 
-**Phase 2: Fire TV speaking mirror** (reuse the Vega app shell and the web TV).
+**Phase 2: Spee on Fire TV** (reuse the Vega app shell and the web TV).
 
 - **Main screen.**
   - Use `GET /api/stats?range=week` for the habit bars, with hedges and vague answers first and fillers second.
@@ -652,7 +652,7 @@ v2 adds:
 - live coaching from Bee's stream: a rolling conversation window, opt-in wrist nudges with latency hops, and a recap after each conversation;
 - `coachNow`, a deterministic "how am I doing?" narration for Alexa and MCP;
 - practice meters from the phone mic (room-scoped, 10 Hz) and a practice summary;
-- the speaking mirror's focus, plugins, a public-access gate, static mounts and fixture mode.
+- the TV app's focus (`mirror.focus`), plugins, a public-access gate, static mounts and fixture mode.
 
 The examples below are **hand-written synthetic payloads** for the invented demo wearer "Ada". They live in [`fixtures/contract-v2/`](../fixtures/contract-v2/), are typed against `contract.ts` in [`src/hub/contractExamples.ts`](../src/hub/contractExamples.ts), and the blocks in this document are generated from them (`npm run contract:fixtures`). `test/contract-v2.test.ts` fails if a file or a block drifts. Times are on the demo clock (2026-10-20 13:30 EDT = `1792517400000`).
 

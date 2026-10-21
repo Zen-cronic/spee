@@ -36,7 +36,7 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 
 | Fact | Source | Checked by |
 |---|---|---|
-| The product is Speaking Mirror; its Alexa skill is called Speech Coach | `alexa/skill-package/interactionModels/custom/en-CA.json` (`invocationName`) | `test/claims.test.ts` |
+| The product is Spee; its Alexa skill is called Speech Coach | `tv/web/src/brand.ts` (`PRODUCT_NAME`), `alexa/skill-package/interactionModels/custom/en-CA.json` (`invocationName`) | `test/tv-brand.test.ts`, `test/claims.test.ts` |
 | The drill tracker reads "You said it, Checked by Bee, Result" on the TV and on Alexa screens | `tv/web/src/views/LiveView.tsx`, `SCREEN_TEXT.steps` in `src/alexa/apl.ts` | `test/claims.test.ts` |
 | Fixed word lists count the habits. A model only drafts vague-answer practice lines and, when turned on, rewords a recap | `src/hub/habits.ts`, `src/hub/realCards.ts`, `src/hub/live/recapPrompt.ts` | `test/claims.test.ts` (the counting, grading and nudge-policy files import no model client) |
 
@@ -50,4 +50,4 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 
 ## Prior art
 
-Wearable feedback on unwanted words has been studied before: WSCoach (arXiv 2507.04238, 2025) reports that near-real-time feedback and after-the-fact review both reduced unwanted words in daily conversation. Speaking Mirror makes no claim to be new as a wearable coach. The research it builds on: awareness training cut filled pauses by about 70 to 90% per minute in seven single-case studies (2016 to 2022), and speakers rated sparse one-word cues above a continuous display, which disrupted their delivery. Those are other people's results, not ours.
+Wearable feedback on unwanted words has been studied before: WSCoach (arXiv 2507.04238, 2025) reports that near-real-time feedback and after-the-fact review both reduced unwanted words in daily conversation. Spee makes no claim to be new as a wearable coach. The research it builds on: awareness training cut filled pauses by about 70 to 90% per minute in seven single-case studies (2016 to 2022), and speakers rated sparse one-word cues above a continuous display, which disrupted their delivery. Those are other people's results, not ours.

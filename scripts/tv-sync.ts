@@ -1,4 +1,4 @@
-// Copy the Speaking Mirror's shared code into the Vega app (npm run tv:sync).
+// Copy the TV app's shared code into the Vega app (npm run tv:sync).
 //
 //   src/hub/contract.ts                      -> tv/web/src/contract.ts, tv/vega/src/contract.ts
 //   tv/web/src/{views,components,mirror}/**  -> tv/vega/src/...   (stale Vega copies are removed)

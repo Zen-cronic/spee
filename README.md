@@ -1,12 +1,12 @@
-# Speaking Mirror: a realtime speaking coach on Bee
+# Spee: a realtime speaking coach on Bee
 
 **Bee listens, Alexa drills, the TV keeps score.** For non-native English speakers and any professional who wants to speak more clearly: at work first, and everywhere else.
 
-Speaking Mirror learns how you usually speak from your real conversations in Bee, and suggests what to change. Each recap compares unsure words, the filler "like", vague answers and starting over with your usual in that setting (a meeting, work talk, a casual chat), and notes your pace and long turns. It names what ran high and gives one of your lines back, said plainly. With live coaching on, a run of unsure words or "like" buzzes your wrist about 20 seconds later. You practise your own fumbled lines with Alexa or your phone, graded from **Bee's own wearer-tagged transcript**. The Fire TV "Speaking Mirror" shows your week, the live pipeline and the before/after check.
+Spee learns how you usually speak from your real conversations in Bee, and suggests what to change. Each recap compares unsure words, the filler "like", vague answers and starting over with your usual in that setting (a meeting, work talk, a casual chat), and notes your pace and long turns. It names what ran high and gives one of your lines back, said plainly. With live coaching on, a run of unsure words or "like" buzzes your wrist about 20 seconds later. You practise your own fumbled lines with Alexa or your phone, graded from **Bee's own wearer-tagged transcript**. Spee on Fire TV shows your week, the live pipeline and the before/after check.
 
 - **Bee is the input of record.** Habits come from Bee captures, live nudges from `bee stream`, and every drill grade from the line Bee tags as you. Phone and Alexa text is only a provisional preview; if they disagree, Bee wins. Bee's live wearer tag named the wearer on 8 of 9 lines when we measured it on 2026-10-16 (FL-8 in `FRICTION_LOG.md`), so the coach does not guess who spoke.
 - **Fixed word lists and Bee's timing find the patterns; deterministic code grades and decides.** A model only drafts vague-answer practice lines and, when you turn it on, rewords a recap. The before/after check tests two habits, pre-registered in `prereg/transfer.json`: unsure words ("I guess", "maybe", "kind of") and the filler "like" (keys `hedges` and `filler:like`), against starting over ("the the", key `restart`), which you don't practise. "Um", "uh" and "you know" count as fillers too.
-- **Alexa is the coach you ask.** "Quiz me" starts practice and "how did I do?" gives Bee's verdict. "How am I doing?" sums up your current conversation or last recap. "Turn on live coaching" and "turn off live coaching" switch the wrist nudges, and "did it transfer?" reads the before/after check. Speaking Mirror's Alexa skill is called Speech Coach.
+- **Alexa is the coach you ask.** "Quiz me" starts practice and "how did I do?" gives Bee's verdict. "How am I doing?" sums up your current conversation or last recap. "Turn on live coaching" and "turn off live coaching" switch the wrist nudges, and "did it transfer?" reads the before/after check. Spee's Alexa skill is called Speech Coach.
 - **An Agent Skill for on-wrist coaching.** `skills/speaking-coach/SKILL.md` lets an agent ask how your speaking is going, warm you up before a meeting, show your goal in Bee, and send one if-then cue to your wrist 8 to 12 minutes before a meeting, through the hub's capped wrist queue (`node skills/speaking-coach/scripts/coach.mjs heartbeat`).
 - **Four surfaces, one hub:** the Apple Watch (Bee capture plus to-do alarms as wrist nudges), Alexa (a custom skill and an MCP server, with a browser simulator), Fire TV (a Vega app) and a phone page (drills and practice meters).
 
@@ -50,19 +50,19 @@ flowchart LR
   H["Coach hub<br/>Node, one port"] -->|"Bee to-do + alarm"| W
   A["Alexa skill<br/>custom skill"] <-->|"POST /alexa"| H
   S["/sim/ and any<br/>MCP client"] <-->|"/mcp"| H
-  H <-->|"tv-voice-bridge WebSocket<br/>+ HTTP /api"| T["Fire TV<br/>Speaking Mirror (Vega)"]
+  H <-->|"tv-voice-bridge WebSocket<br/>+ HTTP /api"| T["Fire TV<br/>Spee (Vega)"]
   P["Phone page<br/>drill + practice"] <-->|"tv-voice-bridge<br/>(https for the mic)"| H
 ```
 
 - **Bee (Watch + `bee` CLI)** is the input of record: `bee stream` delivers wearer-tagged lines for habits, live nudges and every drill grade, and Bee to-dos with alarms are the wrist nudges.
 - **The hub** holds all state. It verifies each attempt against Bee (`src/hub/bee.ts`), grades it deterministically (`src/hub/grade.ts`), runs the live coach and recaps (`src/hub/live/`), and serves every surface from one port behind a public-access gate (`src/hub/gate.ts`).
-- **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"), and on a Fire TV or Echo Show each turn shows a Speaking Mirror screen (APL: the line, Bee's check, the verdict) instead of Alexa's plain card ([`docs/alexa.md`](docs/alexa.md), "Screens (APL)"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
+- **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"), and on a Fire TV or Echo Show each turn shows a Spee screen (APL: the line, Bee's check, the verdict) instead of Alexa's plain card ([`docs/alexa.md`](docs/alexa.md), "Screens (APL)"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
 - **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `node_modules/tv-voice-bridge/PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
 - **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge. Its Progress tab shows the TV's week, before and after and recent recaps. It reads them with the pair token from the TV's QR, so they reach only a paired phone. Nothing is stored on the phone, and there are no accounts. Its microphone needs https (the `ngrok http` link above); over LAN `http://` it is typing only.
 
-## Coach hub (shared core for the TV mirror and the Alexa drill session)
+## Coach hub (shared core for the TV app and the Alexa drill session)
 
-The hub is the single state behind every surface: a Fire TV "speaking mirror" (habit rates, the before-and-after check of the habits you practise against the one you don't, live sync) and Alexa+ practice (next line, re-say it, graded by Bee, schedule updated). Its contract, with example payloads for every endpoint and event, is [`docs/CONTRACT.md`](docs/CONTRACT.md).
+The hub is the single state behind every surface: Spee on Fire TV (habit rates, the before-and-after check of the habits you practise against the one you don't, live sync) and Alexa+ practice (next line, re-say it, graded by Bee, schedule updated). Its contract, with example payloads for every endpoint and event, is [`docs/CONTRACT.md`](docs/CONTRACT.md).
 
 ```bash
 npm run hub                     # live: real gitignored data, spawned `bee stream`, Bee CLI fallback poll (port 8791)
@@ -116,7 +116,7 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
   - The server (`server.ts`), the public-access gate (`gate.ts`) and static pages (`static.ts`).
   - `live/`: the realtime coach (`window.ts`, `rules.ts`, `policy.ts`, `wrist.ts`, `recap.ts`, `engine.ts`).
 - `src/alexa/` and `alexa/`: the Alexa skill handler and its skill package. `src/mcp/`: the MCP server and its loopback hub client.
-- `tv/web/` and `tv/vega/`: the Speaking Mirror TV app for the browser and for Vega OS (`scripts/tv-sync.ts` keeps the shared views identical).
+- `tv/web/` and `tv/vega/`: the Spee TV app for the browser and for Vega OS (`scripts/tv-sync.ts` keeps the shared views identical).
 - `web/phone/`: the phone page. `web/sim/`: the Alexa+ simulator (a browser MCP client).
 - `docs/`: the hub contract (`docs/CONTRACT.md`), `tv.md`, `alexa.md`, `live.md`, and [`poc.md`](docs/poc.md) (the proof of concept this grew from).
 - `FACTS.md`: the claims ledger that `test/claims.test.ts` checks.
@@ -127,7 +127,7 @@ Real transcripts contain other people's speech (classmates, friends, assistants)
 
 ## History: the drill-coach proof of concept
 
-Speaking Mirror started as a go/no-go proof of concept: find the wearer's real recurring speech errors in Bee data, turn them into drill cards, and check re-performance against a pre-registered undrilled control. Its real-data results are in `REAL_DATA_REPORT.md`, the meetings benchmark in `MEETINGS_REPORT.md`, and how to run it in [`docs/poc.md`](docs/poc.md). **All Bee data committed to this repository is SYNTHETIC**: the fixtures were authored by a simulator (`src/sim/`) or by hand, in the exact JSON shapes of the Bee CLI.
+Spee started as a go/no-go proof of concept: find the wearer's real recurring speech errors in Bee data, turn them into drill cards, and check re-performance against a pre-registered undrilled control. Its real-data results are in `REAL_DATA_REPORT.md`, the meetings benchmark in `MEETINGS_REPORT.md`, and how to run it in [`docs/poc.md`](docs/poc.md). **All Bee data committed to this repository is SYNTHETIC**: the fixtures were authored by a simulator (`src/sim/`) or by hand, in the exact JSON shapes of the Bee CLI.
 
 ## Private data
 

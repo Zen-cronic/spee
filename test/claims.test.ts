@@ -136,8 +136,8 @@ describe("the same words on every surface", () => {
   });
   it("the Alexa skill is called Speech Coach, and the docs say so once", () => {
     for (const locale of ["en-CA", "en-US"]) expect(JSON.parse(read(`alexa/skill-package/interactionModels/custom/${locale}.json`)).interactionModel.languageModel.invocationName).toBe("speech coach");
-    expect(read("README.md")).toContain("Speaking Mirror's Alexa skill is called Speech Coach");
-    expect(read("docs/alexa.md")).toContain("Speaking Mirror's Alexa skill is called Speech Coach");
+    expect(read("README.md")).toContain("Spee's Alexa skill is called Speech Coach");
+    expect(read("docs/alexa.md")).toContain("Spee's Alexa skill is called Speech Coach");
   });
 });
 

@@ -1,13 +1,13 @@
-# Friction log: Speaking Mirror
+# Friction log: Spee
 
-Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, Speech Coach, runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
+Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, Speech Coach, runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
 
 - **Dates covered:** 2026-10-12 to 2026-10-20. All times are EDT (UTC−4).
 - **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
 - **Severity:** Blocker (no workaround, work stopped) · High (the workaround cost more than 1 h) · Medium (the workaround cost under 1 h) · Low (cosmetic, or a docs nit).
 - **Status:** open (still present, no workaround) · worked around (still present; our workaround is in the entry) · fixed upstream (Amazon changed it).
 - **Setup:** Toronto, Canada. Canadian Apple ID and App Store; Apple Watch SE 3 (GPS, 40 mm) and iPhone; Bee app 1.2.157; `@beeai/cli` 0.8.0; no Bee hardware (it ships to the US only). Ubuntu 24.04 (x86_64, KVM) with Vega CLI 1.4.4 and Vega SDK 0.24.12112, the Vega Virtual Device (VVD), and a Fire TV Stick (`armv7l`, Vega OS 2.0) on Wi-Fi. React Native 0.83 for Vega (`@amazon-devices/react-native-kepler` ~4.0). The Alexa skill is a development-stage custom skill, tested from the Alexa iPhone app (English, Canada) and from the Fire TV's Alexa. AWS in us-east-1.
-- **An earlier Vega prototype:** entries marked "(earlier Vega prototype)" were hit while building an earlier Vega prototype for this hackathon, on the same machine, SDK and VVD, on 2026-10-14 and 2026-10-15. The Speaking Mirror TV app started from that prototype's Vega shell. Each of those entries says whether this project hit the problem again.
+- **An earlier Vega prototype:** entries marked "(earlier Vega prototype)" were hit while building an earlier Vega prototype for this hackathon, on the same machine, SDK and VVD, on 2026-10-14 and 2026-10-15. The Spee TV app started from that prototype's Vega shell. Each of those entries says whether this project hit the problem again.
 - **Left out on purpose:** device addresses and serials; account, skill and agreement ids; and anyone else's words. Bee conversation ids can be shared with the Bee team on request.
 
 | ID | Product | Title | Severity | Status |
@@ -236,7 +236,7 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Date:** 2026-10-20 14:19 EDT (observed once, not re-checked)
 - **Task attempted:** start a drill by voice from the Fire TV, with the Speech Coach development skill enabled for testing on the same Amazon account as the Fire TV.
 - **Steps taken:**
-  1. The Speaking Mirror app on the stick showed the prompt "Alexa, quiz me".
+  1. The Spee app on the stick showed the prompt "Alexa, quiz me".
   2. Said "Alexa, quiz me" to the Fire TV.
 - **Expected result (our assumption):** with "quiz me" as a sample of the skill's `StartDrillIntent`, the enabled skill would answer.
 - **Actual result:** Alexa started its own quiz. A custom skill answers only when it is named, so our prompt was wrong.
@@ -246,14 +246,14 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 
 ### FL-13: On a Fire TV, a speech-only skill response replaces the app on screen with a plain "Speech Coach" card for a few seconds (Alexa on Fire TV / APL)
 - **Date:** 2026-10-20 14:26 EDT (observed once, not re-checked)
-- **Task attempted:** run a voice drill while Speaking Mirror stays on the TV, so that the viewer sees the drill in the TV app.
+- **Task attempted:** run a voice drill while Spee stays on the TV, so that the viewer sees the drill in the TV app.
 - **Steps taken:**
-  1. Speaking Mirror running on the stick.
+  1. Spee running on the stick.
   2. "Alexa, ask Speech Coach to quiz me." The skill answered with speech and a reprompt, and no APL directive.
 - **Expected result:** the app stays visible behind Alexa, or the Fire TV docs say what a speech-only response shows.
 - **Actual result:** the screen showed only the text "Speech Coach" while the skill spoke and listened, and the app came back only a few seconds later.
 - **Severity:** Medium
-- **Workaround used (about 35 min, from the go-ahead at 14:27 to the first commits at 15:01):** every turn with something to show now sends an `Alexa.Presentation.APL.RenderDocument` with one of five Speaking Mirror screens ([`alexa/apl/speaking-mirror.json`](alexa/apl/speaking-mirror.json)), only when `supportedInterfaces` lists `Alexa.Presentation.APL`, and a response that ends the session sets `settings.idleTimeout` to 6 s. Redeployed to the development skill (both locales `SUCCEEDED`). Not yet seen on the Fire TV: the hub now logs one `alexa.device` line per kind of device, to record what the Fire TV reports ([docs/alexa.md](docs/alexa.md), "Screens (APL)").
+- **Workaround used (about 35 min, from the go-ahead at 14:27 to the first commits at 15:01):** every turn with something to show now sends an `Alexa.Presentation.APL.RenderDocument` with one of five Spee screens ([`alexa/apl/speaking-mirror.json`](alexa/apl/speaking-mirror.json)), only when `supportedInterfaces` lists `Alexa.Presentation.APL`, and a response that ends the session sets `settings.idleTimeout` to 6 s. Redeployed to the development skill (both locales `SUCCEEDED`). Not yet seen on the Fire TV: the hub now logs one `alexa.device` line per kind of device, to record what the Fire TV reports ([docs/alexa.md](docs/alexa.md), "Screens (APL)").
 - **Actionable suggestion:** document on the APL and Fire TV pages what a speech-only skill response shows on Fire TV and for how long, and give a skill a way to keep the foreground app visible during a voice exchange.
 
 ### FL-14: Inside a skill session, "how did I do" arrives in the catch-all slot instead of its own intent (Alexa Skills Kit)
@@ -360,7 +360,7 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 - **Expected result:** the documented Metro extension point composes with Vega's platform resolution, or the build fails when the bundle has no Kepler runtime; and a JS crash logs its message.
 - **Actual result:** the custom resolver replaced the out-of-tree platform mapping (`react-native` → `@amazon-devices/react-native-kepler` on platform `kepler`). The release build succeeded with the wrong React Native, and the app aborted on its JS thread with no actionable message. Separately, on 2026-10-15 the app's JS context restarted once, 3 s into an audio clip, with nothing in any log (observed once; not reproduced in three later full runs).
 - **Severity:** Medium (about 40 min, including the crash diagnosis)
-- **Workaround used:** re-apply the mapping inside the custom resolver (`if (platform === 'kepler') moduleName = '@amazon-devices/react-native-kepler'`), plus `nodeModulesPaths` for files outside the app. Speaking Mirror avoids the problem: its Vega app uses the default Metro config, and its release sourcemap has 15 `@amazon-devices/react-native-kepler` modules and 0 core `react-native` modules ([docs/tv.md](docs/tv.md), "Bundle check").
+- **Workaround used:** re-apply the mapping inside the custom resolver (`if (platform === 'kepler') moduleName = '@amazon-devices/react-native-kepler'`), plus `nodeModulesPaths` for files outside the app. Spee avoids the problem: its Vega app uses the default Metro config, and its release sourcemap has 15 `@amazon-devices/react-native-kepler` modules and 0 core `react-native` modules ([docs/tv.md](docs/tv.md), "Bundle check").
 - **Actionable suggestion:** make `build-vega` assert that the bundle contains the Kepler runtime ("react-native resolved to core RN; a custom resolveRequest may override the Vega platform resolver"); document the composition pattern on the Metro and monorepo page; log an uncaught JS exception (message and first frames) before aborting; and let `vega device copy-logs` fetch the app's own crash reports on the VVD.
 
 ### FL-21: `vega run-app` prints "Successfully launched" when the new build is not what is running, and `is-app-installed` says "not installed" for the package name (Vega CLI)
@@ -378,7 +378,7 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 
 ### FL-22: Connecting a real Fire TV Stick to the dev machine: "No devices found" over USB, then "Connection refused" over Wi-Fi until Connection Mode is TCP/IP (Fire TV Stick / Vega CLI)
 - **Date:** 2026-10-20 14:01–14:13 EDT (observed once, not re-checked)
-- **Task attempted:** install Speaking Mirror on a Fire TV Stick (Vega OS 2.0) in developer mode, plugged into a monitor's HDMI port and powered from a wall adapter.
+- **Task attempted:** install Spee on a Fire TV Stick (Vega OS 2.0) in developer mode, plugged into a monitor's HDMI port and powered from a wall adapter.
 - **Steps taken:**
   1. Connected a USB-C cable from the laptop to the monitor and ran `vega device list` → `No devices found`. `lsusb` showed no Lab126 device: the cable reached the monitor, not the stick.
   2. The stick's only USB-C port is its power port, already used by the wall adapter, so there was no free port for data.
@@ -392,7 +392,7 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
 
 ### FL-23: The manifest docs call `[package] icon` required and describe only the Settings icon; the build's validator calls it optional, and our app shipped without one (Vega manifest)
 - **Date:** 2026-10-20 ~15:30 EDT (noticed); re-checked with a fresh build at 17:22 EDT
-- **Task attempted:** give the Speaking Mirror TV app its own launcher tile, using the new logo.
+- **Task attempted:** give the Spee TV app its own launcher tile, using the new logo.
 - **Steps taken:**
   1. [`tv/vega/manifest.toml`](tv/vega/manifest.toml) (from the earlier prototype's Vega shell) has no `icon` line. We first concluded the manifest had no icon slot.
   2. Re-check: the [manifest `[package]` page](https://developer.amazon.com/docs/vega/0.24/manifest-package) says "icon (string, required): Image file to be used as the icon for the app within the Settings -> Applications -> Managed Installed Applications screen", a 512x512 PNG of at most 1 MB under `assets/image`.
@@ -410,7 +410,7 @@ Speaking Mirror is a speaking coach. Bee, on an Apple Watch, hears your real con
   1. A label `Text` with `letterSpacing: 3` nested inside a paragraph `Text`: on Vega the whole paragraph took the wide tracking; on the web only the label did.
   2. A view whose style switched from a plain style to an `Animated` style (opacity and translate, `useNativeDriver: true`) in the same render that started the animation stayed invisible on Vega.
   3. Very large heavy text (`fontSize: 200`, `fontWeight: '900'`) whose start sat on the safe-zone edge lost the left third of its first glyph on Vega; removing `letterSpacing: -6` did not fix it.
-  4. In Speaking Mirror (2026-10-19), negative letter spacing on light numerals drew a sliver on Vega.
+  4. In Spee (2026-10-19), negative letter spacing on light numerals drew a sliver on Vega.
 - **Expected result:** the same rendering as react-native-web, or a dev-build warning.
 - **Actual result:** the differences above, found only on device captures, not by jest or `tsc`.
 - **Severity:** Low (cosmetic, but on the most important numbers on the screen)
