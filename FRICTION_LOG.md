@@ -1,5 +1,7 @@
 # Friction log: Spee
 
+Spee was called Speaking Mirror until 2026-10-21; the entries before that date use the new name.
+
 Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, Speech Coach, runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
 
 - **Dates covered:** 2026-10-12 to 2026-10-20. All times are EDT (UTC−4).
