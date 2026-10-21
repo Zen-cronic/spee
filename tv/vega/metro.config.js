@@ -1,7 +1,7 @@
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
 /**
- * Speaking Mirror on Vega.
+ * Spee on Vega.
  *
  * The hub protocol client (tv-voice-bridge, the vendored tarball in ../../vendor) is an
  * ordinary dependency, so Metro resolves its built dist/ inside this project and needs no custom

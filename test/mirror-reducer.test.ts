@@ -1,4 +1,4 @@
-// The Speaking Mirror reducer (tv/web/src/mirror/reducer.ts, synced verbatim to tv/vega): seq
+// The TV app's reducer (tv/web/src/mirror/reducer.ts, synced verbatim to tv/vega): seq
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";

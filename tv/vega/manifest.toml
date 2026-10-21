@@ -1,7 +1,7 @@
 schema-version = 1
 
 [package]
-title = "Speaking Mirror"
+title = "Spee"
 version = "0.1.0"
 id = "com.beecoach.mirror"
 

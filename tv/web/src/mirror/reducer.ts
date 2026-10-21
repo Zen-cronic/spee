@@ -1,4 +1,4 @@
-// Speaking Mirror state. Pure: no React, no I/O, no clock reads (every action carries `now`), so it
+// The TV app's state. Pure: no React, no I/O, no clock reads (every action carries `now`), so it
 // runs the same on the web TV, on Vega and in the unit tests (test/mirror-reducer.test.ts).
 //
 // Sequenced hub events are applied in `seq` order and duplicates are dropped. An event that

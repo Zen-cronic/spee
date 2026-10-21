@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defaultClientConditions, defineConfig } from 'vite';
 
-// The web build of the Speaking Mirror. react-native-web stands in for react-native, so the views
+// The web build of Spee on the TV. react-native-web stands in for react-native, so the views
 // use RN primitives only and sync verbatim into the Vega app (npm run tv:sync).
 // Served by the hub at /tv/ (npm run tv:web:build); `npm run tv:web:dev` proxies to the hub on 8791.
 export default defineConfig({

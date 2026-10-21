@@ -14,7 +14,7 @@ import { TransferView } from './TransferView';
 import { WeekView } from './WeekView';
 
 /**
- * The Speaking Mirror: one hub connection, five screens, the recap overlay. Shared verbatim by the
+ * Spee on the TV: one hub connection, five screens, the recap overlay. Shared verbatim by the
  * web TV and the Vega app; the platform passes its MirrorConfig. Screens switch by themselves on
  * hub events; the remote's tabs (row 0) and Left/Right at the row ends switch them by hand.
  */

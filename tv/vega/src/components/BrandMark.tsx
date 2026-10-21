@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { C } from '../theme';
 
 /**
- * The Speaking Mirror mark, "two voices": your speech bubble and its reflection (the one Bee
+ * The Spee mark, "two voices": your speech bubble and its reflection (the one Bee
  * checked, in the bee colour) across a mirror bar, the reflection sitting lower (call and answer).
  * Plain Views, no SVG, so it is the same on the web TV and on Vega.
  *

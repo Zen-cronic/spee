@@ -42,8 +42,8 @@ describe('Vega platform config and display helpers', () => {
     expect(verdictTone('rose')).toBe('bad');
   });
   it('carries the product name and contract v2', () => {
-    expect(PRODUCT_NAME).toBe('Speaking Mirror');
-    expect(WORDMARK).toBe('SPEAKING MIRROR');
+    expect(PRODUCT_NAME).toBe('Spee');
+    expect(WORDMARK).toBe('SPEE');
     expect(CONTRACT_VERSION).toBe(2);
     expect(ROOM_TOPICS).toEqual(['practice.meters']);
   });

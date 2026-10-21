@@ -20,15 +20,18 @@ describe("Speaking Mirror branding", () => {
     const hits = files.filter((f) => /rack\s*board/i.test(readFileSync(f, "utf8")));
     expect(hits.map((f) => f.slice(ROOT.length))).toEqual([]);
   });
-  it("the Vega package is com.beecoach.mirror, titled Speaking Mirror", () => {
+  it("the Vega package is com.beecoach.mirror, titled Spee", () => {
     const manifest = readFileSync(join(ROOT, "tv/vega/manifest.toml"), "utf8");
-    expect(manifest).toMatch(/title = "Speaking Mirror"/);
+    expect(manifest).toMatch(/title = "Spee"/);
     expect(manifest).toMatch(/id = "com\.beecoach\.mirror"/);
     expect(manifest).toMatch(/id = "com\.beecoach\.mirror\.main"/);
-    expect(JSON.parse(readFileSync(join(ROOT, "tv/vega/app.json"), "utf8")).name).toBe("com.beecoach.mirror.main");
+    const app = JSON.parse(readFileSync(join(ROOT, "tv/vega/app.json"), "utf8"));
+    expect(app.name).toBe("com.beecoach.mirror.main");
+    expect(app.displayName).toBe("Spee");
     expect(manifest).not.toMatch(/w3cmedia|media\.server/); // the mirror is silent: no media player
   });
-  it("the wordmark is Speaking Mirror on the TV and the phone", () => {
-    for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts", "web/phone/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Speaking Mirror["']/);
+  it("the wordmark is Spee on the TV and Speaking Mirror on the phone", () => {
+    for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Spee["']/);
+    expect(readFileSync(join(ROOT, "web/phone/src/brand.ts"), "utf8")).toMatch(/PRODUCT_NAME = ["']Speaking Mirror["']/);
   });
 });
