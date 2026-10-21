@@ -44,8 +44,9 @@ const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp,
 // Every spawned hub is killed when this script exits, whether the checks passed, failed or threw.
 const spawned: ChildProcess[] = [];
 process.on("exit", () => spawned.forEach((c) => c.exitCode === null && c.kill("SIGKILL")));
+// Loopback only: the checks talk to it from this machine, so nothing on the LAN can reach a check hub.
 const startHub = (args: string[]): { child: ChildProcess; port: Promise<number> } => {
-  const c = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", ...args], { stdio: ["ignore", "pipe", "inherit"], env: hubEnv });
+  const c = spawn(process.execPath, ["--import", "tsx", "src/hub/server.ts", "--demo", "--port", "0", "--host", "127.0.0.1", ...args], { stdio: ["ignore", "pipe", "inherit"], env: hubEnv });
   spawned.push(c);
   return { child: c, port: listeningPort(c) };
 };

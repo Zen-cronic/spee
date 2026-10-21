@@ -249,7 +249,7 @@ describe("fixture mode (--demo --fixture-v2)", () => {
   });
   it("needs demo mode", async () => {
     const setup = demoSetup({ pace: 0.01, stateDir: null });
-    await expect(startHubServer({ maskTerms: [], port: 0, quiet: true, setup: { ...setup, demo: null }, fixtureV2: true })).rejects.toThrow(/--demo/);
+    await expect(startHubServer({ maskTerms: [], port: 0, host: "127.0.0.1", quiet: true, setup: { ...setup, demo: null }, fixtureV2: true })).rejects.toThrow(/--demo/);
     setup.stop();
   });
   it("answers the live routes from fixtures/contract-v2/", async () => {
