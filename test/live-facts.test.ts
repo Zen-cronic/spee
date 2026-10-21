@@ -6,7 +6,7 @@
 import { mkdtempSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BEE_MEMORY_NOTE, type Attempt } from "../src/hub/contract.js";
 import type { HubEvent } from "../src/hub/core.js";
 import { PLANTED_OTHER_MARKER } from "../src/hub/live/demoScripts.js";
@@ -17,6 +17,7 @@ import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type ExecFn } from "../src/hub/live/wrist.js";
 import type { PluginCtx } from "../src/hub/plugin.js";
 import { demoSetup, type Setup } from "../src/hub/setup.js";
+import { beeMemoryLine } from "../tv/web/src/mirror/format.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
 const timeoutErr = (what: string) => Object.assign(new Error(`Command failed: bee ${what}`), { killed: true, signal: "SIGTERM" });
@@ -571,6 +572,70 @@ describe("the breaker", () => {
     expect(engine!.state().wrist).toMatchObject({ healthy: true, failures: 0, circuitOpenUntil: null });
     expect(events.some((e) => e.topic === "live.mode" && (e.payload as any).mode?.reason === "wrist-down")).toBe(false);
     expect(await wrist!.send({ kind: "nudge", refId: "n1", text: "[coach] 4 unsure words in 2 minutes. Say it plainly." })).toMatchObject({ status: "scheduled" });
+  });
+  it("failed count reads never make a saved goal read as not saved, across ticks and when the breaker closes", async () => {
+    const h = hub(); // before the fake timers: only Bee memory's own timers are faked
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
+    try {
+      let down = false;
+      const bee = fakeBee({ hook: (a) => (down && a[0] !== "todos" ? exitErr("Error: not authenticated") : null) });
+      let changes = 0;
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-counts-down-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9, onChange: () => changes++ });
+      f.start();
+      stops.push(() => f.stop());
+      pass(h);
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+      down = true; // e.g. the Bee CLI's login expired
+      await f.tick(); // insights (1) and facts (2) fail; the goal needs no call
+      await f.tick(); // 6 h later: insights fails (3) and the breaker opens
+      expect(f.circuitOpenUntil()).not.toBeNull();
+      const m = f.memory();
+      expect(m).toMatchObject({ status: "synced", stopped: false, goal: { factId: "901", confirmed: true } });
+      expect(beeMemoryLine(m)!.text).toMatch(/^Your speaking goal is saved in Bee as a confirmed fact/);
+      const n = changes;
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1);
+      expect(f.circuitOpenUntil()).toBeNull();
+      expect(f.memory().status).toBe("synced");
+      expect(changes).toBe(n); // the status never changed, so nothing is re-sent
+      f.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("before any goal, the open breaker reads as failed, and its close reaches the screens (stop() clears that timer)", async () => {
+    const h = hub();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
+    try {
+      let down = true;
+      const bee = fakeBee({ hook: (a) => (down && a[0] !== "todos" ? new Error("bee: 503 Service Unavailable") : null) });
+      let changes = 0;
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-close-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9, onChange: () => changes++ });
+      f.start();
+      stops.push(() => f.stop());
+      await f.tick();
+      await f.tick(); // three failed count reads: the breaker opens before any pass
+      expect(f.memory()).toMatchObject({ status: "failed", stopped: false, goal: null });
+      expect(changes).toBe(1);
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS - 1);
+      expect(changes).toBe(1);
+      await vi.advanceTimersByTimeAsync(1); // it closes: no call, and the screens hear of it
+      expect(f.memory()).toMatchObject({ status: "pending", goal: null });
+      expect(changes).toBe(2);
+      expect(bee.factCalls()).toHaveLength(3);
+      down = true;
+      await f.tick(); // a fourth failure opens it again at once
+      expect(f.memory().status).toBe("failed");
+      expect(changes).toBe(3);
+      f.stop();
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1);
+      expect(changes).toBe(3);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

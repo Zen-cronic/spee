@@ -1025,7 +1025,7 @@ The coach's one goal fact in Bee, and Bee's insight and fact counts (`BeeMemory`
 - `"demo"`: nothing is written; `goal` is the text the coach would write (`factId: null`).
 - `"pending"`: on, no confirmed goal fact yet (it is written after the first Bee-verified pass).
 - `"synced"`: the goal fact exists in Bee, confirmed, with this text.
-- `"failed"`: the last write failed, a create Bee does not list yet or never listed (looked for at most 5 times, never made again), or the facts breaker is open (3 failed calls, 30 min). Live coaching is not affected.
+- `"failed"`: the last write failed, a create Bee does not list yet or never listed (looked for at most 5 times, never made again), or the facts breaker is open (3 failed calls, 30 min) while no confirmed goal fact is in Bee. Failed count reads never turn a `"synced"` goal into `"failed"`. Live coaching is not affected.
 
 `stopped` (additive, always sent) tells the failures apart. It is `true` only when the status is `"failed"` because the coach stopped looking for a create Bee never listed: nothing tries it again on its own, also after a restart, until the operator follows the reset steps in [live.md](live.md) "Bee memory". It is `false` for every other status and for every failure the hub tries again (a failed write, a look still due, the open breaker). A hub from before the field sends no `stopped`; a screen reads that as `false`.
 

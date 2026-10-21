@@ -21,7 +21,8 @@
 // `stopped` until the operator clears it. Every call, the goal's and the count read's, runs on one
 // chain: serialized, 1.5 s apart, 10 s timeout each. Its own breaker (3 consecutive failed calls
 // open it for 30 min; a look that falls due meanwhile runs when it closes) never touches the wrist,
-// so live coaching carries on.
+// so live coaching carries on. It reads as "failed" only while no confirmed goal is in Bee (failed
+// count reads never make a saved goal read as not saved), and its close re-sends the status.
 import { join } from "node:path";
 import { readJsonSafe, writeJsonAtomic } from "../atomic.js";
 import { BEE_MEMORY_NOTE, type Attempt, type BeeMemory } from "../contract.js";
@@ -175,6 +176,7 @@ export class BeeFacts {
   private timers: NodeJS.Timeout[] = [];
   private statsTimer: NodeJS.Timeout | null = null;
   private lookTimer: NodeJS.Timeout | null = null;
+  private breakerTimer: NodeJS.Timeout | null = null;
   private unsubscribe: (() => void) | null = null;
   private closed = false; // stop() ran: this instance makes no more calls (not BeeMemory.stopped)
   private saveFailed = false;
@@ -220,9 +222,33 @@ export class BeeFacts {
     }
     const L = this.ledger;
     const gaveUp = L.pendingCreate?.nextLookAt === null; // a create Bee never listed: not made again, and nothing retries it
-    const status: BeeMemory["status"] = this.circuitOpenUntil() != null || this.goalError || gaveUp ? "failed" : L.goal && L.goal.confirmed && !L.pendingCreate ? "synced" : "pending";
     const goal = L.goal ? { factId: L.goal.factId, text: L.goal.text, confirmed: L.goal.confirmed, updatedAt: L.goal.updatedAt } : L.pendingCreate ? { factId: null, text: L.pendingCreate.text, confirmed: false, updatedAt: null } : null;
-    return { ...base, enabled: true, status, goal, insights: L.insights, facts: L.facts, stopped: gaveUp };
+    return { ...base, enabled: true, status: this.liveStatus(this.circuitOpenUntil() != null), goal, insights: L.insights, facts: L.facts, stopped: gaveUp };
+  }
+
+  // "failed" is about the goal: a write or a look that failed, or a create the coach gave up on. The
+  // open breaker (`open`) makes it "failed" only while no confirmed goal is in Bee, so failed count
+  // reads never make a saved goal read as not saved.
+  private liveStatus(open: boolean): BeeMemory["status"] {
+    const L = this.ledger;
+    if (this.goalError || L.pendingCreate?.nextLookAt === null) return "failed";
+    if (L.goal && L.goal.confirmed && !L.pendingCreate) return "synced";
+    return open ? "failed" : "pending";
+  }
+
+  // The breaker closes with no call, so a status it held at "failed" changes silently: a timer at its
+  // close tells the screens (onChange), as a change after a call does.
+  private watchBreaker(until: number) {
+    if (this.closed) return;
+    if (this.breakerTimer) clearTimeout(this.breakerTimer);
+    this.breakerTimer = setTimeout(() => {
+      this.breakerTimer = null;
+      if (this.closed) return;
+      const open = this.circuitOpenUntil();
+      if (open != null) return this.watchBreaker(open); // it fired early
+      if (this.liveStatus(true) !== this.liveStatus(false)) this.o.onChange?.();
+    }, Math.max(0, until - this.now()));
+    this.breakerTimer.unref?.();
   }
 
   start() {
@@ -245,6 +271,7 @@ export class BeeFacts {
     for (const t of this.timers) clearTimeout(t);
     if (this.statsTimer) clearTimeout(this.statsTimer);
     if (this.lookTimer) clearTimeout(this.lookTimer);
+    if (this.breakerTimer) clearTimeout(this.breakerTimer);
     this.timers = [];
   }
 
@@ -310,6 +337,7 @@ export class BeeFacts {
       if (this.failures >= (this.o.breakerThreshold ?? FACTS_BREAKER_THRESHOLD) && this.circuitOpenUntil() == null) {
         this.openUntil = this.now() + (this.o.breakerOpenMs ?? FACTS_BREAKER_OPEN_MS);
         this.log("facts.circuit.open", { failures: this.failures, until: this.openUntil });
+        this.watchBreaker(this.openUntil);
       }
       throw e;
     } finally {
