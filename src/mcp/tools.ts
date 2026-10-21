@@ -3,8 +3,8 @@
 // route's JSON as structuredContent; a route answering >= 400 (or an unreachable hub) is isError.
 // Narration is deterministic: no model call in a tool.
 import { z } from "zod";
-import { MCP_TOOLS, type McpToolName, type RecapList, type StatsResponse, type TransferResponse } from "../hub/contract.js";
-import type { HubClient, HubResult, SessionEndResponse } from "./hubClient.js";
+import { MCP_TOOLS, type McpToolName, type RecapList, type SessionSummary, type StatsResponse, type TransferResponse } from "../hub/contract.js";
+import type { HubClient, HubResult } from "./hubClient.js";
 import { HABIT_NAME, habitTitle, PER_100_GLOSS } from "../hub/habitNames.js";
 
 export interface ToolOutcome {
@@ -27,10 +27,13 @@ const outcome = (route: string, result: HubResult<unknown>, ok: (b: any) => stri
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 // Each line once, as the TV's Round over counts it (a line missed and then passed on a retry is one
-// line passed, never two tries).
-export function summaryText(s: SessionEndResponse["summary"]): string {
+// line passed, never two tries). The MCP server is its own process and may talk to an older hub,
+// which sends no `lines`: then its counts are tries, and the sentence says so (as the TV's tally does).
+type SummaryIn = Omit<SessionSummary, "lines"> & Partial<Pick<SessionSummary, "lines">>;
+export function summaryText(s: SummaryIn | null | undefined): string {
   if (!s) return "You're not practising right now.";
   const l = s.lines;
+  if (!l) return `Practice done: ${s.passed} of ${s.counted} ${s.counted === 1 ? "try" : "tries"} passed, checked by Bee${s.unverified ? `, ${s.unverified} Bee didn't confirm` : ""}${s.pending ? `, ${s.pending} still waiting for Bee` : ""}.`;
   return `Practice done: ${l.passed} of ${s.cards} line${s.cards === 1 ? "" : "s"} passed, checked by Bee${l.unverified ? `, ${l.unverified} Bee didn't confirm` : ""}${l.pending ? `, ${l.pending} still waiting for Bee` : ""}${l.untried ? `, ${l.untried} not tried` : ""}.`;
 }
 export function statsText(s: StatsResponse): string {

@@ -11,6 +11,7 @@ import { startHubServer, type HubServer } from "../src/hub/server.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { HubClient } from "../src/mcp/hubClient.js";
 import { createMcpPlugin } from "../src/mcp/plugin.js";
+import { summaryText } from "../src/mcp/tools.js";
 import { raw } from "./helpers-http.js";
 
 const MCP = "mcp-token-for-tests-00001";
@@ -216,5 +217,18 @@ describe("/mcp HTTP behaviour", () => {
   it("health reports the mcp plugin ready", async () => {
     const hh = JSON.parse((await raw(s.port, "/api/health")).text);
     expect(hh.plugins.find((p: any) => p.name === "mcp")).toMatchObject({ owner: "MCP server", status: "ready", routes: ["POST /mcp", "GET /mcp", "DELETE /mcp"] });
+  });
+});
+
+describe("the round's narration (summaryText)", () => {
+  // line A missed, then passed on a retry; line B missed: three tries, two lines
+  const round = { sessionId: "ses_1", by: "mcp", startedAt: 0, endedAt: 1, cards: 2, attempts: 3, counted: 3, passed: 1, failed: 2, unverified: 0, pending: 0, beeOverrules: 0, perCard: [] };
+  it("counts each line once, as the TV's Round over does", () => {
+    expect(summaryText({ ...round, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toBe("Practice done: 1 of 2 lines passed, checked by Bee.");
+  });
+  it("an older hub sends no `lines`: it narrates the tries and says they are tries, never throws", () => {
+    expect(summaryText(round)).toBe("Practice done: 1 of 3 tries passed, checked by Bee.");
+    expect(summaryText({ ...round, cards: 1, attempts: 3, counted: 1, failed: 0, unverified: 1, pending: 1 })).toBe("Practice done: 1 of 1 try passed, checked by Bee, 1 Bee didn't confirm, 1 still waiting for Bee.");
+    expect(summaryText(null)).toBe("You're not practising right now.");
   });
 });
