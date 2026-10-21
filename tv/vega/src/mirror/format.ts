@@ -444,7 +444,8 @@ export function roundHeadline(s: Pick<SessionSummary, 'cards' | 'passed'> & Part
  * The Round over tally under the headline, per line like it and the segments: "1 passed, 1 not yet"
  * (zero parts left out; Bee's calls are tagged on the last line). A line missed and then passed on
  * a retry is one line passed. An older hub sends no `lines`, so its counts are tries, and the tally
- * says so: "3 tries: 1 passed, 2 not yet".
+ * says so: "3 tries: 1 passed, 2 not yet". The phone's "Session over" line is this tally, and the
+ * voice surfaces say the same words (src/hub/roundWords.ts; test/round-words.test.ts).
  */
 export function roundTally(s: Pick<SessionSummary, 'passed' | 'failed' | 'unverified' | 'pending'> & Partial<Pick<SessionSummary, 'lines'>>): string {
   const words = (c: { passed: number; failed: number; unverified: number; pending: number }) => sessionTally('Round', { passed: c.passed, failed: c.failed, unverified: c.unverified, pending: c.pending }).replace(/^Round: /, '').replace(/\.$/, '');

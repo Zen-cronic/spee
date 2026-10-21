@@ -70,15 +70,15 @@ describe("mic check verdict", () => {
 });
 
 describe("sessionOverLine (review M20)", () => {
-  it("matches the TV's session summary wording", () => {
-    expect(sessionOverLine({ passed: 2, failed: 1, unverified: 0, beeOverrules: 1 })).toBe("Session over: 2 passed, 1 failed, 0 unverified, Bee overruled 1.");
+  it("matches the TV's session summary wording (an older hub's counts are tries, and it says so)", () => {
+    expect(sessionOverLine({ passed: 2, failed: 1, unverified: 0, beeOverrules: 1 })).toBe("Session over, 3 tries: 2 passed, 1 not yet, Bee overruled 1 try.");
     expect(sessionOverLine(null)).toBe("Session over.");
-    expect(sessionOverLine({ passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over: 0 passed, 0 failed, 0 unverified, 1 still with Bee.");
+    expect(sessionOverLine({ passed: 0, failed: 0, unverified: 0, pending: 1 })).toBe("Session over, 1 try: 0 passed, 1 still with Bee.");
   });
   it("counts each line once, as the TV's Round over does: a retried line is one line (review L164)", () => {
     // line A missed, then passed on a retry; line B missed; line C opened and never said
     const s = { cards: 3, passed: 1, failed: 2, unverified: 0, pending: 0, beeOverrules: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 1 } };
-    expect(sessionOverLine(s)).toBe("Session over: 1 passed, 1 failed, 0 unverified, 1 not tried, Bee overruled 2 tries.");
+    expect(sessionOverLine(s)).toBe("Session over: 1 passed, 1 not yet, 1 not tried, Bee overruled 2 tries.");
     expect(sessionOverLine({ ...s, beeOverrules: 1 })).toMatch(/, Bee overruled 1 try\.$/);
   });
 });

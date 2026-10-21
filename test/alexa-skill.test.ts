@@ -76,11 +76,13 @@ describe("the round's summary", () => {
     expect(summaryLine({ counted: 1, attempts: 1, cards: 1, lines: { ...none, passed: 1 } })).toBe("That's the round: 1 of 1 line passed, checked by Bee");
     expect(summaryLine({ counted: 0, attempts: 0, cards: 0, lines: none })).toBe("That's the round");
     expect(summaryLine({ counted: 0, attempts: 2, cards: 1, lines: { ...none, unverified: 1 } })).not.toMatch(/today/i);
+    // no line Bee checked: never "checked by Bee" (the TV's words, as MCP says it)
+    expect(summaryLine({ counted: 0, attempts: 2, cards: 1, lines: { ...none, unverified: 1 } })).toBe("Bee didn't check any line this round (1 Bee didn't catch)");
   });
   it("counts each line once, as the TV's Round over does: a retried line is one line (review L164)", () => {
     // line A missed, then passed on a retry; line B missed: 2 lines, 3 tries Bee graded
     const s = { counted: 3, attempts: 3, cards: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } };
-    expect(summaryLine(s)).toBe("That's the round: 1 of 2 lines passed, checked by Bee");
+    expect(summaryLine(s)).toBe("That's the round: 1 of 2 lines passed, checked by Bee (1 not yet)");
   });
 });
 
@@ -142,7 +144,7 @@ describe("two-turn drill", () => {
     const v = await handleAlexa(env("how-did-i-do", { attrs: att.envelope.sessionAttributes }), r.deps);
     expect(Date.now() - t0).toBeLessThan(7000);
     expect(r.spoken).toEqual([SPEECH.checking]);
-    expect(text(v)).toMatch(/^Nice, Bee heard it\. (Next, say: ".+"|That's the round: \d+ of \d+ lines passed, checked by Bee\.)$/);
+    expect(text(v)).toMatch(/^Nice, Bee heard it\. (Next, say: ".+"|That's the round: \d+ of \d+ lines? passed, checked by Bee( \([^)]*\))?\.)$/);
   });
 
   it("a fail names the rule Bee's line broke and asks again; HowDidIDo from the catch-all finds the attempt itself", async () => {

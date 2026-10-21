@@ -10,6 +10,7 @@
 // On a device with a screen (Fire TV, Echo Show) each turn also renders a Speaking Mirror screen
 // (./apl.ts); the speech, the reprompts and the timing are the same with or without one.
 import type { CardView, SessionSummary, VerdictResponse } from "../hub/contract.js";
+import { roundLineWords } from "../hub/roundWords.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
 import { clampMinutes, routeRequest, type Routed } from "./route.js";
 import { EMPTY, checkingScreen, drillScreen, emptyScreen, progressScreen, renderDirective, supportsApl, verdictScreen, type Screen } from "./apl.js";
@@ -246,18 +247,18 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   return { envelope, routed, hubCalls };
 }
 
-type RoundEnd = Pick<SessionSummary, "counted" | "attempts" | "cards" | "lines">;
-// Each line once, as the TV's Round over counts it: "1 of 2 lines passed" (a line missed and then
-// passed on a retry is one line passed, never two tries).
-const linesPassed = (s: RoundEnd) => `${s.lines.passed} of ${s.cards} line${s.cards === 1 ? "" : "s"} passed`;
+type RoundEnd = Pick<SessionSummary, "counted" | "attempts" | "cards" | "lines"> & Partial<SessionSummary>;
+// The round in the TV's words (roundLineWords), each line once as Round over counts it: "1 of 2
+// lines passed, checked by Bee (1 not yet)" (a line missed and then passed on a retry is one line
+// passed, never two tries). A round with no line Bee checked says so, never "checked by Bee".
 
 /** The end of a round, on a screen. */
 export function summaryScreen(s: RoundEnd): Screen {
-  if (!s.counted) return emptyScreen("That’s the round.", s.attempts ? "Bee didn’t confirm any of those this time." : "");
-  return emptyScreen("That’s the round.", `${linesPassed(s)}, checked by Bee.`);
+  return emptyScreen("That’s the round.", s.cards ? `${roundLineWords(s).said}.`.replace(/'/g, "’") : "");
 }
 
 export function summaryLine(s: RoundEnd): string {
-  if (!s.counted) return s.attempts ? "Bee didn't confirm any of those this time" : "That's the round";
-  return `That's the round: ${linesPassed(s)}, checked by Bee`;
+  const w = roundLineWords(s);
+  if (w.checked) return `That's the round: ${w.said}`;
+  return s.cards ? w.said : "That's the round";
 }

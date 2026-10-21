@@ -369,9 +369,10 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
   });
 
   it("the round's end: a summary screen", () => {
-    expect(summaryScreen({ counted: 3, attempts: 3, cards: 3, lines: { passed: 2, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toMatchObject({ headline: "That’s the round.", line: "2 of 3 lines passed, checked by Bee." });
+    expect(summaryScreen({ counted: 3, attempts: 3, cards: 3, lines: { passed: 2, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toMatchObject({ headline: "That’s the round.", line: "2 of 3 lines passed, checked by Bee (1 not yet)." });
     // a line missed and then passed on a retry is one line, as on the TV (review L164)
-    expect(summaryScreen({ counted: 3, attempts: 3, cards: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } }).line).toBe("1 of 2 lines passed, checked by Bee.");
+    expect(summaryScreen({ counted: 3, attempts: 3, cards: 2, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } }).line).toBe("1 of 2 lines passed, checked by Bee (1 not yet).");
+    expect(summaryScreen({ counted: 2, attempts: 2, cards: 2, lines: { passed: 2, failed: 0, unverified: 0, pending: 0, untried: 0 } }).line).toBe("2 of 2 lines passed, checked by Bee.");
     expect(summaryScreen({ counted: 0, attempts: 0, cards: 0, lines: { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 0 } }).line).toBe("");
   });
 

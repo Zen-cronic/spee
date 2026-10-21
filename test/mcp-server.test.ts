@@ -110,7 +110,7 @@ describe("MCP over Streamable HTTP (stateless)", () => {
     expect(next.structuredContent!.done).toBe(false);
     const end = await run("end_drill");
     // the second line was opened and never said: each line once, as the TV's Round over counts it
-    expect(end.content[0]!.text).toBe("Practice done: 1 of 2 lines passed, checked by Bee, 1 not tried.");
+    expect(end.content[0]!.text).toBe("Practice done: 1 of 2 lines passed, checked by Bee (1 not tried).");
     const how = await run("how_am_i_doing");
     expect(how.structuredContent!.basis).toBe("recap");
     expect(how.content[0]!.text).toBe(how.structuredContent!.narration);
@@ -224,19 +224,20 @@ describe("the round's narration (summaryText)", () => {
   // line A missed, then passed on a retry; line B missed: three tries, two lines
   const round = { sessionId: "ses_1", by: "mcp", startedAt: 0, endedAt: 1, cards: 2, attempts: 3, counted: 3, passed: 1, failed: 2, unverified: 0, pending: 0, beeOverrules: 0, perCard: [] };
   it("counts each line once, as the TV's Round over does", () => {
-    expect(summaryText({ ...round, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toBe("Practice done: 1 of 2 lines passed, checked by Bee.");
+    expect(summaryText({ ...round, lines: { passed: 1, failed: 1, unverified: 0, pending: 0, untried: 0 } })).toBe("Practice done: 1 of 2 lines passed, checked by Bee (1 not yet).");
+    expect(summaryText({ ...round, lines: { passed: 2, failed: 0, unverified: 0, pending: 0, untried: 0 } })).toBe("Practice done: 2 of 2 lines passed, checked by Bee.");
   });
   it("an older hub sends no `lines`: it narrates the tries and says they are tries, never throws", () => {
-    expect(summaryText(round)).toBe("Practice done: 1 of 3 tries passed, checked by Bee.");
-    expect(summaryText({ ...round, cards: 1, attempts: 3, counted: 1, failed: 0, unverified: 1, pending: 1 })).toBe("Practice done: 1 of 1 try passed, checked by Bee, 1 Bee didn't confirm, 1 still waiting for Bee.");
+    expect(summaryText(round)).toBe("Practice done: 1 of 2 lines passed, checked by Bee (3 tries: 1 passed, 2 not yet).");
+    expect(summaryText({ ...round, cards: 1, attempts: 3, counted: 1, failed: 0, unverified: 1, pending: 1 })).toBe("Practice done: 1 of 1 line passed, checked by Bee (3 tries: 1 passed, 1 Bee didn't catch, 1 still with Bee).");
     expect(summaryText(null)).toBe("You're not practising right now.");
   });
   it("a round with no line Bee checked never says checked by Bee", () => {
     const none = { ...round, cards: 1, attempts: 0, counted: 0, passed: 0, failed: 0 };
-    expect(summaryText({ ...none, lines: { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 1 } })).toBe("Practice done: Bee didn't check any line this round, 1 not tried.");
+    expect(summaryText({ ...none, lines: { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 1 } })).toBe("Practice done: Bee didn't check any line this round (1 not tried).");
     const uncaught = { ...none, attempts: 1, unverified: 1 };
-    expect(summaryText({ ...uncaught, lines: { passed: 0, failed: 0, unverified: 1, pending: 0, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round, 1 Bee didn't confirm.");
-    expect(summaryText({ ...uncaught, cards: 2, attempts: 2, pending: 1, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round, 1 Bee didn't confirm, 1 still waiting for Bee.");
-    expect(summaryText(uncaught)).toBe("Practice done: Bee didn't check any line this round, 1 Bee didn't confirm."); // an older hub
+    expect(summaryText({ ...uncaught, lines: { passed: 0, failed: 0, unverified: 1, pending: 0, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round (1 Bee didn't catch).");
+    expect(summaryText({ ...uncaught, cards: 2, attempts: 2, pending: 1, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round (1 Bee didn't catch, 1 still with Bee).");
+    expect(summaryText(uncaught)).toBe("Practice done: Bee didn't check any line this round (1 try: 0 passed, 1 Bee didn't catch)."); // an older hub
   });
 });
