@@ -1,6 +1,6 @@
 // Screens for Alexa devices with a display (Fire TV, Echo Show): one APL document
 // (alexa/apl/speaking-mirror.json) and the datasource for each screen. Without these, Fire TV shows
-// Alexa's own "Speech Coach" card while the skill speaks and listens.
+// Alexa's own card, with just the skill's name, while the skill speaks and listens.
 //
 // A RenderDocument directive goes out only when the request's device lists
 // context.System.device.supportedInterfaces["Alexa.Presentation.APL"]; voice-only devices get the

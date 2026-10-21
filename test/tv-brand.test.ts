@@ -44,6 +44,11 @@ describe("Spee branding", () => {
     const hits = named.filter((f) => /speaking\s+mirror/i.test(readFileSync(f, "utf8")));
     expect(hits.map((f) => f.slice(ROOT.length))).toEqual([]);
   });
+  it("every Alexa skill is listed as Spee, in every locale, whatever name it answers to", () => {
+    const listing = JSON.parse(readFileSync(join(ROOT, "alexa/skill-package/skill.json"), "utf8")).manifest.publishingInformation.locales;
+    expect(Object.keys(listing).sort()).toEqual(["en-CA", "en-US"]);
+    for (const l of Object.values(listing) as { name: string }[]) expect(l.name).toBe("Spee");
+  });
   it("the wordmark is Spee on the TV and the phone", () => {
     for (const f of ["tv/web/src/brand.ts", "tv/vega/src/brand.ts", "web/phone/src/brand.ts"]) expect(readFileSync(join(ROOT, f), "utf8")).toMatch(/PRODUCT_NAME = ["']Spee["']/);
   });
