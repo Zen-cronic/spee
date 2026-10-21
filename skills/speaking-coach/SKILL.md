@@ -1,11 +1,11 @@
 ---
 name: speaking-coach
-description: Coach the user's speaking habits (unsure words such as "I guess", and the filler "like") through the Speaking Mirror hub, which grades from the user's Bee wearable. Use when the user asks how their speaking is going, wants a warm-up before a meeting or call, asks about their speaking goal, or wants a short if-then cue on their wrist before a conversation. Also run its heartbeat every few minutes to send one wrist cue before each calendar meeting.
+description: Coach the user's speaking from their real conversations in Bee, through the Speaking Mirror hub. The hub compares their habits with their own usual, follows the pair they practise (unsure words such as "I guess", and the filler "like") and keeps one speaking goal in Bee. Use when the user asks how their speaking is going, wants a warm-up before a meeting or call, asks about their speaking goal, or wants a short if-then cue on their wrist before a conversation. Also run its heartbeat every few minutes to send one wrist cue before each calendar meeting.
 ---
 
 # Speaking coach
 
-This skill talks to the Speaking Mirror hub on the user's machine. The hub listens to Bee's live, wearer-tagged transcript, counts two practised habits (unsure words and the filler "like"), and reaches the wrist through Bee to-dos with alarms. Each command below is one call to the hub, and the script prints plain sentences you can pass on to the user.
+This skill talks to the Speaking Mirror hub on the user's machine. The hub learns how the user usually speaks from their conversations in Bee, read from Bee's wearer-tagged transcript, live and once each conversation ends. It compares unsure words, the filler "like", vague answers and starting over with the user's own usual, follows unsure words and "like" as the pair the user practises, and reaches the wrist through Bee to-dos with alarms. Each command below is one call to the hub, and the script prints plain sentences you can pass on to the user.
 
 ## Before you start
 
