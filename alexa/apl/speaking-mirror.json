@@ -1,7 +1,7 @@
 {
   "type": "APL",
   "version": "2023.2",
-  "description": "Speaking Mirror screens for the speech coach skill (src/alexa/apl.ts). One document, five screens chosen by payload.screen.kind: drill, checking, verdict, progress, empty. Every string a person reads comes from the datasource, masked for the screen; colours are the TV's palette (tv/web/src/theme.ts).",
+  "description": "Spee screens for the speech coach skill (src/alexa/apl.ts). One document, five screens chosen by payload.screen.kind: drill, checking, verdict, progress, empty. Every string a person reads comes from the datasource, masked for the screen; colours are the TV's palette (tv/web/src/theme.ts).",
   "theme": "dark",
   "resources": [
     {
@@ -87,7 +87,7 @@
   ],
   "graphics": {
     "mark": {
-      "description": "The Speaking Mirror mark, two voices: your speech bubble and its reflection in the Bee colour (Sky) across a mirror bar, the reflection sitting lower (call and answer); each bubble's tail is the corner that faces the bar. The large master from the approved logo board (BrandMarkLarge, 64 units; the TV's BrandMark at 48 and up). Shown at 48 dp or more; smaller sizes need the small master. The colours come from the document's resources (you: @lime, bee: @colorBee).",
+      "description": "The Spee mark, two voices: your speech bubble and its reflection in the Bee colour (Sky) across a mirror bar, the reflection sitting lower (call and answer); each bubble's tail is the corner that faces the bar. The large master from the approved logo board (BrandMarkLarge, 64 units; the TV's BrandMark at 48 and up). Shown at 48 dp or more; smaller sizes need the small master. The colours come from the document's resources (you: @lime, bee: @colorBee).",
       "type": "AVG",
       "version": "1.2",
       "width": 64,

@@ -21,7 +21,7 @@ import type { AlexaDirective, AlexaRequestEnvelope } from "./types.js";
 export const APL_INTERFACE = "Alexa.Presentation.APL";
 export const APL_DIRECTIVE = "Alexa.Presentation.APL.RenderDocument";
 export const APL_DOC_URL = new URL("../../alexa/apl/speaking-mirror.json", import.meta.url);
-export const BRAND = "Speaking Mirror";
+export const BRAND = "Spee";
 
 let doc: Record<string, unknown> | null = null;
 /** The APL document, read once. */
@@ -78,8 +78,8 @@ export const SCREEN_TEXT = {
   passed: "Passed.",
   notYet: "Not yet.",
   notCounted: "Not counted.",
-  footerTv: "Open Speaking Mirror on this TV for details",
-  footerHub: "Open Speaking Mirror on your TV for details",
+  footerTv: "Open Spee on this TV for details",
+  footerHub: "Open Spee on your TV for details",
 } as const;
 
 const BLANK: Screen = {

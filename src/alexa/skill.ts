@@ -7,7 +7,7 @@
 //   turn 1  AttemptIntent   POST /api/attempt {source:"alexa"} -> 202 pending_bee; "checking with Bee"
 //   turn 2  HowDidIDoIntent GET /api/attempts/<id>; not ready -> progressive response, poll <= 6.5 s
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
-// On a device with a screen (Fire TV, Echo Show) each turn also renders a Speaking Mirror screen
+// On a device with a screen (Fire TV, Echo Show) each turn also renders a Spee screen
 // (./apl.ts); the speech, the reprompts and the timing are the same with or without one.
 import type { CardView, SessionSummary, VerdictResponse } from "../hub/contract.js";
 import { roundLineWords } from "../hub/roundWords.js";

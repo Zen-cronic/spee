@@ -1,4 +1,4 @@
-// An APPROXIMATE preview of the Speaking Mirror APL screens (alexa/apl/speaking-mirror.json), for
+// An APPROXIMATE preview of the Spee APL screens (alexa/apl/speaking-mirror.json), for
 // screenshots without a device: a small interpreter for the parts of APL the document uses
 // (Container, Frame, Text, VectorGraphic, its own layouts, resources with `when`, data binding),
 // written out as HTML, one file per screen and viewport, with synthetic datasources from the real

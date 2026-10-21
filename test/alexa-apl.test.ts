@@ -1,4 +1,4 @@
-// Speaking Mirror screens on Alexa devices with a display (src/alexa/apl.ts,
+// Spee screens on Alexa devices with a display (src/alexa/apl.ts,
 // alexa/apl/speaking-mirror.json): the manifest declares APL; the directive goes out only when the
 // device lists Alexa.Presentation.APL; each screen's datasource; masking for the screen; the
 // document's shape, bindings and palette (the TV's).
@@ -176,7 +176,7 @@ describe("APL document", () => {
 describe("screens", () => {
   it("drill: the sentence, the tracker on step 1, and what to ask", () => {
     const s = drillScreen({ resay: 'Say "hello"  to the team.' });
-    expect(s).toMatchObject({ kind: "drill", brand: "Speaking Mirror", kicker: "Say this:", sentence: 'Say "hello" to the team.', hint: "Then ask: how did I do?", status: "" });
+    expect(s).toMatchObject({ kind: "drill", brand: "Spee", kicker: "Say this:", sentence: 'Say "hello" to the team.', hint: "Then ask: how did I do?", status: "" });
     expect(s.steps.map((x) => [x.label, x.state, x.who])).toEqual([
       ["You said it", "current", "you"],
       ["Checked by Bee", "todo", "bee"],
@@ -212,7 +212,7 @@ describe("screens", () => {
   });
   it("how am I doing: one number, one sentence of the narration, and where to look", () => {
     const base = { narration: 'You said "I guess" less this week. Live coaching is off. Two lines are due.', week: { words: 1200, hedgesPer100: 1.24, likesPer100: 0, vaguePer100: 0, topHabit: { key: "hedges", label: "unsure words", per100: 1.24 } }, drills: { dueNow: 2, nextCardId: null } };
-    expect(progressScreen(base)).toMatchObject({ kind: "progress", hero: "1.2", heroCaption: "Unsure words, out of every 100 words you said this week", line: "You said “I guess” less this week.", footerTv: "Open Speaking Mirror on this TV for details" });
+    expect(progressScreen(base)).toMatchObject({ kind: "progress", hero: "1.2", heroCaption: "Unsure words, out of every 100 words you said this week", line: "You said “I guess” less this week.", footerTv: "Open Spee on this TV for details" });
     expect(progressScreen({ ...base, week: { ...base.week, topHabit: null } })).toMatchObject({ hero: "2", heroCaption: "lines ready to practise" });
     expect(progressScreen({ ...base, week: { ...base.week, topHabit: null }, drills: { dueNow: 0, nextCardId: null } })).toMatchObject({ hero: "1200", heroCaption: "words Bee heard this week" });
   });
@@ -240,11 +240,11 @@ describe("masking", () => {
     expect(out.response.directives).toEqual([d]);
   });
   it("leaves the document itself and the token alone", () => {
-    setMaskTerms(["Mirror"]);
+    setMaskTerms(["Spee", "Mirror"]);
     const d = renderDirective(drillScreen({ resay: "Hello." }));
     expect(d.token).toBe("speakingMirror.drill");
     expect(d.document).toEqual(DOC);
-    expect((d.datasources as { payload: { screen: Screen } }).payload.screen.brand).toBe(`Speaking ${MASK_SCREEN}`);
+    expect((d.datasources as { payload: { screen: Screen } }).payload.screen.brand).toBe(MASK_SCREEN);
   });
 });
 
@@ -328,7 +328,7 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
     const r = await handleAlexa(oneShot, deps());
     const c = await get("/api/coach/now");
     expect(directives(r)[0]!.token).toBe("speakingMirror.progress");
-    expect(screenOf(r)).toMatchObject({ kind: "progress", footerTv: "Open Speaking Mirror on this TV for details" });
+    expect(screenOf(r)).toMatchObject({ kind: "progress", footerTv: "Open Spee on this TV for details" });
     expect(screenOf(r).line.length).toBeGreaterThan(0);
     expect(c.narration.replace(/"([^"]*)"/g, "“$1”")).toContain(screenOf(r).line);
     expect(r.envelope.response.shouldEndSession).toBe(true);
@@ -404,6 +404,6 @@ describe("POST /alexa with masking on (in-process demo hub)", () => {
     const d = j.response.directives?.[0];
     expect(d).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill" });
     expect(d!.document).toEqual(DOC);
-    expect((d!.datasources as { payload: { screen: Screen } }).payload.screen).toMatchObject({ kind: "drill", brand: "Speaking Mirror" });
+    expect((d!.datasources as { payload: { screen: Screen } }).payload.screen).toMatchObject({ kind: "drill", brand: "Spee" });
   });
 });
