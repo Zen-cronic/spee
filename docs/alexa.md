@@ -112,7 +112,7 @@ Each result is `content: [{type:"text", text: <narration>}]` plus `structuredCon
 | `get_verdict` | `attempt_id` | `GET /api/attempts/<id>` | route `narration` |
 | `drill_status` | | `GET /api/session` | route `narration` |
 | `next_card` | | `POST /api/session/next` | route `narration`, or the summary when done |
-| `end_drill` | | `POST /api/session/end` | "Practice done: N of M lines passed, checked by Bee.", each line once (the summary's `lines`), then how many Bee didn't confirm, are still waiting for Bee or were not tried. An older hub sends no `lines`, so it says tries: "Practice done: N of M tries passed, checked by Bee." |
+| `end_drill` | | `POST /api/session/end` | "Practice done: N of M lines passed, checked by Bee.", each line once (the summary's `lines`), then how many Bee didn't confirm, are still waiting for Bee or were not tried. A round with no line Bee checked says so instead of "checked by Bee": "Practice done: Bee didn't check any line this round, 1 not tried." An older hub sends no `lines`, so it says tries: "Practice done: N of M tries passed, checked by Bee." |
 | `how_am_i_doing` | | `GET /api/coach/now` | route `narration` |
 | `habit_stats` | `range?`, `source?` | `GET /api/stats` (`range` defaults to `week`) | rates per 100 words |
 | `did_it_transfer` | `habit?` | `GET /api/transfer` | `headline`, or one habit's verdict |

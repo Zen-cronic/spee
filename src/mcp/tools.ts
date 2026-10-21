@@ -29,10 +29,15 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 // Each line once, as the TV's Round over counts it (a line missed and then passed on a retry is one
 // line passed, never two tries). The MCP server is its own process and may talk to an older hub,
 // which sends no `lines`: then its counts are tries, and the sentence says so (as the TV's tally does).
+// A round with no try Bee graded never says "checked by Bee": it says Bee checked none, and why.
 type SummaryIn = Omit<SessionSummary, "lines"> & Partial<Pick<SessionSummary, "lines">>;
 export function summaryText(s: SummaryIn | null | undefined): string {
   if (!s) return "You're not practising right now.";
   const l = s.lines;
+  if (!s.counted) {
+    const c = l ?? { ...s, untried: 0 };
+    return `Practice done: Bee didn't check any line this round${c.unverified ? `, ${c.unverified} Bee didn't confirm` : ""}${c.pending ? `, ${c.pending} still waiting for Bee` : ""}${c.untried ? `, ${c.untried} not tried` : ""}.`;
+  }
   if (!l) return `Practice done: ${s.passed} of ${s.counted} ${s.counted === 1 ? "try" : "tries"} passed, checked by Bee${s.unverified ? `, ${s.unverified} Bee didn't confirm` : ""}${s.pending ? `, ${s.pending} still waiting for Bee` : ""}.`;
   return `Practice done: ${l.passed} of ${s.cards} line${s.cards === 1 ? "" : "s"} passed, checked by Bee${l.unverified ? `, ${l.unverified} Bee didn't confirm` : ""}${l.pending ? `, ${l.pending} still waiting for Bee` : ""}${l.untried ? `, ${l.untried} not tried` : ""}.`;
 }
