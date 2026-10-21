@@ -334,7 +334,8 @@ export const AFTER_WINDOW = 'since then';
 
 /**
  * A Progress card's role line. Before the first practice a practised habit is still "To practise",
- * never "Practised" beside a "Not practised yet" pill (the phone's Progress tab uses the same rule).
+ * never "Practised" beside a "Not practised yet" pill. The phone's Progress tab imports this and
+ * habitPill (web/phone/src/progress.ts), so the rule has one copy.
  */
 export function habitRole(h: Pick<TransferHabit, 'role' | 'verdict'>): 'Practised' | 'To practise' | 'Not practised' {
   if (h.role !== 'drilled') return 'Not practised';

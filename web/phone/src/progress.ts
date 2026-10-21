@@ -6,7 +6,7 @@
 // the same thing: the headline from the hub's claim, the "–" for a period with too little speech,
 // the verdict words, and the first signal's caveat. Nothing here re-derives a verdict.
 import type { DeckSummary, PracticeCounts, Recap, RecapList, StatsResponse, TransferHabit, TransferResponse } from "../../../src/hub/contract.js";
-import { curly, FIRST_SIGNAL_CAVEAT, firstSignalText, fmt1, fmtDate, fmtDay, fmtWords, habitTitle, settingName, topWord, transferRates, transferTitle, verdictWords, WEEK_HABITS } from "../../../tv/web/src/mirror/format.js";
+import { curly, FIRST_SIGNAL_CAVEAT, firstSignalText, fmt1, fmtDate, fmtDay, fmtWords, habitPill, habitRole, habitTitle, settingName, topWord, transferRates, transferTitle, WEEK_HABITS } from "../../../tv/web/src/mirror/format.js";
 
 /** A missing number: the TV card's dash, never "0.0". */
 export const DASH = "–";
@@ -67,7 +67,7 @@ export type PillTone = "good" | "bad" | "wait";
 export interface HabitCard {
   habit: string;
   title: string;
-  role: "Practised" | "To practise" | "Not practised";
+  role: ReturnType<typeof habitRole>; // "Practised", "To practise" or "Not practised"
   before: string | null; // null: a dash
   after: string | null;
   pill: string | null; // null on a "To practise" card: its label already says it
@@ -96,17 +96,16 @@ export function transferModel(t: TransferResponse): TransferModel {
 }
 export function habitCard(h: TransferHabit, minWords: number): HabitCard {
   const r = transferRates(h, minWords);
-  const waiting = h.verdict === "not drilled yet";
   return {
     habit: h.habit,
     title: habitTitle(h.habit, h.label),
-    // Before the first practice a practised habit is still "To practise", and that label is its only
-    // word (no "Not practised yet" pill beside it); the one you don't practise waits for that first
-    // practice too.
-    role: h.role !== "drilled" ? "Not practised" : waiting ? "To practise" : "Practised",
+    // The TV's Progress rule, one copy (format.ts): before the first practice a practised habit is
+    // still "To practise", and that label is its only word (no "Not practised yet" pill beside it);
+    // the one you don't practise waits for that first practice too.
+    role: habitRole(h),
     before: r.before,
     after: r.after,
-    pill: waiting ? (h.role !== "drilled" ? "Starts at your first practice" : null) : verdictWords(h),
+    pill: habitPill(h),
     // lime only for the hub's "dropped", coral only for "rose"; every undecided verdict is quiet
     tone: h.verdict === "dropped" ? "good" : h.verdict === "rose" ? "bad" : "wait",
   };

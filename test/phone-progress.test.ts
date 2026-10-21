@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Attempt, RecapList, TransferHabit, TransferResponse } from "../src/hub/contract.js";
 import { demoSetup } from "../src/hub/setup.js";
-import { FIRST_SIGNAL_CAVEAT, transferRates, transferTitle, verdictWords } from "../tv/web/src/mirror/format.js";
+import { FIRST_SIGNAL_CAVEAT, habitPill, habitRole, transferRates, transferTitle, verdictWords } from "../tv/web/src/mirror/format.js";
 import { DASH, detailsModel, errorOf, errorText, habitCard, hueClass, recapRows, recapWhen, todayModel, transferModel, weekModel } from "../web/phone/src/progress.js";
 
 const dirs: string[] = [];
@@ -169,5 +169,24 @@ describe("Progress: errors in words", () => {
     expect(errorOf(404)).toBe("offline");
     expect(errorText("forbidden")).toMatch(/QR/);
     expect(errorText("offline")).toBe("Can’t reach the TV’s hub right now.");
+  });
+});
+
+describe("one Progress rule for the TV and the phone", () => {
+  it("every verdict and role: the phone's card says the TV's role and pill (habitRole, habitPill)", () => {
+    const verdicts: TransferHabit["verdict"][] = ["dropped", "no change", "rose", "too little data", "not drilled yet", "invalid"];
+    const base = full.habits[0]!;
+    for (const role of ["drilled", "control"] as const)
+      for (const verdict of verdicts) {
+        const h = { ...base, role, verdict } as TransferHabit;
+        const c = habitCard(h, full.minWordsPerPeriod);
+        expect([c.role, c.pill], `${role} ${verdict}`).toEqual([habitRole(h), habitPill(h)]);
+      }
+  });
+  it("the phone has no copy of the rule: it imports the TV's", () => {
+    const src = readFileSync("web/phone/src/progress.ts", "utf8");
+    expect(src).toContain("role: habitRole(h),");
+    expect(src).toContain("pill: habitPill(h),");
+    expect(src).not.toMatch(/= "Starts at your first practice"|\? "To practise"|: "To practise"/);
   });
 });
