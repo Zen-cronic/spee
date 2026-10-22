@@ -4,8 +4,8 @@ Spee was called Speaking Mirror until 2026-10-21; the entries before that date u
 
 Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, listed as Spee and opened as "speech coach", runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
 
-- **Dates covered:** 2026-10-12 to 2026-10-20. All times are EDT (UTC−4).
-- **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
+- **Dates covered:** 2026-10-12 to 2026-10-22. All times are EDT (UTC−4).
+- **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. On 2026-10-22 a pass back over the build notes, both repos' histories and the device notes added FL-29 to FL-32 and extended FL-16, FL-22 and FL-26. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
 - **Severity:** Blocker (no workaround, work stopped) · High (the workaround cost more than 1 h) · Medium (the workaround cost under 1 h) · Low (cosmetic, or a docs nit).
 - **Status:** open (still present, no workaround) · worked around (still present; our workaround is in the entry) · fixed upstream (Amazon changed it).
 - **Setup:** Toronto, Canada. Canadian Apple ID and App Store; Apple Watch SE 3 (GPS, 40 mm) and iPhone; Bee app 1.2.157; `@beeai/cli` 0.8.0; no Bee hardware (it ships to the US only). Ubuntu 24.04 (x86_64, KVM) with Vega CLI 1.4.4 and Vega SDK 0.24.12112, the Vega Virtual Device (VVD), and a Fire TV Stick (`armv7l`, Vega OS 2.0) on Wi-Fi. React Native 0.83 for Vega (`@amazon-devices/react-native-kepler` ~4.0). The Alexa skill is a development-stage custom skill, tested from the Alexa iPhone app (English, Canada) and from the Fire TV's Alexa. AWS in us-east-1.
@@ -29,7 +29,7 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 | FL-13 | Alexa on Fire TV | A speech-only skill response covers the app with a plain "Speech Coach" card | Medium | worked around (not yet seen on the TV) |
 | FL-14 | Alexa Skills Kit | "How did I do" lands in the catch-all slot, not its own intent | Medium | worked around |
 | FL-15 | Alexa Skills Kit | The 8 s response limit is shorter than Bee's line, so a drill takes two turns | Medium | worked around |
-| FL-16 | Vega SDK, Amazon devices agent skills | No app-level speech-to-text, and Amazon's agent skill pointed to an archived library | High | worked around; docs fix filed upstream (open) |
+| FL-16 | Vega SDK, Amazon devices agent skills | No app-level speech-to-text, and Amazon's agent skill pointed to an archived library | High | worked around; docs fix filed upstream (open, no review on 2026-10-22) |
 | FL-17 | Vega media player | URL mode refuses http and a local-CA https URL with a bare MediaError 4 | High | worked around |
 | FL-18 | Vega media player | MSE says yes to `audio/mpeg` but never plays it; only fragmented MP4/AAC works | High | worked around |
 | FL-19 | Vega Virtual Device | WebSocket frames over about 1.4 KB are dropped on the VVD's NAT path | Medium | worked around |
@@ -42,6 +42,10 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 | FL-26 | Amazon Bedrock, AWS Marketplace | A model call accepts a Marketplace offer even when the call fails | Medium | worked around |
 | FL-27 | Hackathon rules, Devpost form | The private-repo sharing instructions disagree, and the list changed | Low | worked around |
 | FL-28 | Hackathon rules, office hours | Office hours said development may continue; the written update forbids it | Low | worked around |
+| FL-29 | Alexa Skills Kit, Alexa app | The one-word invocation "spee" builds but never opens the skill, and "spee coach" is heard as "speed coach" | Medium | worked around |
+| FL-30 | Fire TV Stick (Vega OS) | Ambient Experience, Vega's screensaver, covers a running app, and a trip to Settings leaves the app closed | Medium | worked around |
+| FL-31 | Vega CLI, Vega Virtual Device | No screenshot or screen-record command, and the device shell's own tool fails | Medium | worked around |
+| FL-32 | React Native for Vega | The `Origin` a Vega app's WebSocket sends is undocumented | Low | worked around |
 
 ---
 
@@ -283,6 +287,23 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Workaround used:** a two-turn drill: "Got it, checking with Bee. Ask me how you did in about 15 seconds." An early "how did I do?" sends a progressive response ("Checking with Bee.") and polls every 600 ms for at most 6.5 s ([`src/alexa/skill.ts`](src/alexa/skill.ts)). The progressive response has not yet run on a device. Time not recorded separately (it shaped the skill design).
 - **Actionable suggestion:** a documented asynchronous result pattern for custom skills (deliver one short spoken result into the open session within a bounded time), or a longer limit for a skill that declares it.
 
+### FL-29: The one-word invocation name "spee" builds without a warning but never opens the skill, and "spee coach" is transcribed as "speed coach" (Alexa Skills Kit / Alexa app)
+- **Date:** 2026-10-21 ~16:00 EDT (the deploy script) and 2026-10-22 09:20–10:10 EDT (the deploy and the name test; 3 tries per name, not re-checked)
+- **Task attempted:** let people open the skill with the product's new name, Spee, and keep "speech coach" working.
+- **Steps taken:**
+  1. A custom skill has one invocation name per locale, so we set up one development skill per name, "speech coach", "spee coach" and "spee", all pointing at the same endpoint and interaction model (`npm run alexa:deploy`, through `ask smapi`).
+  2. 2026-10-22 ~09:20: deployed. All three models built (`SUCCEEDED` in en-CA and en-US), the one-word "spee" included, and testing was turned on for each.
+  3. In the iPhone Alexa app (English, Canada), from our test script: "Alexa, ask spee coach how am I doing?" three times, then the same with "spee" three times, then with "speech coach".
+- **Expected result:** a name that builds can be opened by voice, or the build warns that it can't be. The [invocation name rules](https://developer.amazon.com/en-US/docs/alexa/custom-skills/choose-the-invocation-name-for-a-custom-skill.html) say one-word names are not allowed without proof of brand ownership, and that a name "must be easy to pronounce correctly and be phonetically distinct".
+- **Actual result:**
+  - "spee coach" reached the skill, but the Alexa app showed the request as "speed coach", which is what a viewer would read on screen.
+  - "spee" never opened the skill: 0 of 3.
+  - "speech coach" opened it at once.
+  - Nothing in the build or the skill status warned about the one-word name or a non-word name. We only found out by saying it.
+- **Severity:** Medium
+- **Workaround used:** the spoken name stays "speech coach", on camera and in the TV's prompts ("Alexa, ask Speech Coach to quiz me"); the skill is listed as Spee. The "spee coach" and "spee" skills stay deployed but unused. The name test took about 10 min; the multi-skill deploy was built as part of the rename and not timed separately.
+- **Actionable suggestion:** warn at model build (and in `ask smapi get-skill-status`) when an invocation name is one word or not a dictionary word; add a spoken check for invocation names in the developer console (say the name, see what Alexa heard and whether it resolved to the skill); and bias recognition toward the invocation names of skills enabled on the account.
+
 ## Fire TV and Vega
 
 ### FL-16: Vega gives a third-party app no speech-to-text, and Amazon's devices agent skill pointed developers to an archived library with no Vega support (Vega SDK / Amazon devices agent skills)
@@ -295,7 +316,7 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Actual result:** no app-level speech-to-text, and an agent following the skill would reach for a library that cannot work on Vega.
 - **Severity:** High
 - **Workaround used:** the phone is the microphone. The open-source tv-voice-bridge pairs a phone with the TV by QR code, carries the phone browser's speech recognition to the TV over a WebSocket, and carries the TV's replies back. It was built over 2026-10-14 to 2026-10-20 and is now a separate open-source project. A knock-on cost: phone browsers allow speech recognition only on https (Safari 26 hides it on an insecure page; Chrome reports `insecure-context`), so the phone page needs a tunnel or a LAN certificate.
-- **Actionable suggestion:** we filed the docs fix: https://github.com/AmazonAppDev/devices-agent-skills/pull/15 (open on 2026-10-20). It says `react-native-voice` is archived with no Vega support, and that Vega has no app-level speech-to-text API, so dictation goes through the system keyboard. Beyond that: one Vega page listing the voice-input options (dictation, Content Launcher, a companion device), and an app-level speech API or a sanctioned companion-device channel.
+- **Actionable suggestion:** we filed the docs fix: https://github.com/AmazonAppDev/devices-agent-skills/pull/15 (open on 2026-10-20; still open, with no review, on 2026-10-22). It says `react-native-voice` is archived with no Vega support, and that Vega has no app-level speech-to-text API, so dictation goes through the system keyboard. Beyond that: one Vega page listing the voice-input options (dictation, Content Launcher, a companion device), and an app-level speech API or a sanctioned companion-device channel.
 
 ### FL-17: The W3C media player in URL mode refuses `http://` and a local-CA `https://` URL, with only "MediaError 4" in JavaScript (Vega media player) (earlier Vega prototype)
 - **Date:** 2026-10-14 16:06–16:47 EDT, on the VVD (SDK 0.24.12112); not re-checked on the Vega OS 2.0 stick
@@ -379,18 +400,19 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Actionable suggestion:** make `run-app` terminate a running instance when it installs a different vpkg (or add `--restart`), check that the app is running before printing success, and accept either name in `is-app-installed` and `is-app-running` (or answer "did you mean com.beecoach.mirror.main?").
 
 ### FL-22: Connecting a real Fire TV Stick to the dev machine: "No devices found" over USB, then "Connection refused" over Wi-Fi until Connection Mode is TCP/IP (Fire TV Stick / Vega CLI)
-- **Date:** 2026-10-20 14:01–14:13 EDT (observed once, not re-checked)
+- **Date:** 2026-10-20 14:01–14:13 EDT (the first connection, observed once) and 2026-10-22 ~09:00 EDT (the reconnect after a dev machine restart)
 - **Task attempted:** install Spee on a Fire TV Stick (Vega OS 2.0) in developer mode, plugged into a monitor's HDMI port and powered from a wall adapter.
 - **Steps taken:**
   1. Connected a USB-C cable from the laptop to the monitor and ran `vega device list` → `No devices found`. `lsusb` showed no Lab126 device: the cable reached the monitor, not the stick.
   2. The stick's only USB-C port is its power port, already used by the wall adapter, so there was no free port for data.
   3. Switched to Wi-Fi: Settings → My Fire TV → About → Network gave the stick's address, and `ping` answered. `vega exec vda connect <stick IP>:5555` → `Connection refused`.
   4. Settings → My Fire TV → Developer Options → **Connection Mode → TCP/IP**. The stick rebooted. `vda connect` answered on the second try, about 10 s after the reboot, and `vega exec vda devices` listed `<stick IP>:5555  device`.
-- **Expected result:** the developer-mode steps say that a stick connects either through its own power port (a data cable to the computer) or over TCP/IP, and the CLI errors point there.
-- **Actual result:** the answer is on [VDA over TCP/IP](https://developer.amazon.com/docs/vega/0.24/vda-over-tcpip) (re-checked 2026-10-20), but neither "No devices found" nor "Connection refused" points to it, and nothing says that the stick's single port is also its power port.
-- **Severity:** Medium (about 12 min, including the reboot)
-- **Workaround used:** Wi-Fi with Connection Mode TCP/IP, plus the reverse port forward (`vega device start-port-forwarding -d <device> --port 8791 --forward false`), which also works over Wi-Fi. The troubleshooting table in [docs/tv.md](docs/tv.md) has the details.
-- **Actionable suggestion:** when `vega device list` finds nothing, suggest TCP/IP mode and `vda connect`; when port 5555 refuses, say "Connection Mode may be USB: Developer Options → Connection Mode → TCP/IP"; and link the TCP/IP page from the developer-mode page, with a note on the stick's single USB-C port.
+  5. Later: after the dev machine restarted (2026-10-21 10:11 and 2026-10-22 08:36 EDT), the 8791 reverse forward was gone. On 2026-10-22, `vega exec vda devices` printed `* daemon not running; starting now` and an empty list. The stick itself had kept developer mode and TCP/IP mode: `vda connect` worked first time.
+- **Expected result:** the developer-mode steps say that a stick connects either through its own power port (a data cable to the computer) or over TCP/IP, and the CLI errors point there. Once connected, VDA reconnects a known TCP/IP device after a restart, or says it won't.
+- **Actual result:** the answer is on [VDA over TCP/IP](https://developer.amazon.com/docs/vega/0.24/vda-over-tcpip) (re-checked 2026-10-20), but neither "No devices found" nor "Connection refused" points to it, and nothing says that the stick's single port is also its power port. After a dev machine restart, VDA starts with no devices and no forwards, so the TV app can't reach its hub until someone runs `vda connect` and the forward again. We found no option that keeps either.
+- **Severity:** Medium (about 12 min the first time, including the reboot; about 2 min for each reconnect)
+- **Workaround used:** Wi-Fi with Connection Mode TCP/IP, plus the reverse port forward (`vega device start-port-forwarding -d <device> --port 8791 --forward false`), which also works over Wi-Fi. After a restart: `vda connect`, the forward, `vega device launch-app`, then check that the hub logged the screen joining. The troubleshooting table in [docs/tv.md](docs/tv.md) has the details.
+- **Actionable suggestion:** when `vega device list` finds nothing, suggest TCP/IP mode and `vda connect`; when port 5555 refuses, say "Connection Mode may be USB: Developer Options → Connection Mode → TCP/IP"; link the TCP/IP page from the developer-mode page, with a note on the stick's single USB-C port; and let VDA remember TCP/IP devices and their forwards across a restart (or say on the port-forwarding page that a restart drops them).
 
 ### FL-23: The manifest docs call `[package] icon` required and describe only the Settings icon; the build's validator calls it optional, and our app shipped without one (Vega manifest)
 - **Date:** 2026-10-20 ~15:30 EDT (noticed); re-checked with a fresh build at 17:22 EDT
@@ -419,6 +441,49 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Workaround used (about 35 min):** sibling `Text`s in a row instead of nesting; attach the animated style from the first render; side padding with a negative margin on big numerals, weight 800 instead of a synthetic 900, and no negative letter spacing on light numerals ([docs/tv.md](docs/tv.md), "Rendering").
 - **Actionable suggestion:** document nested-`Text` style inheritance and native-driver attach timing on Vega (or warn in dev builds), don't clip glyph ink at the layout box, and list which weights the system font ships.
 
+### FL-30: Vega OS's screensaver is called Ambient Experience and covers a running app, and after a trip to Settings to turn it off the app was no longer running (Fire TV Stick, Vega OS)
+- **Date:** 2026-10-22 09:55–10:01 EDT (observed once, not re-checked)
+- **Task attempted:** set up the stick for filming the demo, with Spee on screen for takes of up to about 6 min.
+- **Steps taken:**
+  1. Spee was running on the stick (Vega OS 2.0) while the remote sat idle during set prep.
+  2. A full-screen painting replaced Spee on the monitor.
+  3. Looked for the screensaver setting under Settings → Display & Sounds, to set its start time to Never. There is no "Screensaver" entry; the painting is **Ambient Experience**, on the same screen.
+  4. Turned Ambient Experience off and backed out of Settings.
+  5. `vega device is-app-running -d <device> --appName com.beecoach.mirror.main` → `com.beecoach.mirror.main is not running`.
+- **Expected result:** a screensaver setting named as such, or Fire TV help that names Ambient Experience as the screensaver; a documented way for an app showing live content to keep it from starting; and an app that is still there, suspended, when you come back from Settings.
+- **Actual result:** Ambient Experience covered the running app after the remote sat idle. After the visit to Settings, Spee was not running, so the TV had dropped its hub connection. We can't tell whether Settings or the Ambient Experience before it closed the app.
+- **Severity:** Medium (it would have ruined a long take; about 5 min to fix once seen)
+- **Workaround used:** Ambient Experience off for the shoot. After any trip to Settings, `vega device launch-app -d <device> --appName com.beecoach.mirror.main`, then check that the hub logged the screen joining (it rejoined at 10:01). Both are in the stick notes in [docs/tv.md](docs/tv.md), "Before a demo or filming".
+- **Actionable suggestion:** say in the Fire TV help for Vega devices that Ambient Experience is the screensaver; document whether an app in the foreground can hold it off (a keep-awake flag for dashboards and live-status apps); and document what Settings and Ambient Experience do to a running app (suspend or terminate), next to the [foreground and background](https://developer.amazon.com/docs/vega/0.24/foreground-background.html) page.
+
+### FL-31: The Vega CLI has no screenshot or screen-record command, and the device shell's own screenshot tool fails (Vega CLI / Vega Virtual Device)
+- **Date:** 2026-10-21 ~16:40 EDT (the plan for filming the stick) and 22:38–22:45 EDT (the VVD screenshot attempt); observed once, not re-checked
+- **Task attempted:** capture the app's screen for the demo video and the README: the real stick for the video, and the VVD for a still of the open-source bridge.
+- **Steps taken:**
+  1. `vega device --help` (Vega CLI 1.4.4) lists `copy-from`, `run-cmd`, `shell`, logs and app commands, but no screenshot or screen-record command.
+  2. On the VVD, `vega device run-cmd -d VirtualDevice -c 'ls /usr/bin …'` found an on-device `screenshooter`.
+  3. `vega device run-cmd -d VirtualDevice -c 'screenshooter /tmp/shot.png'` → `Vega operation FAILED due to an irrecoverable error: Incomplete: Error: No running instances of com.amazon.dev.shell.service found`. `vega exec vda shell 'echo hi'` worked 5 s later; the same error came back on later calls.
+  4. When the shell answered, `screenshooter` printed `creating a buffer file for 8294400 B failed: Permission denied`, and the PNG pulled back was 0 bytes.
+  5. On 2026-10-16 the VVD's emulator console (`screenrecord screenshot <dir>` on `localhost:5554`) had worked, but a retail stick has no emulator console.
+- **Expected result:** a developer-mode screenshot and screen-record command for the VVD and a real device (like `screencap` and `screenrecord` on Android), since a demo video and store screenshots both need one.
+- **Actual result:** no CLI command, an on-device tool that fails for the developer shell's user, and a device shell service that drops out at random.
+- **Severity:** Medium
+- **Workaround used:** on the VVD, grab its window on the host with `ffmpeg -f x11grab` (about 7 min to get there). On the stick, the demo films the monitor with a phone on a tripod (4K30, exposure locked on the screen), with the web TV on the same hub as a labelled insert where a line won't read. An HDMI capture dongle was the other option, with the risk that the stick's HDCP makes it record black; we didn't buy one. The stick plan was not timed.
+- **Actionable suggestion:** add `vega device screenshot` and `vega device screenrecord` for developer-mode devices; let the developer shell's user run `screenshooter` (or document how); and make "No running instances of com.amazon.dev.shell.service" a retryable error that says to wait and retry, not an "irrecoverable" one.
+
+### FL-32: The `Origin` header a Vega app's WebSocket sends is undocumented; on the VVD it is the address the app dialled (React Native for Vega)
+- **Date:** 2026-10-21 ~22:38 EDT (VVD); not yet logged on the stick
+- **Task attempted:** check the `Origin` of every WebSocket upgrade in the open-source bridge's hub, so that a web page on another site can't drive the TV, without locking out the TV app.
+- **Steps taken:**
+  1. The bridge's docs and protocol assumed that a TV app, like Node, sends no `Origin`.
+  2. A 20-line scripted run on the VVD, with the app dialling `ws://127.0.0.1:8790/ws` through the reverse forward.
+  3. Read the `origin` field of the screen's join line in the hub log.
+- **Expected result:** the Vega networking docs say whether `WebSocket` sends an `Origin` header and what it contains.
+- **Actual result:** the app sent `Origin: http://127.0.0.1:8790`, the address it dialled, so it looks like a browser page served from that address. Nothing in the Vega docs says so. (React Native's Android WebSocket sets the same kind of default, so this may be inherited.) What the stick sends is not checked yet.
+- **Severity:** Low (a docs gap)
+- **Workaround used:** the hub admits no `Origin`, or an `Origin` equal to the address the client reached the hub at when that is an IP address, `localhost` or a `.local` name; `--any-origin` turns the check off. The bridge's docs were corrected the same night (its Vega notes, under "Networking"). Not timed separately.
+- **Actionable suggestion:** document the `Origin` (and any other default headers) a Vega app's `WebSocket` sends, whether the `headers` option can change it, and whether it differs between the VVD and a device.
+
 ## AWS
 
 ### FL-25: Amazon Bedrock refuses every Anthropic model, even on non-streaming Converse, until a use-case form is submitted (Amazon Bedrock)
@@ -435,7 +500,7 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Actionable suggestion:** put the console path (or a link) in the error, show the gate in `get-foundation-model-availability`, and mention the form in the hackathon's AWS setup guidance.
 
 ### FL-26: Invoking a third-party Bedrock model accepts its AWS Marketplace offer, even when the call fails (Amazon Bedrock / AWS Marketplace)
-- **Date:** 2026-10-14 15:08–15:13 EDT (observed once, not re-checked)
+- **Date:** 2026-10-14 15:08–15:13 EDT (observed once, not re-checked); the credit side checked 2026-10-19 ~16:30 EDT
 - **Task attempted:** a short sweep of Converse calls across the models Bedrock listed in us-east-1, to pick a fallback while Anthropic access was gated (FL-25).
 - **Steps taken:**
   1. One Converse call per model, with forced tool use.
@@ -443,9 +508,10 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
   3. Read the account's email and `aws marketplace-agreement search-agreements`.
 - **Expected result:** a failed call subscribes the account to nothing, and a paid Marketplace subscription needs an explicit accept.
 - **Actual result:** four Marketplace agreements were created, each with an email "You accepted an AWS Marketplace offer", one of them for the model whose call had failed. The Claude usage that followed bills as Marketplace usage types (`MP:USE1_InputTokenCount-Units`, `MP:USE1_OutputTokenCount-Units`), so whether a promotional credit covers it depends on the credit.
+  - Checked on 2026-10-19 with Cost Explorer: it doesn't. The Claude usage shows up as separate Marketplace services ("Claude … (Amazon Bedrock Edition)"), and none of them is on the credit's covered-services list in the console, while Amazon-sold models on Bedrock and Amazon Polly are. Cost Explorer also shows neither a credit's remaining balance nor its expiry; only the console's Credits page does.
 - **Severity:** Medium
-- **Workaround used:** cancelled the two unneeded agreements the same day with `aws bedrock delete-foundation-model-agreement`, and stopped sweep-probing third-party models. Time not recorded.
-- **Actionable suggestion:** never create an agreement on a failed call; require an explicit accept (in the console or with `create-foundation-model-agreement`) before the first paid call; and say in the response when a call subscribed the account.
+- **Workaround used:** cancelled the two unneeded agreements the same day with `aws bedrock delete-foundation-model-agreement`, and stopped sweep-probing third-party models. Claude usage goes on the card, which is small at our scale. Time not recorded.
+- **Actionable suggestion:** never create an agreement on a failed call; require an explicit accept (in the console or with `create-foundation-model-agreement`) before the first paid call; say in the response when a call subscribed the account; say on the credit page and in hackathon credit guidance that Marketplace-billed models such as Claude are not covered; and show a credit's balance and expiry in Cost Explorer and the CLI.
 
 ## Hackathon process
 
