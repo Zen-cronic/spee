@@ -45,7 +45,7 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 | Fact | Source | Checked by |
 |---|---|---|
 | Node 22.12 or later | `engines.node` in `package.json` | `test/claims.test.ts` |
-| The package is `speaking-mirror` | `package.json` | `test/claims.test.ts` |
+| The package is `spee` | `package.json` | `test/claims.test.ts` |
 | Every `npm run` command in the docs exists, and every repo path in backticks exists (gitignored paths excepted) | `package.json`, the tree | `test/claims.test.ts` |
 
 ## Prior art

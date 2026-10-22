@@ -423,7 +423,7 @@ const traversal = ["/p/..%2f..%2fpackage.json", "/p/%2e%2e/%2e%2e/package.json",
 const leaked: string[] = [];
 for (const t of traversal) {
   const r = await raw(t);
-  if (r.status === 200 || r.text.includes('"name": "speaking-mirror"') || !(r.status === 400 || r.status === 404)) leaked.push(`${t} -> ${r.status}`);
+  if (r.status === 200 || r.text.includes('"name": "spee"') || !(r.status === 400 || r.status === 404)) leaked.push(`${t} -> ${r.status}`);
 }
 check(!leaked.length, `static traversal refused (400 bad_path or 404) for ${traversal.length} paths${leaked.length ? `: ${leaked.join(", ")}` : ""}`);
 const enc = await raw("/p/..%2f..%2fpackage.json");

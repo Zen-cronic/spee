@@ -168,8 +168,8 @@ describe("caps and limits quoted equal the code", () => {
 });
 
 describe("runtime and the trust split", () => {
-  it("the Node version in the docs equals engines.node, and the package is speaking-mirror", () => {
-    expect(pkg.name).toBe("speaking-mirror");
+  it("the Node version in the docs equals engines.node, and the package is spee", () => {
+    expect(pkg.name).toBe("spee");
     const engines = pkg.engines?.node ?? "";
     const m = read("README.md").match(/Needs Node (\d+(?:\.\d+)*) or later/);
     expect(m, "README states the Node version").not.toBeNull();
