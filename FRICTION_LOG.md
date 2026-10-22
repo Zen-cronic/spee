@@ -5,7 +5,7 @@ Spee was called Speaking Mirror until 2026-10-21; the entries before that date u
 Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations; a Fire TV app shows your habits and the drills built from your own lines; and an Alexa skill, listed as Spee and opened as "speech coach", runs the drills by voice. This log covers every Amazon product the submission touched: Bee, the Alexa Skills Kit and APL, Fire TV on Vega OS (including the open-source tv-voice-bridge, which carries a phone's voice to the TV), and AWS.
 
 - **Dates covered:** 2026-10-12 to 2026-10-22. All times are EDT (UTC−4).
-- **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. On 2026-10-22 a pass back over the build notes, both repos' histories and the device notes added FL-29 to FL-32 and extended FL-16, FL-22 and FL-26. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
+- **How the entries were gathered:** each entry was written when the friction happened, from the terminal output, the device logs, the build notes and the commits, with the exact error text. On 2026-10-20 the entries were re-checked wherever that was possible without new recordings (the Bee docs, the Amazon developer docs, the upstream pull request and a fresh Vega build), and the status column reflects that check. On 2026-10-22 a pass back over the build notes, both repos' histories and the device notes added FL-29 to FL-32 and extended FL-16, FL-22 and FL-26. A second pass at 12:35 EDT, over the morning's filming notes, the hub log and a read-only Bee check, added FL-33 and FL-34 and extended FL-13, FL-26 and FL-30. "Observed once, not re-checked" marks an observation that happened once and was not repeated.
 - **Severity:** Blocker (no workaround, work stopped) · High (the workaround cost more than 1 h) · Medium (the workaround cost under 1 h) · Low (cosmetic, or a docs nit).
 - **Status:** open (still present, no workaround) · worked around (still present; our workaround is in the entry) · fixed upstream (Amazon changed it).
 - **Setup:** Toronto, Canada. Canadian Apple ID and App Store; Apple Watch SE 3 (GPS, 40 mm) and iPhone; Bee app 1.2.157; `@beeai/cli` 0.8.0; no Bee hardware (it ships to the US only). Ubuntu 24.04 (x86_64, KVM) with Vega CLI 1.4.4 and Vega SDK 0.24.12112, the Vega Virtual Device (VVD), and a Fire TV Stick (`armv7l`, Vega OS 2.0) on Wi-Fi. React Native 0.83 for Vega (`@amazon-devices/react-native-kepler` ~4.0). The Alexa skill is a development-stage custom skill, tested from the Alexa iPhone app (English, Canada) and from the Fire TV's Alexa. AWS in us-east-1.
@@ -43,9 +43,11 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 | FL-27 | Hackathon rules, Devpost form | The private-repo sharing instructions disagree, and the list changed | Low | worked around |
 | FL-28 | Hackathon rules, office hours | Office hours said development may continue; the written update forbids it | Low | worked around |
 | FL-29 | Alexa Skills Kit, Alexa app | The one-word invocation "spee" builds but never opens the skill, and "spee coach" is heard as "speed coach" | Medium | worked around |
-| FL-30 | Fire TV Stick (Vega OS) | Ambient Experience, Vega's screensaver, covers a running app, and a trip to Settings leaves the app closed | Medium | worked around |
+| FL-30 | Fire TV Stick (Vega OS) | Ambient Experience, Vega's screensaver, covers a running app, and a trip to Settings leaves the app closed, with no Launch button there | Medium | worked around |
 | FL-31 | Vega CLI, Vega Virtual Device | No screenshot or screen-record command, and the device shell's own tool fails | Medium | worked around |
 | FL-32 | React Native for Vega | The `Origin` a Vega app's WebSocket sends is undocumented | Low | worked around |
+| FL-33 | Bee app, API, CLI | Conversations deleted in the app were still returned by the API, and a developer can't delete, flag or hear about a deleted one | Medium | worked around |
+| FL-34 | Alexa on Fire TV | The answer to a skill's prompt needs the remote's mic button within seconds; a line said later goes to Alexa itself | Medium | worked around |
 
 ---
 
@@ -236,6 +238,22 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Workaround used:** readers that accept the likely shapes ([`src/hub/live/factsParse.ts`](src/hub/live/factsParse.ts)), confirmed by the spike. The spike ran in seconds; the readers were part of the feature build (not timed).
 - **Actionable suggestion:** publish a JSON example and a schema (or ship TypeScript types in `@beeai/cli`) for every `--json` command, and say which Bee surfaces read developer-written facts.
 
+### FL-33: Conversations deleted in the Bee app were still returned by the API, and a developer can't delete, flag or hear about a deleted conversation (Bee app / API / CLI)
+- **Date:** 2026-10-22 11:52–12:35 EDT (observed once; re-checked read-only at 12:35)
+- **Task attempted:** keep staged speech out of Spee's numbers while filming the demo. Set prep and rehearsal that morning were recorded by Bee on the Watch as two conversations (10:38–11:30 and 11:30–11:49 EDT), and the Progress screen in the film must show only real conversations.
+- **Steps taken:**
+  1. 11:52: deleted the staged conversations in the Bee iPhone app. We removed them from the hub's local copy and restarted the hub at 11:53.
+  2. 11:54:11: the hub's first Bee poll (`bee conversations list`) listed both again as `COMPLETED`, `bee conversations get` returned their full transcripts, and both were counted again. The first take of the Progress shot, at 12:11, filmed the screen with them in it.
+  3. 12:35, read-only: `bee conversations list` and `get` still return both as `COMPLETED`, with `updated_at` unchanged since they ended. `bee changed --json` lists both and reports no deletion.
+  4. A third conversation the hub had been following answered "Conversation not found" from 12:00. So a deletion does reach the API for some conversations.
+  5. `bee conversations --help` (`@beeai/cli` 0.8.0) offers `list`, `get`, `transcript` and `related`: no delete, and no way to flag a conversation.
+  6. During the take, Bee kept hearing the set: the live stream sent `conversation.started` at 12:06:46, 12:09:16 and 12:17:15, and the API holds one `CAPTURING` conversation since 12:06 (FL-6). It will count once it completes.
+- **Expected result:** a delete in the app removes the conversation from the developer API within a poll or two; `bee changed` and the stream report deletions; and a developer, or the wearer on the Watch, can delete a conversation or mark it as rehearsal so an app can leave it out.
+- **Actual result:** the two conversations we meant to delete were still served in full 40 minutes later. Either the app's delete didn't reach the API for them, or a different entry was deleted in the app; we can't tell which from our side. Separately, a conversation that is deleted just vanishes: a client finds out only when `get` answers "Conversation not found".
+- **Severity:** Medium (staged speech got into the first take of the Progress shot, which has to be reshot)
+- **Workaround used:** the hub drops a conversation it can no longer fetch ("deleted by Bee" in its log). For filming, the measurement is frozen at the 09:39 EDT snapshot, taken before any staged speech (decided at 12:31 EDT, being built at the time of writing). A hand-kept list of conversation ids to skip was the other option. About 10 min for the removal, plus the reshoot.
+- **Actionable suggestion:** make a delete in the app reach the developer API (or document the delay); report deletions in `bee changed` and as a stream event; add `bee conversations delete <id>`; and add a flag the wearer can set from the Watch or the app ("rehearsal, don't use"), returned by `get`, so apps that measure speech can leave a conversation out.
+
 ## Alexa
 
 ### FL-12: "Alexa, quiz me" on a Fire TV starts Alexa's own quiz instead of the enabled development skill (Alexa on Fire TV)
@@ -263,7 +281,8 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Seen on the stick, 2026-10-22 about 11:00 EDT (Vega OS 2.0, APL 2024.3, viewport `TV 1920x1080 RECTANGLE`):** "Alexa, ask Speech Coach to quiz me" from the remote. The skill answered in 5 ms with the drill screen. Alexa showed it full-screen with only the Spee mark on it, and the Spee app went to the background until Alexa's screen closed about 49 s later (the hub logged the TV screen leaving and rejoining at 15:01:38Z, 11:01:38 EDT). Two separate causes:
   1. The blank screen was ours. The document's `mainTemplate` took a parameter called `payload`, and the datasource was also called `payload`. APL binds a parameter called `payload` to the whole `datasources` object (the pre-1.3 form), so every `payload.screen.*` binding was empty and only the mark, which needs no data, showed. Our own preview bound by name and hid it. Fixed: the parameter and the datasource are both `spee`, and the preview and tests bind by APL's rules (`bindParameters`).
   2. The backgrounding is how Fire TV shows a skill's document: a full-screen experience over the foreground app for as long as the session and the idle timeout last.
-- **Workaround used (2026-10-22; time not recorded separately):** `ALEXA_APL=hub-only` is the default. A TV viewport gets no document, so Alexa answers by voice and the Spee app stays in front and shows the drill live. Echo Show-type viewports (`HUB`) still get the screens, and `ALEXA_APL=on` sends the TV layout too ([docs/alexa.md](docs/alexa.md), "Screens (APL)"). What a voice-only answer shows on Vega OS 2.0 is not yet checked.
+- **Workaround used (2026-10-22; time not recorded separately):** `ALEXA_APL=hub-only` is the default. A TV viewport gets no document, so Alexa answers by voice and the Spee app stays in front and shows the drill live. Echo Show-type viewports (`HUB`) still get the screens, and `ALEXA_APL=on` sends the TV layout too ([docs/alexa.md](docs/alexa.md), "Screens (APL)").
+- **Checked with no document, 2026-10-22 11:15–11:16 EDT and in a filmed take at 12:08–12:12 EDT (Vega OS 2.0):** seven skill requests from the remote, all answered by voice only. The Fire TV showed Alexa's blue bar along the bottom of the screen and no card, and the Spee app stayed in front: the hub logged no screen leaving during either run. The plain "Speech Coach" card seen on 2026-10-20 did not come back.
 - **Actionable suggestion:** document on the APL and Fire TV pages what a speech-only skill response shows on Fire TV and for how long, and give a skill a way to keep the foreground app visible during a voice exchange. Have the APL authoring tool and the runtime warn when a datasource is named `payload` while the document's parameter is also `payload`, since that binding is silently empty.
 
 ### FL-14: Inside a skill session, "how did I do" arrives in the catch-all slot instead of its own intent (Alexa Skills Kit)
@@ -307,6 +326,22 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Severity:** Medium
 - **Workaround used:** the spoken name stays "speech coach", on camera and in the TV's prompts ("Alexa, ask Speech Coach to quiz me"); the skill is listed as Spee. The "spee coach" and "spee" skills stay deployed but unused. The name test took about 10 min; the multi-skill deploy was built as part of the rename and not timed separately.
 - **Actionable suggestion:** warn at model build (and in `ask smapi get-skill-status`) when an invocation name is one word or not a dictionary word; add a spoken check for invocation names in the developer console (say the name, see what Alexa heard and whether it resolved to the skill); and bias recognition toward the invocation names of skills enabled on the account.
+
+### FL-34: On a Fire TV, the answer to a skill's prompt needs the remote's mic button within a few seconds, and a line said after that goes to Alexa itself (Alexa on Fire TV / Alexa Skills Kit)
+- **Date:** 2026-10-22 11:10–11:16 EDT (Fire TV Stick, Vega OS 2.0; observed once); the `SessionEndedRequest` timing seen three times that day
+- **Task attempted:** run a voice drill from the Fire TV remote, as the demo does: "quiz me", say the line, then "how did I do?".
+- **Steps taken:**
+  1. 11:10:53: held the remote's mic button: "Alexa, ask Speech Coach to quiz me." The skill read the line and kept the session open.
+  2. 11:11:09: held the button and said the line. The skill answered "Got it, checking with Bee." Bee was off, so at 11:11:54 the TV showed that Bee hadn't caught it.
+  3. Turned Bee back on, held the button and said the same line again, without "Alexa, ask Speech Coach".
+- **Expected result:** the answer reaches the skill, or the docs for skills on Fire TV say that every answer needs the mic button and how long the session waits for it. The [session docs](https://developer.amazon.com/en-US/docs/alexa/custom-skills/manage-skill-session-and-session-attributes.html) say only that Alexa closes the microphone "if a few seconds elapse without a response", and that on a device with a screen the session "might remain open for a short time with the microphone closed".
+- **Actual result:**
+  - The retry never reached the skill: the hub logged no request until the next invocation at 11:15:42. Alexa took the line as a request to Alexa itself.
+  - On the remote, every turn needs a button hold, and it has to start within the few seconds after Alexa stops speaking (we plan on about 8 s). Miss it and the next sentence leaves the skill.
+  - The `SessionEndedRequest` for an earlier session arrived only with the next request, 3–100 ms before it, between about 4 and 53 minutes after that session's last turn (11:10:53, 11:15:42 and 12:08:57). We haven't compared it with the request's own timestamp.
+- **Severity:** Medium
+- **Workaround used:** the line can go in the same utterance as the invocation: "Alexa, tell Speech Coach: <the line>" reaches the skill as `AttemptIntent` in a new session. It worked on the stick at 11:15. For when no line is open, the skill now opens the due line closest to the words and grades the attempt against it (Spee `0010d8f`, tests `baa4681`, docs `b9bcbb8`, 11:29). The on-set script says to hold the button for every utterance. About 20 min from the miss to the documented fix.
+- **Actionable suggestion:** on the session page, say how push-to-talk devices such as a Fire TV remote handle an open session: how long Alexa waits for the button, and whether a press during the screen session's extra time still reaches the skill. Show on the TV that the skill is still waiting for an answer. Send `SessionEndedRequest` when the session ends, not with the next request, or document when it is sent.
 
 ## Fire TV and Vega
 
@@ -458,7 +493,8 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Actual result:** Ambient Experience covered the running app after the remote sat idle. After the visit to Settings, Spee was not running, so the TV had dropped its hub connection. We can't tell whether Settings or the Ambient Experience before it closed the app.
 - **Severity:** Medium (it would have ruined a long take; about 5 min to fix once seen)
 - **Workaround used:** Ambient Experience off for the shoot. After any trip to Settings, `vega device launch-app -d <device> --appName com.beecoach.mirror.main`, then check that the hub logged the screen joining (it rejoined at 10:01). Both are in the stick notes in [docs/tv.md](docs/tv.md), "Before a demo or filming".
-- **Actionable suggestion:** say in the Fire TV help for Vega devices that Ambient Experience is the screensaver; document whether an app in the foreground can hold it off (a keep-awake flag for dashboards and live-status apps); and document what Settings and Ambient Experience do to a running app (suspend or terminate), next to the [foreground and background](https://developer.amazon.com/docs/vega/0.24/foreground-background.html) page.
+- **Reopening it without the CLI, 2026-10-22 ~11:25 EDT:** Settings → Applications → Manage Installed Applications → Spee has no Launch button on Vega OS 2.0, so the Settings screen that closed the app can't reopen it. The only confirmed way back is the dev machine, now one command: `STICK=<stick IP>:5555 npm run tv:stick:open` (Spee `3fbf60b`, wrapping `vega device launch-app`). Home → Apps was not tried. About 5 min.
+- **Actionable suggestion:** add a Launch button to an app's page in Manage Installed Applications, as Fire OS has; say in the Fire TV help for Vega devices that Ambient Experience is the screensaver; document whether an app in the foreground can hold it off (a keep-awake flag for dashboards and live-status apps); and document what Settings and Ambient Experience do to a running app (suspend or terminate), next to the [foreground and background](https://developer.amazon.com/docs/vega/0.24/foreground-background.html) page.
 
 ### FL-31: The Vega CLI has no screenshot or screen-record command, and the device shell's own screenshot tool fails (Vega CLI / Vega Virtual Device)
 - **Date:** 2026-10-21 ~16:40 EDT (the plan for filming the stick) and 22:38–22:45 EDT (the VVD screenshot attempt); observed once, not re-checked
@@ -504,7 +540,7 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Actionable suggestion:** put the console path (or a link) in the error, show the gate in `get-foundation-model-availability`, and mention the form in the hackathon's AWS setup guidance.
 
 ### FL-26: Invoking a third-party Bedrock model accepts its AWS Marketplace offer, even when the call fails (Amazon Bedrock / AWS Marketplace)
-- **Date:** 2026-10-14 15:08–15:13 EDT (observed once, not re-checked); the credit side checked 2026-10-19 ~16:30 EDT
+- **Date:** 2026-10-14 15:08–15:13 EDT (observed once, not re-checked); the credit side checked 2026-10-19 ~16:30 EDT; Budgets and the credit API 2026-10-22 ~11:00–11:10 EDT
 - **Task attempted:** a short sweep of Converse calls across the models Bedrock listed in us-east-1, to pick a fallback while Anthropic access was gated (FL-25).
 - **Steps taken:**
   1. One Converse call per model, with forced tool use.
@@ -513,9 +549,11 @@ Spee is a speaking coach. Bee, on an Apple Watch, hears your real conversations;
 - **Expected result:** a failed call subscribes the account to nothing, and a paid Marketplace subscription needs an explicit accept.
 - **Actual result:** four Marketplace agreements were created, each with an email "You accepted an AWS Marketplace offer", one of them for the model whose call had failed. The Claude usage that followed bills as Marketplace usage types (`MP:USE1_InputTokenCount-Units`, `MP:USE1_OutputTokenCount-Units`), so whether a promotional credit covers it depends on the credit.
   - Checked on 2026-10-19 with Cost Explorer: it doesn't. The Claude usage shows up as separate Marketplace services ("Claude … (Amazon Bedrock Edition)"), and none of them is on the credit's covered-services list in the console, while Amazon-sold models on Bedrock and Amazon Polly are. Cost Explorer also shows neither a credit's remaining balance nor its expiry; only the console's Credits page does.
+  - Budgets, 2026-10-22 ~11:06 EDT: a US$10 monthly budget for Bedrock and Polly counts Claude only if each Marketplace service name is listed by hand ("Claude Haiku 4.5 (Amazon Bedrock Edition)", "Claude Sonnet 4.5 (Amazon Bedrock Edition)" and so on, copied from Cost Explorer's service values). "Amazon Bedrock" alone leaves Claude out, and a Claude model the account hasn't billed yet, such as a new version, isn't counted until its name is added.
+  - The same day: `aws freetier get-account-plan-state` has an `accountPlanRemainingCredits` field, but it tracks only Free Tier credits (it read $0, then $20 a minute after a Free Tier activity completed), not promotional credits. There is still no API for a promotional credit's balance or expiry.
 - **Severity:** Medium
-- **Workaround used:** cancelled the two unneeded agreements the same day with `aws bedrock delete-foundation-model-agreement`, and stopped sweep-probing third-party models. Claude usage goes on the card, which is small at our scale. Time not recorded.
-- **Actionable suggestion:** never create an agreement on a failed call; require an explicit accept (in the console or with `create-foundation-model-agreement`) before the first paid call; say in the response when a call subscribed the account; say on the credit page and in hackathon credit guidance that Marketplace-billed models such as Claude are not covered; and show a credit's balance and expiry in Cost Explorer and the CLI.
+- **Workaround used:** cancelled the two unneeded agreements the same day with `aws bedrock delete-foundation-model-agreement`, and stopped sweep-probing third-party models. Claude usage goes on the card, which is small at our scale. The Bedrock budget lists every Bedrock-related service name Cost Explorer shows, and a US$15 budget on the whole account catches a model the filter misses. Time not recorded.
+- **Actionable suggestion:** never create an agreement on a failed call; require an explicit accept (in the console or with `create-foundation-model-agreement`) before the first paid call; say in the response when a call subscribed the account; say on the credit page and in hackathon credit guidance that Marketplace-billed models such as Claude are not covered; show a credit's balance and expiry in Cost Explorer and the CLI; and give Budgets one filter for "Amazon Bedrock, including Marketplace models" that picks up new model versions.
 
 ## Hackathon process
 
