@@ -7,13 +7,14 @@
 //   turn 1  AttemptIntent   POST /api/attempt {source:"alexa"} -> 202 pending_bee; "checking with Bee"
 //   turn 2  HowDidIDoIntent GET /api/attempts/<id>; not ready -> progressive response, poll <= 6.5 s
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
-// On a device with a screen (Fire TV, Echo Show) each turn also renders a Spee screen
-// (./apl.ts); the speech, the reprompts and the timing are the same with or without one.
+// On a device with a screen that ALEXA_APL allows (by default an Echo Show, not a Fire TV) each turn
+// also renders a Spee screen (./apl.ts); the speech, the reprompts and the timing are the same with
+// or without one.
 import type { CardView, SessionSummary, VerdictResponse } from "../hub/contract.js";
 import { roundLineWords } from "../hub/roundWords.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
 import { clampMinutes, routeRequest, type Routed } from "./route.js";
-import { EMPTY, checkingScreen, drillScreen, emptyScreen, progressScreen, renderDirective, supportsApl, verdictScreen, type Screen } from "./apl.js";
+import { EMPTY, checkingScreen, drillScreen, emptyScreen, progressScreen, renderDirective, verdictScreen, wantsApl, type AplMode, type Screen } from "./apl.js";
 import { clip, failReason, line, sayCard, seconds } from "./speech.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, SessionAttributes } from "./types.js";
 
@@ -27,6 +28,7 @@ export interface SkillDeps {
   log?(event: string, data?: Record<string, unknown>): void;
   pollBudgetMs?: number; // default 6500 (Alexa's limit is 8 s)
   pollEveryMs?: number; // default 600
+  aplMode?: AplMode; // which screens get a Spee document (ALEXA_APL); default hub-only
 }
 
 export const POLL_BUDGET_MS = 6500;
@@ -48,7 +50,7 @@ export const SPEECH = {
   infoReprompt: "Say quiz me to practise, or stop.",
 } as const;
 
-// screen: set only when the device can show APL (handleAlexa checks supportedInterfaces).
+// screen: set only when the device can show APL and ALEXA_APL allows its viewport (wantsApl).
 type Out = { text: string; reprompt?: string; end?: boolean; attrs: SessionAttributes; screen?: Screen };
 
 export function respond(o: Out): AlexaResponseEnvelope {
@@ -73,7 +75,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   const attrs: SessionAttributes = { ...(env.session?.attributes ?? {}) };
   const isNew = !!env.session?.new;
   const hub = deps.hub;
-  const apl = supportsApl(env);
+  const apl = wantsApl(env, deps.aplMode);
   // A screen for this turn, built only for a device with a display (it may cost one more hub call).
   const screen = async (f: () => Screen | Promise<Screen>): Promise<Screen | undefined> => (apl ? f() : undefined);
   const hubCalls: string[] = [];

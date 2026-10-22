@@ -3,8 +3,8 @@
 // Alexa's own card, with just the skill's name, while the skill speaks and listens.
 //
 // A RenderDocument directive goes out only when the request's device lists
-// context.System.device.supportedInterfaces["Alexa.Presentation.APL"]; voice-only devices get the
-// same response as before. Colours live in the document's resources only (@colorBee is the one
+// context.System.device.supportedInterfaces["Alexa.Presentation.APL"] and ALEXA_APL allows that
+// viewport (wantsApl: by default a hub, not a TV); every other device gets the same response as before. Colours live in the document's resources only (@colorBee is the one
 // colour for "checked by Bee"); the datasource carries words and states. Every string a person reads is masked for the screen here (maskDeep
 // "screen"). The Alexa plugin then masks only what Alexa speaks (plugin.ts maskSpoken): the document
 // goes out as it is, since its expressions and resource names are not words. Pure, apart from reading
@@ -38,6 +38,31 @@ export function aplDocument(): Record<string, unknown> {
 export function supportsApl(env: AlexaRequestEnvelope): boolean {
   const s = env.context?.System?.device?.supportedInterfaces;
   return !!s && typeof s === "object" && APL_INTERFACE in s;
+}
+
+// Which screens get a Spee document (env ALEXA_APL). On a Fire TV, a RenderDocument takes the whole
+// screen and sends the Spee TV app to the background until Alexa's screen times out (about 49 s on
+// the stick on 2026-10-22), so by default only a hub (an Echo Show) gets one; on a TV, Alexa answers
+// by voice and the Spee app stays in front, showing the same drill live.
+//   hub-only  (default) a document only when the request's viewport mode is HUB
+//   on        a document for every APL device (the TV layout too)
+//   off       never a document
+export type AplMode = "on" | "off" | "hub-only";
+export const DEFAULT_APL_MODE: AplMode = "hub-only";
+/** ALEXA_APL as a mode; an unset or unknown value is the default (hub-only). */
+export function aplMode(raw: string | undefined): AplMode {
+  const v = raw?.trim().toLowerCase();
+  return v === "on" || v === "off" || v === "hub-only" ? v : DEFAULT_APL_MODE;
+}
+/** The request's viewport mode in upper case (HUB, TV, MOBILE, ...), or null when it has none. */
+export function viewportMode(env: AlexaRequestEnvelope): string | null {
+  const m = env.context?.Viewport?.mode;
+  return typeof m === "string" && m ? m.toUpperCase() : null;
+}
+/** True when this request's answer should carry a Spee screen, under `mode`. */
+export function wantsApl(env: AlexaRequestEnvelope, mode: AplMode = DEFAULT_APL_MODE): boolean {
+  if (mode === "off" || !supportsApl(env)) return false;
+  return mode === "on" || viewportMode(env) === "HUB";
 }
 
 export type ScreenKind = "drill" | "checking" | "verdict" | "progress" | "empty";

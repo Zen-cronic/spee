@@ -14,6 +14,7 @@ import { maskDeep, maskOut } from "../hub/mask.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, OutputSpeech } from "./types.js";
 import { signatureVerifier, type SigResult } from "./signature.js";
 import { deviceRecorder } from "./device.js";
+import { aplMode, type AplMode } from "./apl.js";
 import { isAlexaApiEndpoint, skillIdSource, verifyAlexaRequest, type SkillIds } from "./verify.js";
 
 export const ALEXA_PREFIXES = ["/alexa"];
@@ -31,6 +32,8 @@ export interface AlexaPluginOptions {
   fetch?: typeof fetch; // for the progressive response
   // Verify Amazon's request signature on PUBLIC requests. Default: on, unless ALEXA_VERIFY_SIGNATURE=0.
   verifySignature?: boolean | ((headers: IncomingMessage["headers"], raw: Buffer) => Promise<SigResult>);
+  // Which screens get a Spee document. Default: ALEXA_APL (off | on | hub-only), else hub-only.
+  aplMode?: AplMode;
 }
 
 const MAX_BODY = 64_000;
@@ -90,6 +93,9 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
   const now = opts.now ?? (() => Date.now());
   const progressive = progressiveSender({ allowed: opts.apiEndpointAllowed, fetch: opts.fetch });
   const newDevice = deviceRecorder();
+  const rawApl = process.env.ALEXA_APL?.trim();
+  const apl: AplMode = opts.aplMode ?? aplMode(rawApl);
+  const aplNote = `APL ${apl}${apl === "hub-only" ? " (Echo Show screens; a Fire TV gets voice only, so the Spee app stays in front)" : apl === "on" ? " (every screen, the Fire TV too)" : " (no screens)"}`;
   const sigOpt = opts.verifySignature ?? process.env.ALEXA_VERIFY_SIGNATURE?.trim() !== "0";
   const checkSignature = typeof sigOpt === "function" ? sigOpt : sigOpt ? signatureVerifier() : null;
   const fixed: SkillIds | null = opts.skillId === undefined ? null : { ids: [opts.skillId].flat(), names: {}, sources: ["options"], warnings: [] };
@@ -118,6 +124,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
     attach(ctx) {
       hub ??= new HubClient(() => ctx.selfUrl());
       loadSkillIds(ctx.log);
+      ctx.log("alexa.apl", { mode: apl, ...(rawApl && !opts.aplMode && rawApl.toLowerCase() !== apl ? { ignored: "ALEXA_APL must be off, on or hub-only" } : {}) });
       if (!checkSignature) ctx.log("alexa.signature-off", { note: "ALEXA_VERIFY_SIGNATURE=0: public /alexa requests are not signature-checked; never run a tunnel like this" });
     },
     async route(req: IncomingMessage, res: ServerResponse, url: URL, ctx: PluginCtx) {
@@ -170,6 +177,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
         log: ctx.log,
         pollBudgetMs: opts.pollBudgetMs,
         pollEveryMs: opts.pollEveryMs,
+        aplMode: apl,
       };
       const out = await handleAlexa(envelope, deps);
       served++;
@@ -187,7 +195,7 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
         routes: ALEXA_ROUTES,
         note: !s
           ? `no skill id: ${configError}`
-          : `${s.ids.length} skill id${s.ids.length === 1 ? "" : "s"} from ${s.sources.join(", ")}${skipped ? ` (${skipped} skipped)` : ""}${s.unread ? `; ${s.unread} could not be read, so the skills in it are refused` : ""}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
+          : `${s.ids.length} skill id${s.ids.length === 1 ? "" : "s"} from ${s.sources.join(", ")}${skipped ? ` (${skipped} skipped)` : ""}${s.unread ? `; ${s.unread} could not be read, so the skills in it are refused` : ""}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${aplNote}; ${served} requests served, ${rejected} rejected`,
       };
     },
   };
