@@ -568,6 +568,18 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(local().skills["spee coach"]).toBe("amzn1.ask.skill.00000000-0000-0000-0000-000000000001");
   });
 
+  it("a create that answers without a skill id is a stop like the others: STOPPED in the summary and exit status 2, even with speech coach ready (review L211)", async () => {
+    const ask = fakeAsk({ createOut: () => "Skill created. Check the developer console.\n" });
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.step, r.stopped ?? false])).toEqual([
+      ["speech coach", true, undefined, false],
+      ["spee coach", false, "create-skill-for-vendor", true],
+      ["spee", false, "not run", false],
+    ]);
+    expect(exitStatus(results)).toBe(2); // not 0, though the first name is ready
+    expect(lines.join("\n")).toContain("  spee coach: STOPPED at create-skill-for-vendor: no skill id in the answer\n  spee: FAILED at not run: the deploy stopped at spee coach");
+  });
+
   it("a local file that stops reading during the run stops the deploy at the next save, with its message and no stack trace, and never overwrites it (review L200)", async () => {
     const broken = '{ "skills": { "speech coach": "x", } }\n';
     // broken by hand after speech coach is ready: spee coach's create has run when its id is saved

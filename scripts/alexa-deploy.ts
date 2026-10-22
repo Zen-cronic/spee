@@ -41,7 +41,8 @@
 //   2. an existing skill (recorded, or found on the account): ask smapi update-skill-manifest
 //      a new name: ask smapi create-skill-for-vendor, the new id saved to alexa/skill-ids.local.json at
 //      once, then ask smapi get-skill-status --resource manifest until the skill exists. A create that
-//      answers without an id stops the deploy: the skill may exist, and the next run adopts it.
+//      answers without an id stops the deploy, with exit status 2: the skill may exist, and the next
+//      run adopts it.
 //   3. ask smapi set-interaction-model      (each locale, development stage)
 //   4. polls ask smapi get-skill-status until every locale's build SUCCEEDED (or FAILED; 180 s cap)
 //   5. ask smapi set-skill-enablement       (testing on, development stage; idempotent)
@@ -102,8 +103,8 @@ export interface DeployResult {
   step?: string;
   reason?: string;
   // The deploy stopped at this name, and the names after it are not run: the account lookup found
-  // none of the recorded skills, or not the checked-in one, or the local file could not be read to
-  // save its skill id.
+  // none of the recorded skills, or not the checked-in one; its create answered without an id; or the
+  // local file could not be read to save its skill id.
   stopped?: true;
 }
 
@@ -437,7 +438,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
         // The skill may exist with nothing recording it: the next names wait, and the next run finds
         // it on the account by its marker.
         deps.print(`  ${p.name}: STOPPED: the create answered without a skill id, so the skill may exist with nothing recording it. The names after it were not run. Check the developer console (a development skill listed as Spee); the next run finds it on the account by its testing instructions and adopts it.`);
-        results.push({ name: p.name, ok: false, created: false, skillId: null, step: "create-skill-for-vendor", reason: "no skill id in the answer" });
+        results.push({ name: p.name, ok: false, created: false, skillId: null, step: "create-skill-for-vendor", reason: "no skill id in the answer", stopped: true });
         stoppedAt = p.name;
         continue;
       }
@@ -500,8 +501,8 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
   return results;
 }
 
-// 2 when the deploy stopped (another account's profile, or a local file that stopped reading), else
-// 0 when the first name is ready, else 1.
+// 2 when the deploy stopped (another account's profile, a create that answered without an id, or a
+// local file that stopped reading), else 0 when the first name is ready, else 1.
 export const exitStatus = (results: DeployResult[]): number => (results.some((r) => r.stopped) ? 2 : results[0]?.ok ? 0 : 1);
 
 // The real runner: the ask CLI, its stdout as the answer.
