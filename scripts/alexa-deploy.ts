@@ -21,9 +21,10 @@
 //   ask smapi get-vendor-list                 (a check: create-skill-for-vendor takes the vendor id from the profile)
 //   ask smapi list-skills-for-vendor          (each page, with --next-token)
 //   ask smapi get-skill-manifest -s <id> -g development, for a recorded skill (or the checked-in one)
-//     the list does not show: when that fails too, the skill is gone. A recorded name is then set up
-//     again (adopted, else created, and the new id saved in place of the old one); the checked-in
-//     skill gone fails "speech coach" with the reason, since only its config can change it
+//     the list does not show: when that answers not found, the skill is gone (any other failure
+//     fails the lookup). A recorded name is then set up again (adopted, else created, and the new id
+//     saved in place of the old one); the checked-in skill gone fails "speech coach" with the
+//     reason, since only its config can change it
 //   ask smapi get-skill-manifest -s <id> -g development, for each development skill on the account
 //     and each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the
 //     invocation name it was set up for, whatever the listing says. A skill listed as Spee, or in
@@ -191,10 +192,14 @@ const errorText = (u: LastUpdate | undefined) =>
 // invocation name only when it is listed under the package's name ("Spee") or in ALEXA_SKILL_IDS;
 // any other is not Spee's. Ids already recorded are left out, but each is checked to still be there
 // (`gone`): the list shows only the profile's vendor, so a recorded skill the list leaves out is gone
-// only when its manifest cannot be read either.
+// only when its manifest read answers not found. Any other failure (a throttle, a 5xx, an expired
+// token) fails the lookup.
 type SkillList = { skills?: { skillId?: unknown; stage?: unknown; nameByLocale?: Record<string, unknown> }[]; isTruncated?: boolean; nextToken?: string };
 export type OnAccount = { byName: Map<string, string[]>; unnamed: string[]; gone: Set<string> } | { failed: string };
 const MAX_PAGES = 20;
+// A SMAPI 404 as the ask CLI prints it ("statusCode": 404, "The resource being requested is not
+// found."). A bare 404 is not enough: the error it prints for a 429 carries the response headers.
+export const notFound = (r: AskResult): boolean => !r.ok && /"statusCode":\s*404\b|\bnot found\b/i.test(r.err);
 export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployConfig, known: ReadonlySet<string>): OnAccount {
   const listedAs = new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name));
   const named = new Set(cfg.envIds.filter((id) => !known.has(id))); // named by their model when they carry no marker
@@ -216,7 +221,14 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
     if (page >= MAX_PAGES) return { failed: `the account lists more than ${MAX_PAGES} pages of skills` };
     token = j.nextToken;
   }
-  const gone = new Set([...known].filter((id) => !listed.has(id) && !ask(["smapi", "get-skill-manifest", "-s", id, "-g", cfg.stage]).ok));
+  const gone = new Set<string>();
+  for (const id of known) {
+    if (listed.has(id)) continue;
+    const r = ask(["smapi", "get-skill-manifest", "-s", id, "-g", cfg.stage]);
+    if (r.ok) continue;
+    if (!notFound(r)) return { failed: `could not check that ${shortId(id)} is still on the account` };
+    gone.add(id);
+  }
   const byName = new Map<string, string[]>();
   const unnamed: string[] = [];
   for (const id of ids) {
@@ -292,7 +304,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
       const listedAs = [...new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name))].join(" or ");
       const env = cfg.envIds.length ? ` and each id in ALEXA_SKILL_IDS (${cfg.envIds.length})` : "";
       deps.print(`$ ask smapi list-skills-for-vendor --profile ${cfg.profile}   (each page, with --next-token)`);
-      deps.print(`$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g ${cfg.stage} --profile ${cfg.profile}   (when it fails too, that skill is gone, and its name is set up again)`);
+      deps.print(`$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g ${cfg.stage} --profile ${cfg.profile}   (when it answers not found, that skill is gone, and its name is set up again)`);
       deps.print(`$ ask smapi get-skill-manifest -s <each development skill on the account${env}> -g ${cfg.stage} --profile ${cfg.profile}   (its testing instructions name the invocation name it was set up for)`);
       deps.print(`$ ask smapi get-interaction-model -s <a skill listed as ${listedAs}${env ? " or in ALEXA_SKILL_IDS" : ""} whose manifest names none> -g ${cfg.stage} -l ${cfg.locales[0]} --profile ${cfg.profile}`);
     } else if (!(v.ok && n > 0)) noCreate = { step: "get-vendor-list", reason: "this ASK CLI profile lists no vendor (run ask configure)" };

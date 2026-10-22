@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { deploy, DeployStop, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
+import { deploy, DeployStop, notFound, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
 import { checkInvocationName, DEFAULT_INVOCATION_NAMES, deployMarker, examplePhraseOk, loadSkillPackage, markedName, packageFor, swapName } from "../src/alexa/skillPackage.js";
 import { readSkillConfig, resolveSkillIds } from "../src/alexa/verify.js";
 
@@ -275,7 +275,7 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(out).not.toContain("Warning:"); // the local file is here
     // the account lookup comes before any change, and the dry run shows it
     expect(out).toContain('Before creating anything, the deploy looks on the account for a skill already set up for "spee", and checks that each recorded skill is still there:\n$ ask smapi get-vendor-list --profile default\n$ ask smapi list-skills-for-vendor --profile default');
-    expect(out).toContain("$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g development --profile default   (when it fails too, that skill is gone, and its name is set up again)");
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g development --profile default   (when it answers not found, that skill is gone, and its name is set up again)");
     expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill on the account> -g development --profile default");
     expect(out).toContain("$ ask smapi get-interaction-model -s <a skill listed as Spee whose manifest names none> -g development -l en-CA --profile default");
     expect(out.indexOf("list-skills-for-vendor")).toBeLessThan(out.indexOf("update-skill-manifest"));
@@ -399,6 +399,36 @@ describe("alexa:deploy with a fake ask CLI", () => {
     cfg.primary = { skillId: MAIN, source: "ALEXA_SKILL_ID" };
     const r2 = await deploy(cfg, deps(ask.run));
     expect(r2[0]!.reason).toBe("ALEXA_SKILL_ID names amzn1.ask.skill.11111111…, which is not on the account of profile default. Set ALEXA_SKILL_ID to this name's skill");
+  });
+
+  // What the ask CLI prints for a failed SMAPI call: the error's message and detail, with its headers.
+  const smapiError = (statusCode: number, message: string) => `[Error]: ${JSON.stringify({ message, detail: { name: "ServiceError", statusCode, headers: [{ key: "content-length", value: "404" }], response: { message } } }, null, 2)}`;
+
+  it("only a not-found answer makes a recorded skill gone: a throttled read fails the lookup, so nothing is created and the recorded names deploy unchecked (review L207)", async () => {
+    expect(notFound({ ok: false, out: "", err: smapiError(404, "The resource being requested is not found.") })).toBe(true);
+    expect(notFound({ ok: false, out: "", err: "[Error]: 404 Not Found" })).toBe(true); // the fake's
+    expect(notFound({ ok: false, out: "", err: smapiError(429, "Exceed the permitted request limit.") })).toBe(false); // a 404 in its headers is not enough
+    expect(notFound({ ok: false, out: "", err: smapiError(401, "The auth token is invalid/expired or doesn't have access to the resource.") })).toBe(false);
+    expect(notFound({ ok: false, out: "", err: "" })).toBe(false);
+    // "spee coach" is under another vendor of the profile, so the default vendor's list leaves it
+    // out, and its one manifest read is throttled
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": SPEE_COACH } }));
+    cfg.names = ["speech coach", "spee coach"];
+    const ask = fakeAsk({ account: [{ id: SPEE_COACH, marker: "spee coach" }] });
+    const run = (a: string[]): AskResult => {
+      if (a[1] === "get-skill-manifest" && a.includes(SPEE_COACH)) return { ok: false, out: "", err: smapiError(429, "Exceed the permitted request limit.") };
+      const r = ask.run(a);
+      if (a[1] !== "list-skills-for-vendor") return r;
+      const j = JSON.parse(r.out) as { skills: { skillId: string }[] };
+      return { ...r, out: JSON.stringify({ ...j, skills: j.skills.filter((k) => k.skillId !== SPEE_COACH) }) };
+    };
+    const results = await deploy(cfg, deps(run));
+    expect(results.map((r) => [r.name, r.ok, r.created, r.skillId])).toEqual([["speech coach", true, false, MAIN], ["spee coach", true, false, SPEE_COACH]]);
+    expect(ask.creates()).toBe(0);
+    expect(local().skills).toEqual({ "speech coach": MAIN, "spee coach": SPEE_COACH });
+    const out = lines.join("\n");
+    expect(out).toContain("could not check that amzn1.ask.skill.22222222… is still on the account: the names with no recorded skill are skipped, and the recorded skills deploy unchecked");
+    expect(out).not.toContain("is not on the account any more");
   });
 
   it("a listing renamed since the skills were set up: they are still found by their marker and adopted, never created again (review L199)", async () => {
