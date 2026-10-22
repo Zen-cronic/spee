@@ -6,7 +6,7 @@ The coach hub is the one shared state behind every surface:
 
 - **Spee on Fire TV** (phase 2). It shows the week's habit rates, the drilled-vs-control transfer chart, and live sync: an attempt, then "graded", then "verified by Bee", then the numbers update. It also mirrors the drill that Alexa is running.
 - **Alexa+ drill session** (phase 3, MCP server over Streamable HTTP plus a web simulator). It runs drills by voice: next card, the user re-says it, the attempt is graded, and the schedule is updated.
-- **Phone** (optional): a fast microphone through the tv-voice-bridge WebSocket.
+- **Phone** (optional): a fast microphone through the vega-voice-bridge WebSocket.
 
 Every example payload below comes from the demo hub (`npm run contract:check -- --write-examples` writes the full set to [`contract-examples.json`](contract-examples.json)). Long payloads are trimmed where marked `...`. Ids and `at` timestamps change on every run. Demo data is **synthetic** and every payload says so in `dataLabel`.
 
@@ -453,9 +453,9 @@ Scheduling (Leitner, `src/hub/scheduler.ts`; intervals 1, 2, 4, 8 and 16 days):
 - **Pass.** A final (Bee) pass on a due card moves it up a box. A pass on a card that is not due is practice only.
 - **Fail.** A final fail sends the card to box 1, due today, behind the other due cards.
 
-## WebSocket (`ws://<host>:8791/ws`, tv-voice-bridge protocol v1)
+## WebSocket (`ws://<host>:8791/ws`, vega-voice-bridge protocol v1)
 
-Connect with the bridge client (`tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.5.tgz`) or with raw frames.
+Connect with the bridge client (`vega-voice-bridge`, vendored as `vendor/vega-voice-bridge-0.4.2.tgz`) or with raw frames.
 
 - **TV / Alexa simulator / any viewer:** `{"type":"hello","v":1,"role":"screen","clientId":"tv-mirror","name":"tv"}`. The hub replies with `welcome {code, joinUrl, serverTime}`. A screen without a code creates a room, and its code pairs a phone.
 - **Phone mic:** `{"type":"hello","v":1,"role":"mic","clientId":"phone-1","code":"HJ3H"}`.

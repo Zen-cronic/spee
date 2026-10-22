@@ -50,14 +50,14 @@ flowchart LR
   H["Coach hub<br/>Node, one port"] -->|"Bee to-do + alarm"| W
   A["Alexa skill<br/>custom skill"] <-->|"POST /alexa"| H
   S["/sim/ and any<br/>MCP client"] <-->|"/mcp"| H
-  H <-->|"tv-voice-bridge WebSocket<br/>+ HTTP /api"| T["Fire TV<br/>Spee (Vega)"]
-  P["Phone page<br/>drill + practice"] <-->|"tv-voice-bridge<br/>(https for the mic)"| H
+  H <-->|"vega-voice-bridge WebSocket<br/>+ HTTP /api"| T["Fire TV<br/>Spee (Vega)"]
+  P["Phone page<br/>drill + practice"] <-->|"vega-voice-bridge<br/>(https for the mic)"| H
 ```
 
 - **Bee (Watch + `bee` CLI)** is the input of record: `bee stream` delivers wearer-tagged lines for habits, live nudges and every drill grade, and Bee to-dos with alarms are the wrist nudges.
 - **The hub** holds all state. It verifies each attempt against Bee (`src/hub/bee.ts`), grades it deterministically (`src/hub/grade.ts`), runs the live coach and recaps (`src/hub/live/`), and serves every surface from one port behind a public-access gate (`src/hub/gate.ts`).
 - **Alexa** runs drills by voice in two turns ("checking with Bee", then "how did I do?"), and on a Fire TV or Echo Show each turn shows a Spee screen (APL: the line, Bee's check, the verdict) instead of Alexa's plain card ([`docs/alexa.md`](docs/alexa.md), "Screens (APL)"); **MCP** exposes the same drill and stats tools to any assistant, and `/sim/` is a browser MCP client.
-- **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `tv-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/tv-voice-bridge/README.md` and `node_modules/tv-voice-bridge/PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
+- **Fire TV** shows the week, the live drill pipeline and the before/after check. It gets the hub's events through `vega-voice-bridge` (a WebSocket pairing and relay library of ours, vendored as a tarball in `vendor/`; its README and protocol ship inside it, at `node_modules/vega-voice-bridge/README.md` and `node_modules/vega-voice-bridge/PROTOCOL.md` after `npm run setup`), and reads the week, the transfer check, the live state and recaps over HTTP (`/api/stats`, `/api/transfer`, `/api/live`, `/api/recaps`).
 - **The phone page** is the practice microphone (volume, pitch, pace) and a typed or spoken drill input, also over the bridge. Its Progress tab shows the TV's week, before and after and recent recaps. It reads them with the pair token from the TV's QR, so they reach only a paired phone. Nothing is stored on the phone, and there are no accounts. Its microphone needs https (the `ngrok http` link above); over LAN `http://` it is typing only.
 
 ## Coach hub (shared core for the TV app and the Alexa drill session)
@@ -90,7 +90,7 @@ npm run demo:fixtures           # regenerates fixtures/demo/ (deterministic)
 - **Finished conversations are picked up automatically.** Once Bee marks a conversation complete, the running hub fetches it, keeps the wearer's lines through the same wearer filter and mislabel rules as `npm run real`, and refreshes the stats and the first signal. No rerun or restart is needed ([`docs/live.md`](docs/live.md)).
 - **Privacy.** Stream text stays in memory until Bee tags it as the wearer. Untagged and other-speaker lines are never sent to a surface or written to disk.
 - **Filming: list names to hide in `coach/mask-terms.local.txt`** (gitignored, one per line), then restart the hub. Screens show `▒▒▒` and Alexa and MCP say "name" for each one, and for every term in `coach/private-terms.local.txt`; grading and the saved files keep the real words. Health shows only `masking: on (N terms)` ([`docs/live.md`](docs/live.md), "Filming").
-- **Phone microphone.** It uses `tv-voice-bridge`, vendored as `vendor/tv-voice-bridge-0.3.5.tgz`.
+- **Phone microphone.** It uses `vega-voice-bridge` (called tv-voice-bridge until 2026-10-22), vendored as `vendor/vega-voice-bridge-0.4.2.tgz`.
 
 ## Privacy design
 
