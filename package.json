@@ -39,7 +39,8 @@
     "alexa:apl:preview": "tsx scripts/apl-preview.ts",
     "wrist:probe": "tsx scripts/wrist-probe.ts",
     "demo:replay": "tsx scripts/demo-replay.ts",
-    "check": "npm run typecheck && npm test && npm run contract:check && npm run leak-check"
+    "check": "npm run typecheck && npm test && npm run contract:check && npm run leak-check",
+    "tv:stick:open": "vega device launch-app -d ${STICK:?set STICK=<stick IP>:5555} --appName com.beecoach.mirror.main"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1151.0",
