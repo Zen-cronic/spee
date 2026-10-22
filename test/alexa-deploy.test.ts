@@ -445,10 +445,20 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(results).toEqual([]);
     expect(ask.mutating()).toEqual([]); // reads only
     expect(existsSync(cfg.localPath)).toBe(false);
-    expect(lines.at(-1)).toBe('\nalexa:deploy: stopped: the account has more than one skill set up for "spee coach" (amzn1.ask.skill.22222222…, amzn1.ask.skill.44444444…). Delete the extra ones in the developer console, or record the right one in alexa/skill-ids.local.json, then run again. Nothing was changed; only read calls ran.');
-    // recording the right one settles it: that name is no longer looked up
-    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": SPEE_COACH } }));
-    const r2 = await deploy(cfg, deps(fakeAsk({ account: [{ id: SPEE_COACH, marker: "spee coach" }, { id: "amzn1.ask.skill.44444444-4444-4444-4444-444444444444", model: "spee coach" }, { id: SPEE, marker: "spee" }] }).run));
+    expect(lines.at(-1)).toBe('\nalexa:deploy: stopped: the account has more than one skill set up for "spee coach" (amzn1.ask.skill.22222222…; amzn1.ask.skill.44444444…). Alexa could send that name to any of them. Delete the extra ones in the developer console, then run again. Nothing was changed; only read calls ran.');
+  });
+
+  it("a second skill on the account for a recorded name also stops the deploy, naming the recorded one, until the extra one is deleted (review L201)", async () => {
+    const EXTRA = "amzn1.ask.skill.44444444-4444-4444-4444-444444444444"; // e.g. made by an older deploy in another checkout
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": SPEE_COACH, spee: SPEE } }));
+    const account = [{ id: SPEE_COACH, marker: "spee coach" }, { id: EXTRA, listed: "Speech Coach", marker: "spee coach" }, { id: SPEE, marker: "spee" }];
+    const ask = fakeAsk({ account });
+    expect(await deploy(cfg, deps(ask.run))).toEqual([]);
+    expect(ask.mutating()).toEqual([]); // reads only
+    expect(lines.at(-1)).toBe('\nalexa:deploy: stopped: the account has more than one skill set up for "spee coach" (amzn1.ask.skill.22222222…, the one in alexa/skill-ids.local.json; amzn1.ask.skill.44444444…). Alexa could send that name to any of them. Delete the extra ones in the developer console, then run again. Nothing was changed; only read calls ran.');
+    expect(local().skills).toEqual({ "spee coach": SPEE_COACH, spee: SPEE });
+    // the extra one deleted: the recorded skills deploy
+    const r2 = await deploy(cfg, deps(fakeAsk({ account: account.filter((k) => k.id !== EXTRA) }).run));
     expect(r2.map((r) => [r.name, r.ok, r.skillId])).toEqual([["speech coach", true, MAIN], ["spee coach", true, SPEE_COACH], ["spee", true, SPEE]]);
   });
 

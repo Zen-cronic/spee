@@ -12,7 +12,8 @@
 // (git-ignored) reuses its skill. The account is the record of which skills exist and the local file
 // a cache, so on every real run the deploy first reads the account. A recorded skill that is no longer
 // there is said so, and its name is set up again like a name with none recorded. Before creating a
-// skill for a name, the deploy adopts a skill already set up for it, and stops when it finds two. A local file that does not parse, or holds
+// skill for a name, the deploy adopts a skill already set up for it. Two skills for one name, recorded
+// or not, stop the deploy before any change: Alexa could send that name to either. A local file that does not parse, or holds
 // an entry that is not a skill id, stops the deploy before any ask call, in a dry run too, and is
 // never overwritten; so does an ALEXA_SKILL_IDS entry that is not a skill id.
 //
@@ -275,7 +276,8 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
 
   // Before any change: the vendor, then the account. Each recorded skill must still be there: a
   // recorded name whose skill is gone is set up again like a name with none recorded. A name with no
-  // recorded skill adopts the one the account has for it; two skills for one name stop the deploy.
+  // recorded skill adopts the one the account has for it. Two skills for one name stop the deploy,
+  // also when one of them is recorded.
   const live = planned.filter((p) => !p.problems.length);
   const toCreate = () => live.filter((p) => !p.skillId);
   let noCreate: { step: string; reason: string } | null = null;
@@ -312,12 +314,15 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
             deps.print(`  ${p.name}: ${reason}`);
           }
         }
-        const creating = toCreate();
-        const twice = creating.filter((p) => (found.byName.get(p.name) ?? []).length > 1);
+        // Every skill on the account for each name: the recorded one (still there) and the ones read.
+        const onAccount = (p: PlannedSkill) => [...new Set([...(p.skillId && !blocked.has(p.name) ? [p.skillId] : []), ...(found.byName.get(p.name) ?? [])])];
+        const twice = live.filter((p) => onAccount(p).length > 1);
         if (twice.length) {
-          deps.print(`\nalexa:deploy: stopped: the account has more than one skill set up for ${twice.map((p) => `"${p.name}" (${found.byName.get(p.name)!.map(shortId).join(", ")})`).join(" and ")}. Delete the extra ones in the developer console, or record the right one in ${LOCAL_LABEL}, then run again. Nothing was changed; only read calls ran.`);
+          const list = (p: PlannedSkill) => onAccount(p).map((id) => (id === p.skillId ? `${shortId(id)}, the one in ${p.from}` : shortId(id))).join("; ");
+          deps.print(`\nalexa:deploy: stopped: the account has more than one skill set up for ${twice.map((p) => `"${p.name}" (${list(p)})`).join(" and ")}. Alexa could send that name to any of them. Delete the extra ones in the developer console, then run again. Nothing was changed; only read calls ran.`);
           return [];
         }
+        const creating = toCreate();
         for (const p of creating) {
           const id = found.byName.get(p.name)?.[0];
           if (id) Object.assign(p, { skillId: id, from: "found on the account" });
