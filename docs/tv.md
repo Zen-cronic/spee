@@ -96,6 +96,8 @@ First run on hardware 2026-10-20 (Fire TV Stick, `armv7l`, Vega OS 2.0 "TV Ship/
    On this stick `<arch>` is `armv7` (`speakingmirror_armv7.vpkg`).
 4. **Pair the phone and check.** Scan the TV's QR with the phone on the same Wi-Fi (the QR carries `#k=`, so a LAN phone gets in without `--lan`). Run one drill (provisional → checking with Bee → graded) and one practice take (meters move), then Right/OK across the tabs and Back to exit. If the phone cannot connect, restart the hub with `--lan` (home Wi-Fi only).
 
+**Before a demo or filming:** turn off Vega's screensaver, **Settings → Display & Sounds → Ambient Experience → Off** (Vega OS has no "Screensaver" menu; Ambient Experience fills the screen with artwork after the remote sits idle and covers the app). Leaving the app for Settings closes it, so relaunch it after (`vega device launch-app -d $D --appName com.beecoach.mirror.main`) and check the hub logged a screen join.
+
 **Checking the stick from the dev machine.** Set `D=<stick IP>:5555` (Wi-Fi) or `D=<serial>` (USB).
 
 | What | Command |
