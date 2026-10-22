@@ -35,11 +35,12 @@ export function roundLineWords(s: RoundWordsIn): RoundWords {
   const rest = l ? others : tries ? tally : "";
   const checked = s.counted > 0;
   // Nothing checked yet, but a line is still with Bee: it is still checking (its verdict usually
-  // lands seconds later), so the clause says so and the bracket leaves that part out.
+  // lands seconds later), so the clause says so and the bracket leaves that part out. An older hub's
+  // tries too: the bracket keeps only the tries Bee didn't catch, so each count is said once.
   const checking = !checked && c.pending > 0;
   const unit = l ? (c.pending === 1 ? "line" : "lines") : c.pending === 1 ? "try" : "tries";
   const head = checked ? `${headline}, checked by Bee` : checking ? `Bee is still checking ${c.pending} ${unit}` : "Bee didn't check any line this round";
-  const bracket = checking && l ? [part.failed, part.unverified, part.untried].filter(Boolean).join(", ") : rest;
+  const bracket = checking ? [part.failed, part.unverified, part.untried].filter(Boolean).join(", ") : rest;
   const said = `${head}${bracket ? ` (${bracket})` : ""}`;
   return { headline, tally, rest, checked, said };
 }

@@ -240,6 +240,6 @@ describe("the round's narration (summaryText)", () => {
     expect(summaryText({ ...uncaught, cards: 2, attempts: 2, pending: 1, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("Practice done: Bee is still checking 1 line (1 Bee didn't catch).");
     expect(summaryText({ ...none, attempts: 2, pending: 2, cards: 2, lines: { passed: 0, failed: 0, unverified: 0, pending: 2, untried: 0 } })).toBe("Practice done: Bee is still checking 2 lines.");
     expect(summaryText(uncaught)).toBe("Practice done: Bee didn't check any line this round (1 try: 0 passed, 1 Bee didn't catch)."); // an older hub
-    expect(summaryText({ ...none, attempts: 1, pending: 1 })).toBe("Practice done: Bee is still checking 1 try (1 try: 0 passed, 1 still with Bee)."); // an older hub, still with Bee
+    expect(summaryText({ ...none, attempts: 1, pending: 1 })).toBe("Practice done: Bee is still checking 1 try."); // an older hub, still with Bee: each count once (review L198)
   });
 });

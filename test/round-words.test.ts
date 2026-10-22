@@ -108,4 +108,12 @@ describe("a round's per-line words agree on the TV, the phone, MCP and Alexa (re
     expect(sessionOverLine(older)).toBe("Session over, 3 tries: 1 passed, 2 not yet.");
     expect(summaryText(older)).toBe("Practice done: 1 of 2 lines passed, checked by Bee (3 tries: 1 passed, 2 not yet).");
   });
+  it("an older hub with a try still with Bee: the clause says Bee is still checking it, and the bracket says each other count once (review L198)", () => {
+    const { lines: _, ...one } = round(1, { attempts: 1, counted: 0, pending: 1 }, {});
+    expect(roundLineWords(one).said).toBe("Bee is still checking 1 try");
+    expect(summaryText(one)).toBe("Practice done: Bee is still checking 1 try.");
+    const { lines: __, ...more } = round(2, { attempts: 3, counted: 0, unverified: 2, pending: 1 }, {});
+    expect(roundLineWords(more).said).toBe("Bee is still checking 1 try (2 Bee didn't catch)");
+    expect(roundLineWords(more).tally).toBe("3 tries: 0 passed, 2 Bee didn't catch, 1 still with Bee"); // the TV's tally keeps every part
+  });
 });
