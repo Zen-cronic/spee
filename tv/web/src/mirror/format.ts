@@ -487,6 +487,14 @@ export function shortQuote(text: string | null | undefined, words = 4): string {
 }
 
 /**
+ * The drill stages in which a line is with Bee: said (or Bee's line heard) and Bee's verdict not in
+ * yet. The one list for the reducer (drillPhase, drillInProgress, Round over on a rejoin), Round
+ * over's last line and its "Still with Bee" tag.
+ */
+export const WITH_BEE_STAGES = ['provisional', 'checking', 'verified'] as const;
+export const withBee = (stage: string): boolean => (WITH_BEE_STAGES as readonly string[]).includes(stage);
+
+/**
  * The Round over line about the last line: its result in one sentence, Bee's call with the start
  * of what Bee heard, or that Bee is still checking it (its verdict lands here after the round).
  */
@@ -498,7 +506,7 @@ export function roundLastLine(d: { graded: { pass: boolean; agreement: string | 
     if (g.agreement === 'bee-overrules') return g.pass ? `${who} heard a miss on your last line; Bee heard ${shortQuote(g.beeText)} and passed it.` : `${who} heard a pass on your last line; Bee heard ${shortQuote(g.beeText)}.`;
     return g.pass ? 'Last line: passed. Bee heard it.' : `Last line: not yet. ${plainReason(g.failure) ?? 'So close'}.`;
   }
-  if (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified') return 'Bee is still checking your last line. Its result lands here.';
+  if (withBee(d.stage)) return 'Bee is still checking your last line. Its result lands here.';
   if (d.stage === 'unverified') return 'Bee didn’t catch your last line, so it doesn’t count yet.';
   return null;
 }

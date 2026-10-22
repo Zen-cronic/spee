@@ -3,7 +3,7 @@ import { HopTimeline } from '../components/HopTimeline';
 import { SettingChip } from '../components/SettingChip';
 import type { LiveMode, LiveWindow, Nudge, NudgeSkipped, Recap } from '../contract';
 import { useDebug } from '../debug';
-import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, RULE_LABEL, sessionTally, skipLine, statTone, usualWindow } from '../mirror/format';
+import { baselineWordsLabel, curly, fmt1, fmtDay, fmtInt, fmtWords, fmtMs, fmtPct, habitTitle, lastConversation, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, overruleText, plainReason, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, RULE_LABEL, sessionTally, skipLine, statTone, usualWindow, withBee } from '../mirror/format';
 import { drillPhase, drillSteps, type DrillState, type LiveSlice, type StepState } from '../mirror/reducer';
 import { useEnter, useLoop, usePop } from '../motion';
 import { C, F, habitHue, R, SP, SPLIT, T } from '../theme';
@@ -64,7 +64,7 @@ function RoundOver({ d }: { d: DrillState }) {
   const enter = useEnter(`over:${s.sessionId}`, 14, 280);
   const g = d.graded;
   const overrules = g?.agreement === 'bee-overrules';
-  const checking = !g && (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified');
+  const checking = !g && withBee(d.stage);
   const last = roundLastLine({ graded: g, stage: d.stage, previewSource: d.provisional?.source ?? null });
   const segs = roundSegments(s);
   const { heard, checked, graded } = drillSteps(d);

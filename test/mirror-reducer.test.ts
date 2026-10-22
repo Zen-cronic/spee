@@ -2,9 +2,9 @@
 // order with gaps and duplicates, rebasing on hub.state, screen auto-switching and the room-scoped
 // meters history.
 import { describe, expect, it } from "vitest";
-import { backAction, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, ROUND_OVER_MS, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
+import { backAction, drillInProgress, drillPhase, drillSteps, GAP_WAIT_MS, initialMirror, mirrorReducer, PRACTICE_HISTORY, RECAP_VISIBLE_MS, ROUND_OVER_MS, type DrillStage, type DrillState, type MirrorAction, type MirrorState, type SeqEvent } from "../tv/web/src/mirror/reducer.js";
 import { loadFixtureV2 } from "../src/hub/fixtureV2.js";
-import { roundLastLine } from "../tv/web/src/mirror/format.js";
+import { roundLastLine, WITH_BEE_STAGES, withBee } from "../tv/web/src/mirror/format.js";
 
 const fx = loadFixtureV2();
 const ev = (seq: number, topic: string, payload: Record<string, unknown> = {}): SeqEvent => ({ topic, payload: { seq, at: 1792517400000 + seq, ...payload } });
@@ -77,6 +77,19 @@ describe("seq order", () => {
     expect(s.lastSeq).toBe(2);
     expect(views(s)).toBe("live");
     expect(s.duplicates).toBe(1); // only seq 345, which the reconnect snapshot already covered
+  });
+});
+
+describe("one list of the stages with Bee (review L191)", () => {
+  it("the drill panel, a drill in progress and Round over's last line all read it", () => {
+    expect(WITH_BEE_STAGES).toEqual(["provisional", "checking", "verified"]);
+    const stages: DrillStage[] = ["idle", "card", "provisional", "checking", "verified", "unverified", "graded"];
+    for (const stage of stages) {
+      const d = { ...initialMirror().drill, card: { id: "k1" } as any, stage } as DrillState;
+      expect(drillPhase(d) === "checking", stage).toBe(withBee(stage));
+      expect(drillInProgress(d), stage).toBe(stage === "card" || withBee(stage));
+      expect(roundLastLine({ graded: null, stage, previewSource: null }) === "Bee is still checking your last line. Its result lands here.", stage).toBe(withBee(stage));
+    }
   });
 });
 

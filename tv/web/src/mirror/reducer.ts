@@ -36,7 +36,7 @@ import type {
   SessionSummary,
   SettingTag,
 } from '../contract';
-import { gradeFailure, type GradeFailure } from './format';
+import { gradeFailure, withBee, type GradeFailure } from './format';
 
 export type ScreenView = MirrorView | 'pair';
 export const SCREEN_VIEWS: ScreenView[] = ['week', 'transfer', 'live', 'practice', 'pair'];
@@ -178,7 +178,7 @@ export function drillPhase(d: Pick<DrillState, 'card' | 'stage' | 'summary'>): D
   if (d.summary) return 'over';
   if (!d.card) return 'idle';
   if (d.stage === 'graded' || d.stage === 'unverified') return 'result';
-  if (d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified') return 'checking';
+  if (withBee(d.stage)) return 'checking';
   return 'line';
 }
 
@@ -227,7 +227,7 @@ export function backAction(s: Pick<MirrorState, 'recapVisible' | 'view'>): 'dism
   return s.view === 'week' ? 'exit' : 'home';
 }
 
-export const drillInProgress = (d: DrillState) => d.stage === 'card' || d.stage === 'provisional' || d.stage === 'checking' || d.stage === 'verified';
+export const drillInProgress = (d: DrillState) => d.stage === 'card' || withBee(d.stage);
 export const practiceActive = (p: PracticeSlice, now: number) => p.lastFrameAt !== null && now - p.lastFrameAt < PRACTICE_ACTIVE_MS;
 
 export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
@@ -308,7 +308,6 @@ function onHubState(s: MirrorState, h: HubState, now: number, offsetMs: number):
   };
 }
 
-const WITH_BEE: DrillStage[] = ['provisional', 'checking', 'verified'];
 // Round over survives a (re)join. While no round and no card is open, the hub sends the round that
 // ended last (`lastSession`), and its ROUND_OVER_MS run from the hub's end time, on this screen's
 // clock. The last line is the one the hub names (`lastCardId`), and its result is the hub's newest
@@ -337,7 +336,7 @@ function roundOverOnJoin(have: DrillState, h: HubState, d: DrillState, restarted
   }
   if (mine) {
     const line = summary.perCard?.find((c) => c.cardId === have.card?.id)?.line;
-    const settled = WITH_BEE.includes(have.stage) && !!line && line !== 'pending';
+    const settled = withBee(have.stage) && !!line && line !== 'pending';
     return { ...have, deck: h.deck, summary, overCard, ...(settled ? { card: null, ...noTry } : {}) };
   }
   return { ...emptyDrill(), sessionId: sid, deck: h.deck, summary, overAt, overCard, overDone: have.overDone };
