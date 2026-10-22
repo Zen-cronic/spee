@@ -16,6 +16,7 @@
 // live window (unless a drill or a practice take is in progress), meters show practice,
 // `recap.ready` raises the recap overlay, and `mirror.focus` shows whatever a peer asked for (a
 // phone's focus only on its own room's screen).
+import { ROUND_OVER_MS } from '../contract';
 import type {
   CardView,
   ConversationEnded,
@@ -47,9 +48,10 @@ export const PRACTICE_HISTORY = 50; // 5 s at 10 Hz
 export const PRACTICE_ACTIVE_MS = 3000;
 export const RECAP_VISIBLE_MS = 30_000;
 export const KEEP_NUDGES = 5;
-// Round over stays on Live this long after the round ended (the moment to film), then Live's
-// drill panel goes back to the idle panel with the lines due.
-export const ROUND_OVER_MS = 15 * 60_000;
+// Round over stays on Live ROUND_OVER_MS after the round ended (the moment to film; the contract's
+// constant, which the hub keeps lastSession for), then Live's drill panel goes back to the idle panel
+// with the lines due.
+export { ROUND_OVER_MS };
 
 export type DrillStage = 'idle' | 'card' | 'provisional' | 'checking' | 'verified' | 'unverified' | 'graded';
 

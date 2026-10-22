@@ -219,9 +219,12 @@ export interface HubState {
   // omit it, and older screens ignore it.
   lastSession?: LastSession | null;
 }
+// Round over stays on a screen this long after the round ended (the moment to film); the hub sends
+// lastSession for as long, and a screen's Round over runs as long from the hub's end time.
+export const ROUND_OVER_MS = 15 * 60_000;
 export interface LastSession {
   summary: SessionSummary;
-  endedAt: number; // hub clock: Round over lasts 15 min from here, on the screen's clock via its offset
+  endedAt: number; // hub clock: Round over lasts ROUND_OVER_MS (15 min) from here, on the screen's clock via its offset
   lastCardId: string | null; // the last line opened in the round (Round over's "last line"); perCard lists a line once, at its first opening
   // Additive: the newest try at lastCardId in the round, as attempt.graded carries it (null when the
   // line was never said), so a screen that (re)joins still shows the last line's result, also one

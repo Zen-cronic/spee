@@ -14,7 +14,7 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEven
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
-import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, SEQUENCED_TOPICS, type LastSession, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, ROUND_OVER_MS, SEQUENCED_TOPICS, type LastSession, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
 import { fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
@@ -106,7 +106,8 @@ export class CoachHub extends EventEmitter {
   passedClose: { cardId: string; attemptId: string; at: number } | null = null;
   session: DrillSession | null = null;
   lastSession: DrillSession | null = null;
-  // The round that ended last, until a card opens: hub.state's lastSession (lastSessionState).
+  // The round that ended last, until a card opens: hub.state's lastSession (lastSessionState), for
+  // ROUND_OVER_MS after it ended.
   private roundOver: { sessionId: string; lastCardId: string | null } | null = null;
   private seq = 0;
   readonly recent: HubEvent[] = []; // last 50 events (GET /api/events/recent, contract examples)
@@ -531,7 +532,7 @@ export class CoachHub extends EventEmitter {
 
   // The round that ended last, for a screen that (re)joins while no round and no card is open
   // (hub.state's lastSession), so its Round over survives a reconnect. None once a card has opened
-  // since. `lastCardId` is the last line opened in the round, the one Round over's last line is
+  // since, or ROUND_OVER_MS after the round ended. `lastCardId` is the last line opened in the round, the one Round over's last line is
   // about: perCard lists a line once, at its first opening, so a line opened again later is not
   // the summary's last entry.
   lastSessionState(): LastSession | null {
@@ -550,14 +551,15 @@ export class CoachHub extends EventEmitter {
     return null;
   }
 
-  // The round that ended last, while its Round over is still up: it ended, and no round and no card
-  // has opened since (a card that opened and closed again counts). The one rule for hub.state's
-  // lastSession and for a summary re-sent when Bee settles one of its tries late.
+  // The round that ended last, while its Round over is still up: it ended less than ROUND_OVER_MS
+  // ago, and no round and no card has opened since (a card that opened and closed again counts). The
+  // one rule for hub.state's lastSession and for a summary re-sent when Bee settles one of its tries
+  // late; after the 15 minutes every screen has dropped it, so neither goes out.
   private roundStillOver(): DrillSession | null {
     const s = this.lastSession;
     const r = this.roundOver;
     if (!s || !r || r.sessionId !== s.id || s.endedAt === null || this.session || this.open) return null;
-    return s;
+    return this.clock() - s.endedAt < ROUND_OVER_MS ? s : null;
   }
 
   // The round's counts per try, and `lines`: each line once, by its best result (a pass, else a try

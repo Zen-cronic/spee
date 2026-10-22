@@ -442,8 +442,12 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
           masking: maskStatus(),
         });
       case "GET /api/state":
-      case "GET /api/session":
-        return send(res, 200, { ...stateSnapshot(), lastSessionSummary: hub.lastSession ? hub.sessionSummary(hub.lastSession) : null, currentSessionSummary: hub.session ? hub.sessionSummary(hub.session) : null });
+      case "GET /api/session": {
+        // lastSession's summary is the last round's, built once; a round past its Round over is built here
+        const snap = stateSnapshot();
+        const lastSessionSummary = snap.lastSession?.summary ?? (hub.lastSession ? hub.sessionSummary(hub.lastSession) : null);
+        return send(res, 200, { ...snap, lastSessionSummary, currentSessionSummary: hub.session ? hub.sessionSummary(hub.session) : null });
+      }
       case "GET /api/deck": {
         const today = hub.today();
         return send(res, 200, { dataLabel: hub.dataLabel, summary: hub.deckSummary(), cards: hub.deck.cards.map((c) => hub.view(c)).sort((a, b) => Number(b.dueNow) - Number(a.dueNow) || a.box - b.box), today });

@@ -1,7 +1,8 @@
 // A round's summary counts each line once (`lines`), by its best result, beside the per-try counts:
 // a line missed and then passed on a retry is one line passed, so a screen's tally under "1 of 2
 // lines passed." never reads "1 passed, 2 not yet".
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { ROUND_OVER_MS } from "../src/hub/contract.js";
 import type { Attempt, HubEvent } from "../src/hub/core.js";
 import { demoSetup } from "../src/hub/setup.js";
 import { drillPhase, initialMirror, mirrorReducer, type MirrorState } from "../tv/web/src/mirror/reducer.js";
@@ -116,6 +117,26 @@ describe("a round's lines", () => {
     two.endSession();
     expect(two.lastSessionState()).toMatchObject({ lastAttempt: null });
     two.dispose();
+  });
+  it("lastSession goes once ROUND_OVER_MS has passed since the round ended, as every screen's Round over does (review L192)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+      const { card: a } = hub.startSession({ by: "tv", size: 1 });
+      const tryA = hub.submit({ text: a!.resay, source: "phone" }) as Attempt;
+      hub.endSession();
+      const events: HubEvent[] = [];
+      hub.on("event", (e: HubEvent) => events.push(e));
+      vi.advanceTimersByTime(ROUND_OVER_MS - 1);
+      expect(hub.lastSessionState()).not.toBeNull();
+      vi.advanceTimersByTime(1);
+      expect(hub.lastSessionState()).toBeNull();
+      heard(hub, tryA, a!.resay); // a verdict after the 15 minutes: no screen shows that round any more
+      expect(events.filter((e) => e.topic === "session.ended")).toHaveLength(0);
+      hub.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("while Round over is still up, Bee settling a try re-sends the round's tally", () => {
     const { hub } = demoSetup({ pace: 0.01, stateDir: null });
