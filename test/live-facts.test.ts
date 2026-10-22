@@ -699,6 +699,38 @@ describe("the breaker", () => {
 });
 
 describe("a pass owed while the breaker is open", () => {
+  it("after a goal save that failed, an owed pass reads status failed with no goal, and the row still says the pass is kept (review L203)", async () => {
+    const h = hub();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });
+    try {
+      let down = true;
+      const bee = fakeBee({ hook: (a) => (down && a[0] !== "todos" ? new Error("bee: 503 Service Unavailable") : null) });
+      const f = new BeeFacts({ hub: h, mode: "live", stateDir: mkdtempSync(join(tmpdir(), "facts-owed-failed-")), exec: bee.exec, minGapMs: 0, countsFirstMs: 1e9 });
+      f.start();
+      stops.push(() => f.stop());
+      pass(h); // the goal create fails
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "failed", goal: null, owed: false });
+      await f.tick();
+      await f.tick(); // two failed count reads: the breaker opens
+      expect(f.circuitOpenUntil()).not.toBeNull();
+      pass(h); // owed
+      await f.settle();
+      // the two states CONTRACT.md documents for owed: true, here the "failed" one
+      const m = f.memory();
+      expect(m).toMatchObject({ status: "failed", goal: null, owed: true, stopped: false });
+      expect(beeMemoryLine(m)!.text).toBe("Your pass is kept: the coach saves your speaking goal once Bee answers again.");
+      expect(goalLines(m)[0]).toBe("No goal fact yet: Bee couldn't be reached when your last practice line passed. That pass is kept, and the coach saves the goal once Bee answers again.");
+      expect(bee.calls.filter((c) => c[1] === "create")).toHaveLength(1);
+      down = false;
+      await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1); // it closes: the owed pass writes the goal
+      await f.settle();
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true }, owed: false });
+      f.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("stays owed while the breaker is open again when its timer fires, and writes the goal once, when it gets through", async () => {
     const h = hub();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"], now: T0 });

@@ -536,7 +536,8 @@ export interface BeeMemory extends Labelled {
   stopped: boolean;
   // Additive: true while a pass is owed: Bee passed a line while the facts breaker was open and
   // there is no goal yet, so the coach keeps that pass and writes the goal once Bee answers again,
-  // with no new pass needed (status stays "pending", goal null). Older hubs omit it: read as false.
+  // with no new pass needed. goal is null, and status is "pending", or "failed" when a goal save
+  // failed before Bee became unreachable. Older hubs omit it: read as false.
   owed: boolean;
 }
 // The habits a wrist cue may name: the pre-registered drilled habits, once practised. Never the
