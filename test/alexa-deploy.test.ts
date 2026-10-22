@@ -87,12 +87,14 @@ describe("the skill package for each name", () => {
 // as SUCCEEDED after one poll unless the skill's model is set up to fail, and records every call. The
 // vendor list comes with a line of other text around its JSON, as a CLI notice would. `account`
 // seeds skills already there: listed under `listed` ("Spee" by default), with the deploy's marker
-// for `marker`, and a model whose invocation name is `model`.
+// for `marker`, and a model whose invocation name is `model`. The existing skill (MAIN) is always
+// there unless seeded otherwise; a skill that is not there can be neither read nor updated.
 type Seed = { id: string; listed?: string; marker?: string; model?: string; stage?: string };
 function fakeAsk(o: { failBuild?: (invocationName: string) => string | null; refuse?: (args: string[]) => boolean; vendors?: number; account?: Seed[]; createOut?: (id: string) => string; pageSize?: number } = {}) {
   const calls: string[][] = [];
   const skills = new Map<string, { listed: string; stage: string; manifest: unknown; model: string | null }>();
-  for (const k of o.account ?? []) skills.set(k.id, { listed: k.listed ?? "Spee", stage: k.stage ?? "development", manifest: { manifest: { publishingInformation: { locales: { "en-CA": { name: k.listed ?? "Spee" } }, testingInstructions: k.marker ? deployMarker(k.marker) : "Development only." } } }, model: k.model ?? null });
+  const seeds: Seed[] = [...(o.account ?? []), ...((o.account ?? []).some((k) => k.id === MAIN) ? [] : [{ id: MAIN, model: "speech coach" }])];
+  for (const k of seeds) skills.set(k.id, { listed: k.listed ?? "Spee", stage: k.stage ?? "development", manifest: { manifest: { publishingInformation: { locales: { "en-CA": { name: k.listed ?? "Spee" } }, testingInstructions: k.marker ? deployMarker(k.marker) : "Development only." } } }, model: k.model ?? null });
   const polls = new Map<string, number>();
   let n = 0;
   const ok = (out: unknown = ""): AskResult => ({ ok: true, out: typeof out === "string" ? out : JSON.stringify(out), err: "" });
@@ -128,7 +130,8 @@ function fakeAsk(o: { failBuild?: (invocationName: string) => string | null; ref
       }
       case "update-skill-manifest": {
         const k = skills.get(flag("-s"));
-        if (k) k.manifest = JSON.parse(readFileSync(flag("--manifest").slice("file:".length), "utf8"));
+        if (!k) return notFound;
+        k.manifest = JSON.parse(readFileSync(flag("--manifest").slice("file:".length), "utf8"));
         return ok();
       }
       case "set-interaction-model": {
@@ -209,11 +212,11 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(results.map((r) => r.ok)).toEqual([true, false, false]);
     expect(results[1]).toMatchObject({ step: "set-interaction-model", reason: "the en-US model was refused", created: true });
     expect(Object.keys(local().skills)).toEqual(["speech coach", "spee coach", "spee"]);
-    // A second run reuses the saved skills: no new create.
-    const again = fakeAsk();
+    // A second run reuses the saved skills: it checks they are still on the account, and creates none.
+    const again = fakeAsk({ account: [...ask.skills.keys()].map((id) => ({ id })) });
     const r2 = await deploy(cfg, deps(again.run));
     expect(again.sub()).not.toContain("create-skill-for-vendor");
-    expect(again.sub()).not.toContain("get-vendor-list");
+    expect(again.sub().slice(0, 3)).toEqual(["get-vendor-list", "list-skills-for-vendor", "update-skill-manifest"]); // all listed: nothing more to read
     expect(r2.map((r) => r.skillId)).toEqual(results.map((r) => r.skillId));
     expect(r2.every((r) => r.ok && !r.created)).toBe(true);
   });
@@ -270,7 +273,8 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(out).toMatch(/spee {10}CREATE a development skill, unless the account already has one for this name \(one word: .*the build may refuse it/);
     expect(out).not.toContain("Warning:"); // the local file is here
     // the account lookup comes before any change, and the dry run shows it
-    expect(out).toContain('Before creating anything, the deploy looks on the account for a skill already set up for "spee":\n$ ask smapi get-vendor-list --profile default\n$ ask smapi list-skills-for-vendor --profile default');
+    expect(out).toContain('Before creating anything, the deploy looks on the account for a skill already set up for "spee", and checks that each recorded skill is still there:\n$ ask smapi get-vendor-list --profile default\n$ ask smapi list-skills-for-vendor --profile default');
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g development --profile default   (when it fails too, that skill is gone, and its name is set up again)");
     expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill on the account> -g development --profile default");
     expect(out).toContain("$ ask smapi get-interaction-model -s <a skill listed as Spee whose manifest names none> -g development -l en-CA --profile default");
     expect(out.indexOf("list-skills-for-vendor")).toBeLessThan(out.indexOf("update-skill-manifest"));
@@ -356,6 +360,41 @@ describe("alexa:deploy with a fake ask CLI", () => {
     // every read comes before the first change
     const firstChange = ask.calls.findIndex((c) => c[1] === "update-skill-manifest");
     expect(ask.calls.slice(firstChange).some((c) => ["list-skills-for-vendor", "get-skill-manifest"].includes(c[1]!))).toBe(false);
+  });
+
+  it("a recorded skill no longer on the account: the deploy says so and adopts the one the account has for that name, else creates one, and saves it in place of the old id (review L197)", async () => {
+    const GONE = "amzn1.ask.skill.55555555-5555-5555-5555-555555555555"; // deleted in the developer console
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": GONE, spee: SPEE } }));
+    const ask = fakeAsk({ account: [{ id: SPEE_COACH, marker: "spee coach" }, { id: SPEE, marker: "spee" }] });
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.created, r.skillId])).toEqual([["speech coach", true, false, MAIN], ["spee coach", true, false, SPEE_COACH], ["spee", true, false, SPEE]]);
+    expect(ask.creates()).toBe(0);
+    expect(ask.calls.some((c) => c[1] === "update-skill-manifest" && c.includes(GONE))).toBe(false);
+    expect(ask.calls.filter((c) => c.includes(GONE)).map((c) => c[1])).toEqual(["get-skill-manifest"]); // the one check, a read
+    expect(local().skills).toEqual({ "speech coach": MAIN, "spee coach": SPEE_COACH, spee: SPEE });
+    const out = lines.join("\n");
+    expect(out).toContain("Before any change, the deploy checks that each recorded skill is still on the account:");
+    expect(out).toContain("spee coach: the skill recorded in alexa/skill-ids.local.json (amzn1.ask.skill.55555555…) is not on the account any more, so this name is set up again, and the new id saved in its place");
+    expect(out).toContain("spee coach: found amzn1.ask.skill.22222222… on the account: update it");
+    // none on the account for it: one is created, and saved in place of the old id
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": GONE } }));
+    cfg.names = ["speech coach", "spee coach"];
+    const bare = fakeAsk();
+    const r2 = await deploy(cfg, deps(bare.run));
+    expect(r2.map((r) => [r.name, r.ok, r.created])).toEqual([["speech coach", true, false], ["spee coach", true, true]]);
+    expect(local().skills["spee coach"]).toBe(r2[1]!.skillId);
+    expect(r2[1]!.skillId).not.toBe(GONE);
+  });
+
+  it("the checked-in skill no longer on the account: speech coach fails with that reason, and the other names go on", async () => {
+    const ask = fakeAsk({ account: [{ id: SPEE_COACH, marker: "spee coach" }] });
+    ask.skills.delete(MAIN); // deleted in the developer console
+    cfg.names = ["speech coach", "spee coach"];
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.step])).toEqual([["speech coach", false, "account lookup"], ["spee coach", true, undefined]]);
+    expect(results[0]!.reason).toBe("alexa/skill-id.json names amzn1.ask.skill.11111111…, which is not on the account of profile default. Fix alexa/skill-id.json, or set ALEXA_SKILL_ID to this name's skill");
+    expect(ask.calls.some((c) => c[1] === "update-skill-manifest" && c.includes(MAIN))).toBe(false);
+    expect(ask.creates()).toBe(0);
   });
 
   it("a listing renamed since the skills were set up: they are still found by their marker and adopted, never created again (review L199)", async () => {
@@ -454,7 +493,7 @@ describe("alexa:deploy with a fake ask CLI", () => {
     // a recorded name stops before any ask call of its own
     writeFileSync(cfg.localPath, JSON.stringify({ skills: { "speech coach": MAIN, "spee coach": made } }));
     lines = [];
-    const again = fakeAsk({ refuse: (a) => (a[1] === "set-skill-enablement" && a.includes(MAIN) && void writeFileSync(cfg.localPath, broken), false) });
+    const again = fakeAsk({ account: [{ id: made, marker: "spee coach" }], refuse: (a) => (a[1] === "set-skill-enablement" && a.includes(MAIN) && void writeFileSync(cfg.localPath, broken), false) });
     const r2 = await deploy(cfg, deps(again.run));
     expect(r2.map((r) => [r.name, r.ok, r.stopped ?? false])).toEqual([["speech coach", true, false], ["spee coach", false, true], ["spee", false, false]]);
     expect(again.calls.some((c) => c.includes(made))).toBe(false);
@@ -469,7 +508,7 @@ describe("alexa:deploy with a fake ask CLI", () => {
     const again = fakeAsk({ account: Object.entries(made).filter(([n]) => n !== "speech coach").map(([n, id]) => ({ id: id as string, marker: n })), pageSize: 1 });
     const r2 = await deploy(cfg, deps(again.run));
     expect(again.creates()).toBe(0);
-    expect(again.calls.filter((c) => c[1] === "list-skills-for-vendor").map((c) => c.slice(2, 4))).toEqual([["--profile", "default"], ["--next-token", "1"]]); // a page at a time
+    expect(again.calls.filter((c) => c[1] === "list-skills-for-vendor").map((c) => c.slice(2, 4))).toEqual([["--profile", "default"], ["--next-token", "1"], ["--next-token", "2"]]); // a page at a time
     expect(r2.map((r) => r.skillId)).toEqual(Object.values(made));
     expect(local().skills).toEqual(made);
   });

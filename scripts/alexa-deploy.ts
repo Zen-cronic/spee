@@ -10,15 +10,19 @@
 // coach" and "spee". The checked-in model's name ("speech coach") is the existing skill
 // (ALEXA_SKILL_ID, else alexa/skill-id.json); a name recorded in alexa/skill-ids.local.json
 // (git-ignored) reuses its skill. The account is the record of which skills exist and the local file
-// a cache, so before creating a skill for any other name the deploy looks on the account, adopts a
-// skill already set up for it, and stops when it finds two. A local file that does not parse, or holds
+// a cache, so on every real run the deploy first reads the account. A recorded skill that is no longer
+// there is said so, and its name is set up again like a name with none recorded. Before creating a
+// skill for a name, the deploy adopts a skill already set up for it, and stops when it finds two. A local file that does not parse, or holds
 // an entry that is not a skill id, stops the deploy before any ask call, in a dry run too, and is
 // never overwritten; so does an ALEXA_SKILL_IDS entry that is not a skill id.
 //
-// Before any change, when a name has no recorded skill (with the ASK CLI profile from
-// alexa/skill-id.json, "default"):
+// Before any change, on every real run (with the ASK CLI profile from alexa/skill-id.json, "default"):
 //   ask smapi get-vendor-list                 (a check: create-skill-for-vendor takes the vendor id from the profile)
 //   ask smapi list-skills-for-vendor          (each page, with --next-token)
+//   ask smapi get-skill-manifest -s <id> -g development, for a recorded skill (or the checked-in one)
+//     the list does not show: when that fails too, the skill is gone. A recorded name is then set up
+//     again (adopted, else created, and the new id saved in place of the old one); the checked-in
+//     skill gone fails "speech coach" with the reason, since only its config can change it
 //   ask smapi get-skill-manifest -s <id> -g development, for each development skill on the account
 //     and each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the
 //     invocation name it was set up for, whatever the listing says. A skill listed as Spee, or in
@@ -184,21 +188,26 @@ const errorText = (u: LastUpdate | undefined) =>
 // invocation name a skill was set up for, whatever its listing is called now (the listing name has
 // changed before, and can be edited in the console). A skill with no marker is named by its model's
 // invocation name only when it is listed under the package's name ("Spee") or in ALEXA_SKILL_IDS;
-// any other is not Spee's. Ids already recorded are left out.
+// any other is not Spee's. Ids already recorded are left out, but each is checked to still be there
+// (`gone`): the list shows only the profile's vendor, so a recorded skill the list leaves out is gone
+// only when its manifest cannot be read either.
 type SkillList = { skills?: { skillId?: unknown; stage?: unknown; nameByLocale?: Record<string, unknown> }[]; isTruncated?: boolean; nextToken?: string };
-export type OnAccount = { byName: Map<string, string[]>; unnamed: string[] } | { failed: string };
+export type OnAccount = { byName: Map<string, string[]>; unnamed: string[]; gone: Set<string> } | { failed: string };
 const MAX_PAGES = 20;
 export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployConfig, known: ReadonlySet<string>): OnAccount {
   const listedAs = new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name));
   const named = new Set(cfg.envIds.filter((id) => !known.has(id))); // named by their model when they carry no marker
   const ids = new Set(named);
+  const listed = new Set<string>(); // every development skill the account lists
   let token: string | null = null;
   for (let page = 1; ; page++) {
     const r = ask(["smapi", "list-skills-for-vendor", ...(token ? ["--next-token", token] : [])]);
     const j = r.ok ? parse<SkillList>(r.out) : null;
     if (!j || !Array.isArray(j.skills)) return { failed: "could not list the account's skills, so a create could make a second skill for a name" };
     for (const sk of j.skills) {
-      if (sk.stage !== cfg.stage || !isSkillId(sk.skillId) || known.has(sk.skillId)) continue;
+      if (sk.stage !== cfg.stage || !isSkillId(sk.skillId)) continue;
+      listed.add(sk.skillId);
+      if (known.has(sk.skillId)) continue;
       ids.add(sk.skillId);
       if (Object.values(sk.nameByLocale ?? {}).some((n) => listedAs.has(String(n)))) named.add(sk.skillId);
     }
@@ -206,6 +215,7 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
     if (page >= MAX_PAGES) return { failed: `the account lists more than ${MAX_PAGES} pages of skills` };
     token = j.nextToken;
   }
+  const gone = new Set([...known].filter((id) => !listed.has(id) && !ask(["smapi", "get-skill-manifest", "-s", id, "-g", cfg.stage]).ok));
   const byName = new Map<string, string[]>();
   const unnamed: string[] = [];
   for (const id of ids) {
@@ -222,7 +232,7 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
     if (name) byName.set(name, [...(byName.get(name) ?? []), id]);
     else unnamed.push(id);
   }
-  return { byName, unnamed };
+  return { byName, unnamed, gone };
 }
 
 export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: boolean } = {}): Promise<DeployResult[]> {
@@ -263,12 +273,16 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
     }
   };
 
-  // Before any change: the vendor, then the account, for the names with no recorded skill. A name the
-  // account already has a skill for adopts it; two skills for one name stop the deploy.
-  const creating = planned.filter((p) => !p.problems.length && !p.skillId);
+  // Before any change: the vendor, then the account. Each recorded skill must still be there: a
+  // recorded name whose skill is gone is set up again like a name with none recorded. A name with no
+  // recorded skill adopts the one the account has for it; two skills for one name stop the deploy.
+  const live = planned.filter((p) => !p.problems.length);
+  const toCreate = () => live.filter((p) => !p.skillId);
   let noCreate: { step: string; reason: string } | null = null;
-  if (creating.length) {
-    deps.print(`\nBefore creating anything, the deploy looks on the account for a skill already set up for ${creating.map((p) => `"${p.name}"`).join(", ")}:`);
+  const blocked = new Map<string, { step: string; reason: string }>(); // the checked-in skill is gone
+  if (live.length) {
+    const first = toCreate().map((p) => `"${p.name}"`);
+    deps.print(first.length ? `\nBefore creating anything, the deploy looks on the account for a skill already set up for ${first.join(", ")}, and checks that each recorded skill is still there:` : "\nBefore any change, the deploy checks that each recorded skill is still on the account:");
     const v = ask(["smapi", "get-vendor-list"]);
     const n = parse<{ vendors?: unknown[] }>(v.out)?.vendors?.length ?? 0;
     if (!opts.dry) deps.print(v.ok ? `  ${n} vendor${n === 1 ? "" : "s"} on this profile; create-skill-for-vendor uses the one ask configure saved` : "  could not list the vendors");
@@ -276,16 +290,29 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
       const listedAs = [...new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name))].join(" or ");
       const env = cfg.envIds.length ? ` and each id in ALEXA_SKILL_IDS (${cfg.envIds.length})` : "";
       deps.print(`$ ask smapi list-skills-for-vendor --profile ${cfg.profile}   (each page, with --next-token)`);
+      deps.print(`$ ask smapi get-skill-manifest -s <a recorded skill the list does not show> -g ${cfg.stage} --profile ${cfg.profile}   (when it fails too, that skill is gone, and its name is set up again)`);
       deps.print(`$ ask smapi get-skill-manifest -s <each development skill on the account${env}> -g ${cfg.stage} --profile ${cfg.profile}   (its testing instructions name the invocation name it was set up for)`);
       deps.print(`$ ask smapi get-interaction-model -s <a skill listed as ${listedAs}${env ? " or in ALEXA_SKILL_IDS" : ""} whose manifest names none> -g ${cfg.stage} -l ${cfg.locales[0]} --profile ${cfg.profile}`);
     } else if (!(v.ok && n > 0)) noCreate = { step: "get-vendor-list", reason: "this ASK CLI profile lists no vendor (run ask configure)" };
     else {
-      const known = new Set(planned.map((p) => p.skillId).filter((id): id is string => !!id));
+      const known = new Set(live.map((p) => p.skillId).filter((id): id is string => !!id));
       const found = lookOnAccount((a) => ask(a), cfg, known);
       if ("failed" in found) {
         noCreate = { step: "account lookup", reason: found.failed };
-        deps.print(`  ${found.failed}: the names with no recorded skill are skipped`);
+        deps.print(`  ${found.failed}: the names with no recorded skill are skipped, and the recorded skills deploy unchecked`);
       } else {
+        for (const p of live) {
+          if (!p.skillId || !found.gone.has(p.skillId)) continue;
+          if (p.from === LOCAL_LABEL) {
+            deps.print(`  ${p.name}: the skill recorded in ${LOCAL_LABEL} (${shortId(p.skillId)}) is not on the account any more, so this name is set up again, and the new id saved in its place`);
+            Object.assign(p, { skillId: null, from: null });
+          } else {
+            const reason = `${p.from} names ${shortId(p.skillId)}, which is not on the account of profile ${cfg.profile}. Fix ${p.from}, or set ALEXA_SKILL_ID to this name's skill`;
+            blocked.set(p.name, { step: "account lookup", reason });
+            deps.print(`  ${p.name}: ${reason}`);
+          }
+        }
+        const creating = toCreate();
         const twice = creating.filter((p) => (found.byName.get(p.name) ?? []).length > 1);
         if (twice.length) {
           deps.print(`\nalexa:deploy: stopped: the account has more than one skill set up for ${twice.map((p) => `"${p.name}" (${found.byName.get(p.name)!.map(shortId).join(", ")})`).join(" and ")}. Delete the extra ones in the developer console, or record the right one in ${LOCAL_LABEL}, then run again. Nothing was changed; only read calls ran.`);
@@ -333,6 +360,11 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
     };
     if (p.problems.length) {
       fail("name check", p.problems.join("; "));
+      continue;
+    }
+    const gone = blocked.get(p.name);
+    if (gone) {
+      fail(gone.step, gone.reason);
       continue;
     }
     // 1. this name's package
