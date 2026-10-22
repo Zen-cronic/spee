@@ -1,6 +1,6 @@
 # Spee: a realtime speaking coach on Bee
 
-**Bee listens, Alexa drills, the TV keeps score.** For non-native English speakers and any professional who wants to speak more clearly: at work first, and everywhere else.
+**Bee listens. Spee tells me what to change. I do the talking.** For non-native English speakers and any professional who wants to speak more clearly: at work first, and everywhere else.
 
 Spee learns how you usually speak from your real conversations in Bee, and suggests what to change. Each recap compares unsure words, the filler "like", vague answers and starting over with your usual in that setting (a meeting, work talk, a casual chat; your overall usual until that setting has 400 words of your speech), and notes your pace and long turns. It names what ran high and gives one of your lines back, said plainly. With live coaching on, a run of unsure words or "like" buzzes your wrist about 20 seconds later. You practise your own fumbled lines with Alexa or your phone, graded from **Bee's own wearer-tagged transcript**. Spee on Fire TV shows your week, the live pipeline and the before/after check.
 
