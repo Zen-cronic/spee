@@ -112,7 +112,7 @@ describe("the transfer claim on Home and Progress comes from the hub, never from
     expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits: withControl("invalid") }).rest).toBe("The unpractised one was practised too.");
     expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits: withControl("too little data") }).rest).toBe("The unpractised one needs more speech.");
     expect(transferTitle({ claim: "dropped-control-unclear", headline: "x", habits: withControl("") }).rest).toBe("There’s no unpractised one to compare.");
-    expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "Nothing has dropped yet.", rest: "Keep practising: it takes a few conversations." });
+    expect(transferTitle({ claim: "no-drop-yet", headline: "x" })).toEqual({ lead: "No clear change yet.", rest: "Keep practising: it takes a few conversations." });
     // named from the key when the hub sends one
     const keyed = [{ habit: "hedges", role: "drilled", verdict: "dropped", label: "unsure words (I guess, I think, maybe, kind of...)" }, { habit: "filler:like", role: "drilled", verdict: "dropped", label: 'filler "like"' }] as never;
     expect(transferTitle({ claim: "all-dropped-control-flat", headline: "x", habits: keyed }).lead).toBe("Unsure words and filler “like” dropped.");

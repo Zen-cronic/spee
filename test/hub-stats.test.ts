@@ -139,6 +139,8 @@ describe("transfer", () => {
     expect(run({ prereg: heroes, drills: [{ at: drill.at, habitKeys: ["hedge:i guess", "hedges"] }] }).claim).toBe("dropped-control-flat");
     const nothing = run({ sessions: [before, sess("a", "conversation", "2026-10-17T10:00:00-04:00", [filler(30), ...new Array(12).fill("I guess we we shipped it.")])] });
     expect(nothing.claim).toBe("no-drop-yet");
+    // the verdict as Alexa says it: no clear change, and that it takes more conversations (never "dropped")
+    expect(nothing.headline).toBe("No clear change yet in the habits you practised. It takes a few more conversations.");
   });
   it("uses Bee conversations by default; meetings only with source=all; never voice notes", () => {
     const meet = sess("m", "meeting", "2026-10-18T10:00:00-04:00", new Array(40).fill("I guess the totals match the ledger today."));

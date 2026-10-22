@@ -394,6 +394,9 @@ function unclearControl(control: TransferHabit[]): string {
   return "; there isn't enough speech yet to compare the one you didn't practise";
 }
 
+// The headline when nothing practised dropped clearly (claim "no-drop-yet"): Alexa says it as it is.
+export const NO_DROP_YET_HEADLINE = "No clear change yet in the habits you practised. It takes a few more conversations.";
+
 // What the headline claims, for a screen to word without re-deriving it from the verdicts:
 // "dropped-control-flat" only when a drilled habit dropped and every control showed no change
 // ("all-dropped-control-flat" when every drilled habit dropped); "dropped-control-dropped" when a
@@ -539,7 +542,7 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
       ? `Counting from your first practice: ${andList(started.map((h) => `${habitName(h.label)} since ${monthDay(localDate(h.cutoverAt!, opts.tz))}`))}; ${andList(notYet.map((h) => habitName(h.label)))} not practised yet`
       : claim === "not-drilled-yet"
         ? "Not practised yet: the before and after starts with your first practice"
-        : "Nothing you've practised has dropped clearly yet";
+        : NO_DROP_YET_HEADLINE;
   return {
     generatedAt: new Date(opts.nowMs).toISOString(),
     synthetic: !!prereg.synthetic || ss.some((s) => s.synthetic),

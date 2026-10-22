@@ -560,7 +560,7 @@ export function transferTitle(t: Pick<TransferResponse, 'claim' | 'headline'> & 
     case 'not-drilled-yet':
       return { lead: 'Nothing practised yet.', rest: 'Progress counts from your first practice line.' };
     case 'no-drop-yet':
-      return { lead: 'Nothing has dropped yet.', rest: 'Keep practising: it takes a few conversations.' };
+      return { lead: 'No clear change yet.', rest: 'Keep practising: it takes a few conversations.' };
     default:
       return { lead: curly(t.headline), rest: null };
   }
