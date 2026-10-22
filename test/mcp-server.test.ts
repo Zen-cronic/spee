@@ -232,12 +232,14 @@ describe("the round's narration (summaryText)", () => {
     expect(summaryText({ ...round, cards: 1, attempts: 3, counted: 1, failed: 0, unverified: 1, pending: 1 })).toBe("Practice done: 1 of 1 line passed, checked by Bee (3 tries: 1 passed, 1 Bee didn't catch, 1 still with Bee).");
     expect(summaryText(null)).toBe("You're not practising right now.");
   });
-  it("a round with no line Bee checked never says checked by Bee", () => {
+  it("a round with no line Bee checked never says checked by Bee, and says Bee is still checking a line still with Bee (review L186)", () => {
     const none = { ...round, cards: 1, attempts: 0, counted: 0, passed: 0, failed: 0 };
     expect(summaryText({ ...none, lines: { passed: 0, failed: 0, unverified: 0, pending: 0, untried: 1 } })).toBe("Practice done: Bee didn't check any line this round (1 not tried).");
     const uncaught = { ...none, attempts: 1, unverified: 1 };
     expect(summaryText({ ...uncaught, lines: { passed: 0, failed: 0, unverified: 1, pending: 0, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round (1 Bee didn't catch).");
-    expect(summaryText({ ...uncaught, cards: 2, attempts: 2, pending: 1, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("Practice done: Bee didn't check any line this round (1 Bee didn't catch, 1 still with Bee).");
+    expect(summaryText({ ...uncaught, cards: 2, attempts: 2, pending: 1, lines: { passed: 0, failed: 0, unverified: 1, pending: 1, untried: 0 } })).toBe("Practice done: Bee is still checking 1 line (1 Bee didn't catch).");
+    expect(summaryText({ ...none, attempts: 2, pending: 2, cards: 2, lines: { passed: 0, failed: 0, unverified: 0, pending: 2, untried: 0 } })).toBe("Practice done: Bee is still checking 2 lines.");
     expect(summaryText(uncaught)).toBe("Practice done: Bee didn't check any line this round (1 try: 0 passed, 1 Bee didn't catch)."); // an older hub
+    expect(summaryText({ ...none, attempts: 1, pending: 1 })).toBe("Practice done: Bee is still checking 1 try (1 try: 0 passed, 1 still with Bee)."); // an older hub, still with Bee
   });
 });

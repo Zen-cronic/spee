@@ -1,12 +1,16 @@
 // A round's per-line words on all four surfaces (review L182): the TV's Round over (roundHeadline,
 // roundTally: the filmed surface), the phone's "Session over" line (it takes the TV's tally), and
-// the voice surfaces through src/hub/roundWords.ts, the MCP end_drill narration and Alexa (speech
-// and screen). The same summaries go to all four, and they must say the same thing in the TV's
-// words: "passed", "not yet", "Bee didn't catch", "still with Bee", "not tried".
+// the voice surfaces through src/hub/roundWords.ts, the MCP end_drill narration and Alexa (speech,
+// screen, and the pass screen's hint at the round's end). The same summaries go to all four, and
+// they must say the same thing in the TV's words: "passed", "not yet", "Bee didn't catch", "still
+// with Bee", "not tried". A round with no line Bee checked, but one still with Bee, says Bee is still
+// checking it (the TV's "Bee is still checking your last line"), never that Bee didn't check it
+// (review L186).
 import { describe, expect, it } from "vitest";
-import { summaryLine, summaryScreen } from "../src/alexa/skill.js";
+import { summaryHint, summaryLine, summaryScreen } from "../src/alexa/skill.js";
 import type { SessionSummary } from "../src/hub/contract.js";
 import { roundLineWords } from "../src/hub/roundWords.js";
+import { demoSetup } from "../src/hub/setup.js";
 import { summaryText } from "../src/mcp/tools.js";
 import { roundHeadline, roundTally } from "../tv/web/src/mirror/format.js";
 import { sessionOverLine } from "../web/phone/src/take.js";
@@ -49,12 +53,18 @@ describe("a round's per-line words agree on the TV, the phone, MCP and Alexa (re
       const alexa = summaryLine(s);
       const screen = straight(summaryScreen(s).line);
       expect(phone).toBe(`Session over: ${tvTally}.`);
+      const stillChecking = !s.counted && s.lines.pending > 0;
       for (const voice of [mcp, alexa, screen]) {
-        for (const p of parts) expect(voice, voice).toContain(p);
+        for (const p of parts) {
+          // the clause says the lines still with Bee: "Bee is still checking 1 line"
+          if (stillChecking && /still with Bee$/.test(p)) expect(voice, voice).toContain(`Bee is still checking ${s.lines.pending} line${s.lines.pending === 1 ? "" : "s"}`);
+          else expect(voice, voice).toContain(p);
+        }
         if (s.counted) expect(voice).toContain(`${tvHeadline}, checked by Bee`);
         else {
-          expect(voice).toContain("Bee didn't check any line this round");
+          expect(voice).toContain(stillChecking ? "Bee is still checking" : "Bee didn't check any line this round");
           expect(voice).not.toMatch(/checked by Bee/);
+          if (stillChecking) expect(voice).not.toMatch(/didn't check/);
         }
       }
       // one vocabulary, the TV's
@@ -69,6 +79,27 @@ describe("a round's per-line words agree on the TV, the phone, MCP and Alexa (re
     expect(summaryScreen(uncaught)).toMatchObject({ headline: "That’s the round.", line: "Bee didn’t check any line this round (1 Bee didn’t catch)." });
     expect(`${roundHeadline(uncaught)} | ${roundTally(uncaught)}`).toBe("0 of 1 line passed. | 0 passed, 1 Bee didn’t catch");
     expect(sessionOverLine(uncaught)).toBe("Session over: 0 passed, 1 Bee didn’t catch.");
+  });
+  it("R2: the line was said and Bee is still checking it when the round ends: every voice surface says so, never that Bee didn't check it (review L186)", () => {
+    const pending = ROUNDS[2]![1]; // one still with Bee, one not tried
+    expect(summaryText(pending)).toBe("Practice done: Bee is still checking 1 line (1 not tried).");
+    expect(summaryLine(pending)).toBe("Bee is still checking 1 line (1 not tried)");
+    expect(summaryScreen(pending)).toMatchObject({ headline: "That’s the round.", line: "Bee is still checking 1 line (1 not tried)." });
+    expect(`${roundHeadline(pending)} | ${roundTally(pending)}`).toBe("0 of 2 lines passed. | 0 passed, 1 still with Bee, 1 not tried");
+    // Alexa's stop, through the demo hub: say the line, then "stop" before Bee's verdict
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const { card } = hub.startSession({ by: "alexa", size: 1 });
+    hub.submit({ text: card!.resay, source: "alexa" });
+    const s = hub.endSession()!;
+    expect(summaryLine(s)).toBe("Bee is still checking 1 line");
+    expect(summaryText(s)).toBe("Practice done: Bee is still checking 1 line.");
+    hub.dispose();
+  });
+  it("the pass screen's hint at the round's end has the screen's apostrophes, as the round's own screen does", () => {
+    const missed = ROUNDS[5]![1];
+    expect(summaryHint(missed)).toBe("That’s the round: 0 of 2 lines passed, checked by Bee (1 not yet, 1 still with Bee)");
+    expect(summaryHint(missed)).toBe(summaryLine(missed).replace(/'/g, "’"));
+    expect(summaryLine(missed)).toContain("That's the round"); // speech keeps the straight one
   });
   it("an older hub sends no `lines`: the TV, the phone and MCP say the counts are tries, in the same words", () => {
     const { lines: _, ...older } = round(2, { attempts: 3, counted: 3, passed: 1, failed: 2 }, {});

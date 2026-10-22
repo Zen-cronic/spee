@@ -230,7 +230,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       const next = n.ok ? n.body.card : null;
       const sum = n.ok ? n.body.summary : null;
       if (next) return { text: line(["Nice, Bee heard it", sayCard("Next, say:", next.resay)]), reprompt: sayCard("Say:", next.resay), attrs: { ...rest, cardId: next.id }, screen: await screen(() => verdictScreen({ kind: "pass", next })) };
-      if (sum) return { text: line(["Nice, Bee heard it", summaryLine(sum)]), end: true, attrs: without(rest, "cardId"), screen: await screen(() => verdictScreen({ kind: "pass", hint: summaryLine(sum) })) };
+      if (sum) return { text: line(["Nice, Bee heard it", summaryLine(sum)]), end: true, attrs: without(rest, "cardId"), screen: await screen(() => verdictScreen({ kind: "pass", hint: summaryHint(sum) })) };
       return { text: "Nice, Bee heard it.", reprompt: "Say quiz me for another line, or stop.", attrs: rest, screen: await screen(() => verdictScreen({ kind: "pass", hint: "Say: quiz me" })) };
     }
     const card = await openCard();
@@ -250,12 +250,18 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
 type RoundEnd = Pick<SessionSummary, "counted" | "attempts" | "cards" | "lines"> & Partial<SessionSummary>;
 // The round in the TV's words (roundLineWords), each line once as Round over counts it: "1 of 2
 // lines passed, checked by Bee (1 not yet)" (a line missed and then passed on a retry is one line
-// passed, never two tries). A round with no line Bee checked says so, never "checked by Bee".
+// passed, never two tries). A round with no line Bee checked says so, never "checked by Bee", or
+// that Bee is still checking a line still with Bee. Speech keeps straight apostrophes; a screen
+// shows typographic ones, as the TV does.
+const onScreen = (t: string) => t.replace(/'/g, "’");
 
 /** The end of a round, on a screen. */
 export function summaryScreen(s: RoundEnd): Screen {
-  return emptyScreen("That’s the round.", s.cards ? `${roundLineWords(s).said}.`.replace(/'/g, "’") : "");
+  return emptyScreen("That’s the round.", s.cards ? onScreen(`${roundLineWords(s).said}.`) : "");
 }
+
+/** The round's end as the hint under the last pass, on a screen. */
+export const summaryHint = (s: RoundEnd): string => onScreen(summaryLine(s));
 
 export function summaryLine(s: RoundEnd): string {
   const w = roundLineWords(s);
