@@ -38,12 +38,6 @@ export function WeekView({ stats, today, deck, transfer }: { stats: StatsRespons
             <Text style={styles.ctaText}>Say “Alexa, ask Speech Coach to quiz me”</Text>
           </View>
         ) : null}
-        <View style={styles.tally}>
-          <View style={styles.beeRow}>
-            <View style={styles.beeDot} />
-            <Text style={styles.beeText}>Bee checks every line you say</Text>
-          </View>
-        </View>
       </View>
       <View style={styles.side}>
         <View style={[styles.card, styles.weekCard]}>
@@ -178,10 +172,6 @@ const styles = StyleSheet.create({
   heroLabel: { color: C.ink, fontSize: T.h2, fontWeight: '600', marginTop: -SP.s, fontFamily: F.family },
   cta: { alignSelf: 'flex-start', backgroundColor: C.ink, borderRadius: R.pill, paddingHorizontal: SP.xl, paddingVertical: SP.m, marginBottom: SP.xl },
   ctaText: { color: C.lime, fontSize: T.body, fontWeight: '700', fontFamily: F.family },
-  tally: { borderTopWidth: 2, borderColor: 'rgba(0,0,0,0.08)', paddingTop: SP.l },
-  beeRow: { flexDirection: 'row', alignItems: 'center' },
-  beeDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.beeOnLight, marginRight: SP.s },
-  beeText: { color: C.inkDim, fontSize: T.label, fontFamily: F.family },
   side: { flex: 1 },
   card: { backgroundColor: C.surface, borderRadius: R.l, ...PAD },
   weekCard: { flex: 1 },
