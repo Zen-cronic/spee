@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ROUND_OVER_MS } from "../src/hub/contract.js";
 import type { Attempt, HubEvent } from "../src/hub/core.js";
 import { demoSetup } from "../src/hub/setup.js";
+import { roundLastLine } from "../tv/web/src/mirror/format.js";
 import { drillPhase, initialMirror, mirrorReducer, type MirrorState } from "../tv/web/src/mirror/reducer.js";
 
 const DUE = ["demo:hedge-i-guess", "demo:vague-referent", "demo:vague-status", "demo:filler-like"]; // due on the demo day
@@ -116,6 +117,46 @@ describe("a round's lines", () => {
     two.startSession({ by: "tv", size: 1 });
     two.endSession();
     expect(two.lastSessionState()).toMatchObject({ lastAttempt: null });
+    two.dispose();
+  });
+  it("a last line opened again and left unsaid has no try in lastSession, so a screen that rejoins or reconnects shows no last line, as the screen that watched (review L202)", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const events: HubEvent[] = [];
+    hub.on("event", (e: HubEvent) => events.push(e));
+    const { card: a } = hub.startSession({ by: "tv", size: 3 });
+    const tryA = hub.submit({ text: a!.resay, source: "phone" }) as Attempt;
+    heard(hub, tryA, `Um, ${a!.resay}`); // line A: not yet
+    const b = hub.openCard({ cardId: DUE.find((id) => id !== a!.id), by: "tv" })!;
+    heard(hub, hub.submit({ text: b.resay, source: "phone" }) as Attempt, `Um, ${b.resay}`); // line B: not yet
+    hub.openCard({ cardId: a!.id, by: "tv" }); // line A again; the round ends before it is said
+    hub.endSession();
+    const last = hub.lastSessionState()!;
+    expect(last).toMatchObject({ lastCardId: a!.id, lastAttempt: null });
+    const lastLine = (s: MirrorState) => roundLastLine({ graded: s.drill.graded, stage: s.drill.stage, previewSource: s.drill.provisional?.source ?? null });
+    const T = 1_800_000_000_000;
+    let live = initialMirror();
+    events.forEach((e, i) => (live = mirrorReducer(live, { type: "event", event: { topic: e.topic, payload: e.payload as never }, now: T + i * 10 })));
+    expect(drillPhase(live.drill)).toBe("over");
+    expect(lastLine(live)).toBeNull();
+    const state = { seq: 0, at: T, mode: "demo", dataLabel: "x", bootId: "b", lastSeq: events.length, ...hub.sessionState(), lastSession: last } as never;
+    const again = mirrorReducer(live, { type: "hubState", state, now: T + 1000, offsetMs: 0 });
+    expect(drillPhase(again.drill)).toBe("over");
+    expect(lastLine(again)).toBeNull();
+    const fresh = mirrorReducer(initialMirror(), { type: "hubState", state, now: last.endedAt + 1000, offsetMs: 0 });
+    expect(drillPhase(fresh.drill)).toBe("over");
+    expect(lastLine(fresh)).toBeNull();
+    hub.dispose();
+    // said in its last opening: that try is the last line's, not the earlier opening's
+    const two = demoSetup({ pace: 0.01, stateDir: null }).hub;
+    const { card: c } = two.startSession({ by: "tv", size: 3 });
+    heard(two, two.submit({ text: c!.resay, source: "phone" }) as Attempt, `Um, ${c!.resay}`);
+    two.openCard({ cardId: DUE.find((id) => id !== c!.id), by: "tv" });
+    two.openCard({ cardId: c!.id, by: "tv" });
+    const again2 = two.submit({ text: c!.resay, source: "phone" }) as Attempt; // still with Bee
+    two.endSession();
+    expect(two.lastSessionState()).toMatchObject({ lastCardId: c!.id, lastAttempt: { id: again2.id, status: "pending_bee" } });
+    heard(two, again2, c!.resay);
+    expect(two.lastSessionState()!.lastAttempt).toMatchObject({ id: again2.id, status: "graded", final: { pass: true } });
     two.dispose();
   });
   it("lastSession goes once ROUND_OVER_MS has passed since the round ended, as every screen's Round over does (review L192)", () => {

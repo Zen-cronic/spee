@@ -269,7 +269,7 @@ const rejoin = bridgeClient("screen", "tv-rejoin");
 await rejoin.welcome;
 for (let i = 0; i < 100 && !rejoin.events.some((e) => e.topic === "hub.state"); i++) await sleep(20);
 const rejoined = rejoin.events.find((e) => e.topic === "hub.state")?.payload.lastSession;
-check(rejoined?.summary?.sessionId === end.body.summary?.sessionId && rejoined.endedAt === end.body.summary.endedAt && rejoined.summary.perCard.some((c: { cardId: string }) => c.cardId === rejoined.lastCardId) && (rejoined.lastAttempt === null || rejoined.lastAttempt?.cardId === rejoined.lastCardId), "hub.state after a round carries lastSession (the summary, its end, the last line opened and its newest try), so a screen that reconnects keeps Round over and its last line");
+check(rejoined?.summary?.sessionId === end.body.summary?.sessionId && rejoined.endedAt === end.body.summary.endedAt && rejoined.summary.perCard.some((c: { cardId: string }) => c.cardId === rejoined.lastCardId) && (rejoined.lastAttempt === null || rejoined.lastAttempt?.cardId === rejoined.lastCardId), "hub.state after a round carries lastSession (the summary, its end, the last line opened and its newest try in that opening), so a screen that reconnects keeps Round over and its last line");
 examples["WS hub.state (after a round)"] = rejoin.events.find((e) => e.topic === "hub.state");
 rejoin.ws.close();
 const afterRound = await get("/api/session", "GET /api/session (after a round)");

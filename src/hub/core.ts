@@ -76,6 +76,10 @@ export interface HubOptions {
   dataLabel?: string; // shown on every stats/transfer payload
 }
 
+// One opening of a card: `seq` tells openings apart (an attempt records the one it was made in);
+// `openedAt` is also where the voice flow's verdict view starts.
+type Opening = { cardId: string; openedAt: number; by: string; seq: number };
+
 const ids = { n: 0 };
 export const DRILL_IDLE_MS = 10 * 60_000;
 const newId = (p: string, now: number) => `${p}_${now.toString(36)}${(ids.n++).toString(36).padStart(3, "0")}`;
@@ -97,9 +101,9 @@ export class CoachHub extends EventEmitter {
   sessions: StatSession[];
   prereg: TransferPrereg | null;
   readonly verifier: BeeVerifier;
-  // `seq` tells openings apart (an attempt records the one it was made in); `openedAt` is also where
-  // the voice flow's verdict view starts, so a card a session adopts starts again at "Say this".
-  open: { cardId: string; openedAt: number; by: string; seq: number } | null = null;
+  // The card open now. A card a session adopts starts its view again (openedAt), so it starts again
+  // at "Say this".
+  open: Opening | null = null;
   private openings = 0;
   // The lone card (no session) Bee just passed, closed by that pass: hub.state keeps showing its
   // verdict until another card opens, DRILL_IDLE_MS passes, or the local day turns.
@@ -107,8 +111,9 @@ export class CoachHub extends EventEmitter {
   session: DrillSession | null = null;
   lastSession: DrillSession | null = null;
   // The round that ended last, until a card opens: hub.state's lastSession (lastSessionState), for
-  // ROUND_OVER_MS after it ended.
-  private roundOver: { sessionId: string; lastCardId: string | null } | null = null;
+  // ROUND_OVER_MS after it ended. `last` is the round's last card opening, the one Round over's last
+  // line is about.
+  private roundOver: { sessionId: string; last: Opening | null } | null = null;
   private seq = 0;
   readonly recent: HubEvent[] = []; // last 50 events (GET /api/events/recent, contract examples)
   // This hub process: a new id on every start, so a screen can tell a restart (seq back at 1)
@@ -468,9 +473,14 @@ export class CoachHub extends EventEmitter {
     this.emit("state.changed", { reason: "card-passed", cardId: a.cardId });
   }
 
-  // The attempt was made in the card opening that is open now.
-  private inOpening(a: Attempt): boolean {
-    return !!this.open && a.cardId === this.open.cardId && a.openingSeq != null && a.openingSeq === this.open.seq;
+  // The attempt was made in that card opening (by default the one open now).
+  private inOpening(a: Attempt, o: Opening | null = this.open): boolean {
+    return !!o && a.cardId === o.cardId && a.openingSeq != null && a.openingSeq === o.seq;
+  }
+
+  // An opening's view shows an attempt made in it, made (or settled) since the view began.
+  private shownIn(a: Attempt, o: Opening | null): boolean {
+    return !!o && this.inOpening(a, o) && (a.createdAt >= o.openedAt || (a.settledAt != null && a.settledAt >= o.openedAt));
   }
 
   // Drill sessions (driven by the Alexa MCP tools; mirrored on the TV)
@@ -521,7 +531,7 @@ export class CoachHub extends EventEmitter {
     if (!s) return this.lastSession ? this.sessionSummary(this.lastSession) : null;
     s.endedAt = this.clock();
     this.lastSession = s;
-    this.roundOver = { sessionId: s.id, lastCardId: this.open?.cardId ?? null };
+    this.roundOver = { sessionId: s.id, last: this.open ? { ...this.open } : null };
     this.session = null;
     this.open = null;
     this.verifier.closeCards();
@@ -532,21 +542,24 @@ export class CoachHub extends EventEmitter {
 
   // The round that ended last, for a screen that (re)joins while no round and no card is open
   // (hub.state's lastSession), so its Round over survives a reconnect. None once a card has opened
-  // since, or ROUND_OVER_MS after the round ended. `lastCardId` is the last line opened in the round, the one Round over's last line is
-  // about: perCard lists a line once, at its first opening, so a line opened again later is not
-  // the summary's last entry.
+  // since, or ROUND_OVER_MS after the round ended. `lastCardId` is the last line opened in the round,
+  // the one Round over's last line is about: perCard lists a line once, at its first opening, so a
+  // line opened again later is not the summary's last entry.
   lastSessionState(): LastSession | null {
     const s = this.roundStillOver();
     if (!s || s.endedAt === null) return null;
-    const lastCardId = this.roundOver!.lastCardId;
-    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId, lastAttempt: lastCardId ? this.newestTry(s, lastCardId) : null };
+    const last = this.roundOver!.last;
+    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId: last?.cardId ?? null, lastAttempt: last ? this.lastOpeningTry(s, last) : null };
   }
 
-  // The round's newest try at one line (its result now: Bee may have settled it since the round ended).
-  private newestTry(s: DrillSession, cardId: string): Attempt | null {
+  // The try the round's last opening shows: its newest, by the rule sessionState follows for the open
+  // card, with Bee's result now (Bee may have settled it since the round ended). null when the line
+  // was not said in that opening, also when an earlier opening of it was, so a line opened again and
+  // left unsaid reads the same on a screen that rejoins as on the screen that watched.
+  private lastOpeningTry(s: DrillSession, o: Opening): Attempt | null {
     for (let i = s.attemptIds.length - 1; i >= 0; i--) {
       const a = this.attempts.find((x) => x.id === s.attemptIds[i]);
-      if (a?.cardId === cardId) return a;
+      if (a && this.shownIn(a, o)) return a;
     }
     return null;
   }
@@ -604,9 +617,7 @@ export class CoachHub extends EventEmitter {
   // What a voice UI should narrate now.
   sessionState() {
     // An attempt shows when it was made in this opening and made (or settled) since the view began.
-    const from = this.open?.openedAt ?? Infinity;
-    const shown = (a: Attempt) => this.inOpening(a) && (a.createdAt >= from || (a.settledAt != null && a.settledAt >= from));
-    const last = this.open ? [...this.attempts].reverse().find(shown) : undefined;
+    const last = this.open ? [...this.attempts].reverse().find((a) => this.shownIn(a, this.open)) : undefined;
     const openCard = this.open ? this.card(this.open.cardId) : undefined;
     let state: "idle" | "card_open" | AttemptStatus = this.open ? "card_open" : "idle";
     if (last) state = last.status;

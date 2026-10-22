@@ -313,9 +313,9 @@ function onHubState(s: MirrorState, h: HubState, now: number, offsetMs: number):
 // Round over survives a (re)join. While no round and no card is open, the hub sends the round that
 // ended last (`lastSession`), and its ROUND_OVER_MS run from the hub's end time, on this screen's
 // clock. The last line is the one the hub names (`lastCardId`), and its result is the hub's newest
-// try at it (`lastAttempt`), so "Last line: passed. Bee heard it." also survives a reconnect, and a
-// verdict Bee settled while the screen was away lands. The screen that showed the round keeps when
-// Round over began. A verdict Bee settles later for an earlier line still never reads as the last
+// try at it in its last opening (`lastAttempt`), so "Last line: passed. Bee heard it." also survives
+// a reconnect, and a verdict Bee settled while the screen was away lands. The screen that showed the
+// round keeps when Round over began. A verdict Bee settles later for an earlier line still never reads as the last
 // line. A round that timed out here, or is past its 15 minutes, never comes back. A hub that sends no
 // lastAttempt: the screen that showed the round keeps its own last line, less a "still checking" the
 // tally says Bee settled, and another screen starts with none. An older hub sends no lastSession: the
