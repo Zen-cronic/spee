@@ -3,12 +3,13 @@
 // ALEXA_VERIFY_SIGNATURE=0 to turn that off for local fixture runs only. Loopback and LAN requests are
 // never signature-checked. The skill id (one of Spee's skills, ./verify.ts) and timestamp are then
 // checked (400 alexa_rejected otherwise), then ./skill.ts maps the
-// intent onto the hub routes through the loopback hub client. No model call in a request; logs
+// intent onto the hub routes through the loopback hub client. An intent with a TV view
+// (skill.ts INTENT_FOCUS) also publishes `mirror.focus` by "alexa". No model call in a request; logs
 // carry intent names and timings only, never what was said.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HubPlugin, PluginCtx } from "../hub/plugin.js";
 import { HubClient } from "../mcp/hubClient.js";
-import { handleAlexa, type SkillDeps } from "./skill.js";
+import { handleAlexa, INTENT_FOCUS, type SkillDeps } from "./skill.js";
 import { ssml } from "./speech.js";
 import { maskDeep, maskOut } from "../hub/mask.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, OutputSpeech } from "./types.js";
@@ -181,6 +182,8 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
       };
       const out = await handleAlexa(envelope, deps);
       served++;
+      const focus = INTENT_FOCUS[out.routed.intent];
+      if (focus) ctx.publish("mirror.focus", { view: focus.view, by: "alexa", reason: focus.reason, recapId: null, takeId: null });
       ctx.json(res, 200, maskSpoken(out.envelope), { premasked: true });
       return true;
     },

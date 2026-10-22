@@ -1222,7 +1222,7 @@ All sequenced topics go to every bridge peer in every room, to SSE (`GET /api/ev
 | `recap.ready` | sequenced | A (`live`) | `{recap: Recap}` | after `conversation.ended` (unless skipped), before the wrist |
 | `live.mode` | sequenced | A (`live`) | `{mode: LiveMode}` | `POST /api/live/mode`, expiry, wrist circuit open |
 | `practice.summary` | sequenced | B (`mirror`) | `{summary: PracticeSummary}` | a mic sends its take summary |
-| `mirror.focus` | sequenced | B (`mirror`) | `MirrorFocus {view, by, reason, recapId, takeId, room?}` | a peer asks the mirror to show a view (`app mirror.focus`), or the demo. A phone mic's focus carries its `room`, and only that room's screens follow it |
+| `mirror.focus` | sequenced | B (`mirror`), `alexa` | `MirrorFocus {view, by, reason, recapId, takeId, room?}` | a peer asks the mirror to show a view (`app mirror.focus`), the Alexa skill answers "did it transfer?" (`transfer`) or turns live coaching on (`live`), or the demo. A phone mic's focus carries its `room`, and only that room's screens follow it |
 | `practice.meters` | room | B (`mirror`), via `ctx.broadcastToScreens` | `PracticeMeters` (+ `from`) | the mic's 10 Hz frames, relayed to that room's screens only (at most 20 Hz) |
 <!-- /topics:v2 -->
 

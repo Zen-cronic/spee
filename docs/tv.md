@@ -152,7 +152,7 @@ Check installs with the component name `com.beecoach.mirror.main`: `is-app-insta
   - An event ahead of a gap waits for up to 1.5 s, then is applied with the gap counted.
   - A new `hub.state` rebases the sequence.
   - Room frames (`practice.meters`) never touch the sequence. Only the last 50 are kept, in memory.
-  - Screens switch on events. Drill events show the drill. Conversation events show the live screen, unless a drill or a take is in progress. Meters show practice. `recap.ready` raises the overlay for 30 s. `mirror.focus` shows the requested view.
+  - Screens switch on events. Drill events show the drill. Conversation events show the live screen, unless a drill or a take is in progress or the user picked the view on screen: a tab picked on the remote, or a view a `mirror.focus` asked for, stays put while Bee's live windows arrive (they only update the Live tab). Meters show practice. `recap.ready` raises the overlay for 30 s. `mirror.focus` shows the requested view.
 - **`src/hub/mirror.ts`:**
   - Relays a mic's `practice.meters` to its room's screens only, through `ctx.broadcastToScreens` (at most 20 Hz). Each frame is rebuilt from the contract fields and stamped `from`. Malformed frames and frames from a screen are dropped.
   - Publishes `practice.summary` (mic only) with the hub's `room`, `from` and `provisional: true`.

@@ -13,9 +13,15 @@
 // PRACTICE_HISTORY frames are kept, in memory.
 //
 // Screens switch on events: a drill event shows the drill, a live-conversation event shows the
-// live window (unless a drill or a practice take is in progress), meters show practice,
-// `recap.ready` raises the recap overlay, and `mirror.focus` shows whatever a peer asked for (a
-// phone's focus only on its own room's screen).
+// live window (unless a drill or a practice take is in progress, or the screen shows a view the
+// user picked), meters show practice, `recap.ready` raises the recap overlay, and `mirror.focus`
+// shows whatever a peer asked for (a phone's focus only on its own room's screen).
+//
+// A view picked on the remote or asked for by a peer (`mirror.focus`, e.g. Alexa's "did it
+// transfer?") is pinned: Bee's passive live events (conversation.started, live.window, nudge.sent)
+// update the live slice but leave the screen where it is. Bee sends a live window every few seconds
+// while anyone talks, so without the pin a tab the user chose lasts only until the next window.
+// Commands still move a pinned screen: a drill, a practice take, or another focus.
 import { ROUND_OVER_MS } from '../contract';
 import type {
   CardView,
@@ -121,6 +127,7 @@ export interface MirrorState {
   view: ScreenView;
   viewBy: string | null;
   viewReason: string | null;
+  viewPinned: boolean; // picked on the remote or asked for by a focus: live events do not move it
   drill: DrillState;
   live: LiveSlice;
   practice: PracticeSlice;
@@ -206,6 +213,7 @@ export function initialMirror(view: ScreenView = 'week'): MirrorState {
     view,
     viewBy: null,
     viewReason: null,
+    viewPinned: false,
     drill: emptyDrill(),
     live: { mode: null, baseline: null, conversationId: null, startedAt: null, window: null, ended: null, nudges: [], skips: [] },
     practice: emptyPractice(),
@@ -243,7 +251,7 @@ export function mirrorReducer(s: MirrorState, a: MirrorAction): MirrorState {
     case 'tick':
       return onTick(s, a.now);
     case 'show':
-      return a.view === s.view && !s.recapVisible ? s : { ...s, view: a.view, viewBy: 'remote', viewReason: null, recapVisible: false };
+      return a.view === s.view && !s.recapVisible && s.viewPinned ? s : { ...s, view: a.view, viewBy: 'remote', viewReason: null, viewPinned: true, recapVisible: false };
     case 'dismissRecap':
       return s.recapVisible ? { ...s, recapVisible: false } : s;
     case 'room':
@@ -401,10 +409,12 @@ function onTick(s: MirrorState, now: number): MirrorState {
   return cur;
 }
 
-// The view a live-conversation event switches to: not while a drill or a take is in progress.
+// The view a live-conversation event switches to: not while a drill or a take is in progress, and
+// never away from a view the user picked (the drill panel shares the Live tab, so it may yield).
 function liveView(s: MirrorState, now: number): ScreenView {
   if (drillInProgress(s.drill) && s.view === 'drill') return 'drill';
   if (practiceActive(s.practice, now) && s.view === 'practice') return 'practice';
+  if (s.viewPinned && s.view !== 'live' && s.view !== 'drill') return s.view;
   return 'live';
 }
 
@@ -414,12 +424,12 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
   if (p.replay === true || p.attempt?.bee?.replay === true || p.window?.replay === true) s.replay = true;
   switch (ev.topic) {
     case 'session.started':
-      return { ...s, drill: { ...emptyDrill(), deck: s.drill.deck, sessionId: p.session?.id ?? null }, view: 'drill', viewBy: p.session?.by ?? null, viewReason: 'drill started' };
+      return { ...s, drill: { ...emptyDrill(), deck: s.drill.deck, sessionId: p.session?.id ?? null }, view: 'drill', viewBy: p.session?.by ?? null, viewReason: 'drill started', viewPinned: false };
     case 'card.open':
-      return { ...s, drill: { ...emptyDrill(), sessionId: p.sessionId ?? s.drill.sessionId, card: p.card ?? null, deck: p.deck ?? s.drill.deck, stage: 'card' }, view: 'drill', viewBy: p.by ?? null, viewReason: 'card opened' };
+      return { ...s, drill: { ...emptyDrill(), sessionId: p.sessionId ?? s.drill.sessionId, card: p.card ?? null, deck: p.deck ?? s.drill.deck, stage: 'card' }, view: 'drill', viewBy: p.by ?? null, viewReason: 'card opened', viewPinned: false };
     case 'attempt.provisional': {
       const at = p.attempt ?? {};
-      return { ...s, drill: { ...s.drill, card: p.card ?? s.drill.card, attemptId: at.id ?? null, stage: 'provisional', provisional: at.provisional ? { source: at.provisional.source, text: at.provisional.text, pass: !!at.provisional.grade?.pass, reasons: at.provisional.grade?.reasons ?? [] } : null, checking: null, verified: null, graded: null }, view: 'drill', viewReason: 'attempt received', viewBy: at.provisional?.source ?? null };
+      return { ...s, drill: { ...s.drill, card: p.card ?? s.drill.card, attemptId: at.id ?? null, stage: 'provisional', provisional: at.provisional ? { source: at.provisional.source, text: at.provisional.text, pass: !!at.provisional.grade?.pass, reasons: at.provisional.grade?.reasons ?? [] } : null, checking: null, verified: null, graded: null }, view: 'drill', viewReason: 'attempt received', viewBy: at.provisional?.source ?? null, viewPinned: false };
     }
     case 'attempt.status':
       if (otherCard(s, p.cardId)) return s;
@@ -477,7 +487,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       if (!sum) return s;
       if (s.room && sum.room && sum.room !== '*' && sum.room.toUpperCase() !== s.room.toUpperCase()) return s; // another room's take
       const pr = s.practice.takeId === sum.takeId ? s.practice : { ...emptyPractice(), takeId: sum.takeId, from: sum.from };
-      return { ...s, practice: { ...pr, summary: sum }, view: 'practice', viewReason: 'take finished', viewBy: 'phone' };
+      return { ...s, practice: { ...pr, summary: sum }, view: 'practice', viewReason: 'take finished', viewBy: 'phone', viewPinned: false };
     }
     case 'mirror.focus': {
       const f = p as unknown as MirrorFocus;
@@ -488,7 +498,7 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
       }
       if (!(['week', 'transfer', 'drill', 'live', 'practice'] as string[]).includes(f.view)) return s;
       const practice = f.takeId && f.takeId !== s.practice.takeId ? { ...emptyPractice(), takeId: f.takeId } : s.practice;
-      return { ...s, view: f.view, viewBy: f.by ?? null, viewReason: f.reason ?? null, recapVisible: false, practice };
+      return { ...s, view: f.view, viewBy: f.by ?? null, viewReason: f.reason ?? null, viewPinned: true, recapVisible: false, practice };
     }
     default:
       return s;
@@ -496,8 +506,8 @@ function apply(s0: MirrorState, ev: SeqEvent, now: number): MirrorState {
 }
 
 // An automatic switch: a new view gets the event's reason; staying put keeps the current line.
-function switched(s: MirrorState, view: ScreenView, reason: string, by: string | null): Pick<MirrorState, 'view' | 'viewReason' | 'viewBy'> {
-  return view === s.view ? { view, viewReason: s.viewReason, viewBy: s.viewBy } : { view, viewReason: reason, viewBy: by };
+function switched(s: MirrorState, view: ScreenView, reason: string, by: string | null): Pick<MirrorState, 'view' | 'viewReason' | 'viewBy' | 'viewPinned'> {
+  return view === s.view ? { view, viewReason: s.viewReason, viewBy: s.viewBy, viewPinned: s.viewPinned } : { view, viewReason: reason, viewBy: by, viewPinned: false };
 }
 
 function stripSeq(p: Record<string, unknown>) {
@@ -524,5 +534,5 @@ function onMeters(s: MirrorState, frames: PracticeMeters[], now: number): Mirror
   }
   if (pr === s.practice) return s;
   if (s.view === 'practice' && !s.recapVisible) return { ...s, practice: pr };
-  return { ...s, practice: pr, view: 'practice', viewReason: 'practice take', viewBy: 'phone', recapVisible: false };
+  return { ...s, practice: pr, view: 'practice', viewReason: 'practice take', viewBy: 'phone', viewPinned: false, recapVisible: false };
 }

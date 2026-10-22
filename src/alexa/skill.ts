@@ -37,6 +37,15 @@ export interface SkillDeps {
   aplMode?: AplMode; // which screens get a Spee document (ALEXA_APL); default hub-only
 }
 
+// The TV view an intent asks for: the Alexa plugin publishes it as `mirror.focus` (by "alexa") once
+// the intent is answered, so "did it transfer?" lands on Progress whatever tab is open, and turning
+// live coaching on shows Live. A focus pins the view on the TV: Bee's live windows do not move it.
+// Drills need none (their session.started and card.open events show the drill).
+export const INTENT_FOCUS: Partial<Record<Routed["intent"], { view: "transfer" | "live"; reason: string }>> = {
+  DidItTransferIntent: { view: "transfer", reason: "did it transfer?" },
+  LiveCoachOnIntent: { view: "live", reason: "live coaching on" },
+};
+
 export const POLL_BUDGET_MS = 6500;
 export const POLL_EVERY_MS = 600;
 
