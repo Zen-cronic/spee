@@ -31,6 +31,7 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 | Live nudges are off by default. When on: no nudge in the first 60 s of a conversation, 3 min between any two nudges, 10 min between nudges of the same rule, 6 per hour, 20 per day, none from 22:00 to 08:00 | `DEFAULT_POLICY` in `src/hub/live/policy.ts` | `test/claims.test.ts` (this page and `docs/live.md`) |
 | Wrist text is at most 60 characters and starts `[coach] ` | `WRIST_TEXT_MAX` in `src/hub/contract.ts` | `test/claims.test.ts` (this page and `docs/live.md`) |
 | Bee's live tag named the wearer on 8 of 9 lines in the 2026-10-16 measurement | `FRICTION_LOG.md`, FL-8 | `test/claims.test.ts` |
+| In the two nudges filmed for the demo on 2026-10-22, the TV's hop line showed the wrist alarm at 30.1 s and 32.1 s after the line, so about 20 s (L1) is the worked example and 30 s is what happened on camera. On the Watch, Bee showed the cue in its own words, not Spee's text | The TV's Live card during filming, 2026-10-22 (the operator's take review) | Not checked by a test (a one-off observation) |
 
 ## Names and words
 
@@ -47,6 +48,12 @@ Each fact the README and the docs repeat, where it comes from, and what checks i
 | Node 22.12 or later | `engines.node` in `package.json` | `test/claims.test.ts` |
 | The package is `spee` | `package.json` | `test/claims.test.ts` |
 | Every `npm run` command in the docs exists, and every repo path in backticks exists (gitignored paths excepted) | `package.json`, the tree | `test/claims.test.ts` |
+
+## The problem, in my own numbers
+
+| Fact | Source | Checked by |
+|---|---|---|
+| In my stand-up on 2026-10-19, Bee heard 699 of my words: all filler words at 13.3 per 100 (captions 11.2), so about one word in ten; filler "like" at 5.44 per 100; and 11 unsure words (captions also 11) | `docs/instrument-check.md`, "Result on real data" | Not checked by a test (one meeting) |
 
 ## Prior art
 
