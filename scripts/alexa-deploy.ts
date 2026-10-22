@@ -11,7 +11,9 @@
 // (ALEXA_SKILL_ID, else alexa/skill-id.json); a name recorded in alexa/skill-ids.local.json
 // (git-ignored) reuses its skill. The account is the record of which skills exist and the local file
 // a cache, so on every real run the deploy first reads the account. A recorded skill that is no longer
-// there is said so, and its name is set up again like a name with none recorded. Before creating a
+// there is said so, and its name is set up again like a name with none recorded. The checked-in skill
+// gone, or every recorded skill gone, stops the deploy before any change, with exit status 2: the
+// ASK profile is most likely another developer account's, so check ASK_PROFILE. Before creating a
 // skill for a name, the deploy adopts a skill already set up for it. Two skills for one name, recorded
 // or not, stop the deploy before any change: Alexa could send that name to either. A local file that does not parse, or holds
 // an entry that is not a skill id, stops the deploy before any ask call, in a dry run too, and is
@@ -23,8 +25,8 @@
 //   ask smapi get-skill-manifest -s <id> -g development, for a recorded skill (or the checked-in one)
 //     the list does not show: when that answers not found, the skill is gone (any other failure
 //     fails the lookup). A recorded name is then set up again (adopted, else created, and the new id
-//     saved in place of the old one); the checked-in skill gone fails "speech coach" with the
-//     reason, since only its config can change it
+//     saved in place of the old one); the checked-in skill gone, or every recorded skill gone,
+//     stops the deploy, and nothing is created or written
 //   ask smapi get-skill-manifest -s <id> -g development, for each development skill on the account
 //     and each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the
 //     invocation name it was set up for, whatever the listing says. A skill listed as Spee, or in
@@ -44,12 +46,13 @@
 //   4. polls ask smapi get-skill-status until every locale's build SUCCEEDED (or FAILED; 180 s cap)
 //   5. ask smapi set-skill-enablement       (testing on, development stage; idempotent)
 // A name that fails at any step is reported and skipped, and the next name goes on. The exit status
-// is 0 when the first name is ready. A local file that can no longer be read when the deploy saves a
-// skill id to it (changed during the run) stops the deploy there, with exit status 2: the names after
-// it are not run, and a skill created a moment before is left for the next run to adopt by its
-// marker. A hub running from this checkout accepts every skill in
-// alexa/skill-ids.local.json and reads the file again when it changes, so it needs no restart. This
-// script never touches the live stage, deletes nothing and never starts a tunnel.
+// is 0 when the first name is ready. Another account's profile (above) stops the deploy before any
+// name, with exit status 2. A local file that can no longer be read when the deploy saves a skill id
+// to it (changed during the run) stops the deploy there, with exit status 2: the names after it are
+// not run, and a skill created a moment before is left for the next run to adopt by its marker. A
+// hub running from this checkout accepts every skill in alexa/skill-ids.local.json and reads the
+// file again when it changes, so it needs no restart. This script never touches the live stage,
+// deletes nothing and never starts a tunnel.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -98,7 +101,10 @@ export interface DeployResult {
   skillId: string | null;
   step?: string;
   reason?: string;
-  stopped?: true; // the deploy stopped at this name: the local file could not be read to save its skill id
+  // The deploy stopped at this name, and the names after it are not run: the account lookup found
+  // none of the recorded skills, or not the checked-in one, or the local file could not be read to
+  // save its skill id.
+  stopped?: true;
 }
 
 const LOCAL_LABEL = "alexa/skill-ids.local.json";
@@ -295,13 +301,15 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
   };
 
   // Before any change: the vendor, then the account. Each recorded skill must still be there: a
-  // recorded name whose skill is gone is set up again like a name with none recorded. A name with no
-  // recorded skill adopts the one the account has for it. Two skills for one name stop the deploy,
-  // also when one of them is recorded.
+  // recorded name whose skill is gone is set up again like a name with none recorded. The checked-in
+  // skill gone, or every recorded skill gone, stops the deploy: the profile is most likely another
+  // developer account's, where setting the names up again would save new ids over the real ones. A
+  // name with no recorded skill adopts the one the account has for it. Two skills for one name stop
+  // the deploy, also when one of them is recorded.
   const live = planned.filter((p) => !p.problems.length);
   const toCreate = () => live.filter((p) => !p.skillId);
   let noCreate: { step: string; reason: string } | null = null;
-  const blocked = new Map<string, { step: string; reason: string }>(); // the checked-in skill is gone
+  let wrongAccount: string | null = null; // the stop's reason: no name is run
   if (live.length) {
     const first = toCreate().map((p) => `"${p.name}"`);
     deps.print(first.length ? `\nBefore creating anything, the deploy looks on the account for a skill already set up for ${first.join(" and ")}, and checks that each recorded skill is still there:` : "\nBefore any change, the deploy checks that each recorded skill is still on the account:");
@@ -322,21 +330,21 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
       if ("failed" in found) {
         noCreate = { step: "account lookup", reason: found.failed };
         deps.print(`  ${found.failed}: the names with no recorded skill are skipped, and the recorded skills deploy unchecked`);
+      } else if (found.gone.size && (found.gone.size === known.size || found.gone.has(cfg.primary.skillId))) {
+        const lost = live.filter((p) => p.skillId && found.gone.has(p.skillId));
+        for (const p of lost) deps.print(`  ${p.name}: ${p.from} names ${shortId(p.skillId!)}, which is not on the account of profile ${cfg.profile}`);
+        const checkedIn = lost.find((p) => p.from !== LOCAL_LABEL);
+        const fix = checkedIn ? `; if it is right, ${checkedIn.from === "ALEXA_SKILL_ID" ? "set ALEXA_SKILL_ID" : `fix ${checkedIn.from}, or set ALEXA_SKILL_ID,`} to the "${checkedIn.name}" skill` : "";
+        wrongAccount = `profile ${cfg.profile}'s account ${found.gone.size === known.size ? "holds none of the recorded skills" : "does not hold the checked-in skill"}: check ASK_PROFILE${fix}`;
+        deps.print(`\nalexa:deploy: stopped: ${wrongAccount}. Nothing was changed; only read calls ran, and ${LOCAL_LABEL} was not written.`);
       } else {
         for (const p of live) {
           if (!p.skillId || !found.gone.has(p.skillId)) continue;
-          if (p.from === LOCAL_LABEL) {
-            deps.print(`  ${p.name}: the skill recorded in ${LOCAL_LABEL} (${shortId(p.skillId)}) is not on the account any more, so this name is set up again, and the new id saved in its place`);
-            Object.assign(p, { skillId: null, from: null });
-          } else {
-            const fix = p.from === "ALEXA_SKILL_ID" ? "Set ALEXA_SKILL_ID" : `Fix ${p.from}, or set ALEXA_SKILL_ID`;
-            const reason = `${p.from} names ${shortId(p.skillId)}, which is not on the account of profile ${cfg.profile}. ${fix} to this name's skill`;
-            blocked.set(p.name, { step: "account lookup", reason });
-            deps.print(`  ${p.name}: ${reason}`);
-          }
+          deps.print(`  ${p.name}: the skill recorded in ${LOCAL_LABEL} (${shortId(p.skillId)}) is not on the account any more, so this name is set up again, and the new id saved in its place`);
+          Object.assign(p, { skillId: null, from: null });
         }
         // Every skill on the account for each name: the recorded one (still there) and the ones read.
-        const onAccount = (p: PlannedSkill) => [...new Set([...(p.skillId && !blocked.has(p.name) ? [p.skillId] : []), ...(found.byName.get(p.name) ?? [])])];
+        const onAccount = (p: PlannedSkill) => [...new Set([...(p.skillId ? [p.skillId] : []), ...(found.byName.get(p.name) ?? [])])];
         const twice = live.filter((p) => onAccount(p).length > 1);
         if (twice.length) {
           const list = (p: PlannedSkill) => onAccount(p).map((id) => (id === p.skillId ? `${shortId(id)}, the one in ${p.from}` : shortId(id))).join("; ");
@@ -360,6 +368,11 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
   for (const p of planned) {
     if (stoppedAt) {
       results.push({ name: p.name, ok: false, created: false, skillId: p.skillId, step: "not run", reason: `the deploy stopped at ${stoppedAt}` });
+      continue;
+    }
+    if (wrongAccount) {
+      results.push({ name: p.name, ok: false, created: false, skillId: p.skillId, step: "account lookup", reason: wrongAccount, stopped: true });
+      stoppedAt = "the account lookup";
       continue;
     }
     deps.print(`\n${p.name}:`);
@@ -387,11 +400,6 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
     };
     if (p.problems.length) {
       fail("name check", p.problems.join("; "));
-      continue;
-    }
-    const gone = blocked.get(p.name);
-    if (gone) {
-      fail(gone.step, gone.reason);
       continue;
     }
     // 1. this name's package
@@ -492,6 +500,10 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
   return results;
 }
 
+// 2 when the deploy stopped (another account's profile, or a local file that stopped reading), else
+// 0 when the first name is ready, else 1.
+export const exitStatus = (results: DeployResult[]): number => (results.some((r) => r.stopped) ? 2 : results[0]?.ok ? 0 : 1);
+
 // The real runner: the ask CLI, its stdout as the answer.
 export function askCli(bin = process.env.ASK_BIN || "ask"): AskRunner {
   return (args) => {
@@ -552,7 +564,7 @@ async function main(): Promise<number> {
   }
   const cfg = deployConfig(args, process.env, `${baseOk ? base : "https://<PUBLIC_BASE_URL>"}/alexa`);
   const results = await deploy(cfg, { run: askCli(), print: (l) => console.log(l), sleep: (ms) => new Promise((r) => setTimeout(r, ms)), now: Date.now }, { dry });
-  return results.some((r) => r.stopped) ? 2 : results[0]?.ok ? 0 : 1;
+  return exitStatus(results);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exit(await main());

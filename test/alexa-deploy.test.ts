@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { deploy, DeployStop, notFound, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
+import { deploy, DeployStop, exitStatus, notFound, parseNames, plan, type AskResult, type DeployConfig } from "../scripts/alexa-deploy.js";
 import { checkInvocationName, DEFAULT_INVOCATION_NAMES, deployMarker, examplePhraseOk, loadSkillPackage, markedName, packageFor, swapName } from "../src/alexa/skillPackage.js";
 import { readSkillConfig, resolveSkillIds } from "../src/alexa/verify.js";
 
@@ -387,18 +387,56 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(r2[1]!.skillId).not.toBe(GONE);
   });
 
-  it("the checked-in skill no longer on the account: speech coach fails with that reason, and the other names go on", async () => {
+  it("the checked-in skill no longer on the account stops the deploy before any change, with exit status 2 (review L206)", async () => {
     const ask = fakeAsk({ account: [{ id: SPEE_COACH, marker: "spee coach" }] });
-    ask.skills.delete(MAIN); // deleted in the developer console
+    ask.skills.delete(MAIN); // deleted in the developer console, or the profile is another account's
     cfg.names = ["speech coach", "spee coach"];
     const results = await deploy(cfg, deps(ask.run));
-    expect(results.map((r) => [r.name, r.ok, r.step])).toEqual([["speech coach", false, "account lookup"], ["spee coach", true, undefined]]);
-    expect(results[0]!.reason).toBe("alexa/skill-id.json names amzn1.ask.skill.11111111…, which is not on the account of profile default. Fix alexa/skill-id.json, or set ALEXA_SKILL_ID to this name's skill");
-    expect(ask.calls.some((c) => c[1] === "update-skill-manifest" && c.includes(MAIN))).toBe(false);
-    expect(ask.creates()).toBe(0);
+    expect(results.map((r) => [r.name, r.ok, r.step, r.stopped ?? false])).toEqual([["speech coach", false, "account lookup", true], ["spee coach", false, "not run", false]]);
+    expect(results[0]!.reason).toBe('profile default\'s account holds none of the recorded skills: check ASK_PROFILE; if it is right, fix alexa/skill-id.json, or set ALEXA_SKILL_ID, to the "speech coach" skill');
+    expect(exitStatus(results)).toBe(2);
+    expect(ask.mutating()).toEqual([]); // reads only: spee coach is neither adopted nor created
+    expect(existsSync(cfg.localPath)).toBe(false);
+    const out = lines.join("\n");
+    expect(out).toContain("  speech coach: alexa/skill-id.json names amzn1.ask.skill.11111111…, which is not on the account of profile default");
+    expect(out).toContain("Nothing was changed; only read calls ran, and alexa/skill-ids.local.json was not written.");
+    expect(out).toContain("  speech coach: STOPPED at account lookup: profile default's account holds none");
+    // a recorded name still on the account: the checked-in skill alone is gone, and the deploy still stops
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "spee coach": SPEE_COACH } }));
     cfg.primary = { skillId: MAIN, source: "ALEXA_SKILL_ID" };
     const r2 = await deploy(cfg, deps(ask.run));
-    expect(r2[0]!.reason).toBe("ALEXA_SKILL_ID names amzn1.ask.skill.11111111…, which is not on the account of profile default. Set ALEXA_SKILL_ID to this name's skill");
+    expect(r2[0]!.reason).toBe('profile default\'s account does not hold the checked-in skill: check ASK_PROFILE; if it is right, set ALEXA_SKILL_ID to the "speech coach" skill');
+    expect(exitStatus(r2)).toBe(2);
+    expect(ask.mutating()).toEqual([]);
+  });
+
+  it("another ASK profile, whose account holds none of the recorded skills, stops the deploy before any change and never rewrites the local file (review L206)", async () => {
+    const text = JSON.stringify({ skills: { "spee coach": SPEE_COACH, spee: SPEE } });
+    writeFileSync(cfg.localPath, text);
+    cfg.profile = "other";
+    const ask = fakeAsk({ account: [{ id: "amzn1.ask.skill.77777777-7777-7777-7777-777777777777", listed: "Their skill" }] });
+    ask.skills.delete(MAIN); // the other account has none of Spee's skills
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.created, r.step, r.stopped ?? false])).toEqual([
+      ["speech coach", false, false, "account lookup", true],
+      ["spee coach", false, false, "not run", false],
+      ["spee", false, false, "not run", false],
+    ]);
+    expect(exitStatus(results)).toBe(2);
+    expect(ask.creates()).toBe(0);
+    expect(ask.mutating()).toEqual([]);
+    expect(readFileSync(cfg.localPath, "utf8")).toBe(text);
+    expect(existsSync(cfg.outDir)).toBe(false);
+    const out = lines.join("\n");
+    expect(out).toContain("  spee coach: alexa/skill-ids.local.json names amzn1.ask.skill.22222222…, which is not on the account of profile other");
+    expect(out).not.toContain("is not on the account any more");
+    expect(out).toContain("  spee: FAILED at not run: the deploy stopped at the account lookup");
+    // without the checked-in name, every recorded skill gone stops it too
+    cfg.names = ["spee coach", "spee"];
+    const r2 = await deploy(cfg, deps(ask.run));
+    expect(r2[0]).toMatchObject({ name: "spee coach", step: "account lookup", stopped: true, reason: "profile other's account holds none of the recorded skills: check ASK_PROFILE" });
+    expect(ask.mutating()).toEqual([]);
+    expect(readFileSync(cfg.localPath, "utf8")).toBe(text);
   });
 
   // What the ask CLI prints for a failed SMAPI call: the error's message and detail, with its headers.
