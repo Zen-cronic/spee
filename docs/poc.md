@@ -6,7 +6,7 @@ Spee grew out of this time-boxed proof of concept. Everything below still runs; 
 
 A time-boxed go/no-go PoC for a deliberate-practice speech coach built on Bee data. It finds the wearer's real recurring speech errors and turns them into drill cards: the exact line, a correction, and a re-say prompt. It schedules the cards with a Leitner box and checks re-performance in later recordings against a pre-registered undrilled control. It covers English stand-up updates (hedges, vague status, missing ETAs, buried blockers) and French at high A2 / low B1 (auxiliary choice, gender, depuis + tense, prepositions, contractions, anglicisms).
 
-It now runs on **real Bee data** (an Apple Watch running Bee, Developer Mode, `bee` CLI). Real data never enters a tracked file: see "Privacy design" in the README. Read `REAL_DATA_REPORT.md` for the real-data results and the current verdict. `POC_REPORT.md`, the historical mock-data run, is not in the repository: it is written locally by `npm run poc`.
+It now runs on **real Bee data** (an Apple Watch running Bee, Developer Mode, `bee` CLI). Real data never enters a tracked file: see "Privacy design" in [`docs/how-it-works.md`](how-it-works.md). Read `REAL_DATA_REPORT.md` for the real-data results and the current verdict. `POC_REPORT.md`, the historical mock-data run, is not in the repository: it is written locally by `npm run poc`.
 
 **All Bee data committed to this repository is SYNTHETIC.** The fixtures under `fixtures/verbatim`, `fixtures/cleaned` and `fixtures/synthetic` were authored by a simulator (`src/sim/`) or by hand, in the exact JSON shapes of the Bee CLI. The mock run's hidden ground truth is in `fixtures/_truth/`.
 
