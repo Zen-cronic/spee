@@ -45,8 +45,9 @@ const label = (path: string) => {
 };
 
 // { skills: { "<invocation name>": "<skill id>" } }. A missing file is no skills; a file that does not
-// parse, or an entry that is not a skill id, is skipped with a warning.
-export function readLocalSkills(path = LOCAL_SKILLS_PATH): { skills: Record<string, string>; warnings: string[] } {
+// parse, or an entry that is not a skill id, is skipped with a warning. `unread`: the file is there but
+// could not be read (it does not parse, or has no "skills" object), so every skill in it is refused.
+export function readLocalSkills(path = LOCAL_SKILLS_PATH): { skills: Record<string, string>; warnings: string[]; unread?: true } {
   let text: string;
   try {
     text = readFileSync(path, "utf8");
@@ -57,10 +58,10 @@ export function readLocalSkills(path = LOCAL_SKILLS_PATH): { skills: Record<stri
   try {
     j = JSON.parse(text);
   } catch {
-    return { skills: {}, warnings: [`${label(path)} does not parse; none of its skills are accepted`] };
+    return { skills: {}, warnings: [`${label(path)} does not parse; none of its skills are accepted`], unread: true };
   }
   const raw = j && typeof j === "object" ? (j as { skills?: unknown }).skills : undefined;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { skills: {}, warnings: [`${label(path)} has no "skills" object; none of its skills are accepted`] };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { skills: {}, warnings: [`${label(path)} has no "skills" object; none of its skills are accepted`], unread: true };
   const skills: Record<string, string> = {};
   const warnings: string[] = [];
   for (const [name, id] of Object.entries(raw)) {
@@ -75,6 +76,9 @@ export interface SkillIds {
   names: Record<string, string>; // skill id -> invocation name, where the deploy recorded one
   sources: string[]; // where the ids came from (never the ids themselves)
   warnings: string[];
+  // The deploy's local file (its path in the repo) when it is there but could not be read: every
+  // skill in it is refused, and the health note says so. Absent otherwise.
+  unread?: string;
 }
 
 // ALEXA_SKILL_IDS: comma-separated skill ids. An entry that is not one is skipped with a warning.
@@ -104,7 +108,7 @@ export function resolveSkillIds(env: Record<string, string | undefined> = proces
     names[id] = name;
   }
   if (Object.keys(local.skills).length) sources.push(label(paths.local ?? LOCAL_SKILLS_PATH));
-  return { ids: [...ids], names, sources, warnings };
+  return { ids: [...ids], names, sources, warnings, ...(local.unread ? { unread: label(paths.local ?? LOCAL_SKILLS_PATH) } : {}) };
 }
 
 // resolveSkillIds, read again whenever the local file changes, so the skills a deploy creates while

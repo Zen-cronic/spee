@@ -176,15 +176,18 @@ export function createAlexaPlugin(opts: AlexaPluginOptions = {}): HubPlugin {
       ctx.json(res, 200, maskSpoken(out.envelope), { premasked: true });
       return true;
     },
+    // A local skills file that could not be read is degraded, not ready: every skill the deploy
+    // recorded in it is refused until it is fixed (alexa:deploy stops on it too).
     describe: () => {
       const s = loadSkillIds();
+      const skipped = s ? s.warnings.length - (s.unread ? 1 : 0) : 0;
       return {
         owner: "Alexa skill",
-        status: configError ? "degraded" : "ready",
+        status: configError || s?.unread ? "degraded" : "ready",
         routes: ALEXA_ROUTES,
         note: !s
           ? `no skill id: ${configError}`
-          : `${s.ids.length} skill id${s.ids.length === 1 ? "" : "s"} from ${s.sources.join(", ")}${s.warnings.length ? ` (${s.warnings.length} skipped)` : ""}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
+          : `${s.ids.length} skill id${s.ids.length === 1 ? "" : "s"} from ${s.sources.join(", ")}${skipped ? ` (${skipped} skipped)` : ""}${s.unread ? `; ${s.unread} could not be read, so the skills in it are refused` : ""}; signature check ${checkSignature ? "on (public requests)" : "OFF (ALEXA_VERIFY_SIGNATURE=0)"}; ${served} requests served, ${rejected} rejected`,
       };
     },
   };

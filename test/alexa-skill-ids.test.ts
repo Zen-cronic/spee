@@ -142,6 +142,24 @@ describe("the alexa plugin logs which name was used, once per skill, never the i
     expect(plugin.describe!().note).toMatch(/^3 skill ids from /);
     expect(plugin.describe!().note).not.toContain("amzn1");
   });
+  it("a local file that does not parse, or has no skills object, makes the health note degraded and says its skills are refused (review L193)", () => {
+    const fresh = () => createAlexaPlugin({ skillIds: skillIdSource({}, { config, local }), verifySignature: false });
+    writeFileSync(local, "{ not json");
+    let d = fresh().describe!();
+    expect(d.status).toBe("degraded");
+    expect(d.note).toMatch(/^1 skill id from skill-id\.json; skill-ids\.local\.json could not be read, so the skills in it are refused; /);
+    expect(d.note).not.toContain("skipped");
+    writeFileSync(local, JSON.stringify({ spee: "x" }));
+    d = fresh().describe!();
+    expect(d.status).toBe("degraded");
+    expect(d.note).toContain("skill-ids.local.json could not be read, so the skills in it are refused");
+    // one bad entry in a file that reads: the rest are accepted, and the note counts the one skipped
+    writeLocal({ "spee coach": COACH, spee: "not-an-id" });
+    d = fresh().describe!();
+    expect(d.status).toBe("ready");
+    expect(d.note).toMatch(/^2 skill ids from skill-id\.json, skill-ids\.local\.json \(1 skipped\); signature check/);
+    expect(JSON.stringify(d)).not.toContain("amzn1");
+  });
   it("a fixed id (the option tests use) still works alone", () => {
     expect(createAlexaPlugin({ skillId: MAIN }).describe!().note).toMatch(/^1 skill id from options;/);
   });
