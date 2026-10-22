@@ -11,8 +11,9 @@ import { describe, expect, it } from "vitest";
 const ROOT = new URL("../", import.meta.url).pathname;
 const DIRS = ["tv/web", "tv/vega", "web/phone"];
 // Every surface a person reads: the TV apps, the web pages, the Alexa skill and its screens, the hub, the
-// Agent Skill, the docs and the top-level documents.
-const NAME_DIRS = ["tv/web", "tv/vega", "web", "src/alexa", "alexa", "src/hub", "skills", "docs"];
+// MCP server (its instructions and the tool narration the simulator speaks), the scripts' output
+// (alexa:deploy, demo:replay, leak-check), the Agent Skill, the docs and the top-level documents.
+const NAME_DIRS = ["tv/web", "tv/vega", "web", "src/alexa", "alexa", "src/hub", "src/mcp", "scripts", "skills", "docs"];
 const NAME_FILES = ["README.md", "FACTS.md", "FRICTION_LOG.md", "MEETINGS_REPORT.md", "REAL_DATA_REPORT.md", "package.json"];
 const SKIP = new Set(["node_modules", "dist", "build", ".tmp", ".ask"]);
 const TEXT = /\.(ts|tsx|mts|js|mjs|json|toml|html|css|md)$/;
@@ -54,6 +55,7 @@ describe("Spee branding", () => {
     const named = [...NAME_DIRS.flatMap((d) => walk(join(ROOT, d))), ...NAME_FILES.map((f) => join(ROOT, f))];
     expect(named.length).toBeGreaterThan(100);
     expect(named.some((f) => f.endsWith("alexa/apl/speaking-mirror.json")) && named.some((f) => f.endsWith("web/hub/index.html")) && named.some((f) => f.endsWith("skills/speaking-coach/SKILL.md"))).toBe(true);
+    expect(named.some((f) => f.endsWith("src/mcp/tools.ts")) && named.some((f) => f.endsWith("scripts/alexa-deploy.ts")) && named.some((f) => f.endsWith("scripts/demo-replay.ts"))).toBe(true);
     const hits = named.filter((f) => /speaking\s+mirror/i.test(withoutHistoryLine(f.slice(ROOT.length), readFileSync(f, "utf8"))));
     expect(hits.map((f) => f.slice(ROOT.length))).toEqual([]);
   });
