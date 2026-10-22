@@ -370,7 +370,9 @@ This endpoint checks whether a drilled habit dropped in later **non-drill** real
 - `dropped-control-unclear`: a drilled habit dropped, but the control cannot be compared (too little data, rose, invalid, or none registered).
 - `partly-started`: nothing dropped yet; some drilled habit's after period has started (its first drill) and another is not drilled yet. The headline names both: `After period started for "like" on Oct 19; hedges not drilled yet` (the date is the hub's local day of that habit's first drill).
 - `not-drilled-yet`: no drilled habit has been drilled yet, so no after period has started.
-- `no-drop-yet`: no drilled habit has dropped measurably yet.
+- `no-drop-yet`: no drilled habit has dropped measurably yet. The headline: `No clear change yet in the habits you practised. It takes a few more conversations.` (the TV's lead: "No clear change yet.").
+
+**Frozen (`asOf`, additive):** with `COACH_STATS_UNTIL` set ([live.md](live.md) "Finished conversations feed the stats"), the transfer counts only conversations that started at or before that time and drills made by then, and carries `asOf: {at, label, spoken}`: `at` the ISO time, `label` for a screen (`"Oct 22, 9:39 am"`, the hub's time zone), `spoken` to open a spoken answer (`"As of this morning"`, `"As of yesterday"`, else `"As of Oct 22"`). `GET /api/stats` (not for `range=session:<id>`), `GET /api/instrument`, `GET /api/settings` and `GET /api/coach/now` carry the same `asOf`. Unset, no payload has it. A screen that shows a frozen number says "As of <label>"; Alexa's "did it transfer?" starts with `spoken`.
 
 **Verdicts:**
 
@@ -394,7 +396,7 @@ A drill counts toward `firstDrillAt` only when it is a **counted** (Bee-graded) 
 
 **Sources:** each `sources` entry also has `from` and `to` (additive), the first and last local date of that source's sessions. With `source=all`, `sources.meeting` is what the TV's secondary line counts ("2 captioned meetings since Oct 14"). A meeting that Bee also heard (paired by `pairMeetings`) is counted once in every `source=all` view: from Bee when Bee heard most of it (Bee's wearer words at least half the captions' words, or Bee's lines spanning at least 70% of the meeting), so its caption session is left out; otherwise from the captions, with Bee's lines inside the meeting left out (`meetingDedup`).
 
-**Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV shows it under Progress's cards, for the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee gave similar numbers only when `GET /api/instrument` has `claim: "practised-agree"` (too little data to compare with `too-little-data`).
+**Captions included (secondary):** `GET /api/transfer?source=all` is the same computation with meeting captions added. The pre-registered result is the default, Bee-only call; a surface that shows `source=all` must label it as not the pre-registered check. The TV no longer shows it (Progress's Details keeps the plan, the first signal and Bee memory). A surface that does shows the practised habits and the control only (captions miss some "um" and "uh", so filler words are left out), and says that captions and Bee gave similar numbers only when `GET /api/instrument` has `claim: "practised-agree"` (too little data to compare with `too-little-data`).
 
 ### `GET /api/instrument` (Bee vs captions; aggregates only)
 
