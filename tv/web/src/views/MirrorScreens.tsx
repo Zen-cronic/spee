@@ -5,6 +5,7 @@ import { FocusRoot } from '../focus';
 import type { MirrorConfig } from '../mirror/useMirror';
 import { useMirror } from '../mirror/useMirror';
 import { backAction, type ScreenView } from '../mirror/reducer';
+import { asOfLine } from '../mirror/format';
 import { C, F, SAFE, T } from '../theme';
 import { LiveView } from './LiveView';
 import { PairingView } from './PairingView';
@@ -46,10 +47,12 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
   const right = m.status !== 'online' ? (m.status === 'offline' ? 'Hub offline, retrying…' : 'Connecting…') : m.mics ? 'Phone paired' : `Pair code ${m.code ?? '····'}`;
   const diag = debug ? `${config.platform} · seq ${s.lastSeq ?? '–'} · applied ${s.applied} · dup ${s.duplicates} · gaps ${s.gaps}${m.rttMs !== null ? ` · rtt ${m.rttMs} ms` : ''} · meters ${s.practice.frames} @ ${config.metersHz} Hz` : null;
 
+  // a frozen measurement (the hub's COACH_STATS_UNTIL) says so on the screens that show it: Today, Progress, Details
+  const asOf = s.view === 'week' ? (asOfLine(m.stats) ?? asOfLine(m.transfer)) : s.view === 'transfer' ? asOfLine(m.transfer) : null;
   let screen;
   switch (s.view) {
     case 'transfer':
-      screen = <TransferView transfer={m.transfer} captions={m.captions} settings={m.settings} memory={m.memory} />;
+      screen = <TransferView transfer={m.transfer} memory={m.memory} />;
       break;
     case 'live':
     case 'drill':
@@ -70,7 +73,7 @@ export function MirrorScreens({ config }: { config: MirrorConfig }) {
         <TopBar view={s.view} onShow={m.show} right={s.view === 'pair' && m.status === 'online' ? null : right} rightTone={m.status === 'online' ? 'ok' : 'warn'} />
         {debug && s.viewReason && s.viewBy && s.viewBy !== 'remote' ? <Text style={styles.reason} numberOfLines={1}>{`${TAB_LABEL[s.view]}: ${s.viewReason} (${s.viewBy})`}</Text> : <View style={styles.reasonSpacer} />}
         <View style={styles.body}>{screen}</View>
-        <DataLabel label={s.dataLabel ?? m.stats?.dataLabel ?? null} synthetic={s.synthetic || !!m.stats?.synthetic} replay={s.replay} extra={diag} />
+        <DataLabel label={s.dataLabel ?? m.stats?.dataLabel ?? null} synthetic={s.synthetic || !!m.stats?.synthetic} replay={s.replay} extra={diag} asOf={asOf} />
       </View>
       {s.recapVisible && s.recap ? <RecapOverlay recap={s.recap} /> : null}
       {m.status === 'offline' ? (

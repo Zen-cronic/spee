@@ -37,7 +37,9 @@ export function TopBar({ view, onShow, right, rightTone }: { view: ScreenView; o
 }
 
 /** The honesty line, on every screen: the hub's dataLabel whenever the data is synthetic, and Bee replay. Quiet, never hidden. */
-export function DataLabel({ label, synthetic, replay, extra }: { label: string | null; synthetic: boolean; replay: boolean; extra?: string | null }) {
+// `asOf`: "As of Oct 22, 9:39 am" while the hub's measurement is frozen (COACH_STATS_UNTIL), on the
+// screens that show it (Today, Progress and its Details); null elsewhere and while the numbers are live.
+export function DataLabel({ label, synthetic, replay, extra, asOf }: { label: string | null; synthetic: boolean; replay: boolean; extra?: string | null; asOf?: string | null }) {
   return (
     <View style={styles.footer} testID="data-label">
       {synthetic ? (
@@ -49,6 +51,7 @@ export function DataLabel({ label, synthetic, replay, extra }: { label: string |
         <Text style={styles.real}>Real speech, heard by Bee</Text>
       )}
       {replay ? <Text style={styles.replay}>Bee replay (demo)</Text> : null}
+      {asOf ? <Text style={styles.replay} numberOfLines={1} testID="as-of">{asOf}</Text> : null}
       <View style={{ flex: 1 }} />
       {extra ? <Text style={styles.extra} numberOfLines={1}>{extra}</Text> : null}
     </View>

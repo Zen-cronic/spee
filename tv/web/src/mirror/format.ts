@@ -352,6 +352,15 @@ export function habitPill(h: Pick<TransferHabit, 'role' | 'verdict' | 'before' |
 
 const NUMBER_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
 const numberWord = (n: number) => NUMBER_WORD[n] ?? String(n);
+/**
+ * The small line a frozen measurement shows (the hub's COACH_STATS_UNTIL): "As of Oct 22, 9:39 am",
+ * the hub's own label in its time zone. Null when the numbers are live, so nothing shows.
+ */
+export function asOfLine(r: { asOf?: { label: string } | null } | null | undefined): string | null {
+  const label = r?.asOf?.label?.trim();
+  return label ? `As of ${label}` : null;
+}
+
 /** Fewer conversations than this in a phase is not enough to read (WWC: 3 or more points per phase). */
 export const MIN_POINTS = 3;
 /**
@@ -360,15 +369,17 @@ export const MIN_POINTS = 3;
  * per phase (one point per Bee conversation, before your first practice → since). It never claims
  * proof: the caveat says it is a pilot, not proof of cause.
  */
-export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod'> & { habits: Pick<TransferHabit, 'habit' | 'label' | 'role' | 'verdict' | 'before' | 'after'>[] }): { text: string; points: string; caveat: string } {
+export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod'> & { habits: Pick<TransferHabit, 'habit' | 'label' | 'role' | 'verdict' | 'before' | 'after'>[] }): { text: string; first: string; points: string; caveat: string } {
   const drilled = t.habits.filter((h) => h.role === 'drilled');
   const control = t.habits.filter((h) => h.role !== 'drilled');
   const tiers = drilled.length;
-  const text = `A pilot in ${numberWord(tiers)} tier${tiers === 1 ? '' : 's'}, set ${fmtDate(t.prereg.registeredAt)} before your first practice: ${numberWord(tiers)} habit${tiers === 1 ? '' : 's'} you practise against ${numberWord(control.length)} you don’t. A change counts only with ${fmtWords(t.minWordsPerPeriod)}+ words each side and a clear gap.`;
+  // `first`: the first sentence alone, the row the TV shows (the rest ran off the edge on a 1080p screen)
+  const first = `A pilot in ${numberWord(tiers)} tier${tiers === 1 ? '' : 's'}, set ${fmtDate(t.prereg.registeredAt)} before your first practice: ${numberWord(tiers)} habit${tiers === 1 ? '' : 's'} you practise against ${numberWord(control.length)} you don’t.`;
+  const text = `${first} A change counts only with ${fmtWords(t.minWordsPerPeriod)}+ words each side and a clear gap.`;
   const n = (k: number) => (k < MIN_POINTS ? `${k} (too few)` : String(k));
   const phase = (h: (typeof t.habits)[number]) => `${habitTitle(h.habit, h.label)} ${n(h.before.sessions)} → ${h.verdict === 'not drilled yet' ? 'not started' : n(h.after.sessions)}`;
   const points = `Conversations counted, before → since: ${[...drilled, ...control].map(phase).join(' · ')}`;
-  return { text, points, caveat: `one point per conversation, at least ${MIN_POINTS} a phase to read · a pilot, not proof of cause` };
+  return { text, first, points, caveat: `one point per conversation, at least ${MIN_POINTS} a phase to read · a pilot, not proof of cause` };
 }
 
 /**

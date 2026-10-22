@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { InstrumentResponse, SettingsResponse, TransferHabit, TransferResponse } from '../contract';
-import { BySettingLine } from '../components/BySetting';
-import { CaptionsLine } from '../components/CaptionsLine';
-import { DETAIL, DetailRow } from '../components/DetailRow';
+import type { TransferHabit, TransferResponse } from '../contract';
+import { DetailRow } from '../components/DetailRow';
 import { FirstSignalLines } from '../components/FirstSignal';
 import { useDebug } from '../debug';
 import { FocusButton } from '../focus';
@@ -17,10 +15,12 @@ import { Empty } from './WeekView';
  * the hub's verdict as a coloured pill (lime down, coral up, an outlined pill for anything
  * undecided). A period without the minimum words shows a dash, never "0.0".
  *
- * Everything secondary (the plan, the first signal, meeting captions, by setting) sits behind one
- * Details button (Down from the tabs, then OK), each row with its own caveat.
+ * Everything secondary (the plan, the first signal, Bee memory) sits behind one Details button
+ * (Down from the tabs, then OK), each row with its own caveat. The meeting-captions and by-setting
+ * side analyses stay in the API (/api/transfer?source=all, /api/instrument, /api/settings) but are
+ * not on the TV: they added a dozen numbers the pre-registered result does not use.
  */
-export function TransferView({ transfer, captions, settings, memory }: { transfer: TransferResponse | null; captions?: { all: TransferResponse | null; instrument: InstrumentResponse | null }; settings?: SettingsResponse | null; memory?: BeeMemoryIn | null }) {
+export function TransferView({ transfer, memory }: { transfer: TransferResponse | null; memory?: BeeMemoryIn | null }) {
   const debug = useDebug();
   const [details, setDetails] = useState(false);
   if (!transfer) return <Empty text="Loading your progress…" />;
@@ -41,8 +41,6 @@ export function TransferView({ transfer, captions, settings, memory }: { transfe
         <View style={styles.details} testID="transfer-details">
           <PlanRow transfer={transfer} />
           <FirstSignalLines signals={transfer.firstSignal} />
-          <CaptionsLine all={captions?.all ?? null} instrument={captions?.instrument ?? null} />
-          <BySettingLine line={settings?.line} />
           <BeeMemoryRow memory={memory ?? null} />
         </View>
       ) : (
@@ -61,23 +59,20 @@ export function TransferView({ transfer, captions, settings, memory }: { transfe
   );
 }
 
-/** The plan: a two-tier pilot, its rule for a change, and the conversations counted per phase. */
+/** The plan: its first sentence (a two-tier pilot, set before the first practice) and its caveat. */
 function PlanRow({ transfer }: { transfer: TransferResponse }) {
   const p = planLine(transfer);
-  return (
-    <DetailRow first testID="plan" tag="The plan" text={p.text} caveat={p.caveat}>
-      <Text style={DETAIL.dim} numberOfLines={1} testID="plan-points">{p.points}</Text>
-    </DetailRow>
-  );
+  return <DetailRow first testID="plan" tag="The plan" text={p.first} caveat={p.caveat} />;
 }
 
-/** Bee memory, only when the hub reports it on: the coach's goal fact in Bee and Bee's counts. */
+/**
+ * Bee memory, only when the hub reports it on: the coach's goal fact in Bee. Bee's counts and the
+ * note on what reads coach-written facts stay in GET /api/coach/facts (and the skill); not on the TV.
+ */
 function BeeMemoryRow({ memory }: { memory: BeeMemoryIn | null }) {
   const m = beeMemoryLine(memory);
   if (!m) return null;
-  return (
-    <DetailRow testID="bee-memory" tag="Bee memory" text={m.text} caveat={[m.counts, m.caveat].filter(Boolean).join(' · ')} />
-  );
+  return <DetailRow testID="bee-memory" tag="Bee memory" text={m.text} />;
 }
 
 function HabitCard({ h, minWords, last }: { h: TransferHabit; minWords: number; last: boolean }) {
