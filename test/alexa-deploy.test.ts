@@ -271,7 +271,8 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(out).not.toContain("Warning:"); // the local file is here
     // the account lookup comes before any change, and the dry run shows it
     expect(out).toContain('Before creating anything, the deploy looks on the account for a skill already set up for "spee":\n$ ask smapi get-vendor-list --profile default\n$ ask smapi list-skills-for-vendor --profile default');
-    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill listed as Spee> -g development --profile default");
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill on the account> -g development --profile default");
+    expect(out).toContain("$ ask smapi get-interaction-model -s <a skill listed as Spee whose manifest names none> -g development -l en-CA --profile default");
     expect(out.indexOf("list-skills-for-vendor")).toBeLessThan(out.indexOf("update-skill-manifest"));
     expect(out).toContain(`$ ask smapi create-skill-for-vendor --manifest file:${join(cfg.outDir, "spee/skill.json")} --profile default`);
     expect(out).toContain("$ ask smapi get-skill-status -s <new skill id> --resource manifest --profile default");
@@ -289,8 +290,8 @@ describe("alexa:deploy with a fake ask CLI", () => {
     }), { dry: true });
     const out = lines.join("\n");
     expect(out).toMatch(/spee coach {4}CREATE a development skill/);
-    expect(out).toContain('Warning: this checkout has no alexa/skill-ids.local.json, so "spee coach" and "spee" have no recorded skill and are planned as CREATE. If they were set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout\'s file). Before any create, the deploy adopts a skill it finds on the account, so it never makes a second one for a name.');
-    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill listed as Spee, and each id in ALEXA_SKILL_IDS (1)> -g development --profile default");
+    expect(out).toContain('Warning: this checkout has no alexa/skill-ids.local.json, so "spee coach" and "spee" have no recorded skill and are planned as CREATE. If they were set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout\'s file). Before any create, the deploy reads every development skill on the account and adopts the one it set up for that name, by the marker in its manifest, so it makes no second skill for a name while it can read the account.');
+    expect(out).toContain("$ ask smapi get-skill-manifest -s <each development skill on the account and each id in ALEXA_SKILL_IDS (1)> -g development --profile default");
     expect(existsSync(cfg.localPath)).toBe(false);
   });
 
@@ -341,19 +342,28 @@ describe("alexa:deploy with a fake ask CLI", () => {
   };
 
   it("another checkout set the skills up (no local file here): they are found on the account by their marker and adopted, never created again", async () => {
-    const ask = fakeAsk({ account: [{ id: MAIN, model: "speech coach" }, { id: SPEE_COACH, marker: "spee coach", model: "spee coach" }, { id: SPEE, marker: "spee", model: "spee" }, { id: "amzn1.ask.skill.99999999-9999-9999-9999-999999999999", listed: "Another skill", marker: "spee coach" }] });
+    const OTHER = "amzn1.ask.skill.99999999-9999-9999-9999-999999999999"; // another project's skill: no marker, another listing
+    const ask = fakeAsk({ account: [{ id: MAIN, model: "speech coach" }, { id: SPEE_COACH, marker: "spee coach", model: "spee coach" }, { id: SPEE, marker: "spee", model: "spee" }, { id: OTHER, listed: "Another skill", model: "spee coach" }] });
     const results = await deploy(cfg, deps(ask.run));
     expect(ask.creates()).toBe(0);
     expect(results.map((r) => [r.name, r.ok, r.created, r.skillId])).toEqual([["speech coach", true, false, MAIN], ["spee coach", true, false, SPEE_COACH], ["spee", true, false, SPEE]]);
-    // only the Spee skills not yet recorded are read; another listing is left alone
-    expect(ask.calls.filter((c) => c[1] === "get-skill-manifest").map((c) => c[3])).toEqual([SPEE_COACH, SPEE]);
-    expect(ask.sub()).not.toContain("get-interaction-model"); // the marker named them
+    // every development skill not yet recorded is read; one with no marker under another listing is left alone
+    expect(ask.calls.filter((c) => c[1] === "get-skill-manifest").map((c) => c[3])).toEqual([SPEE_COACH, SPEE, OTHER]);
+    expect(ask.sub()).not.toContain("get-interaction-model"); // the marker named them, and the other skill is not Spee's
     expect(local().skills).toEqual({ "speech coach": MAIN, "spee coach": SPEE_COACH, spee: SPEE });
     expect(hubAccepts().sort()).toEqual([MAIN, SPEE_COACH, SPEE].sort());
     expect(lines.join("\n")).toContain('spee coach: found amzn1.ask.skill.22222222… on the account: update it');
     // every read comes before the first change
     const firstChange = ask.calls.findIndex((c) => c[1] === "update-skill-manifest");
     expect(ask.calls.slice(firstChange).some((c) => ["list-skills-for-vendor", "get-skill-manifest"].includes(c[1]!))).toBe(false);
+  });
+
+  it("a listing renamed since the skills were set up: they are still found by their marker and adopted, never created again (review L199)", async () => {
+    const ask = fakeAsk({ account: [{ id: MAIN, model: "speech coach" }, { id: SPEE_COACH, listed: "Spee Coach", marker: "spee coach" }, { id: SPEE, listed: "Speech Coach", marker: "spee" }] });
+    const results = await deploy(cfg, deps(ask.run));
+    expect(ask.creates()).toBe(0);
+    expect(results.map((r) => [r.name, r.ok, r.created, r.skillId])).toEqual([["speech coach", true, false, MAIN], ["spee coach", true, false, SPEE_COACH], ["spee", true, false, SPEE]]);
+    expect(local().skills).toEqual({ "speech coach": MAIN, "spee coach": SPEE_COACH, spee: SPEE });
   });
 
   it("ids only in ALEXA_SKILL_IDS: each one's name is read from the account (its model, when its manifest has no marker), and the skill is adopted", async () => {

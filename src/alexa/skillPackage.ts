@@ -76,8 +76,8 @@ export const swapName = (text: string, from: string, to: string) => text.replace
 
 // The deploy's marker in each generated manifest's testing instructions: the invocation name the
 // skill was set up for. Every skill is listed as Spee, so the marker is how alexa:deploy recognises
-// a skill on the account, and its name, even one whose id was never recorded or whose model never
-// uploaded (scripts/alexa-deploy.ts).
+// a skill on the account, and its name, even one whose id was never recorded, whose model never
+// uploaded or whose listing has been renamed since (scripts/alexa-deploy.ts).
 export const deployMarker = (name: string) => `Set up by npm run alexa:deploy for the invocation name "${name}".`;
 const MARKER_RE = /Set up by npm run alexa:deploy for the invocation name "([a-z][a-z'. ]*)"\./;
 /** The invocation name a manifest's marker names, or null for a manifest the deploy did not write. */

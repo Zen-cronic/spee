@@ -19,10 +19,11 @@
 // alexa/skill-id.json, "default"):
 //   ask smapi get-vendor-list                 (a check: create-skill-for-vendor takes the vendor id from the profile)
 //   ask smapi list-skills-for-vendor          (each page, with --next-token)
-//   ask smapi get-skill-manifest -s <id> -g development, for each development skill listed as Spee and
-//     each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the invocation
-//     name it was set up for; with no marker, ask smapi get-interaction-model -s <id> -g development
-//     -l en-CA gives it
+//   ask smapi get-skill-manifest -s <id> -g development, for each development skill on the account
+//     and each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the
+//     invocation name it was set up for, whatever the listing says. A skill listed as Spee, or in
+//     ALEXA_SKILL_IDS, with no marker: ask smapi get-interaction-model -s <id> -g development -l en-CA
+//     gives it. Any other skill with no marker is not Spee's and is left alone.
 // For each name:
 //   1. writes out/alexa/<name>/: skill.json (the checked-in manifest with the endpoint
 //      <PUBLIC_BASE_URL>/alexa, certificate Wildcard, the example phrases in this name, and the
@@ -147,7 +148,7 @@ export function describePlan(cfg: DeployConfig, planned: PlannedSkill[], print: 
   }
   const creating = planned.filter((p) => !p.problems.length && !p.skillId).map((p) => `"${p.name}"`);
   if (creating.length && !localExists) {
-    print(`Warning: this checkout has no ${LOCAL_LABEL}, so ${creating.join(" and ")} ${creating.length === 1 ? "has" : "have"} no recorded skill and ${creating.length === 1 ? "is" : "are"} planned as CREATE. If ${creating.length === 1 ? "it was" : "they were"} set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout's file). Before any create, the deploy adopts a skill it finds on the account, so it never makes a second one for a name.`);
+    print(`Warning: this checkout has no ${LOCAL_LABEL}, so ${creating.join(" and ")} ${creating.length === 1 ? "has" : "have"} no recorded skill and ${creating.length === 1 ? "is" : "are"} planned as CREATE. If ${creating.length === 1 ? "it was" : "they were"} set up from another checkout, run the deploy in the checkout the hub runs from (the hub reads only its own checkout's file). Before any create, the deploy reads every development skill on the account and adopts the one it set up for that name, by the marker in its manifest, so it makes no second skill for a name while it can read the account.`);
   }
 }
 
@@ -178,22 +179,28 @@ const errorText = (u: LastUpdate | undefined) =>
     .join("; ") || "no detail";
 
 // The account is the record of which skills exist; the local file is a cache of it. Before creating
-// a skill for a name with no recorded one, the deploy reads the account: every development skill
-// listed under the package's name ("Spee"), and every id in ALEXA_SKILL_IDS, by its manifest's
-// marker (packageFor), else its model's invocation name. Ids already recorded are left out.
+// a skill for a name with no recorded one, the deploy reads the account: the manifest of every
+// development skill on it and of every id in ALEXA_SKILL_IDS. The marker (packageFor) names the
+// invocation name a skill was set up for, whatever its listing is called now (the listing name has
+// changed before, and can be edited in the console). A skill with no marker is named by its model's
+// invocation name only when it is listed under the package's name ("Spee") or in ALEXA_SKILL_IDS;
+// any other is not Spee's. Ids already recorded are left out.
 type SkillList = { skills?: { skillId?: unknown; stage?: unknown; nameByLocale?: Record<string, unknown> }[]; isTruncated?: boolean; nextToken?: string };
 export type OnAccount = { byName: Map<string, string[]>; unnamed: string[] } | { failed: string };
 const MAX_PAGES = 20;
 export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployConfig, known: ReadonlySet<string>): OnAccount {
   const listedAs = new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name));
-  const ids = new Set(cfg.envIds.filter((id) => !known.has(id)));
+  const named = new Set(cfg.envIds.filter((id) => !known.has(id))); // named by their model when they carry no marker
+  const ids = new Set(named);
   let token: string | null = null;
   for (let page = 1; ; page++) {
     const r = ask(["smapi", "list-skills-for-vendor", ...(token ? ["--next-token", token] : [])]);
     const j = r.ok ? parse<SkillList>(r.out) : null;
     if (!j || !Array.isArray(j.skills)) return { failed: "could not list the account's skills, so a create could make a second skill for a name" };
     for (const sk of j.skills) {
-      if (sk.stage === cfg.stage && isSkillId(sk.skillId) && !known.has(sk.skillId) && Object.values(sk.nameByLocale ?? {}).some((n) => listedAs.has(String(n)))) ids.add(sk.skillId);
+      if (sk.stage !== cfg.stage || !isSkillId(sk.skillId) || known.has(sk.skillId)) continue;
+      ids.add(sk.skillId);
+      if (Object.values(sk.nameByLocale ?? {}).some((n) => listedAs.has(String(n)))) named.add(sk.skillId);
     }
     if (!j.isTruncated || !j.nextToken) break;
     if (page >= MAX_PAGES) return { failed: `the account lists more than ${MAX_PAGES} pages of skills` };
@@ -206,6 +213,7 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
     const manifest = m.ok ? parse<SkillManifest>(m.out) : null;
     if (!manifest?.manifest) return { failed: `could not read the manifest of ${shortId(id)}, so a create could make a second skill for its name` };
     let name = markedName(manifest);
+    if (!name && !named.has(id)) continue; // no marker and not listed as Spee: not one of Spee's skills
     if (!name) {
       const im = ask(["smapi", "get-interaction-model", "-s", id, "-g", cfg.stage, "-l", cfg.locales[0]!]);
       const invocation = im.ok ? parse<InteractionModel>(im.out)?.interactionModel?.languageModel?.invocationName : null;
@@ -265,10 +273,11 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
     const n = parse<{ vendors?: unknown[] }>(v.out)?.vendors?.length ?? 0;
     if (!opts.dry) deps.print(v.ok ? `  ${n} vendor${n === 1 ? "" : "s"} on this profile; create-skill-for-vendor uses the one ask configure saved` : "  could not list the vendors");
     if (opts.dry) {
-      const listed = [`each development skill listed as ${[...new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name))].join(" or ")}`, cfg.envIds.length ? `each id in ALEXA_SKILL_IDS (${cfg.envIds.length})` : null].filter(Boolean).join(", and ");
+      const listedAs = [...new Set(Object.values(cfg.base.manifest.manifest.publishingInformation.locales).map((l) => l.name))].join(" or ");
+      const env = cfg.envIds.length ? ` and each id in ALEXA_SKILL_IDS (${cfg.envIds.length})` : "";
       deps.print(`$ ask smapi list-skills-for-vendor --profile ${cfg.profile}   (each page, with --next-token)`);
-      deps.print(`$ ask smapi get-skill-manifest -s <${listed}> -g ${cfg.stage} --profile ${cfg.profile}   (its testing instructions name the invocation name it was set up for)`);
-      deps.print(`$ ask smapi get-interaction-model -s <the same id> -g ${cfg.stage} -l ${cfg.locales[0]} --profile ${cfg.profile}   (only when its manifest names none)`);
+      deps.print(`$ ask smapi get-skill-manifest -s <each development skill on the account${env}> -g ${cfg.stage} --profile ${cfg.profile}   (its testing instructions name the invocation name it was set up for)`);
+      deps.print(`$ ask smapi get-interaction-model -s <a skill listed as ${listedAs}${env ? " or in ALEXA_SKILL_IDS" : ""} whose manifest names none> -g ${cfg.stage} -l ${cfg.locales[0]} --profile ${cfg.profile}`);
     } else if (!(v.ok && n > 0)) noCreate = { step: "get-vendor-list", reason: "this ASK CLI profile lists no vendor (run ask configure)" };
     else {
       const known = new Set(planned.map((p) => p.skillId).filter((id): id is string => !!id));
