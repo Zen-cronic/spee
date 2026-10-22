@@ -422,6 +422,35 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(local().skills["spee coach"]).toBe("amzn1.ask.skill.00000000-0000-0000-0000-000000000001");
   });
 
+  it("a local file that stops reading during the run stops the deploy at the next save, with its message and no stack trace, and never overwrites it (review L200)", async () => {
+    const broken = '{ "skills": { "speech coach": "x", } }\n';
+    // broken by hand after speech coach is ready: spee coach's create has run when its id is saved
+    const ask = fakeAsk({ refuse: (a) => (a[1] === "set-skill-enablement" && a.includes(MAIN) && void writeFileSync(cfg.localPath, broken), false) });
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.created, r.step, r.stopped])).toEqual([
+      ["speech coach", true, false, undefined, undefined],
+      ["spee coach", false, true, "save the skill id", true],
+      ["spee", false, false, "not run", undefined],
+    ]);
+    expect(ask.creates()).toBe(1); // spee is not run
+    expect(readFileSync(cfg.localPath, "utf8")).toBe(broken); // never overwritten
+    const made = results[1]!.skillId!;
+    expect(markedName(ask.skills.get(made)!.manifest as never)).toBe("spee coach"); // the next run adopts it by its marker
+    const out = lines.join("\n");
+    expect(out).toContain("spee coach: STOPPED while saving its skill id in alexa/skill-ids.local.json: skill-ids.local.json does not parse; none of its skills are accepted.");
+    expect(out).toContain("The skill it just created (amzn1.ask.skill.00000000…) is on the account with the deploy's marker, so the next run adopts it. The names after it were not run.");
+    expect(out).not.toContain("Nothing was run or written");
+    expect(out).toContain("spee coach: STOPPED at save the skill id: alexa/skill-ids.local.json could not be read\n  spee: FAILED at not run: the deploy stopped at spee coach");
+    // a recorded name stops before any ask call of its own
+    writeFileSync(cfg.localPath, JSON.stringify({ skills: { "speech coach": MAIN, "spee coach": made } }));
+    lines = [];
+    const again = fakeAsk({ refuse: (a) => (a[1] === "set-skill-enablement" && a.includes(MAIN) && void writeFileSync(cfg.localPath, broken), false) });
+    const r2 = await deploy(cfg, deps(again.run));
+    expect(r2.map((r) => [r.name, r.ok, r.stopped ?? false])).toEqual([["speech coach", true, false], ["spee coach", false, true], ["spee", false, false]]);
+    expect(again.calls.some((c) => c.includes(made))).toBe(false);
+    expect(lines.join("\n")).toContain("Nothing was changed for this name. The names after it were not run.");
+  });
+
   it("a local file that was lost to a parse error and moved aside: the next run adopts every skill from the account", async () => {
     const first = fakeAsk();
     await deploy(cfg, deps(first.run));

@@ -35,7 +35,10 @@
 //   4. polls ask smapi get-skill-status until every locale's build SUCCEEDED (or FAILED; 180 s cap)
 //   5. ask smapi set-skill-enablement       (testing on, development stage; idempotent)
 // A name that fails at any step is reported and skipped, and the next name goes on. The exit status
-// is 0 when the first name is ready. A hub running from this checkout accepts every skill in
+// is 0 when the first name is ready. A local file that can no longer be read when the deploy saves a
+// skill id to it (changed during the run) stops the deploy there, with exit status 2: the names after
+// it are not run, and a skill created a moment before is left for the next run to adopt by its
+// marker. A hub running from this checkout accepts every skill in
 // alexa/skill-ids.local.json and reads the file again when it changes, so it needs no restart. This
 // script never touches the live stage, deletes nothing and never starts a tunnel.
 import { spawnSync } from "node:child_process";
@@ -86,6 +89,7 @@ export interface DeployResult {
   skillId: string | null;
   step?: string;
   reason?: string;
+  stopped?: true; // the deploy stopped at this name: the local file could not be read to save its skill id
 }
 
 const LOCAL_LABEL = "alexa/skill-ids.local.json";
@@ -107,10 +111,10 @@ export class DeployStop extends Error {}
 // The skills recorded in the local file. A file that does not parse, has no "skills" object or holds
 // an entry that is not a skill id stops the deploy: read as "no skills", it would make a second
 // skill for a name it lost, and saving would overwrite the ids it still holds.
-export function readLocalOrStop(path: string): Record<string, string> {
+export function readLocalOrStop(path: string, done = "Nothing was run or written."): Record<string, string> {
   const { skills, warnings } = readLocalSkills(path);
   if (warnings.length) {
-    throw new DeployStop(`${warnings.join("; ")}. It is the record of which skill serves each name, so it is never read as empty or overwritten. Fix it by hand (or move it aside: the next run then finds the skills on the account), then run again. Nothing was run or written.`);
+    throw new DeployStop(`${warnings.join("; ")}. It is the record of which skill serves each name, so it is never read as empty or overwritten. Fix it by hand (or move it aside: the next run then finds the skills on the account), then run again.${done ? ` ${done}` : ""}`);
   }
   return skills;
 }
@@ -147,8 +151,10 @@ export function describePlan(cfg: DeployConfig, planned: PlannedSkill[], print: 
   }
 }
 
+// Read again before each save, so a skill another run recorded meanwhile is kept. A file that can no
+// longer be read throws DeployStop: the deploy stops at that name (deploy's `record`).
 function saveLocal(path: string, name: string, skillId: string): void {
-  const skills = readLocalOrStop(path);
+  const skills = readLocalOrStop(path, "");
   if (skills[name] === skillId) return;
   writeJsonAtomic(path, { note: LOCAL_NOTE, skills: { ...skills, [name]: skillId } });
 }
@@ -298,6 +304,24 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
       deps.print(`  ${p.name}: FAILED at ${step}: ${reason}. Skipped; the other names go on.`);
       results.push({ name: p.name, ok: false, created, skillId, step, reason });
     };
+    // Saves this name's skill id in the local file. A file changed during the run so that it no longer
+    // reads stops the deploy here: the names after it are not run, and nothing is overwritten.
+    const record = (id: string, created: boolean): boolean => {
+      if (opts.dry) return true;
+      try {
+        saveLocal(cfg.localPath, p.name, id);
+        return true;
+      } catch (e) {
+        if (!(e instanceof DeployStop)) throw e;
+        const left = created
+          ? `The skill it just created (${shortId(id)}) is on the account with the deploy's marker, so the next run adopts it.`
+          : "Nothing was changed for this name.";
+        deps.print(`  ${p.name}: STOPPED while saving its skill id in ${LOCAL_LABEL}: ${e.message} ${left} The names after it were not run.`);
+        results.push({ name: p.name, ok: false, created, skillId: id, step: "save the skill id", reason: `${LOCAL_LABEL} could not be read`, stopped: true });
+        stoppedAt = p.name;
+        return false;
+      }
+    };
     if (p.problems.length) {
       fail("name check", p.problems.join("; "));
       continue;
@@ -317,7 +341,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
     let skillId = p.skillId;
     let created = false;
     if (skillId) {
-      if (!opts.dry) saveLocal(cfg.localPath, p.name, skillId);
+      if (!record(skillId, false)) continue;
       if (!ask(["smapi", "update-skill-manifest", "-s", skillId, "-g", cfg.stage, "--manifest", `file:${manifestFile}`]).ok) {
         fail("update-skill-manifest", "the manifest update was refused");
         continue;
@@ -342,10 +366,8 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
         continue;
       }
       created = true;
-      if (!opts.dry) {
-        saveLocal(cfg.localPath, p.name, skillId);
-        deps.print(`  created ${shortId(skillId)}; saved in ${LOCAL_LABEL}`);
-      }
+      if (!record(skillId, true)) continue;
+      if (!opts.dry) deps.print(`  created ${shortId(skillId)}; saved in ${LOCAL_LABEL}`);
       const id = skillId;
       const m = await poll("the manifest SUCCEEDED", ["smapi", "get-skill-status", "-s", id, "--resource", "manifest"], (out) => {
         const s = parse<{ manifest?: LastUpdate }>(out)?.manifest;
@@ -392,7 +414,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
 
   deps.print(`\nalexa:deploy: ${opts.dry ? "dry run, nothing was run or written" : "summary"}`);
   for (const r of results) {
-    deps.print(`  ${r.name}: ${r.ok ? (opts.dry ? (r.created ? "would be CREATED, unless the account already has one" : "would be updated") : `ready${r.created ? " (new skill)" : ""}`) : `FAILED at ${r.step}: ${r.reason}`}`);
+    deps.print(`  ${r.name}: ${r.ok ? (opts.dry ? (r.created ? "would be CREATED, unless the account already has one" : "would be updated") : `ready${r.created ? " (new skill)" : ""}`) : `${r.stopped ? "STOPPED" : "FAILED"} at ${r.step}: ${r.reason}`}`);
   }
   const ready = results.filter((r) => r.ok);
   if (ready.length && !opts.dry) {
@@ -462,7 +484,7 @@ async function main(): Promise<number> {
   }
   const cfg = deployConfig(args, process.env, `${baseOk ? base : "https://<PUBLIC_BASE_URL>"}/alexa`);
   const results = await deploy(cfg, { run: askCli(), print: (l) => console.log(l), sleep: (ms) => new Promise((r) => setTimeout(r, ms)), now: Date.now }, { dry });
-  return results[0]?.ok ? 0 : 1;
+  return results.some((r) => r.stopped) ? 2 : results[0]?.ok ? 0 : 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exit(await main());
