@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { grade, type GradeCard } from "../src/hub/grade.js";
-import { baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, memoryAfterFetch, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
+import { asOfLine, baselineWordsLabel, changeLabel, fmtDay, lastConversation, fmtMs, gradeFailure, habitTitle, overruleText, pctChange, plainReason, sessionTally, shortHabit, topWord, transferTitle, transferWorking, verdictWords, FIRST_SIGNAL_CAVEAT, firstSignalLine, firstSignalText, periodRate, transferRates, BEE_MEMORY_NOTE, beeMemoryLine, memoryAfterFetch, habitPill, habitRole, nudgeHops, nudgeHopsLine, nudgeRuleLine, nudgeText, planLine, recapNudgeLine, roundHeadline, roundLastLine, roundSegments, roundTally, skipLine, SKIP_LABEL, statTone, workingCell, type BeeMemoryIn } from "../tv/web/src/mirror/format.js";
 import type { NudgeSkipReason, TransferHabit } from "../src/hub/contract.js";
 import { goalLines } from "../skills/speaking-coach/scripts/coach.mjs";
 
@@ -304,6 +304,11 @@ describe("planLine says pilot, gives counts per phase, never 'proves'", () => {
     expect(p.text).toMatch(/^A pilot in one tier,/);
     expect(p.points).toBe("Conversations counted, before → since: Unsure words 4 → not started · Starting over 4 → not started");
   });
+  it("first is the first sentence alone, the row the TV shows", () => {
+    const p = planLine({ ...t, habits: [habit("hedges", "drilled", 6, 3), habit("filler:like", "drilled", 6, 2), habit("restart", "control", 9, 3, "no change")] });
+    expect(p.first).toBe("A pilot in two tiers, set Oct 17 before your first practice: two habits you practise against one you don’t.");
+    expect(p.text.startsWith(`${p.first} `)).toBe(true);
+  });
 });
 
 describe("beeMemoryLine is null when disabled", () => {
@@ -518,4 +523,34 @@ describe("Live's numbers: your usual ones are dimmed until you talk (statTone)",
       for (const s of stats) expect(s, file).toContain("usual={idle}");
     }
   });
+});
+
+describe("a frozen measurement says so (the hub's COACH_STATS_UNTIL)", () => {
+  it("As of the hub's label, only when the payload carries asOf", () => {
+    expect(asOfLine({ asOf: { label: "Oct 22, 9:39 am" } })).toBe("As of Oct 22, 9:39 am");
+    expect(asOfLine({})).toBeNull();
+    expect(asOfLine({ asOf: null })).toBeNull();
+    expect(asOfLine(null)).toBeNull();
+    expect(asOfLine({ asOf: { label: " " } })).toBeNull();
+  });
+  it("in the footer on Today and Progress (cards and Details) only, never on Live or Practice (web TV and Vega)", () => {
+    for (const app of ["web", "vega"]) {
+      const screens = readFileSync(`tv/${app}/src/views/MirrorScreens.tsx`, "utf8");
+      expect(screens, app).toContain("const asOf = s.view === 'week' ? (asOfLine(m.stats) ?? asOfLine(m.transfer)) : s.view === 'transfer' ? asOfLine(m.transfer) : null;");
+      expect(screens, app).toContain("asOf={asOf} />");
+      expect(readFileSync(`tv/${app}/src/components/Chrome.tsx`, "utf8"), app).toContain('{asOf ? <Text style={styles.replay} numberOfLines={1} testID="as-of">{asOf}</Text> : null}');
+    }
+  });
+});
+
+describe("Progress's Details on the TV: the plan's first sentence, the first signal, Bee memory", () => {
+  for (const file of ["tv/web/src/views/TransferView.tsx", "tv/vega/src/views/TransferView.tsx"]) {
+    it(`no meeting captions, no by-setting, no plan points, no Bee counts or note (${file.split("/")[1]})`, () => {
+      const src = readFileSync(file, "utf8");
+      for (const gone of ["<CaptionsLine", "<BySettingLine", "p.points", "plan-points", "m.counts", "m.caveat"]) expect(src, gone).not.toContain(gone);
+      expect(src).toContain("text={p.first} caveat={p.caveat}");
+      expect(src).toContain("<FirstSignalLines");
+      expect(src).toContain('<DetailRow testID="bee-memory" tag="Bee memory" text={m.text} />');
+    });
+  }
 });
