@@ -464,6 +464,21 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(down.creates()).toBe(0);
   });
 
+  it("another project's skill whose manifest cannot be read is a warning, and the creates go on; one listed as Spee still fails the lookup (review L208)", async () => {
+    const OTHER = "amzn1.ask.skill.88888888-8888-8888-8888-888888888888";
+    const ask = fakeAsk({ account: [{ id: OTHER, listed: "Some other project" }], refuse: (a) => a[1] === "get-skill-manifest" && a.includes(OTHER) });
+    const results = await deploy(cfg, deps(ask.run));
+    expect(results.map((r) => [r.name, r.ok, r.created])).toEqual([["speech coach", true, false], ["spee coach", true, true], ["spee", true, true]]);
+    expect(ask.creates()).toBe(2);
+    expect(lines).toContain("  could not read the manifest of amzn1.ask.skill.88888888…, which is not listed as Spee: left alone (if it is one of Spee's, a run that can read it finds it)");
+    // listed as Spee, it could be one of Spee's: no create
+    const spee = fakeAsk({ account: [{ id: OTHER }], refuse: (a) => a[1] === "get-skill-manifest" && a.includes(OTHER) });
+    const r2 = await deploy({ ...cfg, localPath: join(dir, "other.local.json") }, deps(spee.run));
+    expect(r2.map((r) => [r.name, r.ok, r.step])).toEqual([["speech coach", true, undefined], ["spee coach", false, "account lookup"], ["spee", false, "account lookup"]]);
+    expect(r2[1]!.reason).toBe("could not read the manifest of amzn1.ask.skill.88888888…, so a create could make a second skill for its name");
+    expect(spee.creates()).toBe(0);
+  });
+
   it("an ALEXA_SKILL_IDS entry that is not a skill id stops the deploy before any ask call", async () => {
     cfg.envIds = [SPEE_COACH, "amzn1.ask.skill.bad id"];
     const results = await deploy(cfg, deps(() => {

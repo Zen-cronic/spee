@@ -29,7 +29,9 @@
 //     and each id in ALEXA_SKILL_IDS: the deploy's marker in its testing instructions names the
 //     invocation name it was set up for, whatever the listing says. A skill listed as Spee, or in
 //     ALEXA_SKILL_IDS, with no marker: ask smapi get-interaction-model -s <id> -g development -l en-CA
-//     gives it. Any other skill with no marker is not Spee's and is left alone.
+//     gives it. Any other skill with no marker is not Spee's and is left alone. A manifest that
+//     cannot be read fails the lookup for a skill listed as Spee or in ALEXA_SKILL_IDS; for any
+//     other it is a warning, and the lookup goes on.
 // For each name:
 //   1. writes out/alexa/<name>/: skill.json (the checked-in manifest with the endpoint
 //      <PUBLIC_BASE_URL>/alexa, certificate Wildcard, the example phrases in this name, and the
@@ -190,12 +192,13 @@ const errorText = (u: LastUpdate | undefined) =>
 // invocation name a skill was set up for, whatever its listing is called now (the listing name has
 // changed before, and can be edited in the console). A skill with no marker is named by its model's
 // invocation name only when it is listed under the package's name ("Spee") or in ALEXA_SKILL_IDS;
-// any other is not Spee's. Ids already recorded are left out, but each is checked to still be there
-// (`gone`): the list shows only the profile's vendor, so a recorded skill the list leaves out is gone
-// only when its manifest read answers not found. Any other failure (a throttle, a 5xx, an expired
-// token) fails the lookup.
+// any other is not Spee's. A manifest that cannot be read fails the lookup only for a skill that
+// could be Spee's (listed as Spee, or in ALEXA_SKILL_IDS); any other is said and left (`unread`).
+// Ids already recorded are left out, but each is checked to still be there (`gone`): the list shows
+// only the profile's vendor, so a recorded skill the list leaves out is gone only when its manifest
+// read answers not found. Any other failure (a throttle, a 5xx, an expired token) fails the lookup.
 type SkillList = { skills?: { skillId?: unknown; stage?: unknown; nameByLocale?: Record<string, unknown> }[]; isTruncated?: boolean; nextToken?: string };
-export type OnAccount = { byName: Map<string, string[]>; unnamed: string[]; gone: Set<string> } | { failed: string };
+export type OnAccount = { byName: Map<string, string[]>; unnamed: string[]; gone: Set<string>; unread: string[] } | { failed: string };
 const MAX_PAGES = 20;
 // A SMAPI 404 as the ask CLI prints it ("statusCode": 404, "The resource being requested is not
 // found."). A bare 404 is not enough: the error it prints for a 429 carries the response headers.
@@ -231,10 +234,15 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
   }
   const byName = new Map<string, string[]>();
   const unnamed: string[] = [];
+  const unread: string[] = [];
   for (const id of ids) {
     const m = ask(["smapi", "get-skill-manifest", "-s", id, "-g", cfg.stage]);
     const manifest = m.ok ? parse<SkillManifest>(m.out) : null;
-    if (!manifest?.manifest) return { failed: `could not read the manifest of ${shortId(id)}, so a create could make a second skill for its name` };
+    if (!manifest?.manifest) {
+      if (named.has(id)) return { failed: `could not read the manifest of ${shortId(id)}, so a create could make a second skill for its name` };
+      unread.push(id);
+      continue;
+    }
     let name = markedName(manifest);
     if (!name && !named.has(id)) continue; // no marker and not listed as Spee: not one of Spee's skills
     if (!name) {
@@ -245,7 +253,7 @@ export function lookOnAccount(ask: (args: string[]) => AskResult, cfg: DeployCon
     if (name) byName.set(name, [...(byName.get(name) ?? []), id]);
     else unnamed.push(id);
   }
-  return { byName, unnamed, gone };
+  return { byName, unnamed, gone, unread };
 }
 
 export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: boolean } = {}): Promise<DeployResult[]> {
@@ -342,6 +350,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
           deps.print(`  ${p.name}: ${id ? `found ${shortId(id)} on the account: update it, and save its id in ${LOCAL_LABEL}` : "none on the account: create one"}`);
         }
         for (const id of found.unnamed) deps.print(`  ${shortId(id)} names no invocation name (no marker and no model): left alone`);
+        for (const id of found.unread) deps.print(`  could not read the manifest of ${shortId(id)}, which is not listed as Spee: left alone (if it is one of Spee's, a run that can read it finds it)`);
       }
     }
   }
