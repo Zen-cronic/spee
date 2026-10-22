@@ -17,6 +17,7 @@ import { createLivePlugin } from "../src/hub/live/plugin.js";
 import { BeeTodoWrist, type ExecFn } from "../src/hub/live/wrist.js";
 import type { PluginCtx } from "../src/hub/plugin.js";
 import { demoSetup, type Setup } from "../src/hub/setup.js";
+import { goalLines } from "../skills/speaking-coach/scripts/coach.mjs";
 import { beeMemoryLine } from "../tv/web/src/mirror/format.js";
 
 const T0 = Date.parse("2026-10-20T17:30:00Z");
@@ -147,7 +148,7 @@ describe("off by default", () => {
       expect(facts!.mode).toBe("off");
       expect(bee.factCalls()).toEqual([]);
       expect(bee.calls.every((c) => c[0] === "todos")).toBe(true); // only the wrist's start-up sweep
-      expect(facts!.memory()).toEqual({ dataLabel: s.hub.dataLabel, synthetic: false, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false });
+      expect(facts!.memory()).toEqual({ dataLabel: s.hub.dataLabel, synthetic: false, enabled: false, status: "off", goal: null, insights: null, facts: null, note: BEE_MEMORY_NOTE, stopped: false, owed: false });
     } finally {
       if (prev === undefined) delete process.env.COACH_FACTS;
       else process.env.COACH_FACTS = prev;
@@ -663,20 +664,26 @@ describe("the breaker", () => {
       expect(f.circuitOpenUntil()).not.toBeNull();
       expect(f.memory()).toMatchObject({ status: "pending", stopped: false, goal: null });
       expect(beeMemoryLine(f.memory())!.text).toBe("No speaking goal in Bee yet: the coach saves it after your next line Bee passes.");
+      expect(f.memory().owed).toBe(false);
       pass(h); // a pass while it is open makes no call, and nothing says it did or failed to: it is owed
       await f.settle();
+      expect(changes).toBe(1); // owed: the screens refetch
       pass(h); // a second one is the same owed pass, not a second goal
       await f.settle();
-      expect(f.memory()).toMatchObject({ status: "pending", goal: null });
+      expect(changes).toBe(1);
+      expect(f.memory()).toMatchObject({ status: "pending", goal: null, owed: true });
+      // the row says the pass is kept, never "after your next line Bee passes" (review L187)
+      expect(beeMemoryLine(f.memory())!.text).toBe("Your pass is kept: the coach saves your speaking goal once Bee answers again.");
+      expect(goalLines(f.memory())[0]).toBe("No goal fact yet: Bee couldn't be reached when your last practice line passed. That pass is kept, and the coach saves the goal once Bee answers again.");
       expect(bee.factCalls()).toHaveLength(3);
       expect(f.describe()).toBe("live (pending, circuit open, a pass owed)");
       down = false;
       await vi.advanceTimersByTimeAsync(FACTS_BREAKER_OPEN_MS + 1); // it closes: the owed pass creates the goal, then confirms it, with no new pass
       await f.settle();
-      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true } });
+      expect(f.memory()).toMatchObject({ status: "synced", goal: { factId: "901", confirmed: true }, owed: false });
       expect(beeMemoryLine(f.memory())!.text).toMatch(/^Your speaking goal is saved in Bee as a confirmed fact/);
       expect(bee.factCalls().slice(3)).toEqual(["facts create --text", "facts confirm 901"]);
-      expect(changes).toBe(1);
+      expect(changes).toBe(2);
       expect(f.describe()).toBe("live (synced)");
       pass(h); // the next pass finds the goal: never a second copy
       await f.settle();

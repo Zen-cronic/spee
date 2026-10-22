@@ -382,9 +382,11 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * may be in Bee. Only a write that failed outright says it didn't save: the create, with no goal;
  * for a goal with its fact id, which is in Bee, the coach's last change to it (a confirm or an
  * update), and whether Bee has confirmed it. With no goal and nothing being saved, the row says
- * when the goal goes to Bee, never "Saving…".
+ * when the goal goes to Bee, never "Saving…": after the next line Bee passes, or, with a pass kept
+ * while Bee could not be reached (`owed`; an older hub sends none, read as false), once Bee answers
+ * again, with no new pass needed.
  */
-export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped'>>;
+export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped' | 'owed'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
 export const BEE_MEMORY_NOTE = HUB_BEE_MEMORY_NOTE.replace(/'/g, '’');
 const dayOf = (ms: number | null | undefined) => (ms === null || ms === undefined || !Number.isFinite(ms) ? null : fmtDate(new Date(ms).toISOString()));
@@ -392,7 +394,8 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
   if (!m || !m.enabled || m.status === 'off') return null;
   const updated = dayOf(m.goal?.updatedAt);
   const saved = m.goal?.confirmed ? 'saved in Bee as a confirmed fact' : 'saved in Bee, not confirmed yet';
-  const none = 'No speaking goal in Bee yet: the coach saves it after your next line Bee passes.';
+  // A pass Bee made while it could not be reached is kept (`owed`): the goal follows once Bee answers.
+  const none = m.owed === true ? 'Your pass is kept: the coach saves your speaking goal once Bee answers again.' : 'No speaking goal in Bee yet: the coach saves it after your next line Bee passes.';
   const unlisted = !!m.goal && m.goal.factId === null; // a create Bee has not listed: it may be in Bee
   const text =
     m.status === 'pending'
@@ -406,7 +409,9 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
             ? 'Bee hasn’t listed your speaking goal yet; the coach keeps checking (it never makes a second copy).'
             : m.goal
               ? `Your speaking goal is in Bee${m.goal.confirmed ? ', but' : ', not confirmed yet, and'} the coach’s last change to it didn’t save; the hub tries again.`
-              : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
+              : m.owed === true
+                ? none
+                : 'Your speaking goal didn’t save to Bee this time; the hub tries again.'
         : m.status === 'demo'
           ? m.goal
             ? 'Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.'

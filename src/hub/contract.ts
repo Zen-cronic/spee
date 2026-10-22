@@ -526,6 +526,10 @@ export interface BeeMemory extends Labelled {
   // listed: it never retries on its own (docs/live.md gives the reset steps). false otherwise,
   // including every failure the hub retries (the breaker, a look still due, a failed write).
   stopped: boolean;
+  // Additive: true while a pass is owed: Bee passed a line while the facts breaker was open and
+  // there is no goal yet, so the coach keeps that pass and writes the goal once Bee answers again,
+  // with no new pass needed (status stays "pending", goal null). Older hubs omit it: read as false.
+  owed: boolean;
 }
 // The habits a wrist cue may name: the pre-registered drilled habits, once practised. Never the
 // control (restart), never an unpractised habit.

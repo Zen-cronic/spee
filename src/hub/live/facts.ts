@@ -219,17 +219,18 @@ export class BeeFacts {
   memory(): BeeMemory {
     const hub = this.o.hub;
     const base = { dataLabel: hub.dataLabel, synthetic: this.o.mode === "demo", note: BEE_MEMORY_NOTE };
-    if (this.o.mode === "off") return { ...base, enabled: false, status: "off", goal: null, insights: null, facts: null, stopped: false };
+    if (this.o.mode === "off") return { ...base, enabled: false, status: "off", goal: null, insights: null, facts: null, stopped: false, owed: false };
     if (this.o.mode === "demo") {
       // What the coach would write; nothing is written in demo.
       const d = composeGoal(hub);
       const last = hub.attempts.filter(beePass).at(-1);
-      return { ...base, enabled: true, status: "demo", goal: d ? { factId: null, text: d.text, confirmed: false, updatedAt: last?.settledAt ?? null } : null, insights: null, facts: null, stopped: false };
+      return { ...base, enabled: true, status: "demo", goal: d ? { factId: null, text: d.text, confirmed: false, updatedAt: last?.settledAt ?? null } : null, insights: null, facts: null, stopped: false, owed: false };
     }
     const L = this.ledger;
     const gaveUp = L.pendingCreate?.nextLookAt === null; // a create Bee never listed: not made again, and nothing retries it
     const goal = L.goal ? { factId: L.goal.factId, text: L.goal.text, confirmed: L.goal.confirmed, updatedAt: L.goal.updatedAt } : L.pendingCreate ? { factId: null, text: L.pendingCreate.text, confirmed: false, updatedAt: null } : null;
-    return { ...base, enabled: true, status: this.liveStatus(), goal, insights: L.insights, facts: L.facts, stopped: gaveUp };
+    // owed: a pass kept while the breaker is open, with no goal yet (owePass)
+    return { ...base, enabled: true, status: this.liveStatus(), goal, insights: L.insights, facts: L.facts, stopped: gaveUp, owed: this.passOwed && !L.goal };
   }
 
   // "failed" is about the goal: a write or a look that failed, or a create the coach gave up on.
@@ -402,11 +403,13 @@ export class BeeFacts {
   // closes, as a pass (a create happens only then, and only with no goal and no create in flight).
   private owePass(ms: number) {
     if (this.closed) return;
-    if (!this.passOwed) this.log("facts.pass.owed", { inMs: ms });
+    const first = !this.passOwed;
+    if (first) this.log("facts.pass.owed", { inMs: ms });
     this.passOwed = true;
     if (this.passTimer) clearTimeout(this.passTimer);
     this.passTimer = setTimeout(() => ((this.passTimer = null), void this.sync("pass")), ms);
     this.passTimer.unref?.();
+    if (first) this.o.onChange?.(); // the memory says owed: screens refetch and say the pass is kept
   }
 
   private fail(reason: string) {
@@ -436,6 +439,9 @@ export class BeeFacts {
       if (reason === "pass" && !this.ledger.goal && !p) this.owePass(open - this.now());
       return;
     }
+    // Taken before an owed pass is paid, so a pass that pays it and changes nothing else still
+    // tells the screens (owed goes back to false).
+    const before = JSON.stringify(this.memory());
     // This pass gets through, so an owed one is paid: its timer has nothing left to do.
     if (reason === "pass" && this.passOwed) {
       this.passOwed = false;
@@ -443,7 +449,6 @@ export class BeeFacts {
       this.passTimer = null;
     }
     const L = this.ledger;
-    const before = JSON.stringify(this.memory());
     try {
       // 1. A create whose result is not known: nothing else happens until Bee lists it. Look for it
       // when a look is due; it is never created again.

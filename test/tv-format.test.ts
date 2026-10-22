@@ -327,6 +327,15 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(beeMemoryLine(mem({ note: "" }))!.caveat).toBe(BEE_MEMORY_NOTE);
     expect(beeMemoryLine(mem({ facts: null, insights: null }))!.counts).toBeNull();
   });
+  it("a pass kept while Bee could not be reached says so, never asks for the next pass (review L187)", () => {
+    const kept = "Your pass is kept: the coach saves your speaking goal once Bee answers again.";
+    expect(beeMemoryLine(mem({ status: "pending", goal: null, owed: true }))!.text).toBe(kept);
+    expect(beeMemoryLine(mem({ status: "failed", goal: null, owed: true, stopped: false }))!.text).toBe(kept); // an earlier create failed; this pass is still kept
+    expect(beeMemoryLine(mem({ status: "pending", goal: null, owed: false }))!.text).toBe("No speaking goal in Bee yet: the coach saves it after your next line Bee passes.");
+    expect(beeMemoryLine(mem({ status: "pending", goal: null }))!.text).toMatch(/^No speaking goal in Bee yet/); // an older hub sends no owed
+    expect(goalLines({ ...mem({ status: "pending", goal: null, owed: true }), stopped: false })[0]).toMatch(/^No goal fact yet: Bee couldn't be reached .* That pass is kept/);
+    expect(goalLines({ ...mem({ status: "pending", goal: null }), stopped: false })[0]).toBe("No goal fact yet: the coach saves it after your next practice line Bee passes.");
+  });
   it("a failed save says the hub tries again only while it does: a goal the coach stopped looking for says so, never that it didn't save", () => {
     expect(beeMemoryLine(mem({ status: "failed", stopped: false }))!.text).toBe("Your speaking goal is in Bee, but the coach’s last change to it didn’t save; the hub tries again.");
     // the create may have landed (it exited 0 without an id): Bee never listed it, which is all the coach knows

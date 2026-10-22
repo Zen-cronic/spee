@@ -790,7 +790,7 @@ A plugin that throws gets `500 {"error":"plugin_error"}`.
 | `GET /api/recaps?limit=10` | A (`live`) | `limit` 1-50 | `200 RecapList {dataLabel, synthetic, recaps[]}` (newest first) | |
 | `GET /api/recaps/<id>` | A (`live`) | | `200 Recap` | `404 unknown_recap` |
 | `GET /api/coach/now` | A (`live`) | | `200 CoachNow` | |
-| `GET /api/coach/facts` | W (`live`) | | `200 BeeMemory {dataLabel, synthetic, enabled, status, goal, insights, facts, note, stopped}`; `status: "off"` (the default) makes no Bee call | |
+| `GET /api/coach/facts` | W (`live`) | | `200 BeeMemory {dataLabel, synthetic, enabled, status, goal, insights, facts, note, stopped, owed}`; `status: "off"` (the default) makes no Bee call | |
 | `POST /api/coach/cue` | W (`live`) | `CueRequest {inMinutes? (0-180, default 0), by?}` | `200 CueResponse {cue, wrist, deduped, narration}` | `400 bad_request`, `409 cues_off`, `409 no_practised_habit`, `409 quiet_hours`, `429 cue_cap`, `503 wrist_down` |
 | `GET /api/settings?source=bee` | A (`live`) | `source` bee (default) or all | `200 SettingsResponse` (conversation settings; a secondary view) | `400 bad_source` |
 | `POST /api/sessions/<id>/setting` | A (`live`) | `SettingRequest {setting: "meeting" \| "work" \| "casual" \| null}`; `<id>` a stats session id, a recap's `conversationId` or a recap id | `200 SettingResponse {id, tag, recapIds}`, then `stats.updated` | `400 bad_request`, `404 unknown_session` |
@@ -1032,6 +1032,8 @@ A screen tells the failures apart from these fields: `goal.factId: null` with `s
 
 `stopped` (additive, always sent) tells the failures apart. It is `true` only when the status is `"failed"` because the coach stopped looking for a create Bee never listed: nothing tries it again on its own, also after a restart, until the operator follows the reset steps in [live.md](live.md) "Bee memory". The goal may still be in Bee (a create that exited 0 without an id did land), so a screen says Bee never listed it, never that it didn't save. It is `false` for every other status and for every failure the hub tries again (a failed write, a look still due, the open breaker). A hub from before the field sends no `stopped`; a screen reads that as `false`.
 
+`owed` (additive, always sent) is `true` while a pass is owed: Bee passed a line while the facts breaker was open and there is no goal yet, so the coach keeps that pass and writes the goal when the breaker closes, with no new pass needed. The status stays `"pending"` with `goal: null`, and the TV says "Your pass is kept: the coach saves your speaking goal once Bee answers again." instead of asking for the next pass. It is `false` otherwise; a hub from before the field sends none, read as `false`.
+
 `goal.text` is template text only (numbers, the fixed habit names, the transfer verdicts; `GOAL_TEXT_RE`). `insights` and `facts` are counts read every 6 h, never their text. `note` is always `BEE_MEMORY_NOTE`. When the memory changes the hub re-sends `stats.updated`.
 
 Demo hub:
@@ -1051,7 +1053,8 @@ Demo hub:
  },
  "insights": null,
  "facts": null,
- "stopped": false
+ "stopped": false,
+ "owed": false
 }
 ```
 
@@ -1061,7 +1064,7 @@ Live, after a pass (illustrative ids and counts):
 { "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
   "enabled": true, "status": "synced",
   "goal": { "factId": "901", "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": true, "updatedAt": 1792530000000 },
-  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": false }
+  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": false, "owed": false }
 ```
 
 Live, after the coach stopped looking for a create Bee never listed (illustrative counts):
@@ -1070,7 +1073,7 @@ Live, after the coach stopped looking for a create Bee never listed (illustrativ
 { "dataLabel": "real data (gitignored)", "synthetic": false, "note": "Bee's chat and Alexa+ may not read coach-written facts.",
   "enabled": true, "status": "failed",
   "goal": { "factId": null, "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 17: unsure words 2.6 → 0.8 per 100 words; filler \"like\" needs more speech; 3 lines passed, checked by Bee.", "confirmed": false, "updatedAt": null },
-  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": true }
+  "insights": { "count": 0, "readAt": 1792528000000 }, "facts": { "count": 12, "readAt": 1792528000000 }, "stopped": true, "owed": false }
 ```
 
 ### `POST /api/coach/cue` (the if-then wrist cue; packet W)

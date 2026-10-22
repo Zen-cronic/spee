@@ -114,8 +114,9 @@ export function statusLines(c) {
  * on a create Bee never listed, so the goal may or may not be in Bee (a create that exited 0 without
  * an id did land; an older hub sends no `stopped`: read as false). A goal with no fact id is such a
  * create: while it fails, the coach is still checking whether Bee has it. No goal: nothing is being
- * saved, and the next practice line Bee passes saves it. The demo hub writes nothing: its goal is
- * only the text the coach would save.
+ * saved, and the next practice line Bee passes saves it, unless a pass is already kept (`owed`: Bee
+ * passed a line while it could not be reached), when the goal is saved once Bee answers again. The
+ * demo hub writes nothing: its goal is only the text the coach would save.
  */
 export function goalLines(m) {
   if (!m || typeof m !== "object") return ["The hub sent no Bee memory."];
@@ -132,6 +133,7 @@ export function goalLines(m) {
     lines.push(`Goal in Bee: ${m.goal.text}`, m.goal.confirmed ? "It is a confirmed Bee fact." : "Bee has not confirmed it yet.");
     if (m.status === "failed") lines.push("The coach's last change to it didn't save; the hub tries again.");
   } else if (!m.enabled || m.status === "off") lines.push("Bee memory is off on this hub (COACH_FACTS=1 turns it on), so there is no goal fact.");
+  else if (m.owed === true) lines.push("No goal fact yet: Bee couldn't be reached when your last practice line passed. That pass is kept, and the coach saves the goal once Bee answers again.");
   else if (m.status === "failed") lines.push("No goal fact yet: the coach's try to save it didn't work, and it tries again after your next practice line Bee passes.");
   else lines.push("No goal fact yet: the coach saves it after your next practice line Bee passes.");
   const counts = [m.facts ? `${m.facts.count} facts` : null, m.insights ? `${m.insights.count} insights` : null].filter(Boolean);
