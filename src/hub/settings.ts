@@ -163,6 +163,35 @@ export function autoSetting(t: TagInput, o: { tz?: string; workHours?: WorkHours
   return { setting: "casual", source: "auto", confidence: "low", reasons: ["speakers-out-of-range"] };
 }
 
+// The practice deck by setting (COACH_DECK_SETTING): which cards the due lines, "quiz me", the
+// day's count and the TV offer, by the setting of the conversation each card's line was said in.
+//   all      every card (the default)
+//   work     cards from meetings and work talk (the professional settings)
+//   meeting  cards from meetings only
+// A card whose conversation has no tag (not among the stats sessions) is left out unless "all".
+// The wearer's correction (POST /api/sessions/<id>/setting) counts, as everywhere else.
+// Practice only: the stats, the per-setting view and the pre-registered transfer never read it.
+export const DECK_SETTINGS = ["all", "work", "meeting"] as const;
+export type DeckSetting = (typeof DECK_SETTINGS)[number];
+export const DECK_KEEPS: Record<Exclude<DeckSetting, "all">, readonly ConversationSetting[]> = { work: ["meeting", "work"], meeting: ["meeting"] };
+
+/** COACH_DECK_SETTING: unset or empty is "all"; anything not in DECK_SETTINGS is null (the caller keeps "all" and says so). */
+export function parseDeckSetting(s: string | undefined | null): DeckSetting | null {
+  const v = (s ?? "").trim().toLowerCase();
+  if (!v) return "all";
+  return (DECK_SETTINGS as readonly string[]).includes(v) ? (v as DeckSetting) : null;
+}
+
+/** The card filter for a deck setting (null for "all"); it reads each card's conversation tag when called. */
+export function deckFilterFor(sel: DeckSetting, tagOf: (sessionId: string) => SettingTag | null): ((c: { session: string }) => boolean) | null {
+  if (sel === "all") return null;
+  const keep = new Set<ConversationSetting>(DECK_KEEPS[sel]);
+  return (c) => {
+    const t = tagOf(c.session);
+    return !!t && keep.has(t.setting);
+  };
+}
+
 export const isSetting = (x: unknown): x is ConversationSetting => typeof x === "string" && (CONVERSATION_SETTINGS as readonly string[]).includes(x);
 export const nextSetting = (s: ConversationSetting): ConversationSetting => CONVERSATION_SETTINGS[(CONVERSATION_SETTINGS.indexOf(s) + 1) % CONVERSATION_SETTINGS.length]!;
 

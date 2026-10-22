@@ -303,12 +303,24 @@ export class CoachHub extends EventEmitter {
     return cardView(c, this.today());
   }
 
+  // The cards offered for practice: the whole deck, or the ones a filter keeps (COACH_DECK_SETTING,
+  // set by the live plugin from each card's source conversation setting). Practice only: an attempt
+  // still grades and moves its card in the whole deck, and the stats and the transfer never read it.
+  private deckFilter: ((c: HubCard) => boolean) | null = null;
+  setDeckFilter(f: ((c: HubCard) => boolean) | null) {
+    this.deckFilter = f;
+  }
+  practiceDeck(): HubDeck {
+    const f = this.deckFilter;
+    return f ? { cards: this.deck.cards.filter((c) => f(c)) } : this.deck;
+  }
+
   deckSummary(): DeckSummary {
-    return summarize(this.deck, this.today());
+    return summarize(this.practiceDeck(), this.today());
   }
 
   nextCard(): HubCard | null {
-    return nextDue(this.deck, this.today(), this.open?.cardId);
+    return nextDue(this.practiceDeck(), this.today(), this.open?.cardId);
   }
 
   openCard(opts: { cardId?: string; by?: string } = {}): CardView | null {

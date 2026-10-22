@@ -450,7 +450,7 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
       }
       case "GET /api/deck": {
         const today = hub.today();
-        return send(res, 200, { dataLabel: hub.dataLabel, summary: hub.deckSummary(), cards: hub.deck.cards.map((c) => hub.view(c)).sort((a, b) => Number(b.dueNow) - Number(a.dueNow) || a.box - b.box), today });
+        return send(res, 200, { dataLabel: hub.dataLabel, summary: hub.deckSummary(), cards: hub.practiceDeck().cards.map((c) => hub.view(c)).sort((a, b) => Number(b.dueNow) - Number(a.dueNow) || a.box - b.box), today });
       }
       case "GET /api/deck/next": {
         const c = hub.nextCard();

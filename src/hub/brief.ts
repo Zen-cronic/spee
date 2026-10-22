@@ -88,9 +88,10 @@ export async function buildBrief(hub: CoachHub, calendar: CalendarFn, o: { upcom
   const hero = rank(["hedges", "vague"]).filter((x) => x.count >= HERO_MIN_COUNT);
   const rest = rank(["fillers", "restarts"]).filter((x) => x.count > 0);
   const top = hero[0] ?? rest[0] ?? null;
-  const due = dueCards(hub.deck, hub.today());
+  const deck = hub.practiceDeck();
+  const due = dueCards(deck, hub.today());
   const want = top ? HABIT_FOR[top.key] : undefined;
-  const warm = due.find((c) => habitOf(c).kind === want) ?? hub.deck.cards.find((c) => habitOf(c).kind === want) ?? due[0] ?? null;
+  const warm = due.find((c) => habitOf(c).kind === want) ?? deck.cards.find((c) => habitOf(c).kind === want) ?? due[0] ?? null;
   const mins = next ? Math.round((next.startsAt - now) / 60_000) : null;
   const label: Record<string, string> = { hedges: habitNameOf("hedges"), vague: habitNameOf("vague"), fillers: habitNameOf("fillers"), restarts: habitNameOf("restarts") };
   const nudge = [

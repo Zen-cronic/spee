@@ -18,7 +18,7 @@
 // Bedrock when COACH_RECAP_LLM=1 in live mode. See docs/live.md.
 import { join } from "node:path";
 import { NUDGE_RULES, type DemoLiveResponse, type DemoLiveScript, type LiveModeRequest, type NudgeRule, type Recap, type SettingResponse } from "../contract.js";
-import { isSetting, rewordRecapSetting, sameConversation, SettingsBook } from "../settings.js";
+import { DECK_KEEPS, deckFilterFor, isSetting, parseDeckSetting, rewordRecapSetting, sameConversation, SettingsBook } from "../settings.js";
 import { parseSource } from "../stats.js";
 import type { HubPlugin, PluginCtx } from "../plugin.js";
 import { matchRoute } from "../plugin.js";
@@ -48,6 +48,7 @@ export interface LivePluginOptions {
   cues?: boolean; // default: COACH_CUES=1 in live mode; always on in demo
   onFacts?: (f: BeeFacts) => void;
   onCues?: (c: CueBook) => void;
+  deckSetting?: string; // tests; default: env COACH_DECK_SETTING (all | work | meeting; src/hub/settings.ts)
 }
 
 const SCRIPTS = Object.keys(DEMO_SCRIPTS) as DemoLiveScript[];
@@ -99,6 +100,12 @@ export function createLivePlugin(opts: LivePluginOptions = {}): HubPlugin {
       // The calendar (Bee's today brief) is read only when the hub talks to Bee, or in demo (injected).
       const b = new SettingsBook({ hub: ctx.hub, stateDir: ctx.stateDir, load: !ctx.demo, calendar: ctx.demo || ctx.setup.stream ? ctx.setup.calendar : null, log: ctx.log });
       book = b;
+      // The practice deck by setting: only which cards are offered changes (counts in the log, no words).
+      const deckRaw = opts.deckSetting ?? process.env.COACH_DECK_SETTING;
+      const deckSetting = parseDeckSetting(deckRaw);
+      if (deckSetting === null) ctx.log("deck.setting.invalid", { value: String(deckRaw).slice(0, 20), using: "all", allowed: "all, work, meeting" });
+      ctx.hub.setDeckFilter(deckFilterFor(deckSetting ?? "all", (id) => b.tagSession(id)));
+      if (deckSetting && deckSetting !== "all") ctx.log("deck.setting", { setting: deckSetting, keeps: DECK_KEEPS[deckSetting].join(","), cards: ctx.hub.practiceDeck().cards.length, of: ctx.hub.deck.cards.length, dueNow: ctx.hub.deckSummary().dueNow });
       const e = new LiveEngine({
         hub: ctx.hub,
         publish: (t, d) => ctx.publish(t, d),
