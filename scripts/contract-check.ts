@@ -269,7 +269,7 @@ const rejoin = bridgeClient("screen", "tv-rejoin");
 await rejoin.welcome;
 for (let i = 0; i < 100 && !rejoin.events.some((e) => e.topic === "hub.state"); i++) await sleep(20);
 const rejoined = rejoin.events.find((e) => e.topic === "hub.state")?.payload.lastSession;
-check(rejoined?.summary?.sessionId === end.body.summary?.sessionId && rejoined.endedAt === end.body.summary.endedAt && rejoined.summary.perCard.some((c: { cardId: string }) => c.cardId === rejoined.lastCardId), "hub.state after a round carries lastSession (the summary, its end and the last line opened), so a screen that reconnects keeps Round over");
+check(rejoined?.summary?.sessionId === end.body.summary?.sessionId && rejoined.endedAt === end.body.summary.endedAt && rejoined.summary.perCard.some((c: { cardId: string }) => c.cardId === rejoined.lastCardId) && (rejoined.lastAttempt === null || rejoined.lastAttempt?.cardId === rejoined.lastCardId), "hub.state after a round carries lastSession (the summary, its end, the last line opened and its newest try), so a screen that reconnects keeps Round over and its last line");
 rejoin.ws.close();
 examples["WS session.started"] = tv.events.find((e) => e.topic === "session.started");
 examples["WS session.ended"] = tv.events.find((e) => e.topic === "session.ended");

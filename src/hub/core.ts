@@ -537,7 +537,17 @@ export class CoachHub extends EventEmitter {
   lastSessionState(): LastSession | null {
     const s = this.roundStillOver();
     if (!s || s.endedAt === null) return null;
-    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId: this.roundOver!.lastCardId };
+    const lastCardId = this.roundOver!.lastCardId;
+    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId, lastAttempt: lastCardId ? this.newestTry(s, lastCardId) : null };
+  }
+
+  // The round's newest try at one line (its result now: Bee may have settled it since the round ended).
+  private newestTry(s: DrillSession, cardId: string): Attempt | null {
+    for (let i = s.attemptIds.length - 1; i >= 0; i--) {
+      const a = this.attempts.find((x) => x.id === s.attemptIds[i]);
+      if (a?.cardId === cardId) return a;
+    }
+    return null;
   }
 
   // The round that ended last, while its Round over is still up: it ended, and no round and no card

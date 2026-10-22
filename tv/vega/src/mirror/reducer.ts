@@ -311,12 +311,14 @@ function onHubState(s: MirrorState, h: HubState, now: number, offsetMs: number):
 const WITH_BEE: DrillStage[] = ['provisional', 'checking', 'verified'];
 // Round over survives a (re)join. While no round and no card is open, the hub sends the round that
 // ended last (`lastSession`), and its ROUND_OVER_MS run from the hub's end time, on this screen's
-// clock. The screen that showed it keeps its own drill (the last line's result, and when Round over
-// began), less a "still checking" for a last line Bee settled while it was away: the tally has it.
-// Another screen starts from the summary, with the last line the hub names, so a verdict Bee
-// settles later for an earlier line still never reads as the last line. A round that timed out
-// here, or is past its 15 minutes, never comes back. An older hub sends no lastSession: the screen
-// keeps the Round over it shows, unless the hub restarted.
+// clock. The last line is the one the hub names (`lastCardId`), and its result is the hub's newest
+// try at it (`lastAttempt`), so "Last line: passed. Bee heard it." also survives a reconnect, and a
+// verdict Bee settled while the screen was away lands. The screen that showed the round keeps when
+// Round over began. A verdict Bee settles later for an earlier line still never reads as the last
+// line. A round that timed out here, or is past its 15 minutes, never comes back. A hub that sends no
+// lastAttempt: the screen that showed the round keeps its own last line, less a "still checking" the
+// tally says Bee settled, and another screen starts with none. An older hub sends no lastSession: the
+// screen keeps the Round over it shows, unless the hub restarted.
 function roundOverOnJoin(have: DrillState, h: HubState, d: DrillState, restarted: boolean, now: number, offsetMs: number): DrillState | null {
   if (h.session || h.openCard) return null;
   const last = h.lastSession;
@@ -326,12 +328,19 @@ function roundOverOnJoin(have: DrillState, h: HubState, d: DrillState, restarted
   const mine = have.summary?.sessionId === sid;
   const overAt = mine ? have.overAt : last ? last.endedAt - offsetMs : null;
   if (sid === have.overDone || overAt === null || now - overAt >= ROUND_OVER_MS) return { ...d, overDone: sid };
+  const overCard = last ? last.lastCardId : have.overCard;
+  const la = last?.lastAttempt && last.lastAttempt.cardId === overCard ? last.lastAttempt : null;
+  const noTry = { attemptId: null, stage: 'idle' as const, provisional: null, checking: null, verified: null, graded: null };
+  if (la) {
+    const card = mine && have.card?.id === overCard ? have.card : null;
+    return { ...emptyDrill(), sessionId: sid, deck: h.deck, summary, overAt, overCard, overDone: have.overDone, card, ...noTry, ...drillFromAttempt(la) };
+  }
   if (mine) {
     const line = summary.perCard?.find((c) => c.cardId === have.card?.id)?.line;
     const settled = WITH_BEE.includes(have.stage) && !!line && line !== 'pending';
-    return { ...have, deck: h.deck, summary, ...(settled ? { card: null, attemptId: null, stage: 'idle' as const, provisional: null, checking: null, verified: null, graded: null } : {}) };
+    return { ...have, deck: h.deck, summary, overCard, ...(settled ? { card: null, ...noTry } : {}) };
   }
-  return { ...emptyDrill(), sessionId: sid, deck: h.deck, summary, overAt, overCard: last?.lastCardId ?? null, overDone: have.overDone };
+  return { ...emptyDrill(), sessionId: sid, deck: h.deck, summary, overAt, overCard, overDone: have.overDone };
 }
 
 // A verdict for a card other than the one on screen: an attempt Bee was still checking when the

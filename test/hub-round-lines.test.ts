@@ -98,6 +98,25 @@ describe("a round's lines", () => {
     expect(st.drill).toMatchObject({ summary: null, card: { id: lone.id } });
     hub.dispose();
   });
+  it("lastSession carries the round's newest try at the last line, with Bee's result once it settles (review L188)", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const { card: a } = hub.startSession({ by: "tv", size: 2 });
+    heard(hub, hub.submit({ text: a!.resay, source: "phone" }) as Attempt, `Um, ${a!.resay}`); // line A: not yet
+    const b = hub.openCard({ cardId: DUE.find((id) => id !== a!.id), by: "tv" })!;
+    heard(hub, hub.submit({ text: b.resay, source: "phone" }) as Attempt, `Um, ${b.resay}`); // line B: not yet
+    const retry = hub.submit({ text: b.resay, source: "phone" }) as Attempt; // B again, still with Bee
+    hub.endSession();
+    expect(hub.lastSessionState()).toMatchObject({ lastCardId: b.id, lastAttempt: { id: retry.id, cardId: b.id, status: "pending_bee" } });
+    heard(hub, retry, b.resay); // Bee passes it after the round
+    expect(hub.lastSessionState()!.lastAttempt).toMatchObject({ id: retry.id, status: "graded", final: { pass: true } });
+    hub.dispose();
+    // a last line closed unsaid has no try
+    const two = demoSetup({ pace: 0.01, stateDir: null }).hub;
+    two.startSession({ by: "tv", size: 1 });
+    two.endSession();
+    expect(two.lastSessionState()).toMatchObject({ lastAttempt: null });
+    two.dispose();
+  });
   it("while Round over is still up, Bee settling a try re-sends the round's tally", () => {
     const { hub } = demoSetup({ pace: 0.01, stateDir: null });
     const events: HubEvent[] = [];

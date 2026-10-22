@@ -493,13 +493,39 @@ describe("Round over across a reconnect (hub.state lastSession)", () => {
     t = run(t, { type: "hubState", state: hubState(5, { summary, endedAt: HUB, lastCardId: "k2" }), now: T + ROUND_OVER_MS + 1, offsetMs: OFFSET - 60_000 });
     expect(drillPhase(t.drill)).toBe("idle");
   });
-  it("Bee settled the last line while the screen was away: its \"still checking\" is dropped, the tally has it", () => {
+  // The last line, said and still with Bee when round s2 ended; Bee then passes it.
+  const roundS2 = () => {
     const prov = { attempt: { id: "a_k2", cardId: "k2", provisional: { source: "phone", text: "x", grade: { pass: true, reasons: [] } } }, card: k2 };
     let s = run(theRound(), { type: "event", event: ev(6, "session.started", { session: { id: "s2", by: "alexa" } }), now: T + 1000 }, { type: "event", event: ev(7, "card.open", { card: k2, sessionId: "s2" }), now: T + 2000 }, { type: "event", event: ev(8, "attempt.provisional", prov), now: T + 3000 });
     const s2 = { ...summary, sessionId: "s2", endedAt: HUB + 4000, perCard: [{ ...perCard("pending", "pending")[1] }] };
     s = run(s, { type: "event", event: ev(9, "session.ended", { summary: s2 }), now: T + 4000 });
+    return { s, settled: { ...s2, perCard: [{ ...s2.perCard[0], line: "passed" }] } };
+  };
+  it("Bee settled the last line while the screen was away: the hub's newest try at it lands, so Round over still says the last line passed (review L188)", () => {
+    const r = roundS2();
+    const settled = r.settled;
+    let s = r.s;
     expect(lastLine(s)).toBe("Bee is still checking your last line. Its result lands here.");
-    s = run(s, { type: "hubState", state: hubState(11, { summary: { ...s2, perCard: [{ ...s2.perCard[0], line: "passed" }] }, endedAt: HUB + 4000, lastCardId: "k2" }), now: T + 20_000, offsetMs: OFFSET });
+    const lastAttempt = graded("k2", k2).attempt;
+    s = run(s, { type: "hubState", state: hubState(11, { summary: settled, endedAt: HUB + 4000, lastCardId: "k2", lastAttempt }), now: T + 20_000, offsetMs: OFFSET });
+    expect(drillPhase(s.drill)).toBe("over");
+    expect(s.drill).toMatchObject({ overAt: T + 4000, overCard: "k2", stage: "graded", attemptId: "a_k2" });
+    expect(lastLine(s)).toBe("Last line: passed. Bee heard it.");
+    // a screen that reloads gets the same last line from the hub
+    const fresh = run(initialMirror(), { type: "hubState", state: hubState(11, { summary: settled, endedAt: HUB + 4000, lastCardId: "k2", lastAttempt }), now: T + 20_000, offsetMs: OFFSET });
+    expect(drillPhase(fresh.drill)).toBe("over");
+    expect(fresh.drill).toMatchObject({ overAt: T + 4000, overCard: "k2", card: null, stage: "graded" });
+    expect(lastLine(fresh)).toBe("Last line: passed. Bee heard it.");
+    // a try the hub names for another line is never read as the last line's
+    const other = run(initialMirror(), { type: "hubState", state: hubState(11, { summary: settled, endedAt: HUB + 4000, lastCardId: "k2", lastAttempt: graded("k1", k1).attempt }), now: T + 20_000, offsetMs: OFFSET });
+    expect(lastLine(other)).toBeNull();
+    // a last line never said: no try, no sentence
+    const unsaid = run(initialMirror(), { type: "hubState", state: hubState(11, { summary: settled, endedAt: HUB + 4000, lastCardId: "k2", lastAttempt: null }), now: T + 20_000, offsetMs: OFFSET });
+    expect(lastLine(unsaid)).toBeNull();
+  });
+  it("a hub that sends no lastAttempt: the screen drops its \"still checking\" for a last line the tally says Bee settled", () => {
+    const { s: ended, settled } = roundS2();
+    const s = run(ended, { type: "hubState", state: hubState(11, { summary: settled, endedAt: HUB + 4000, lastCardId: "k2" }), now: T + 20_000, offsetMs: OFFSET });
     expect(drillPhase(s.drill)).toBe("over");
     expect(s.drill).toMatchObject({ overAt: T + 4000, overCard: "k2", card: null, stage: "idle" });
     expect(lastLine(s)).toBeNull();

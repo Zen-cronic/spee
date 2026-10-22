@@ -223,6 +223,10 @@ export interface LastSession {
   summary: SessionSummary;
   endedAt: number; // hub clock: Round over lasts 15 min from here, on the screen's clock via its offset
   lastCardId: string | null; // the last line opened in the round (Round over's "last line"); perCard lists a line once, at its first opening
+  // Additive: the newest try at lastCardId in the round, as attempt.graded carries it (null when the
+  // line was never said), so a screen that (re)joins still shows the last line's result, also one
+  // Bee settled while it was away. Older hubs omit it.
+  lastAttempt?: Attempt | null;
 }
 export interface SessionResponse extends HubState {
   lastSessionSummary: SessionSummary | null;
