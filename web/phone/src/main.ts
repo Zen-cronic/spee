@@ -8,7 +8,7 @@
 //   Progress  today's practice, this week, the before and after and the last recaps: the TV's own
 //             reads, with the pair token in a header (src/progressView.ts)
 // Privacy: no localStorage or sessionStorage; the pair token stays in memory.
-import { BridgeClient, normalizeCode, type IntentMsg } from "tv-voice-bridge";
+import { BridgeClient, normalizeCode, type IntentMsg } from "vega-voice-bridge";
 import type { CardView, HubState, PracticeSummary } from "../../../src/hub/contract.js";
 import { startCapture, captureSupported, type Capture } from "./audio.js";
 import { PRODUCT_NAME } from "./brand.js";

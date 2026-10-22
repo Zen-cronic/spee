@@ -6,7 +6,7 @@ import { connect } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import type { IncomingMessage } from "node:http";
-import { forwardedClient } from "tv-voice-bridge/hub";
+import { forwardedClient } from "vega-voice-bridge/hub";
 import { addressKind, bridgeRateKey, isPublicRequest, ORIGIN_CACHE_MS, originPolicy } from "../src/hub/gate.js";
 import { checkFrame } from "../src/hub/bridgeGuard.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";

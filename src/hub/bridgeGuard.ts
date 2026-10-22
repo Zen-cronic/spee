@@ -1,4 +1,4 @@
-// Hub-side defences around the vendored tv-voice-bridge hub. The bridge package itself
+// Hub-side defences around the vendored vega-voice-bridge hub. The bridge package itself
 // is never patched here: this wraps one BridgeHub instance from the outside.
 //
 // - Every WebSocket gets an `error` listener (a bad frame used to throw "Unhandled error event") and a
@@ -15,7 +15,7 @@
 //   bytes queued, and a peer above WS_TERMINATE_AT is disconnected.
 import type { IncomingMessage } from "node:http";
 import type { WebSocket } from "ws";
-import type { BridgeHub, Room } from "tv-voice-bridge/hub";
+import type { BridgeHub, Room } from "vega-voice-bridge/hub";
 import type { UpgradeDecision } from "./gate.js";
 
 export const WS_MAX_PAYLOAD = 256 * 1024;

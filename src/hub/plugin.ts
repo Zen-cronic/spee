@@ -11,8 +11,8 @@
 // topic is offered to each plugin's `onApp` in registry order until one returns something other
 // than undefined (null = handled, no intent).
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { BridgeHub, IntentResult, Room } from "tv-voice-bridge/hub";
-import type { AppMsg, PeerInfo } from "tv-voice-bridge";
+import type { BridgeHub, IntentResult, Room } from "vega-voice-bridge/hub";
+import type { AppMsg, PeerInfo } from "vega-voice-bridge";
 import type { CoachHub, HubEvent } from "./core.js";
 import type { Setup } from "./setup.js";
 import type { PluginInfo, PluginStatus, RoomTopic, SequencedTopic } from "./contract.js";

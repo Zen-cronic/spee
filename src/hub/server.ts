@@ -1,4 +1,4 @@
-// Coach hub server: HTTP API + the tv-voice-bridge WebSocket hub (/ws) + Server-Sent Events.
+// Coach hub server: HTTP API + the vega-voice-bridge WebSocket hub (/ws) + Server-Sent Events.
 //
 //   npm run hub                       # live (port 8791): real gitignored data, spawned `bee stream`, Bee CLI
 //   npm run hub -- --demo             # demo: synthetic fixtures + Bee replay (no Watch, no network)
@@ -16,8 +16,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
 import { join } from "node:path";
-import { BridgeHub, type Room } from "tv-voice-bridge/hub";
-import type { AppMsg, PeerInfo } from "tv-voice-bridge";
+import { BridgeHub, type Room } from "vega-voice-bridge/hub";
+import type { AppMsg, PeerInfo } from "vega-voice-bridge";
 import { buildBrief } from "./brief.js";
 import { parseHabitKey } from "./habits.js";
 import { parseRange, parseSource } from "./stats.js";

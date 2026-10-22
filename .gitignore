@@ -31,7 +31,7 @@ POC_REPORT.md
 
 # Packed tarballs, except the vendored bridge a fresh clone installs from
 *.tgz
-!vendor/tv-voice-bridge-0.3.5.tgz
+!vendor/vega-voice-bridge-0.4.2.tgz
 
 # Browser automation and recording artifacts
 .playwright-mcp/

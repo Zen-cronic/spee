@@ -1,4 +1,4 @@
-// Every package (hub, web TV, Vega TV) must install the same vendored tv-voice-bridge tarball, and that
+// Every package (hub, web TV, Vega TV) must install the same vendored vega-voice-bridge tarball, and that
 // tarball must be tracked. A stale `file:` path installs on this machine from node_modules but fails on a
 // clean clone, and a version split leaves the TV on an older client than the hub.
 import { execFileSync } from "node:child_process";
@@ -8,14 +8,14 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PACKAGES = ["package.json", "tv/web/package.json", "tv/vega/package.json"];
-const BRIDGE = "tv-voice-bridge";
+const BRIDGE = "vega-voice-bridge";
 
 const bridgeSpec = (pkg: string) => {
   const j = JSON.parse(readFileSync(join(ROOT, pkg), "utf8"));
   return (j.dependencies?.[BRIDGE] ?? j.devDependencies?.[BRIDGE]) as string | undefined;
 };
 
-describe("vendored tv-voice-bridge", () => {
+describe("vendored vega-voice-bridge", () => {
   const tarballs = PACKAGES.map((pkg) => {
     const spec = bridgeSpec(pkg);
     expect(spec, `${pkg} depends on ${BRIDGE}`).toMatch(/^file:/);

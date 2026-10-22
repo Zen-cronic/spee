@@ -47,7 +47,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage, Server } from "node:http";
 import { hostname, networkInterfaces } from "node:os";
 import { readJsonSafe, removeCopies, writeJsonAtomic } from "./atomic.js";
-import { forwardedClient } from "tv-voice-bridge/hub";
+import { forwardedClient } from "vega-voice-bridge/hub";
 import { WS_TOKEN_PREFIX } from "./contract.js";
 import type { Duplex } from "node:stream";
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { BridgeClient } from 'tv-voice-bridge';
+import { BridgeClient } from 'vega-voice-bridge';
 import type { HubState, InstrumentResponse, LiveState, PracticeMeters, Recap, RecapList, SettingResponse, SettingsResponse, StatsResponse, TransferResponse } from '../contract';
 import { memoryAfterFetch, nextSetting, type BeeMemoryIn } from './format';
 import { initialMirror, mirrorReducer, type ScreenView } from './reducer';

@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { PairingQr } from 'tv-voice-bridge/react';
+import { PairingQr } from 'vega-voice-bridge/react';
 import { useDebug } from '../debug';
 import type { LinkStatus } from '../mirror/useMirror';
 import { C, F, R, SP, T } from '../theme';

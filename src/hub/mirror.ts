@@ -16,8 +16,8 @@
 //                                mirror.focus for `view`. (In fixture mode the frozen fixture
 //                                router answers this route before the plugins.)
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { AppMsg, PeerInfo } from "tv-voice-bridge";
-import type { IntentResult, Room } from "tv-voice-bridge/hub";
+import type { AppMsg, PeerInfo } from "vega-voice-bridge";
+import type { IntentResult, Room } from "vega-voice-bridge/hub";
 import { PRACTICE_METERS_HZ, ROOM_RELAY_MAX_HZ, type DemoMirrorResponse, type MirrorView, type PracticeFlag, type PracticeMeters, type PracticeSummary, type VolumeBand } from "./contract.js";
 import { matchRoute, type HubPlugin, type PluginCtx } from "./plugin.js";
 import { ProsodyEngine, synthVoice } from "../../web/phone/src/prosody.js";

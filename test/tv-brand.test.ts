@@ -1,5 +1,5 @@
 // The TV app is restyled from the Rack Board shells: no string may still say Rack Board (the bridge package is
-// tv-voice-bridge since 0.3.0, so nothing is exempt). The product was called Speaking Mirror until 2026-10-21
+// vega-voice-bridge since 0.4.2 and tv-voice-bridge from 0.3.0, so nothing is exempt). The product was called Speaking Mirror until 2026-10-21
 // and is now Spee: no source a person reads may still say Speaking Mirror. Identifiers keep the old name
 // (com.beecoach.mirror, speakingmirror_*.vpkg, the npm names, the "speaking-mirror" WebSocket subprotocol,
 // the speakingMirror.<kind> APL tokens), and none of them has a space, so the check skips them. One dated
