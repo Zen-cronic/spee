@@ -291,6 +291,55 @@ describe("screens switch on events", () => {
   });
 });
 
+describe("a view the user picked is not taken by Bee's live events", () => {
+  const window = (fx["events-live.json"].events as { topic: string; payload: Record<string, any> }[]).find((e) => e.topic === "live.window")!.payload.window;
+  const nudge = (fx["events-live.json"].events as { topic: string; payload: Record<string, any> }[]).find((e) => e.topic === "nudge.sent")?.payload.nudge;
+  it("Progress picked on the remote stays on Progress while live windows arrive (the S8 take)", () => {
+    let s = run(initialMirror(), { type: "show", view: "transfer" });
+    expect(s.viewPinned).toBe(true);
+    s = run(
+      s,
+      { type: "event", event: ev(1, "conversation.started", { conversationId: window.conversationId, startedAt: 0 }), now: 0 },
+      { type: "event", event: ev(2, "live.window", { window }), now: 3000 },
+      { type: "event", event: ev(3, "live.window", { window: { ...window, updatedAt: window.updatedAt + 3000 } }), now: 6000 },
+      ...(nudge ? [{ type: "event", event: ev(4, "nudge.sent", { nudge }), now: 7000 } as MirrorAction] : []),
+    );
+    expect(s.view).toBe("transfer");
+    expect(s.viewBy).toBe("remote");
+    expect(s.live.window).not.toBeNull(); // the Live tab still has the newest window when picked
+    s = run(s, { type: "show", view: "live" });
+    expect(s.view).toBe("live");
+  });
+  it("Today picked on the remote stays too; the untouched start screen still follows a conversation", () => {
+    expect(run(initialMirror(), { type: "show", view: "week" }, { type: "event", event: ev(1, "live.window", { window }), now: 0 }).view).toBe("week");
+    expect(run(initialMirror(), { type: "event", event: ev(1, "live.window", { window }), now: 0 }).view).toBe("live");
+  });
+  it("did it transfer? (an Alexa focus on Progress) leaves Live and stays on Progress", () => {
+    let s = run(initialMirror(), { type: "event", event: ev(1, "live.window", { window }), now: 0 });
+    expect(s.view).toBe("live");
+    s = run(s, { type: "event", event: focus(2, "transfer", { by: "alexa", reason: "did it transfer?" }), now: 1 });
+    expect(s.view).toBe("transfer");
+    expect(s.viewBy).toBe("alexa");
+    s = run(s, { type: "event", event: ev(3, "live.window", { window: { ...window, updatedAt: window.updatedAt + 3000 } }), now: 3000 });
+    expect(s.view).toBe("transfer");
+  });
+  it("commands still move a pinned screen: a drill opens over Progress, and live coaching on shows Live", () => {
+    const card = { id: "demo:vague-status", said: "x", fix: "y" } as any;
+    let s = run(initialMirror(), { type: "show", view: "transfer" }, { type: "event", event: ev(1, "card.open", { card, by: "alexa", sessionId: "s1", deck: null }), now: 0 });
+    expect(s.view).toBe("drill");
+    expect(s.viewPinned).toBe(false);
+    s = run(initialMirror(), { type: "show", view: "week" }, { type: "event", event: focus(1, "live", { by: "alexa", reason: "live coaching on" }), now: 0 });
+    expect(s.view).toBe("live");
+  });
+  it("picking the view the screen is already on pins it", () => {
+    let s = run(initialMirror(), { type: "event", event: ev(1, "live.window", { window }), now: 0 });
+    expect(s.viewPinned).toBe(false);
+    s = run(s, { type: "show", view: "live" });
+    expect(s.viewPinned).toBe(true);
+    expect(s.viewBy).toBe("remote");
+  });
+});
+
 describe("practice meters (room frames, no seq)", () => {
   const frames = fx["practice-meters.json"].frames as any[];
   it("switch to practice, keep the last 5 s, and start over on a new take", () => {
