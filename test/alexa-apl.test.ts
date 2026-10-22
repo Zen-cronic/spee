@@ -4,7 +4,7 @@
 // document's shape, bindings and palette (the TV's).
 import { readFileSync } from "node:fs";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { APL_DIRECTIVE, aplDocument, checkingScreen, drillScreen, EMPTY, emptyScreen, gradeFailure, IDLE_AFTER_END_MS, plainReason, progressScreen, renderDirective, supportsApl, tracker, verdictScreen, type Screen } from "../src/alexa/apl.js";
+import { APL_DATASOURCE, APL_DIRECTIVE, aplDocument, aplMode, bindParameters, checkingScreen, drillScreen, EMPTY, emptyScreen, gradeFailure, IDLE_AFTER_END_MS, plainReason, progressScreen, renderDirective, supportsApl, tracker, verdictScreen, viewportMode, wantsApl, type Screen } from "../src/alexa/apl.js";
 import { createAlexaPlugin, maskSpoken } from "../src/alexa/plugin.js";
 import { handleAlexa, summaryScreen, type SkillDeps } from "../src/alexa/skill.js";
 import type { AlexaRequestEnvelope, AlexaResponseEnvelope, SessionAttributes } from "../src/alexa/types.js";
@@ -21,16 +21,26 @@ const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "u
 const DOC = JSON.parse(read("alexa/apl/speaking-mirror.json"));
 const APL_DEVICE = { deviceId: "amzn1.ask.device.DEMO", supportedInterfaces: { "Alexa.Presentation.APL": { runtime: { maxVersion: "2024.3" } } } };
 
-function env(name: string, opts: { attrs?: SessionAttributes; slot?: string; screen?: boolean } = {}): AlexaRequestEnvelope {
+// The viewports the real devices send: an Echo Show 8 and the Fire TV stick (hub log, 2026-10-22: "TV 1920x1080 RECTANGLE").
+const VIEWPORTS = {
+  hub: { mode: "HUB", shape: "RECTANGLE", pixelWidth: 1280, pixelHeight: 800, dpi: 160 },
+  tv: { mode: "TV", shape: "RECTANGLE", pixelWidth: 1920, pixelHeight: 1080, dpi: 320 },
+} as const;
+
+// opts.screen: an APL device (default); opts.viewport: its viewport (default an Echo Show; null: none).
+function env(name: string, opts: { attrs?: SessionAttributes; slot?: string; screen?: boolean; viewport?: keyof typeof VIEWPORTS | null } = {}): AlexaRequestEnvelope {
   const e = JSON.parse(read(`alexa/fixtures/${name}.json`)).request as AlexaRequestEnvelope;
   e.request.timestamp = new Date().toISOString();
   if (opts.attrs) e.session!.attributes = { ...opts.attrs };
   if (opts.slot !== undefined) e.request.intent!.slots!.attempt!.value = opts.slot;
   if (opts.screen !== false) e.context!.System!.device = structuredClone(APL_DEVICE);
+  const vp = opts.viewport === undefined ? (opts.screen === false ? null : "hub") : opts.viewport;
+  if (vp) e.context!.Viewport = { ...VIEWPORTS[vp] };
   return e;
 }
 const directives = (r: { envelope: AlexaResponseEnvelope }) => r.envelope.response.directives ?? [];
-const screenOf = (r: { envelope: AlexaResponseEnvelope }): Screen => (directives(r)[0]!.datasources as { payload: { screen: Screen } }).payload.screen;
+type Sources = { spee: { screen: Screen } };
+const screenOf = (r: { envelope: AlexaResponseEnvelope }): Screen => (directives(r)[0]!.datasources as Sources).spee.screen;
 
 const grade = (over: Partial<GradeResult>): GradeResult => ({
   graderVersion: 1,
@@ -93,20 +103,22 @@ const ALL_SCREENS: Screen[] = [
 ];
 
 describe("APL document", () => {
-  it("is an APL document with a version, resources, the mark and a mainTemplate taking payload", () => {
+  it("is an APL document with a version, resources, the mark and a mainTemplate taking the spee datasource", () => {
     expect(DOC.type).toBe("APL");
     expect(DOC.version).toMatch(/^2023\.\d$/);
-    expect(DOC.mainTemplate.parameters).toEqual(["payload"]);
+    expect(APL_DATASOURCE).toBe("spee");
+    expect(DOC.mainTemplate.parameters).toEqual([APL_DATASOURCE]);
     expect(DOC.mainTemplate.items.length).toBeGreaterThan(0);
     expect(DOC.graphics.mark).toMatchObject({ type: "AVG", version: "1.2" });
     for (const item of DOC.graphics.mark.items) expect(["path", "group"]).toContain(item.type);
     expect(aplDocument()).toEqual(DOC);
   });
 
-  it("every screen kind has its own branch, and every payload binding exists in every screen's datasource", () => {
+  it("every screen kind has its own branch, and every spee.screen binding exists in every screen's datasource", () => {
     const all = strings(DOC.mainTemplate).join("\n");
     for (const kind of ["drill", "checking", "verdict", "progress", "empty"]) expect(all).toContain(`'${kind}'`);
-    const refs = [...new Set([...all.matchAll(/payload\.screen\.([A-Za-z]+)/g)].map((m) => m[1]!))];
+    expect(JSON.stringify(DOC)).not.toMatch(/\$\{[^}]*\bpayload\b/); // no binding through the pre-1.3 "payload" parameter
+    const refs = [...new Set([...all.matchAll(/spee\.screen\.([A-Za-z]+)/g)].map((m) => m[1]!))];
     expect(refs.length).toBeGreaterThan(10);
     for (const s of ALL_SCREENS) for (const r of refs) expect(s, `${s.kind}.${r}`).toHaveProperty(r);
     // the tracker's items bind data.label/state/who
@@ -231,7 +243,7 @@ describe("masking", () => {
   it("masks every datasource string for a screen (▒▒▒); the plugin then masks only what Alexa says", () => {
     setMaskTerms(["Jordan Quill", "Acme"]);
     const d = renderDirective(verdictScreen({ kind: "fail", grade: grade({ checks: failed("content"), missing: ["Acme"] }), next: { resay: "Ask Jordan Quill about Acme." } }));
-    const s = (d.datasources as { payload: { screen: Screen } }).payload.screen;
+    const s = (d.datasources as Sources).spee.screen;
     expect(s.sentence).toBe(`Ask ${MASK_SCREEN} about ${MASK_SCREEN}.`);
     expect(s.reason).toBe(`A few words were missing: ${MASK_SCREEN}.`);
     expect(s.kind).toBe("verdict");
@@ -247,7 +259,51 @@ describe("masking", () => {
     const d = renderDirective(drillScreen({ resay: "Hello." }));
     expect(d.token).toBe("speakingMirror.drill");
     expect(d.document).toEqual(DOC);
-    expect((d.datasources as { payload: { screen: Screen } }).payload.screen.brand).toBe(MASK_SCREEN);
+    expect((d.datasources as Sources).spee.screen.brand).toBe(MASK_SCREEN);
+  });
+});
+
+describe("binding as a device binds (bindParameters)", () => {
+  it("every screen's datasource reaches the document's spee parameter, so no screen renders blank", () => {
+    for (const sc of ALL_SCREENS) {
+      const d = renderDirective(sc);
+      const bound = bindParameters(d.document as Record<string, unknown>, d.datasources as Record<string, unknown>);
+      expect(bound, sc.kind).toEqual({ spee: { screen: sc } });
+    }
+  });
+  it("the 2026-10-22 Fire TV blank screen: a parameter named payload gets the whole datasources object, one level above the screen", () => {
+    const d = renderDirective(drillScreen({ resay: "I'll send the report on Friday." }));
+    const legacy = { ...DOC, mainTemplate: { ...DOC.mainTemplate, parameters: ["payload"] } };
+    // the old document bound payload.screen.*, and the old datasource was { payload: { screen } }: payload.screen was undefined
+    expect((bindParameters(legacy, { payload: { screen: drillScreen({ resay: "x" }) } }).payload as Record<string, unknown>).screen).toBeUndefined();
+    expect(bindParameters(legacy, d.datasources as Record<string, unknown>).payload).toBe(d.datasources);
+    expect(Object.keys(d.datasources as object)).toEqual(["spee"]);
+  });
+});
+
+describe("ALEXA_APL: which screens get a document", () => {
+  const at = (viewport: keyof typeof VIEWPORTS | null, screen = true) => env("launch", { viewport, screen });
+  it("parses off, on and hub-only; anything else is hub-only", () => {
+    expect(aplMode(undefined)).toBe("hub-only");
+    expect(aplMode("")).toBe("hub-only");
+    expect(aplMode(" ON ")).toBe("on");
+    expect(aplMode("off")).toBe("off");
+    expect(aplMode("Hub-Only")).toBe("hub-only");
+    expect(aplMode("true")).toBe("hub-only");
+  });
+  it("reads the request's viewport mode", () => {
+    expect(viewportMode(at("tv"))).toBe("TV");
+    expect(viewportMode(at("hub"))).toBe("HUB");
+    expect(viewportMode(at(null))).toBeNull();
+  });
+  it("hub-only (the default): an Echo Show, never a TV or a device without a viewport; on: every APL device; off: none", () => {
+    expect(wantsApl(at("hub"))).toBe(true);
+    expect(wantsApl(at("tv"))).toBe(false);
+    expect(wantsApl(at(null))).toBe(false);
+    expect(wantsApl(at("tv"), "on")).toBe(true);
+    expect(wantsApl(at(null), "on")).toBe(true);
+    expect(wantsApl(at("hub"), "off")).toBe(false);
+    for (const m of ["on", "off", "hub-only"] as const) expect(wantsApl(at("hub", false), m), m).toBe(false); // voice-only
   });
 });
 
@@ -274,6 +330,41 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
     }
     return false;
   }
+
+  it("Fire TV, StartDrill: hub-only sends no document (voice only, the Spee app stays in front); on sends the TV screen with the line", async () => {
+    const quiz = (o: Parameters<typeof env>[1]) => {
+      const e = env("next", o);
+      e.request.intent = { name: "StartDrillIntent", slots: {} } as never;
+      return e;
+    };
+    await post("/api/session/end", {});
+    const tvDefault = await handleAlexa(quiz({ viewport: "tv" }), deps());
+    expect(tvDefault.routed.intent).toBe("StartDrillIntent");
+    expect(tvDefault.envelope.response.directives).toBeUndefined();
+    expect(tvDefault.hubCalls).toEqual(["POST /api/session/start 200"]); // no extra call for a screen
+    await post("/api/session/end", {});
+    const tvOn = await handleAlexa(quiz({ viewport: "tv" }), { ...deps(), aplMode: "on" });
+    const card = (await get("/api/session")).openCard;
+    expect(directives(tvOn)[0]).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill" });
+    expect(screenOf(tvOn)).toMatchObject({ kind: "drill", brand: "Spee", kicker: "Say this:", sentence: card.resay, hint: "Then ask: how did I do?" });
+    expect(screenOf(tvOn).steps).toEqual(tracker(0));
+    // the speech, the reprompt and the open session are the same either way, and on an Echo Show
+    await post("/api/session/end", {});
+    const hub = await handleAlexa(quiz({}), deps());
+    expect(screenOf(hub)).toMatchObject({ kind: "drill", sentence: card.resay });
+    for (const r of [tvOn, hub]) {
+      expect(r.envelope.response.outputSpeech).toEqual(tvDefault.envelope.response.outputSpeech);
+      expect(r.envelope.response.reprompt).toEqual(tvDefault.envelope.response.reprompt);
+      expect(r.envelope.response.shouldEndSession).toBe(false);
+    }
+    await post("/api/session/end", {});
+    expect(directives(await handleAlexa(quiz({}), { ...deps(), aplMode: "off" }))).toEqual([]);
+  });
+
+  it("Fire TV under hub-only: no document on any turn", async () => {
+    await post("/api/session/end", {});
+    for (const name of ["launch", "how-am-i-doing", "help", "next", "attempt", "how-did-i-do", "stop"]) expect(directives(await handleAlexa(env(name, { viewport: "tv" }), deps())), name).toEqual([]);
+  });
 
   it("voice-only: no directive on any turn, the same speech as with a screen", async () => {
     await post("/api/session/end", {});
@@ -383,7 +474,22 @@ describe("skill turns on a device with a screen (in-process demo hub)", () => {
     await post("/api/session/end", {});
     const r = await fetch(s.url + "/alexa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(env("launch")) });
     const j = (await r.json()) as AlexaResponseEnvelope;
-    expect(j.response.directives?.[0]).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill", datasources: { payload: { screen: { kind: "drill" } } } });
+    expect(j.response.directives?.[0]).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill", datasources: { spee: { screen: { kind: "drill" } } } });
+  });
+});
+
+describe("ALEXA_APL in the Alexa plugin", () => {
+  const saved = process.env.ALEXA_APL;
+  afterEach(() => (saved === undefined ? delete process.env.ALEXA_APL : (process.env.ALEXA_APL = saved)));
+  it("defaults to hub-only, reads ALEXA_APL, and says which in the hub health note", () => {
+    delete process.env.ALEXA_APL;
+    expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("APL hub-only (Echo Show screens; a Fire TV gets voice only");
+    process.env.ALEXA_APL = "on";
+    expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("APL on (every screen, the Fire TV too)");
+    process.env.ALEXA_APL = "off";
+    expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("APL off (no screens)");
+    process.env.ALEXA_APL = "bogus";
+    expect(createAlexaPlugin({ skillId: SKILL }).describe!().note).toContain("APL hub-only");
   });
 });
 
@@ -407,6 +513,6 @@ describe("POST /alexa with masking on (in-process demo hub)", () => {
     const d = j.response.directives?.[0];
     expect(d).toMatchObject({ type: APL_DIRECTIVE, token: "speakingMirror.drill" });
     expect(d!.document).toEqual(DOC);
-    expect((d!.datasources as { payload: { screen: Screen } }).payload.screen).toMatchObject({ kind: "drill", brand: "Spee" });
+    expect((d!.datasources as Sources).spee.screen).toMatchObject({ kind: "drill", brand: "Spee" });
   });
 });
