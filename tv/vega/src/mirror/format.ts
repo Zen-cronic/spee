@@ -384,7 +384,9 @@ export function planLine(t: Pick<TransferResponse, 'prereg' | 'minWordsPerPeriod
  * update), and whether Bee has confirmed it. With no goal and nothing being saved, the row says
  * when the goal goes to Bee, never "Saving…": after the next line Bee passes, or, with a pass kept
  * while Bee could not be reached (`owed`; an older hub sends none, read as false), once Bee answers
- * again, with no new pass needed.
+ * again, with no new pass needed. A pending goal with its fact id is in Bee, not confirmed yet (between
+ * its create and confirm, or an update Bee left unconfirmed); only one with no fact id is still being
+ * saved ("Saving…").
  */
 export type BeeMemoryIn = Pick<BeeMemory, 'enabled' | 'status' | 'goal' | 'insights' | 'facts' | 'note'> & Partial<Pick<BeeMemory, 'stopped' | 'owed'>>;
 /** The note the row always carries (the hub's BEE_MEMORY_NOTE, with a typographic apostrophe). */
@@ -400,7 +402,9 @@ export function beeMemoryLine(m: BeeMemoryIn | null | undefined): { text: string
   const text =
     m.status === 'pending'
       ? m.goal
-        ? 'Saving your speaking goal to Bee…'
+        ? unlisted
+          ? 'Saving your speaking goal to Bee…'
+          : 'Your speaking goal is in Bee, not confirmed yet.'
         : none
       : m.status === 'failed'
         ? m.stopped === true

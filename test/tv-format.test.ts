@@ -319,7 +319,10 @@ describe("beeMemoryLine is null when disabled", () => {
     expect(m.text).toBe("Your speaking goal is saved in Bee as a confirmed fact, updated Oct 20.");
     expect(m.counts).toBe("Bee holds 14 facts and 0 insights, read Oct 20");
     expect(m.caveat).toBe("Bee’s chat and Alexa+ may not read coach-written facts.");
-    expect(beeMemoryLine(mem({ status: "pending" }))!.text).toMatch(/^Saving/);
+    // a goal with its fact id is in Bee, as the skill says; only a create with no id yet is saving (review L189)
+    expect(beeMemoryLine(mem({ status: "pending", goal: { factId: "f1", text: "Speaking goal (Spee): ...", confirmed: false, updatedAt: null } }))!.text).toBe("Your speaking goal is in Bee, not confirmed yet.");
+    expect(beeMemoryLine(mem({ status: "pending", goal: { factId: null, text: "Speaking goal (Spee): ...", confirmed: false, updatedAt: null } }))!.text).toBe("Saving your speaking goal to Bee…");
+    expect(goalLines({ ...mem({ status: "pending", goal: { factId: "f1", text: "Speaking goal (Spee): ...", confirmed: false, updatedAt: null } }), stopped: false })).toContain("Bee has not confirmed it yet.");
     expect(beeMemoryLine(mem({ status: "failed" }))!.text).toMatch(/tries again/);
     expect(beeMemoryLine(mem({ status: "demo" }))!.text).toBe("Demo: the coach would save your speaking goal in Bee as a fact. Nothing is written.");
     expect(beeMemoryLine(mem({ status: "demo", goal: null, facts: null, insights: null }))).toEqual({ text: "Demo: after a line Bee passes, the coach would save your speaking goal in Bee.", counts: null, caveat: BEE_MEMORY_NOTE });

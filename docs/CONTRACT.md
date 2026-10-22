@@ -1024,7 +1024,7 @@ The coach's one goal fact in Bee, and Bee's insight and fact counts (`BeeMemory`
 
 - `"off"` (the default): no Bee call of any kind; `goal`, `insights` and `facts` are null.
 - `"demo"`: nothing is written; `goal` is the text the coach would write (`factId: null`).
-- `"pending"`: on, no confirmed goal fact yet. With `goal: null` nothing is being saved: the goal is written after the next Bee-verified pass. With a goal, its create or confirm is on its way.
+- `"pending"`: on, no confirmed goal fact yet. With `goal: null` nothing is being saved: the goal is written after the next Bee-verified pass. With a goal, its create or confirm is on its way: a goal with its `factId` is in Bee, not confirmed yet (the TV says "Your speaking goal is in Bee, not confirmed yet."), and one with `factId: null` is being created ("Saving your speaking goal to Bee…").
 - `"synced"`: the goal fact exists in Bee, confirmed, with this text.
 - `"failed"`: the last write failed, or a create Bee does not list yet or never listed (looked for at most 5 times, never made again). The facts breaker (3 failed calls, 30 min) never makes the status `"failed"` by itself, so failed count reads never read as a save that failed. Live coaching is not affected.
 
