@@ -284,7 +284,7 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
   const blocked = new Map<string, { step: string; reason: string }>(); // the checked-in skill is gone
   if (live.length) {
     const first = toCreate().map((p) => `"${p.name}"`);
-    deps.print(first.length ? `\nBefore creating anything, the deploy looks on the account for a skill already set up for ${first.join(", ")}, and checks that each recorded skill is still there:` : "\nBefore any change, the deploy checks that each recorded skill is still on the account:");
+    deps.print(first.length ? `\nBefore creating anything, the deploy looks on the account for a skill already set up for ${first.join(" and ")}, and checks that each recorded skill is still there:` : "\nBefore any change, the deploy checks that each recorded skill is still on the account:");
     const v = ask(["smapi", "get-vendor-list"]);
     const n = parse<{ vendors?: unknown[] }>(v.out)?.vendors?.length ?? 0;
     if (!opts.dry) deps.print(v.ok ? `  ${n} vendor${n === 1 ? "" : "s"} on this profile; create-skill-for-vendor uses the one ask configure saved` : "  could not list the vendors");
@@ -309,7 +309,8 @@ export async function deploy(cfg: DeployConfig, deps: DeployDeps, opts: { dry?: 
             deps.print(`  ${p.name}: the skill recorded in ${LOCAL_LABEL} (${shortId(p.skillId)}) is not on the account any more, so this name is set up again, and the new id saved in its place`);
             Object.assign(p, { skillId: null, from: null });
           } else {
-            const reason = `${p.from} names ${shortId(p.skillId)}, which is not on the account of profile ${cfg.profile}. Fix ${p.from}, or set ALEXA_SKILL_ID to this name's skill`;
+            const fix = p.from === "ALEXA_SKILL_ID" ? "Set ALEXA_SKILL_ID" : `Fix ${p.from}, or set ALEXA_SKILL_ID`;
+            const reason = `${p.from} names ${shortId(p.skillId)}, which is not on the account of profile ${cfg.profile}. ${fix} to this name's skill`;
             blocked.set(p.name, { step: "account lookup", reason });
             deps.print(`  ${p.name}: ${reason}`);
           }

@@ -204,6 +204,7 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(hub.ids.sort()).toEqual(results.map((r) => r.skillId!).sort());
     expect(hub.names[results[2]!.skillId!]).toBe("spee");
     expect(lines.join("\n")).toContain('"Alexa, ask speech coach to quiz me" or "Alexa, ask spee coach to quiz me" or "Alexa, ask spee to quiz me"');
+    expect(lines).toContain('\nBefore creating anything, the deploy looks on the account for a skill already set up for "spee coach" and "spee", and checks that each recorded skill is still there:');
   });
 
   it("saves a new skill's id before its model is uploaded, so a later failure never loses it", async () => {
@@ -395,6 +396,9 @@ describe("alexa:deploy with a fake ask CLI", () => {
     expect(results[0]!.reason).toBe("alexa/skill-id.json names amzn1.ask.skill.11111111…, which is not on the account of profile default. Fix alexa/skill-id.json, or set ALEXA_SKILL_ID to this name's skill");
     expect(ask.calls.some((c) => c[1] === "update-skill-manifest" && c.includes(MAIN))).toBe(false);
     expect(ask.creates()).toBe(0);
+    cfg.primary = { skillId: MAIN, source: "ALEXA_SKILL_ID" };
+    const r2 = await deploy(cfg, deps(ask.run));
+    expect(r2[0]!.reason).toBe("ALEXA_SKILL_ID names amzn1.ask.skill.11111111…, which is not on the account of profile default. Set ALEXA_SKILL_ID to this name's skill");
   });
 
   it("a listing renamed since the skills were set up: they are still found by their marker and adopted, never created again (review L199)", async () => {
