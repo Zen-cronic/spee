@@ -29,6 +29,12 @@ export interface SessionNextResponse {
   summary?: SessionSummary | null;
   narration: string;
 }
+// GET /api/deck: every card, due ones first.
+export interface DeckResponse {
+  dataLabel: string;
+  cards: CardView[];
+  today: string;
+}
 export interface SessionEndResponse {
   summary: SessionSummary | null;
 }
@@ -84,6 +90,8 @@ export class HubClient {
   startSession = (b: { by?: string; size?: number } = {}) => this.call<SessionStartResponse>("POST", "/api/session/start", b);
   nextCard = () => this.call<SessionNextResponse>("POST", "/api/session/next", {});
   endSession = () => this.call<SessionEndResponse>("POST", "/api/session/end", {});
+  deck = () => this.call<DeckResponse>("GET", "/api/deck");
+  openCard = (b: { cardId?: string; by?: string } = {}) => this.call<{ card: CardView }>("POST", "/api/card/open", b);
   attempt = (b: { text: string; source: "alexa" | "mcp" | "phone" | "typed"; cardId?: string; speechEndAt?: number }) => this.call<AttemptAccepted>("POST", "/api/attempt", b);
   verdict = (id: string) => this.call<VerdictResponse>("GET", `/api/attempts/${encodeURIComponent(id)}`);
   stats = (q: { range?: string; source?: SourceSel } = {}) => this.call<StatsResponse>("GET", `/api/stats${qs(q)}`);

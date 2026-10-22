@@ -7,10 +7,16 @@
 //   turn 1  AttemptIntent   POST /api/attempt {source:"alexa"} -> 202 pending_bee; "checking with Bee"
 //   turn 2  HowDidIDoIntent GET /api/attempts/<id>; not ready -> progressive response, poll <= 6.5 s
 // Alexa's own transcript is provisional; the verdict spoken is always Bee's final grade.
+// A line can also come in one go, with the invocation ("Alexa, tell speech coach <line>"): the model's
+// catch-all sample "{attempt}" takes it, so it arrives as an AttemptIntent in a new skill session.
+// With a line open on the hub it is recorded against that line, as any attempt is. With nothing open
+// it opens the due line it best matches (matchDueLine; else the next due line, which it is then
+// recorded against, the hub's rule) and starts a drill, then submits it the same way.
 // On a device with a screen that ALEXA_APL allows (by default an Echo Show, not a Fire TV) each turn
 // also renders a Spee screen (./apl.ts); the speech, the reprompts and the timing are the same with
 // or without one.
 import type { CardView, SessionSummary, VerdictResponse } from "../hub/contract.js";
+import { similarity } from "../hub/fuzzy.js";
 import { roundLineWords } from "../hub/roundWords.js";
 import type { HubClient, HubResult } from "../mcp/hubClient.js";
 import { clampMinutes, routeRequest, type Routed } from "./route.js";
@@ -102,7 +108,18 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     LaunchRequest: () => start("launch"),
     StartDrillIntent: () => start("start"),
     async AttemptIntent() {
-      const r = await track("POST /api/attempt", hub.attempt({ text: routed.text ?? "", source: "alexa" }));
+      const said = routed.text ?? "";
+      let r = await track("POST /api/attempt", hub.attempt({ text: said, source: "alexa" }));
+      let opened: SessionAttributes = {};
+      // A line said in one go with the invocation, while nothing is open on the hub (the drill that
+      // asked for it ended with its Alexa session): open the line it is, then record it.
+      if (!r.ok && r.body.error === "no_open_card" && isNew) {
+        const o = await openForLine(said);
+        if (o === "down") return hubDown();
+        if (o === "caught-up") return { text: SPEECH.launchNoCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId", "cardId", "drillSessionId"), screen: await screen(EMPTY.caughtUp) };
+        opened = { drillSessionId: o.drillSessionId };
+        r = await track("POST /api/attempt", hub.attempt({ text: said, source: "alexa" }));
+      }
       if (!r.ok) {
         if (r.body.error === "no_open_card") return { text: SPEECH.noCard, reprompt: SPEECH.helpReprompt, attrs: without(attrs, "attemptId"), screen: await screen(EMPTY.noLine) };
         if (r.status === 0 || r.status >= 500) return hubDown();
@@ -111,7 +128,7 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
       return {
         text: line([`Got it, checking with Bee`, `Ask me how you did in about ${seconds(r.body.retryAfterMs)}`]),
         reprompt: SPEECH.askHowDidIDo,
-        attrs: { ...attrs, attemptId: r.body.attempt.id, cardId: r.body.attempt.cardId },
+        attrs: { ...attrs, ...opened, attemptId: r.body.attempt.id, cardId: r.body.attempt.cardId },
         screen: await screen(async () => checkingScreen(await openCard())),
       };
     },
@@ -209,6 +226,22 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     };
   }
 
+  // One-shot with nothing open: open the due line the words best match (none close enough: the next
+  // due line, as quiz me would), as this skill session's drill. The drill adopts the opened line.
+  async function openForLine(said: string): Promise<{ drillSessionId: string } | "down" | "caught-up"> {
+    const d = await track("GET /api/deck", hub.deck());
+    if (!d.ok) return "down";
+    const m = matchDueLine(said, d.body.cards);
+    deps.log?.("alexa.one-shot", { matched: !!m, score: m?.score ?? null }); // never the words
+    if (m) {
+      const o = await track("POST /api/card/open", hub.openCard({ cardId: m.card.id, by: "alexa" }));
+      if (!o.ok && (o.status === 0 || o.status >= 500)) return "down";
+    }
+    const st = await track("POST /api/session/start", hub.startSession({ by: "alexa" }));
+    if (!st.ok) return "down";
+    return st.body.card ? { drillSessionId: st.body.session.id } : "caught-up";
+  }
+
   async function live(enabled: boolean): Promise<Out> {
     const minutes = enabled ? clampMinutes(routed.minutes) : undefined;
     const r = await track("POST /api/live/mode", hub.liveMode({ enabled, by: "alexa", ...(minutes ? { minutes } : {}) }));
@@ -247,6 +280,22 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
   deps.log?.("alexa.intent", { intent: routed.intent, rescuedFrom: routed.rescuedFrom, calls: hubCalls.length, ms: deps.now() - t0 });
   const envelope: AlexaResponseEnvelope = out ? respond(out) : { version: "1.0", response: {} };
   return { envelope, routed, hubCalls };
+}
+
+// How close a line said in one go must be to a due line to open it (fuzzy.similarity, 0..1; no
+// model). A line said right scores near 1 and another line about 0.1 to 0.2; a near miss of the right
+// line ("the release is blocked") still clears it.
+export const ONE_SHOT_MATCH = 0.5;
+
+/** The due line `said` is closest to, when it is close enough; null otherwise. Ties go to the first. */
+export function matchDueLine(said: string, cards: CardView[], min = ONE_SHOT_MATCH): { card: CardView; score: number } | null {
+  let best: { card: CardView; score: number } | null = null;
+  for (const card of cards) {
+    if (!card.dueNow) continue;
+    const score = similarity(said, card.resay, card.lang);
+    if (score >= min && (!best || score > best.score)) best = { card, score };
+  }
+  return best;
 }
 
 type RoundEnd = Pick<SessionSummary, "counted" | "attempts" | "cards" | "lines"> & Partial<SessionSummary>;
