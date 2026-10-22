@@ -68,7 +68,7 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 |---|---|---|---|
 | `LaunchRequest` | `POST /api/session/start {by:"alexa"}` | `Spee. Say this: "<card>"`, whatever name opened the skill (every one is listed as Spee); with nothing due: "No cards are due right now..." | open |
 | `StartDrillIntent` ("quiz me") | `POST /api/session/start` | `Here's your first card. Say: "<card>"` | open |
-| `AttemptIntent` (catch-all `{attempt}`) | `POST /api/attempt {source:"alexa", text}` (202 at once) | "Got it, checking with Bee. Ask me how you did in about 15 seconds." | open, `attemptId` kept |
+| `AttemptIntent` (catch-all `{attempt}`) | `POST /api/attempt {source:"alexa", text}` (202 at once). | "Got it, checking with Bee. Ask me how you did in about 15 seconds." | open, `attemptId` kept |
 | `HowDidIDoIntent` | `GET /api/attempts/<id>`. If not ready: a progressive response ("Checking with Bee.") and polling every 600 ms for at most 6.5 s. Pass: then `POST /api/session/next` | pass: `Bee heard it: a pass. Next, say: "<card>"`; fail: `Not yet: Bee heard a filler, "um". Say it again: "<card>"`; not confirmed: "Bee didn't confirm that one, so it doesn't count..."; still waiting: "Bee hasn't sent that line yet. Ask me again in a few seconds." | open (ends when the drill is done) |
 | `HowAmIDoingIntent` | `GET /api/coach/now` | the `narration` (up to 4 sentences, the contract's `CoachNow` limit) | one-shot ends, else open |
 | `LiveCoachOnIntent` (`{minutes}` optional), `LiveCoachOffIntent` | `POST /api/live/mode {enabled, minutes?, by:"alexa"}` | the `narration` | one-shot ends, else open |
@@ -79,6 +79,8 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 | `AMAZON.FallbackIntent` | none | asks for the sentence again, or how to start | open |
 | `SessionEndedRequest` | `GET /api/session`, then `POST /api/session/end` only for the drill this skill session started (its id rides in the session attributes) | (empty response) | |
 | `Alexa.Presentation.APL.RuntimeError` (a screen failed on the device), `System.ExceptionEncountered` (Alexa could not use the last response) | none; logged as `alexa.no-answer {type, token, errors}` with the error kinds only, never a message | (empty response: Alexa allows no speech here) | as it was |
+
+A line can also be said together with the invocation, in one utterance; see [Saying a line in one go](#saying-a-line-in-one-go).
 
 **Catch-all rescue** (`route.ts`). The model's catch-all slot also swallows commands; on a real device (2026-10-16) "how did I do" arrived as `AttemptIntent`. Whole-utterance rules move it back:
 
@@ -99,6 +101,29 @@ The skill keeps two session attributes: `cardId` (the open card) and `attemptId`
 3. RSA-SHA256 of the raw body.
 
 Loopback and LAN requests (tests, the contract check, the simulator on this machine) are never signature-checked. `ALEXA_VERIFY_SIGNATURE=0` turns the check off for public requests too; use that only for a local fixture run, never with a tunnel up. The hub logs `alexa.signature-off` at startup when it is off. The check is tested with a throwaway CA. It has not yet run against Amazon's live chain: if the first real request fails, the `alexa.rejected` log line gives the reason. A failed chain download is cached for 60 s, and at most 8 chains are kept.
+
+## Saying a line in one go
+
+On the Fire TV the mic listens only while the remote's button is held, and a skill session waits about 8 s after a prompt. Say the line too late after "quiz me" and the session has closed, so the line goes to Alexa itself. Instead, say the line together with the skill's name, in one utterance:
+
+| Say (hold the remote's mic button) | What Alexa sends |
+|---|---|
+| "Alexa, tell Speech Coach: the release is blocked on the API key from finance" | `AttemptIntent`, slot `attempt` = "the release is blocked on the API key from finance", in a new session |
+| "Alexa, ask Speech Coach to try the release is blocked on the API key from finance" | `AttemptIntent`, slot = "try the release is blocked ..." (Alexa drops "to"; "try" stays in the slot) |
+| then, while Alexa still listens (about 8 s): "How did I do?" | `HowDidIDoIntent` |
+
+**Why it works with the current model.** Alexa passes the words after "tell Speech Coach" (or "ask Speech Coach to") to the skill's model, and `AttemptIntent`'s only sample is the catch-all `{attempt}` (custom type `ATTEMPT_TEXT`), so any line lands there. The catch-all rescue keeps it an attempt unless the whole utterance is a command (a line that starts with "so" or contains "next" is still a line). The interaction model is unchanged: no `alexa:deploy` is needed for this. Seen working on the Fire TV on 2026-10-22: the hub logged a `SessionEndedRequest`, then `AttemptIntent`, `attempt.provisional`, `attempt.verified` and `attempt.graded`. That run had a line open on the hub; before the change below, a line said in one go with nothing open got the no-line guidance (`SPEECH.noCard`).
+
+**Which line it counts for** (`skill.ts`, `matchDueLine`). No model is called.
+
+- A line is open on the hub (a drill from the TV, the phone or another Alexa session): the attempt goes to the open line, as any attempt does. Words that are a different line are still graded against the open line; they are never moved to another card.
+- Nothing is open (the drill ended with the Alexa session that started it): the skill reads `GET /api/deck`, picks the due line the words are closest to (`fuzzy.similarity` at least 0.5; a line said right scores near 1, another line about 0.1 to 0.2), opens it (`POST /api/card/open`), starts a drill that adopts it (`POST /api/session/start {by:"alexa"}`) and submits the attempt. Words close to no due line open the next due line, as "quiz me" would, and are graded against it. With nothing due: "You're all caught up". The drill is this skill session's, so it ends when the session does, as after "quiz me".
+- Either way the answer is the normal attempt turn, word for word, with the session left open for "how did I do".
+- Inside a session that was already open, a line with nothing open on the hub still gets the no-line guidance (`SPEECH.noCard`) and opens nothing, as before.
+
+Bee hears the whole utterance, "tell Speech Coach" included. Extra words do not lower the content match, so Bee still grades the line.
+
+**On camera.** Hold the mic button and say, in one breath, **"Alexa, tell Speech Coach:"** and the line on the TV (with the demo deck: **"Alexa, tell Speech Coach: the release is blocked on the API key from finance."**) Wait for "checking with Bee", then hold the button again within about 8 s and say **"How did I do?"** If that window closes, the drill this utterance started ends with the session, as after "quiz me": Bee still grades the line and the TV shows the verdict, but a later "Alexa, ask Speech Coach how did I do" finds no attempt; say the line in one go again instead. "Ask Speech Coach to try ..." is the alternative; it has not been tried on the device yet.
 
 ## Screens (APL)
 
