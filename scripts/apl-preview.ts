@@ -11,7 +11,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { aplDocument, checkingScreen, drillScreen, EMPTY, progressScreen, verdictScreen, type Screen } from "../src/alexa/apl.js";
+import { aplDocument, bindParameters, checkingScreen, drillScreen, EMPTY, progressScreen, renderDirective, verdictScreen, type Screen } from "../src/alexa/apl.js";
 import { REPO_ROOT } from "../src/hub/static.js";
 
 type Json = any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -148,7 +148,9 @@ function node(c: Json, ctx: Ctx, doc: Json): string {
 export function renderHtml(screen: Screen, vp: Viewport, label: string): string {
   const doc: Json = aplDocument();
   const res = resources(doc, vp);
-  const ctx = new Ctx(res, { payload: { screen }, viewport: { width: vp.width, height: vp.height, mode: vp.mode } }, vp);
+  // Bound from the real directive's datasources by APL's rules (bindParameters), as a device binds them.
+  const bound = bindParameters(doc, renderDirective(screen).datasources as Record<string, unknown>);
+  const ctx = new Ctx(res, { ...bound, viewport: { width: vp.width, height: vp.height, mode: vp.mode } }, vp);
   const body = doc.mainTemplate.items.map((i: Json) => node(i, ctx, doc)).join("");
   const W = vp.width * vp.scale;
   const H = vp.height * vp.scale;

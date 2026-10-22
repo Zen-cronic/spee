@@ -21,6 +21,10 @@ import type { AlexaDirective, AlexaRequestEnvelope } from "./types.js";
 export const APL_INTERFACE = "Alexa.Presentation.APL";
 export const APL_DIRECTIVE = "Alexa.Presentation.APL.RenderDocument";
 export const APL_DOC_URL = new URL("../../alexa/apl/speaking-mirror.json", import.meta.url);
+// The datasource's name, and the document's mainTemplate parameter. Never "payload": APL binds a
+// parameter called payload to the whole datasources object (the pre-1.3 form), so a datasource also
+// called payload sat one level down, every binding was empty, and the Fire TV showed only the mark.
+export const APL_DATASOURCE = "spee";
 export const BRAND = "Spee";
 
 let doc: Record<string, unknown> | null = null;
@@ -170,7 +174,17 @@ export function renderDirective(screen: Screen, opts: { end?: boolean } = {}): A
   const base = aplDocument();
   // A screen that closes the session leaves quickly, so the TV goes back to what it was showing.
   const document = opts.end ? { ...base, settings: { idleTimeout: IDLE_AFTER_END_MS } } : base;
-  return { type: APL_DIRECTIVE, token: `speakingMirror.${screen.kind}`, document, datasources: { payload: { screen: maskDeep(screen, "screen") } } };
+  return { type: APL_DIRECTIVE, token: `speakingMirror.${screen.kind}`, document, datasources: { [APL_DATASOURCE]: { screen: maskDeep(screen, "screen") } } };
+}
+
+/**
+ * The values a device binds to the document's mainTemplate parameters, by APL's rules: a parameter
+ * named "payload" gets the whole datasources object (the pre-1.3 form), any other the datasource of
+ * that name. The preview and the tests bind through this, as a device does.
+ */
+export function bindParameters(document: Record<string, unknown>, datasources: Record<string, unknown>): Record<string, unknown> {
+  const main = document.mainTemplate as { parameters?: string[] } | undefined;
+  return Object.fromEntries((main?.parameters ?? []).map((p) => [p, p === "payload" ? datasources : datasources[p]]));
 }
 export const IDLE_AFTER_END_MS = 6000;
 

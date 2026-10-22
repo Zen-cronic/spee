@@ -1,7 +1,7 @@
 {
   "type": "APL",
   "version": "2023.2",
-  "description": "Spee screens for the speech coach skill (src/alexa/apl.ts). One document, five screens chosen by payload.screen.kind: drill, checking, verdict, progress, empty. Every string a person reads comes from the datasource, masked for the screen; colours are the TV's palette (tv/web/src/theme.ts).",
+  "description": "Spee screens for the speech coach skill (src/alexa/apl.ts). One document, five screens chosen by spee.screen.kind: drill, checking, verdict, progress, empty. Every string a person reads comes from the datasource, masked for the screen; colours are the TV's palette (tv/web/src/theme.ts).",
   "theme": "dark",
   "resources": [
     {
@@ -259,7 +259,7 @@
   },
   "mainTemplate": {
     "parameters": [
-      "payload"
+      "spee"
     ],
     "items": [
       {
@@ -278,18 +278,18 @@
           "items": [
             {
               "type": "Brand",
-              "name": "${payload.screen.brand}"
+              "name": "${spee.screen.brand}"
             },
             {
-              "when": "${payload.screen.kind == 'drill' || payload.screen.kind == 'checking'}",
+              "when": "${spee.screen.kind == 'drill' || spee.screen.kind == 'checking'}",
               "type": "Container",
               "grow": 1,
               "justifyContent": "start",
               "items": [
                 {
                   "type": "PaperCard",
-                  "label": "${payload.screen.kicker}",
-                  "sentence": "${payload.screen.sentence}"
+                  "label": "${spee.screen.kicker}",
+                  "sentence": "${spee.screen.sentence}"
                 },
                 {
                   "type": "Container",
@@ -297,22 +297,22 @@
                   "items": [
                     {
                       "type": "Tracker",
-                      "steps": "${payload.screen.steps}"
+                      "steps": "${spee.screen.steps}"
                     }
                   ]
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.status}",
+                  "text": "${spee.screen.status}",
                   "color": "@colorBee",
                   "fontSize": "@bodySize",
                   "fontWeight": "700",
                   "paddingTop": "@gap",
-                  "display": "${payload.screen.status ? 'normal' : 'none'}"
+                  "display": "${spee.screen.status ? 'normal' : 'none'}"
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.hint}",
+                  "text": "${spee.screen.hint}",
                   "color": "@dim",
                   "fontSize": "@hintSize",
                   "paddingTop": "@gap"
@@ -321,21 +321,21 @@
               "paddingTop": "@drillTop"
             },
             {
-              "when": "${payload.screen.kind == 'verdict'}",
+              "when": "${spee.screen.kind == 'verdict'}",
               "type": "Container",
               "grow": 1,
               "justifyContent": "center",
               "items": [
                 {
                   "type": "Text",
-                  "text": "${payload.screen.headline}",
-                  "color": "${payload.screen.tone == 'pass' ? @lime : (payload.screen.tone == 'fail' ? @coral : @text)}",
+                  "text": "${spee.screen.headline}",
+                  "color": "${spee.screen.tone == 'pass' ? @lime : (spee.screen.tone == 'fail' ? @coral : @text)}",
                   "fontSize": "@verdictSize",
                   "fontWeight": "800"
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.reason}",
+                  "text": "${spee.screen.reason}",
                   "color": "@text",
                   "fontSize": "@bodySize",
                   "maxLines": 2,
@@ -345,7 +345,7 @@
                   "type": "Container",
                   "direction": "row",
                   "paddingTop": "@gap",
-                  "display": "${payload.screen.checked ? 'normal' : 'none'}",
+                  "display": "${spee.screen.checked ? 'normal' : 'none'}",
                   "items": [
                     {
                       "type": "Frame",
@@ -357,7 +357,7 @@
                       "paddingBottom": "6dp",
                       "item": {
                         "type": "Text",
-                        "text": "${payload.screen.tag}",
+                        "text": "${spee.screen.tag}",
                         "color": "@colorBee",
                         "fontSize": "@tagSize",
                         "fontWeight": "700"
@@ -368,19 +368,19 @@
                 {
                   "type": "Container",
                   "paddingTop": "@gap",
-                  "display": "${payload.screen.sentence ? 'normal' : 'none'}",
+                  "display": "${spee.screen.sentence ? 'normal' : 'none'}",
                   "items": [
                     {
                       "type": "PaperCard",
-                      "label": "${payload.screen.kicker}",
-                      "sentence": "${payload.screen.sentence}",
+                      "label": "${spee.screen.kicker}",
+                      "sentence": "${spee.screen.sentence}",
                       "lines": 2
                     }
                   ]
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.hint}",
+                  "text": "${spee.screen.hint}",
                   "color": "@lime",
                   "fontSize": "@hintSize",
                   "fontWeight": "700",
@@ -389,28 +389,28 @@
               ]
             },
             {
-              "when": "${payload.screen.kind == 'progress'}",
+              "when": "${spee.screen.kind == 'progress'}",
               "type": "Container",
               "grow": 1,
               "justifyContent": "center",
               "items": [
                 {
                   "type": "Text",
-                  "text": "${payload.screen.hero}",
+                  "text": "${spee.screen.hero}",
                   "color": "@text",
                   "fontSize": "@heroSize",
                   "fontWeight": "800"
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.heroCaption}",
+                  "text": "${spee.screen.heroCaption}",
                   "color": "@dim",
                   "fontSize": "@hintSize",
                   "fontWeight": "700"
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.line}",
+                  "text": "${spee.screen.line}",
                   "color": "@text",
                   "fontSize": "@bodySize",
                   "maxLines": 3,
@@ -418,7 +418,7 @@
                 },
                 {
                   "type": "Text",
-                  "text": "${viewport.mode == 'tv' ? payload.screen.footerTv : payload.screen.footerHub}",
+                  "text": "${viewport.mode == 'tv' ? spee.screen.footerTv : spee.screen.footerHub}",
                   "color": "@faint",
                   "fontSize": "@hintSize",
                   "paddingTop": "@gap"
@@ -426,14 +426,14 @@
               ]
             },
             {
-              "when": "${payload.screen.kind == 'empty'}",
+              "when": "${spee.screen.kind == 'empty'}",
               "type": "Container",
               "grow": 1,
               "justifyContent": "center",
               "items": [
                 {
                   "type": "Text",
-                  "text": "${payload.screen.headline}",
+                  "text": "${spee.screen.headline}",
                   "color": "@text",
                   "fontSize": "@titleSize",
                   "fontWeight": "800",
@@ -441,7 +441,7 @@
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.line}",
+                  "text": "${spee.screen.line}",
                   "color": "@dim",
                   "fontSize": "@bodySize",
                   "maxLines": 3,
@@ -449,7 +449,7 @@
                 },
                 {
                   "type": "Text",
-                  "text": "${payload.screen.hint}",
+                  "text": "${spee.screen.hint}",
                   "color": "@lime",
                   "fontSize": "@hintSize",
                   "fontWeight": "700",
