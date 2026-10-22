@@ -22,10 +22,11 @@ export interface Baseline extends LiveBaseline {
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
 export function computeBaseline(hub: CoachHub, opts: { wpm: number | null; synthetic: boolean }): Baseline {
-  let st = hub.stats({ kind: "week" });
+  // live: a frozen measurement (COACH_STATS_UNTIL) never moves the live baseline
+  let st = hub.stats({ kind: "week" }, "bee", { live: true });
   let range = "week";
   if (st.habits.words < MIN_BASELINE_WORDS) {
-    const all = hub.stats({ kind: "all" });
+    const all = hub.stats({ kind: "all" }, "bee", { live: true });
     if (all.habits.words > st.habits.words) (st = all), (range = "all Bee conversations");
   }
   const h = st.habits;

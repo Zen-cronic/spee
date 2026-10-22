@@ -82,8 +82,9 @@ const listNames = (ns: string[]) => (ns.length <= 2 ? ns.join(" and ") : `${ns.s
 const monthDay = (ms: number, tz?: string) => new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short", day: "numeric" }).format(new Date(ms));
 
 /** The goal fact from the hub's numbers: the pre-registered drilled habits, their verdicts, Bee's passes. */
+// live: the fact Bee keeps is never a film's frozen measurement (COACH_STATS_UNTIL).
 export function composeGoal(hub: Pick<CoachHub, "transfer" | "attempts" | "tz">): GoalDraft | null {
-  const t = hub.transfer();
+  const t = hub.transfer("bee", { live: true });
   const drilled = t?.habits.filter((h) => h.role === "drilled") ?? [];
   if (!drilled.length) return null;
   const first = Math.min(...drilled.map((h) => h.firstDrillAt ?? Infinity));

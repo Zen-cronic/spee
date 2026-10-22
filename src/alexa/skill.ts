@@ -183,7 +183,9 @@ export async function handleAlexa(env: AlexaRequestEnvelope, deps: SkillDeps): P
     async DidItTransferIntent() {
       const t = await track("GET /api/transfer", hub.transfer());
       if (!t.ok) return t.body.error === "no_prereg" ? info("There's no before-and-after plan yet, so there's nothing to report.", SPEECH.infoReprompt, () => emptyScreen("Nothing to report yet.", "There’s no before-and-after plan yet.")) : hubDown();
-      return info(clip(t.body.headline), SPEECH.infoReprompt, () => emptyScreen("Did it carry over?", clip(t.body.headline)));
+      // A frozen measurement (COACH_STATS_UNTIL) says so: "As of this morning, no clear change yet ..."
+      const said = t.body.asOf ? `${t.body.asOf.spoken}, ${t.body.headline.replace(/^[A-Z](?![A-Z])/, (c) => c.toLowerCase())}` : t.body.headline;
+      return info(clip(said), SPEECH.infoReprompt, () => emptyScreen("Did it carry over?", clip(said)));
     },
     async "AMAZON.NextIntent"() {
       const n = await track("POST /api/session/next", hub.nextCard());

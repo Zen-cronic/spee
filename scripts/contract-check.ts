@@ -40,7 +40,7 @@ const check = (ok: unknown, what: string) => {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const TOKENS = { pair: randomBytes(18).toString("base64url"), mcp: randomBytes(18).toString("base64url") };
-const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "", ALEXA_VERIFY_SIGNATURE: "", HUB_TRUST_LAN: "", HUB_ALLOWED_ORIGINS: "" };
+const hubEnv = { ...process.env, PAIR_TOKEN: TOKENS.pair, MCP_TOKEN: TOKENS.mcp, PUBLIC_BASE_URL: "", ALEXA_VERIFY_SIGNATURE: "", HUB_TRUST_LAN: "", HUB_ALLOWED_ORIGINS: "", COACH_STATS_UNTIL: "" };
 // Every spawned hub is killed when this script exits, whether the checks passed, failed or threw.
 const spawned: ChildProcess[] = [];
 process.on("exit", () => spawned.forEach((c) => c.exitCode === null && c.kill("SIGKILL")));
@@ -293,6 +293,7 @@ const v = (k: string) => tr.body.habits.find((h: any) => h.habit === k)?.verdict
 check(tr.body.synthetic === true && v("hedges") === "dropped" && v("filler:like") === "dropped" && v("restart") === "no change", "transfer: drilled hedges and like dropped, control restarts no change (synthetic)");
 check(tr.body.claim === "all-dropped-control-flat" && /the one you didn't practise stayed the same/.test(tr.body.headline), "transfer: claim all-dropped-control-flat, as the headline says (synthetic)");
 check(tr.body.unregistered.some((u: any) => u.habit === "vague"), "transfer refuses unregistered drilled habits (vague listed, not reported as drilled)");
+check(!("asOf" in tr.body) && !("asOf" in inst.body), "transfer, instrument: no asOf without COACH_STATS_UNTIL (live numbers)");
 const fsig = (tr.body.firstSignal ?? []) as any[];
 check(JSON.stringify(fsig.map((f) => [f.habit, f.status])) === JSON.stringify([["hedges", "measured"], ["filler:like", "measured"]]) && fsig.every((f) => f.minWords === FIRST_SIGNAL_MIN_WORDS && f.before.words >= f.minWords && f.after.words >= f.minWords && f.after.startMs >= f.firstDrillAt && f.before.startMs < f.firstDrillAt && /not proof/.test(f.note)), "transfer: firstSignal per drilled habit, the conversation before vs the next after its first drill, labelled not proof (synthetic)");
 check(!tr.body.unregistered.some((u: any) => ["hedge:i guess", "hedges", "filler:like", "fillers"].includes(u.habit)), "transfer: an 'I guess' drill counts under the registered umbrella 'hedges' (not listed as unregistered)");

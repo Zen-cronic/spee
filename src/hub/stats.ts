@@ -8,14 +8,14 @@
 // not natural speech. Drill attempts never count as sessions.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { localDate, addDays } from "../real/deck.js";
+import { localDate, addDays, TZ } from "../real/deck.js";
 import type { RealCorpus, WearerLine } from "../real/corpus.js";
 import type { MeetingTimeline } from "../real/tactiq.js";
 import { rateCi95, talkMetrics } from "../real/talk.js";
 import { meetingDedup } from "../real/instruments.js";
 import { countedLines, listRe, wordCount, FILLER_RE, HEDGE_RE } from "../real/text.js";
 import { readJsonSafe } from "./atomic.js";
-import { FIRST_SIGNAL_MIN_WORDS } from "./contract.js";
+import { FIRST_SIGNAL_MIN_WORDS, type AsOf } from "./contract.js";
 import { align, normTokens } from "./fuzzy.js";
 import { countHabitKey, habitMatches, isRegistered, parseHabitKey, umbrellaOf, vagueMatches } from "./habits.js";
 
@@ -555,6 +555,32 @@ export function transfer(opts: { sessions: StatSession[]; prereg: TransferPrereg
     claim,
     firstSignal: firstSignals(ss, drilled, opts.tz),
   };
+}
+
+// Freezing the measurement (COACH_STATS_UNTIL)
+
+// COACH_STATS_UNTIL as epoch ms: unset or blank is null (not frozen). Anything that is not a time
+// with a zone (an ISO time with "Z" or an offset, e.g. 2026-10-22T09:39:00-04:00) throws, so a typo
+// never leaves the hub silently counting everything.
+export function parseStatsUntil(raw: string | null | undefined): number | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  const ms = /T\d{2}:\d{2}.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(v) ? Date.parse(v) : NaN;
+  if (!Number.isFinite(ms)) throw new Error(`COACH_STATS_UNTIL must be an ISO time with a zone, e.g. 2026-10-22T09:39:00-04:00 (got "${v}")`);
+  return ms;
+}
+
+// The AsOf a frozen payload carries (contract.ts): the freeze time for a screen ("Oct 22, 9:39 am")
+// and for speech ("As of this morning" on the same local day, "As of yesterday", else "As of Oct 22").
+export function asOfAt(untilMs: number, nowMs: number, tz?: string): AsOf {
+  const parts = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: tz ?? TZ, ...o }).format(new Date(untilMs));
+  const label = `${parts({ month: "short", day: "numeric" })}, ${parts({ hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s*AM$/i, " am").replace(/\s*PM$/i, " pm")}`;
+  const day = localDate(untilMs, tz);
+  const today = localDate(nowMs, tz);
+  const hour = Number(parts({ hour: "numeric", hourCycle: "h23" }));
+  const spoken =
+    day === today ? `As of this ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}` : day === addDays(today, -1) ? "As of yesterday" : `As of ${monthDay(day)}`;
+  return { at: new Date(untilMs).toISOString(), label, spoken };
 }
 
 // The compact "drilled habit vs the next real session" view for /api/stats.

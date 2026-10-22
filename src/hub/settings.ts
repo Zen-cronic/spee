@@ -20,7 +20,7 @@ import { countedLines, wordCount } from "../real/text.js";
 import { readJsonSafe, writeJsonAtomic } from "./atomic.js";
 import type { CalendarFn } from "./brief.js";
 import { CONVERSATION_SETTINGS, SETTING_NAME, type ConversationSetting, type SettingBeforeAfter, type SettingRates, type SettingReason, type SettingsResponse, type SettingTag } from "./contract.js";
-import type { CoachHub } from "./core.js";
+import type { CoachHub, ReadOpts } from "./core.js";
 import { habitTitle } from "./habitNames.js";
 import { habitRates, period, type SourceSel, type StatSession } from "./stats.js";
 
@@ -421,15 +421,16 @@ export class SettingsBook {
     }
   }
 
-  private sessionsOf(setting: ConversationSetting, source: SourceSel): StatSession[] {
+  // `live`: ignore a frozen measurement (COACH_STATS_UNTIL), for the live per-setting baseline.
+  private sessionsOf(setting: ConversationSetting, source: SourceSel, o: ReadOpts = {}): StatSession[] {
     const tags = this.tags();
     // Drill lines are left out exactly as in the transfer (CoachHub.sessionsFor, computed once per data version).
-    return this.o.hub.sessionsFor(source).filter((s) => tags.get(s.id)?.setting === setting);
+    return this.o.hub.sessionsFor(source, o).filter((s) => tags.get(s.id)?.setting === setting);
   }
 
   /** The wearer's usual rates in one setting (Bee conversations; this week, else all), or null with too little speech. */
   baselineFor(setting: ConversationSetting): SettingBaseline | null {
-    const all = this.sessionsOf(setting, "bee");
+    const all = this.sessionsOf(setting, "bee", { live: true });
     const today = localDate(this.o.hub.clock(), this.o.hub.tz);
     const from = new Date(`${today}T12:00:00Z`);
     from.setUTCDate(from.getUTCDate() - 6);
@@ -506,6 +507,7 @@ export class SettingsBook {
       rates,
       practised,
       line,
+      ...(hub.asOf() ? { asOf: hub.asOf()! } : {}),
     };
   }
 }

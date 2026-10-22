@@ -61,6 +61,17 @@ export interface Labelled {
   synthetic: boolean;
 }
 
+// The measurement frozen at a time (COACH_STATS_UNTIL, docs/live.md): the stats, the transfer, the
+// instrument check, the settings view and "how am I doing?" count only conversations that started
+// at or before `at`, and only drills made by then. Drills, live coaching and the deck stay live.
+// Present only while frozen (additive): `label` is for a screen ("Oct 22, 9:39 am", the hub's
+// time zone), `spoken` opens a spoken answer ("As of this morning").
+export interface AsOf {
+  at: string; // ISO time of the freeze
+  label: string;
+  spoken: string;
+}
+
 // v1 payloads (unchanged; mirrored here import-free)
 
 export type HabitKind = "filler" | "hedge" | "vague" | "restart" | "trailing" | "yeah-tic" | "error" | "vocab";
@@ -330,6 +341,7 @@ export interface StatsResponse {
     preregistered: boolean;
     note: string;
   }[];
+  asOf?: AsOf; // only while frozen (COACH_STATS_UNTIL)
 }
 
 export type TransferVerdict = "dropped" | "no change" | "rose" | "too little data" | "not drilled yet" | "invalid";
@@ -368,6 +380,7 @@ export interface TransferResponse {
   // before its first drill vs the next one after it. A same-day glance, not the test. Additive:
   // older hubs omit it.
   firstSignal?: FirstSignal[];
+  asOf?: AsOf; // only while frozen (COACH_STATS_UNTIL)
 }
 // FirstSignal.status: "measured" (both conversations have FIRST_SIGNAL_MIN_WORDS words), "too-few-words"
 // (one side is shorter: say so, never a number), "no-next-conversation" (none since the drill yet),
@@ -431,6 +444,7 @@ export interface InstrumentResponse {
   habits: InstrumentHabit[];
   claim: InstrumentClaim;
   note: string;
+  asOf?: AsOf; // only while frozen (COACH_STATS_UNTIL)
 }
 // "partly-started": nothing dropped yet, some drilled habit's after period has started (its first
 // drill) and another drilled habit is not drilled yet.
@@ -504,6 +518,7 @@ export interface SettingsResponse extends Labelled {
   // One plain line for the TV's Progress screen ("By setting · Unsure words: work talk 2.1 → 1.4 ·
   // casual: too little speech"), or null when no setting has enough speech on both sides.
   line: string | null;
+  asOf?: AsOf; // only while frozen (COACH_STATS_UNTIL)
 }
 
 // GET /api/brief (?upcoming=1: the event is only a meeting that has not started yet)
@@ -769,6 +784,7 @@ export interface CoachNow extends Labelled {
   week: { words: number; hedgesPer100: number; likesPer100: number; vaguePer100: number; topHabit: { key: string; label: string; per100: number } | null };
   drills: { dueNow: number; nextCardId: string | null };
   transferHeadline: string | null;
+  asOf?: AsOf; // only while frozen (COACH_STATS_UNTIL): the week and transfer numbers; the live lead is live
 }
 
 // POST /api/demo/live (demo only): replay a scripted Bee conversation for the synthetic wearer.

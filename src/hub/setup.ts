@@ -15,7 +15,7 @@ import { CoachHub, loadAttempts, type Attempt } from "./core.js";
 import { INGEST_TIMINGS, LiveIngest, type IngestSource, type IngestTimings } from "./ingest.js";
 import { DEMO_DEFAULT_CYCLE, DEMO_EPOCH, DEMO_LABEL, DEMO_TZ, DEMO_WEARER, type DemoScenario } from "./demoData.js";
 import { loadHubDeck, saveHubDeck, type HubDeck } from "./scheduler.js";
-import { loadPrereg, loadRealSessions, type StatSession, type TransferPrereg } from "./stats.js";
+import { loadPrereg, loadRealSessions, parseStatsUntil, type StatSession, type TransferPrereg } from "./stats.js";
 import { BEE_LINE_LAG_MS, BEE_TAG_LAG_MS, type Schedule } from "./live/demoScripts.js";
 
 export const MIN_SPEAKER_SCORE = 0.5; // observed wearer scores 0.64-0.86 (2026-10-16)
@@ -99,6 +99,7 @@ export async function liveSetup(
     timings: DEFAULT_TIMINGS,
     poll,
     replay: false,
+    statsUntil: parseStatsUntil(process.env.COACH_STATS_UNTIL),
   });
   const stream = opts.bee === false ? null : spawnBeeStream({ onEvent: (e) => hub.ingestBee(e), log, spawnFn: opts.spawnFn });
   // Finished conversations become stats sessions while the hub runs (ingest.ts). It rides on the
@@ -124,6 +125,7 @@ export async function liveSetup(
       cards: deck.cards.length,
       sessions: hub.sessions.length,
       prereg: prereg ? preregPath : null,
+      ...(hub.statsUntil != null ? { statsUntil: new Date(hub.statsUntil).toISOString() } : {}),
       beeStream: stream ? "bee stream (spawned)" : "off (--no-bee)",
       ingest: ingest ? `finished conversations (Bee COMPLETED, plus a list poll every ${Math.round((opts.ingest?.pollEveryMs ?? INGEST_TIMINGS.pollEveryMs) / 60_000)} min) -> ${ingest.path}` : "off",
       wearerProfile: !!me,
@@ -291,6 +293,7 @@ export function demoSetup(opts: { pace?: number; fixturesDir?: string; stateDir?
     poll: (q) => director!.poll(q),
     replay: true,
     dataLabel: DEMO_LABEL,
+    statsUntil: parseStatsUntil(process.env.COACH_STATS_UNTIL),
   });
   director = new DemoDirector(hub, pace, opts.cycle);
   director.start();
@@ -307,7 +310,7 @@ export function demoSetup(opts: { pace?: number; fixturesDir?: string; stateDir?
     demo: director,
     stateDir,
     pace,
-    describe: { mode: "demo", label: DEMO_LABEL, beeStream: "REPLAY of recorded-shape Bee events (no Watch, no network)", pace, demoNow: new Date(DEMO_EPOCH).toISOString(), fixtures: dir, stateDir },
+    describe: { mode: "demo", label: DEMO_LABEL, ...(hub.statsUntil != null ? { statsUntil: new Date(hub.statsUntil).toISOString() } : {}), beeStream: "REPLAY of recorded-shape Bee events (no Watch, no network)", pace, demoNow: new Date(DEMO_EPOCH).toISOString(), fixtures: dir, stateDir },
     stop: () => director!.stop(),
   };
 }

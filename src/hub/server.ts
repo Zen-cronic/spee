@@ -511,8 +511,11 @@ async function startWithSetup(opts: HubServerOptions, setup: Setup, log: (event:
         }
         return send(res, 200, t);
       }
-      case "GET /api/instrument":
-        return send(res, 200, instrumentReport(hub.everydaySessions(), { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }));
+      case "GET /api/instrument": {
+        // frozen (COACH_STATS_UNTIL): the conversations that started by then, and the freeze in asOf
+        const asOf = hub.asOf();
+        return send(res, 200, { ...instrumentReport(hub.everydaySessions(), { nowMs: hub.clock(), tz: hub.tz, dataLabel: hub.dataLabel, synthetic: hub.mode === "demo" }), ...(asOf ? { asOf } : {}) });
+      }
       case "GET /api/brief": {
         const upcoming = url.searchParams.get("upcoming");
         if (upcoming !== null && upcoming !== "0" && upcoming !== "1") return fail(res, 400, "bad_request", "upcoming must be 0 or 1");

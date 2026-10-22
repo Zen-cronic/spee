@@ -517,6 +517,7 @@ export class LiveEngine {
       week: { words: h.words, hedgesPer100: h.hedges.per100, likesPer100: per100(h.fillers.breakdown.like ?? 0), vaguePer100: h.vague.per100, topHabit: top ? { key: top.key, label: habitNameOf(top.key), per100: top.per100 } : null },
       drills: { dueNow: due, nextCardId: next?.id ?? null },
       transferHeadline: t?.headline ?? null,
+      ...(hub.asOf() ? { asOf: hub.asOf()! } : {}),
     };
   }
 

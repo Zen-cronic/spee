@@ -146,7 +146,8 @@ export class CueBook {
     const bad = badCueRequest(b);
     if (bad) return this.err(400, "bad_request", bad);
     if (!this.o.enabled) return this.err(409, "cues_off", "wrist cues are off: start the hub with COACH_CUES=1");
-    const habit = cueHabits((this.o.transfer ?? (() => this.o.hub.transfer()))())[0];
+    // live: a cue names the habit practised now, whatever a frozen measurement (COACH_STATS_UNTIL) shows
+    const habit = cueHabits((this.o.transfer ?? (() => this.o.hub.transfer("bee", { live: true })))())[0];
     if (!habit) return this.err(409, "no_practised_habit", "no practised habit to cue yet: a cue only names a drilled habit you have practised (never the one you don't practise)");
     const now = this.now();
     const inMinutes = (b.inMinutes as number | undefined) ?? 0;

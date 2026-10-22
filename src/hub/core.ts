@@ -14,10 +14,10 @@ import { BeeVerifier, DEFAULT_TIMINGS, type BeeAttempt, type BeeConversationEven
 import { cardView, habitOf, mustSayOf, type CardView, type HubCard } from "./cards.js";
 import { grade, type GradeResult } from "./grade.js";
 import { attemptSpan } from "./fuzzy.js";
-import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, ROUND_OVER_MS, SEQUENCED_TOPICS, type LastSession, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
+import { LIVE_WINDOW_MIN_INTERVAL_MS, ROOM_TOPICS, type AsOf, ROUND_OVER_MS, SEQUENCED_TOPICS, type LastSession, type LiveWindow, type PracticeCounts, type RoundLine, type SequencedTopic } from "./contract.js";
 import { habitKeysOf, isRegistered } from "./habits.js";
 import { applyResult, nextDue, saveHubDeck, summarize, type BoxChange, type DeckSummary, type HubDeck } from "./scheduler.js";
-import { fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
+import { asOfAt, fromSource, habitRates, nextSessionDeltas, parseSource, selectSessions, sourceBreakdown, talkSummary, transfer, withoutDrillLines, type DrillEvent, type DrillLines, type DrillSpan, type RangeSpec, type SourceSel, type StatSession, type TransferPrereg } from "./stats.js";
 import { failReason } from "./failReason.js";
 
 export type ProvisionalSource = "phone" | "alexa" | "mcp" | "typed";
@@ -74,6 +74,15 @@ export interface HubOptions {
   poll?: PollFn;
   replay?: boolean; // Bee events come from a recorded-shape replay (demo)
   dataLabel?: string; // shown on every stats/transfer payload
+  // COACH_STATS_UNTIL (epoch ms): freeze the measurement. Stats, transfer, the instrument check, the
+  // settings view and "how am I doing?" count only conversations that started at or before it, and
+  // only drills made by then. Drill grading, live coaching and the deck are not affected.
+  statsUntil?: number | null;
+}
+
+// `live`: read every conversation and drill, ignoring a freeze (the live baseline, wrist cues).
+export interface ReadOpts {
+  live?: boolean;
 }
 
 // One opening of a card: `seq` tells openings apart (an attempt records the one it was made in);
@@ -101,6 +110,7 @@ export class CoachHub extends EventEmitter {
   sessions: StatSession[];
   prereg: TransferPrereg | null;
   readonly verifier: BeeVerifier;
+  readonly statsUntil: number | null; // HubOptions.statsUntil
   // The card open now. A card a session adopts starts its view again (openedAt), so it starts again
   // at "Say this".
   open: Opening | null = null;
@@ -138,6 +148,7 @@ export class CoachHub extends EventEmitter {
       a.reason = "the hub restarted before Bee confirmed this attempt, so it doesn't count";
     }
     this.sessions = opts.sessions;
+    this.statsUntil = opts.statsUntil ?? null;
     this.prereg = opts.prereg;
     this.verifier = new BeeVerifier({
       clock: this.clock,
@@ -692,18 +703,25 @@ export class CoachHub extends EventEmitter {
 
   // Stats, transfer
 
-  drillEvents(): DrillEvent[] {
+  // The frozen measurement (statsUntil) counts only the drills made by then.
+  drillEvents(o: ReadOpts = {}): DrillEvent[] {
+    const until = o.live ? null : this.statsUntil;
     return this.attempts
-      .filter((a) => a.counted)
+      .filter((a) => a.counted && (until == null || a.createdAt <= until))
       .map((a) => {
         const c = this.card(a.cardId);
         return { at: a.createdAt, habitKeys: c ? habitKeysOf(habitOf(c)) : [] };
       });
   }
 
-  stats(range: RangeSpec, source: SourceSel = "bee") {
+  // Frozen (statsUntil): the sessions are the ones that started by then, and "today" and "this week"
+  // are counted from then. One conversation asked for by id is always found (a recap's own stats).
+  // The practice block counts drill attempts, which are never frozen.
+  stats(range: RangeSpec, source: SourceSel = "bee", o: ReadOpts = {}) {
     const now = this.clock();
-    const ss = selectSessions(this.everydaySessions(), range, now, this.tz, source, range.kind === "session" ? undefined : this.sessionsFor(source));
+    const frozen = !o.live && this.statsUntil != null;
+    const at = frozen ? Math.min(now, this.statsUntil!) : now;
+    const ss = selectSessions(this.everydaySessions(range.kind === "session" ? { live: true } : o), range, at, this.tz, source, range.kind === "session" ? undefined : this.sessionsFor(source, o));
     const today = this.today();
     // Drill counts belong to a period (today, the week, all time). A conversation or meeting range has
     // no drill period, so its practice block is null rather than every drill ever.
@@ -724,12 +742,18 @@ export class CoachHub extends EventEmitter {
       habits: habitRates(ss),
       talk: talkSummary(ss),
       practice: as && practiceCounts(as),
-      drilledVsNextSession: nextSessionDeltas(this.sessionsFor(source), this.drillEvents(), this.tz, source, true).map((d) => ({
+      drilledVsNextSession: nextSessionDeltas(this.sessionsFor(source, o), this.drillEvents(o), this.tz, source, true).map((d) => ({
         ...d,
         preregistered: !!this.prereg && isRegistered(d.habit, new Set([...this.prereg.drilled, ...this.prereg.control].map((h) => h.habit))),
         note: "one session either side of the first drill: a glance, not a test (see /api/transfer)",
       })),
+      ...(frozen ? { asOf: this.asOf()! } : {}),
     };
+  }
+
+  // The freeze for a payload (contract.ts AsOf), or null when the measurement is live.
+  asOf(): AsOf | null {
+    return this.statsUntil == null ? null : asOfAt(this.statsUntil, this.clock(), this.tz);
   }
 
   // Sessions the live ingest (ingest.ts) picked up while the hub runs. A session id the hub already
@@ -746,23 +770,27 @@ export class CoachHub extends EventEmitter {
     return added.length;
   }
 
-  transfer(source: SourceSel = "bee") {
+  transfer(source: SourceSel = "bee", o: ReadOpts = {}) {
     if (!this.prereg) return null;
-    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessionsFor(source), selected: true, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(), nowMs: this.clock(), tz: this.tz, source }) };
+    const asOf = o.live ? null : this.asOf();
+    return { dataLabel: this.dataLabel, ...transfer({ sessions: this.sessionsFor(source, o), selected: true, prereg: this.prereg, preregPath: this.opts.preregPath, drills: this.drillEvents(o), nowMs: this.clock(), tz: this.tz, source }), ...(asOf ? { asOf } : {}) };
   }
 
   // The sessions with every drill line left out (stats.ts withoutDrillLines, by id, time and text):
   // what "non-drill" means everywhere. /api/stats habits (and so the live baseline), the settings
   // view, the next-session glance and the transfer all count these.
-  everydaySessions(): StatSession[] {
-    return this.views().everyday;
+  // Frozen (statsUntil), only the ones that started by then, unless `live`.
+  everydaySessions(o: ReadOpts = {}): StatSession[] {
+    const v = this.views();
+    return o.live || this.statsUntil == null ? v.everyday : (v.measured ??= v.everyday.filter((s) => s.startMs <= this.statsUntil!));
   }
 
   // The everyday sessions a source counts (stats.ts fromSource: with "all", a meeting both heard
   // counted once). Every stats view, the transfer and the settings view read these.
-  sessionsFor(source: SourceSel): StatSession[] {
+  sessionsFor(source: SourceSel, o: ReadOpts = {}): StatSession[] {
     const v = this.views();
-    return (v.bySource[source] ??= fromSource(v.everyday, source));
+    if (o.live || this.statsUntil == null) return (v.bySource[source] ??= fromSource(v.everyday, source));
+    return (v.measuredBySource[source] ??= fromSource(this.everydaySessions(), source));
   }
 
   // The drill lines, the everyday sessions and each source's selection, computed once per version of
@@ -775,12 +803,13 @@ export class CoachHub extends EventEmitter {
   dataChanged(): void {
     this.dataVersion++;
   }
-  private viewCache: { sessions: StatSession[]; attempts: Attempt[]; count: number; version: number; drill: DrillLines; everyday: StatSession[]; bySource: Partial<Record<SourceSel, StatSession[]>> } | null = null;
+  // `measured`, `measuredBySource`: the same, frozen at statsUntil (computed when first asked for).
+  private viewCache: { sessions: StatSession[]; attempts: Attempt[]; count: number; version: number; drill: DrillLines; everyday: StatSession[]; bySource: Partial<Record<SourceSel, StatSession[]>>; measured?: StatSession[]; measuredBySource: Partial<Record<SourceSel, StatSession[]>> } | null = null;
   private views() {
     const c = this.viewCache;
     if (c && c.sessions === this.sessions && c.attempts === this.attempts && c.count === this.attempts.length && c.version === this.dataVersion) return c;
     const drill = this.computeDrillLines();
-    return (this.viewCache = { sessions: this.sessions, attempts: this.attempts, count: this.attempts.length, version: this.dataVersion, drill, everyday: withoutDrillLines(this.sessions, drill), bySource: {} });
+    return (this.viewCache = { sessions: this.sessions, attempts: this.attempts, count: this.attempts.length, version: this.dataVersion, drill, everyday: withoutDrillLines(this.sessions, drill), bySource: {}, measuredBySource: {} });
   }
 
   drillLines(): DrillLines {
