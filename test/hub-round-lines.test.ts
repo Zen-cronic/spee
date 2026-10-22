@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import type { Attempt, HubEvent } from "../src/hub/core.js";
 import { demoSetup } from "../src/hub/setup.js";
+import { drillPhase, initialMirror, mirrorReducer, type MirrorState } from "../tv/web/src/mirror/reducer.js";
 
 const DUE = ["demo:hedge-i-guess", "demo:vague-referent", "demo:vague-status", "demo:filler-like"]; // due on the demo day
 // Bee hears the attempt (its text), or never tags it (null: unverified).
@@ -69,6 +70,45 @@ describe("a round's lines", () => {
     hub.startSession({ by: "tv", size: 1 });
     const s2 = hub.endSession()!;
     expect(hub.lastSessionState()).toMatchObject({ summary: { sessionId: s2.sessionId } });
+    hub.dispose();
+  });
+  it("a lone card opened and passed after the round: Bee settling the round's earlier try never re-sends the old round, so the TV never brings it back (review L185)", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const events: HubEvent[] = [];
+    hub.on("event", (e: HubEvent) => events.push(e));
+    const { card: a } = hub.startSession({ by: "tv", size: 2 });
+    const tryA = hub.submit({ text: a!.resay, source: "phone" }) as Attempt; // still with Bee
+    const s = hub.endSession()!;
+    expect(s.lines.pending).toBe(1);
+    expect(hub.lastSessionState()).not.toBeNull();
+    // the wearer moves on: a lone card, passed by Bee, which closes it
+    const lone = hub.openCard({ cardId: DUE.find((id) => id !== a!.id), by: "tv" })!;
+    heard(hub, hub.submit({ text: lone.resay, source: "phone" }) as Attempt, lone.resay);
+    expect(hub.open).toBeNull();
+    expect(hub.lastSessionState()).toBeNull();
+    const ended = () => events.filter((e) => e.topic === "session.ended").length;
+    const before = ended();
+    heard(hub, tryA, a!.resay); // Bee settles the round's try late
+    expect(ended()).toBe(before); // not re-sent: that round's Round over is over
+    // the TV, fed every event in order, stays on the lone card's pass
+    const T = 1_800_000_000_000;
+    let st: MirrorState = initialMirror();
+    events.forEach((e, i) => (st = mirrorReducer(st, { type: "event", event: { topic: e.topic, payload: e.payload as any }, now: T + i * 1000 })));
+    expect(drillPhase(st.drill)).toBe("result");
+    expect(st.drill).toMatchObject({ summary: null, card: { id: lone.id } });
+    hub.dispose();
+  });
+  it("while Round over is still up, Bee settling a try re-sends the round's tally", () => {
+    const { hub } = demoSetup({ pace: 0.01, stateDir: null });
+    const events: HubEvent[] = [];
+    hub.on("event", (e: HubEvent) => events.push(e));
+    const { card: a } = hub.startSession({ by: "tv", size: 1 });
+    const tryA = hub.submit({ text: a!.resay, source: "phone" }) as Attempt;
+    const s = hub.endSession()!;
+    heard(hub, tryA, a!.resay);
+    const sent = events.filter((e) => e.topic === "session.ended");
+    expect(sent).toHaveLength(2);
+    expect(sent[1]!.payload.summary).toMatchObject({ sessionId: s.sessionId, pending: 0, lines: { passed: 1, pending: 0 } });
     hub.dispose();
   });
   it("a line still with Bee after a try Bee didn't catch is still with Bee; the lines add up to the cards", () => {

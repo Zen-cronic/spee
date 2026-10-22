@@ -412,11 +412,12 @@ export class CoachHub extends EventEmitter {
 
   // Bee settled an attempt of a session that already ended (its summary counted it as pending):
   // send session.ended again with the updated summary, so every screen shows the same tally the hub
-  // would give now (Bee's overrules included). Not once another drill has started: a re-sent
-  // session.ended would close that drill's card on the screens.
+  // would give now (Bee's overrules included). Only while that round's Round over is still up
+  // (roundStillOver, the rule hub.state's lastSession follows): once another drill or a lone card
+  // has opened, even one closed since, a re-sent session.ended would bring the old round back.
   private resendSummary(a: Attempt) {
-    const s = this.lastSession;
-    if (!s || s.id !== a.sessionId || s.endedAt === null || this.session || this.open) return;
+    const s = this.roundStillOver();
+    if (!s || s.id !== a.sessionId) return;
     this.publish("session.ended", { summary: this.sessionSummary(s) });
   }
 
@@ -534,10 +535,19 @@ export class CoachHub extends EventEmitter {
   // about: perCard lists a line once, at its first opening, so a line opened again later is not
   // the summary's last entry.
   lastSessionState(): LastSession | null {
+    const s = this.roundStillOver();
+    if (!s || s.endedAt === null) return null;
+    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId: this.roundOver!.lastCardId };
+  }
+
+  // The round that ended last, while its Round over is still up: it ended, and no round and no card
+  // has opened since (a card that opened and closed again counts). The one rule for hub.state's
+  // lastSession and for a summary re-sent when Bee settles one of its tries late.
+  private roundStillOver(): DrillSession | null {
     const s = this.lastSession;
     const r = this.roundOver;
     if (!s || !r || r.sessionId !== s.id || s.endedAt === null || this.session || this.open) return null;
-    return { summary: this.sessionSummary(s), endedAt: s.endedAt, lastCardId: r.lastCardId };
+    return s;
   }
 
   // The round's counts per try, and `lines`: each line once, by its best result (a pass, else a try
