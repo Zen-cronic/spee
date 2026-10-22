@@ -15,11 +15,11 @@
     "fixtures": "fixtures/demo",
     "stateDir": "out/contract-check",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "now": "2026-10-20T17:30:00.256Z",
+    "now": "2026-10-20T17:30:00.261Z",
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400039,
+     "lastEventAt": 1792517400040,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -115,7 +115,7 @@
       "routes": [
        "POST /alexa"
       ],
-      "note": "skill id from alexa/skill-id.json; signature check on (public requests); 0 requests served, 0 rejected"
+      "note": "1 skill id from alexa/skill-id.json; signature check on (public requests); 0 requests served, 0 rejected"
      },
      {
       "name": "mcp",
@@ -151,10 +151,10 @@
    "topic": "hub.state",
    "payload": {
     "seq": 0,
-    "at": 1792517400049,
+    "at": 1792517400052,
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvhjsmu338577441",
+    "bootId": "boot_mvitcjy74550e256",
     "lastSeq": 0,
     "state": "idle",
     "narration": "You're not practising right now. Say quiz me to get your first line.",
@@ -195,7 +195,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400039,
+     "lastEventAt": 1792517400040,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -207,7 +207,8 @@
       "beeOnly": 0,
       "polls": 0
      }
-    }
+    },
+    "lastSession": null
    }
   },
   "POST /api/session/start": {
@@ -219,9 +220,9 @@
    "status": 200,
    "response": {
     "session": {
-     "id": "ses_mvgyktz9000",
+     "id": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "size": 4,
      "cardIds": [
@@ -274,17 +275,17 @@
    "status": 202,
    "response": {
     "attempt": {
-     "id": "att_mvgyktzd001",
+     "id": "att_mvgyktzm001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400265,
+     "createdAt": 1792517400274,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400265,
+      "speechEndAt": 1792517400274,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -360,7 +361,7 @@
      "openingSeq": 1
     },
     "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
-    "verdictUrl": "/api/attempts/att_mvgyktzd001",
+    "verdictUrl": "/api/attempts/att_mvgyktzm001",
     "retryAfterMs": 500
    }
   },
@@ -370,23 +371,23 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvhjsmu338577441",
+    "bootId": "boot_mvitcjy74550e256",
     "lastSeq": 3,
     "state": "pending_bee",
     "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
     "verdictReady": false,
     "retryAfterMs": 500,
     "session": {
-     "id": "ses_mvgyktz9000",
+     "id": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "size": 4,
      "cardIds": [
       "demo:vague-referent"
      ],
      "attemptIds": [
-      "att_mvgyktzd001"
+      "att_mvgyktzm001"
      ]
     },
     "openCard": {
@@ -422,17 +423,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgyktzd001",
+     "id": "att_mvgyktzm001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400265,
+     "createdAt": 1792517400274,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400265,
+      "speechEndAt": 1792517400274,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -539,7 +540,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 1,
-     "lastEventAt": 1792517400039,
+     "lastEventAt": 1792517400040,
      "counters": {
       "events": 1,
       "utterances": 0,
@@ -552,11 +553,12 @@
       "polls": 0
      }
     },
+    "lastSession": null,
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "cards": 1,
      "attempts": 1,
@@ -591,7 +593,7 @@
    "topic": "card.open",
    "payload": {
     "seq": 2,
-    "at": 1792517400262,
+    "at": 1792517400270,
     "card": {
      "id": "demo:vague-referent",
      "kind": "error",
@@ -625,7 +627,7 @@
      "synthetic": true
     },
     "by": "alexa",
-    "sessionId": "ses_mvgyktz9000",
+    "sessionId": "ses_mvgyktzh000",
     "deck": {
      "date": "2026-10-20",
      "total": 6,
@@ -654,19 +656,19 @@
    "topic": "attempt.provisional",
    "payload": {
     "seq": 3,
-    "at": 1792517400267,
+    "at": 1792517400276,
     "attempt": {
-     "id": "att_mvgyktzd001",
+     "id": "att_mvgyktzm001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517400265,
+     "createdAt": 1792517400274,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400265,
+      "speechEndAt": 1792517400274,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -779,13 +781,13 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 4,
-    "at": 1792517400387,
-    "attemptId": "att_mvgyktzd001",
+    "at": 1792517400399,
+    "attemptId": "att_mvgyktzm001",
     "cardId": "demo:vague-referent",
     "status": "verified",
     "via": "stream",
     "speakerScore": 0.82,
-    "latencyMs": 122,
+    "latencyMs": 125,
     "beeText": "I fixed the invoice retry job this morning.",
     "replay": true,
     "reason": "Bee tagged the wearer saying it"
@@ -795,19 +797,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 5,
-    "at": 1792517400389,
+    "at": 1792517400402,
     "attempt": {
-     "id": "att_mvgyktzd001",
+     "id": "att_mvgyktzm001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400265,
-     "settledAt": 1792517400388,
+     "createdAt": 1792517400274,
+     "settledAt": 1792517400401,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400265,
+      "speechEndAt": 1792517400274,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -882,7 +884,7 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 122,
+      "latencyMs": 125,
       "coverage": 1,
       "replay": true,
       "spokenFromMs": 1792517397000,
@@ -1032,7 +1034,7 @@
    "topic": "stats.updated",
    "payload": {
     "seq": 6,
-    "at": 1792517400402,
+    "at": 1792517400421,
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "practiceToday": {
      "attempts": 1,
@@ -1079,23 +1081,23 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvhjsmu338577441",
+    "bootId": "boot_mvitcjy74550e256",
     "lastSeq": 6,
     "state": "graded",
     "narration": "Nice, Bee heard it. That's a pass. Say next for the next line.",
     "verdictReady": true,
     "retryAfterMs": null,
     "session": {
-     "id": "ses_mvgyktz9000",
+     "id": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "size": 4,
      "cardIds": [
       "demo:vague-referent"
      ],
      "attemptIds": [
-      "att_mvgyktzd001"
+      "att_mvgyktzm001"
      ]
     },
     "openCard": {
@@ -1131,17 +1133,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgyktzd001",
+     "id": "att_mvgyktzm001",
      "cardId": "demo:vague-referent",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400265,
-     "settledAt": 1792517400388,
+     "createdAt": 1792517400274,
+     "settledAt": 1792517400401,
      "provisional": {
       "source": "alexa",
       "text": "I fixed the invoice retry job this morning.",
-      "speechEndAt": 1792517400265,
+      "speechEndAt": 1792517400274,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1216,7 +1218,7 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 122,
+      "latencyMs": 125,
       "coverage": 1,
       "replay": true,
       "spokenFromMs": 1792517397000,
@@ -1338,7 +1340,7 @@
     "bee": {
      "replay": true,
      "pendingVerifications": 0,
-     "lastEventAt": 1792517400385,
+     "lastEventAt": 1792517400395,
      "counters": {
       "events": 3,
       "utterances": 1,
@@ -1351,11 +1353,12 @@
       "polls": 0
      }
     },
+    "lastSession": null,
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "cards": 1,
      "attempts": 1,
@@ -1445,19 +1448,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 10,
-    "at": 1792517400572,
+    "at": 1792517400590,
     "attempt": {
-     "id": "att_mvgyku4g002",
+     "id": "att_mvgyku4t002",
      "cardId": "demo:vague-status",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517400448,
-     "settledAt": 1792517400571,
+     "createdAt": 1792517400461,
+     "settledAt": 1792517400589,
      "provisional": {
       "source": "phone",
       "text": "The migration is not done yet: two of the three checks pass.",
-      "speechEndAt": 1792517400447,
+      "speechEndAt": 1792517400460,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1536,7 +1539,7 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 123,
+      "latencyMs": 127,
       "coverage": 1,
       "replay": true,
       "spokenFromMs": 1792517395000,
@@ -1696,7 +1699,7 @@
    "name": "attempt.provisional",
    "ok": true,
    "payload": {
-    "attemptId": "att_mvgyku4g002",
+    "attemptId": "att_mvgyku4t002",
     "cardId": "demo:vague-status",
     "status": "pending_bee",
     "provisionalPass": true
@@ -1705,19 +1708,19 @@
    "hops": [
     {
      "hop": "speech.end",
-     "at": 1792517400447
+     "at": 1792517400460
     },
     {
      "hop": "mic.send",
-     "at": 1792517400447
+     "at": 1792517400460
     },
     {
      "hop": "hub.recv",
-     "at": 1792517400448
+     "at": 1792517400461
     },
     {
      "hop": "hub.intent",
-     "at": 1792517400449
+     "at": 1792517400463
     }
    ]
   },
@@ -1725,8 +1728,8 @@
    "topic": "attempt.status",
    "payload": {
     "seq": 14,
-    "at": 1792517401243,
-    "attemptId": "att_mvgyku8f003",
+    "at": 1792517401242,
+    "attemptId": "att_mvgyku8v003",
     "cardId": "demo:hedge-i-guess",
     "status": "polling",
     "reason": "no tagged line on the live stream within 30 s: checking the conversation with the Bee CLI"
@@ -1736,13 +1739,13 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 15,
-    "at": 1792517401245,
-    "attemptId": "att_mvgyku8f003",
+    "at": 1792517401246,
+    "attemptId": "att_mvgyku8v003",
     "cardId": "demo:hedge-i-guess",
     "status": "verified",
     "via": "poll",
     "speakerScore": null,
-    "latencyMs": 654,
+    "latencyMs": 639,
     "beeText": "The billing export is ready for review today.",
     "replay": true,
     "reason": "Bee's transcript (poll) labels the wearer saying it"
@@ -1754,16 +1757,16 @@
    "response": {
     "mode": "demo",
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "bootId": "boot_mvhjsmu338577441",
+    "bootId": "boot_mvitcjy74550e256",
     "lastSeq": 21,
     "state": "unverified",
     "narration": "Bee didn't catch that one, so it doesn't count. Say it again.",
     "verdictReady": true,
     "retryAfterMs": null,
     "session": {
-     "id": "ses_mvgyktz9000",
+     "id": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "size": 4,
      "cardIds": [
@@ -1772,10 +1775,10 @@
       "demo:hedge-i-guess"
      ],
      "attemptIds": [
-      "att_mvgyktzd001",
-      "att_mvgyku4g002",
-      "att_mvgyku8f003",
-      "att_mvgykur8004"
+      "att_mvgyktzm001",
+      "att_mvgyku4t002",
+      "att_mvgyku8v003",
+      "att_mvgykur6004"
      ]
     },
     "openCard": {
@@ -1807,17 +1810,17 @@
      "synthetic": true
     },
     "lastAttempt": {
-     "id": "att_mvgykur8004",
+     "id": "att_mvgykur6004",
      "cardId": "demo:hedge-i-guess",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "unverified",
      "counted": false,
-     "createdAt": 1792517401268,
-     "settledAt": 1792517402252,
+     "createdAt": 1792517401266,
+     "settledAt": 1792517402245,
      "provisional": {
       "source": "alexa",
       "text": "The billing export is ready for review today.",
-      "speechEndAt": 1792517401268,
+      "speechEndAt": 1792517401266,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -1918,11 +1921,12 @@
       "polls": 3
      }
     },
+    "lastSession": null,
     "lastSessionSummary": null,
     "currentSessionSummary": {
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "cards": 3,
      "attempts": 4,
@@ -1975,8 +1979,8 @@
    "topic": "attempt.verified",
    "payload": {
     "seq": 20,
-    "at": 1792517402252,
-    "attemptId": "att_mvgykur8004",
+    "at": 1792517402246,
+    "attemptId": "att_mvgykur6004",
     "cardId": "demo:hedge-i-guess",
     "status": "unverified",
     "via": null,
@@ -2262,17 +2266,17 @@
    "status": 202,
    "response": {
     "attempt": {
-     "id": "att_mvgykvum007",
+     "id": "att_mvgykvv4007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517402686,
+     "createdAt": 1792517402704,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402686,
+      "speechEndAt": 1792517402704,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2344,26 +2348,26 @@
      "openingSeq": 6
     },
     "narration": "Got it. I'm checking with Bee, which can take up to about twenty seconds to hear it. Ask me how you did in a moment.",
-    "verdictUrl": "/api/attempts/att_mvgykvum007",
+    "verdictUrl": "/api/attempts/att_mvgykvv4007",
     "retryAfterMs": 500
    }
   },
   "GET /api/attempts/<id> (pending)": {
-   "request": "GET /api/attempts/att_mvgykvum007",
+   "request": "GET /api/attempts/att_mvgykvv4007",
    "status": 200,
    "response": {
     "attempt": {
-     "id": "att_mvgykvum007",
+     "id": "att_mvgykvv4007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "pending_bee",
      "counted": false,
-     "createdAt": 1792517402686,
+     "createdAt": 1792517402704,
      "settledAt": null,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402686,
+      "speechEndAt": 1792517402704,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2441,21 +2445,21 @@
    }
   },
   "GET /api/attempts/<id> (graded)": {
-   "request": "GET /api/attempts/att_mvgykvum007",
+   "request": "GET /api/attempts/att_mvgykvv4007",
    "status": 200,
    "response": {
     "attempt": {
-     "id": "att_mvgykvum007",
+     "id": "att_mvgykvv4007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517402686,
-     "settledAt": 1792517403030,
+     "createdAt": 1792517402704,
+     "settledAt": 1792517403051,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402686,
+      "speechEndAt": 1792517402704,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2526,7 +2530,7 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 342,
+      "latencyMs": 345,
       "coverage": 1,
       "replay": true,
       "spokenFromMs": 1792517398000,
@@ -2622,19 +2626,19 @@
    "topic": "attempt.graded",
    "payload": {
     "seq": 34,
-    "at": 1792517403030,
+    "at": 1792517403052,
     "attempt": {
-     "id": "att_mvgykvum007",
+     "id": "att_mvgykvv4007",
      "cardId": "demo:hedge-stack",
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "status": "graded",
      "counted": true,
-     "createdAt": 1792517402686,
-     "settledAt": 1792517403030,
+     "createdAt": 1792517402704,
+     "settledAt": 1792517403051,
      "provisional": {
       "source": "alexa",
       "text": "The release is blocked on the API key from finance.",
-      "speechEndAt": 1792517402686,
+      "speechEndAt": 1792517402704,
       "grade": {
        "graderVersion": 1,
        "pass": true,
@@ -2705,7 +2709,7 @@
       ],
       "speakerScore": 0.82,
       "via": "stream",
-      "latencyMs": 342,
+      "latencyMs": 345,
       "coverage": 1,
       "replay": true,
       "spokenFromMs": 1792517398000,
@@ -2853,10 +2857,10 @@
    "status": 200,
    "response": {
     "summary": {
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
-     "endedAt": 1792517403049,
+     "startedAt": 1792517400269,
+     "endedAt": 1792517403064,
      "cards": 4,
      "attempts": 7,
      "counted": 6,
@@ -2913,15 +2917,662 @@
     }
    }
   },
+  "WS hub.state (after a round)": {
+   "topic": "hub.state",
+   "payload": {
+    "seq": 0,
+    "at": 1792517403067,
+    "mode": "demo",
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "bootId": "boot_mvitcjy74550e256",
+    "lastSeq": 36,
+    "state": "idle",
+    "narration": "You're not practising right now. Say quiz me to get your first line.",
+    "verdictReady": false,
+    "retryAfterMs": null,
+    "session": null,
+    "openCard": null,
+    "lastAttempt": null,
+    "deck": {
+     "date": "2026-10-20",
+     "total": 6,
+     "dueNow": 2,
+     "boxes": {
+      "1": 3,
+      "2": 3,
+      "3": 0,
+      "4": 0,
+      "5": 0
+     },
+     "dueByDate": {
+      "2026-10-20": 2,
+      "2026-10-21": 1,
+      "2026-10-22": 3,
+      "2026-10-23": 0,
+      "2026-10-24": 0,
+      "2026-10-25": 0,
+      "2026-10-26": 0
+     },
+     "nextDueDate": "2026-10-21"
+    },
+    "practiceToday": {
+     "attempts": 7,
+     "counted": 6,
+     "passed": 4,
+     "unverified": 1,
+     "beeOverrules": 1
+    },
+    "bee": {
+     "replay": true,
+     "pendingVerifications": 0,
+     "lastEventAt": 1792517403046,
+     "counters": {
+      "events": 12,
+      "utterances": 6,
+      "duplicates": 0,
+      "tags": 5,
+      "wearerTags": 5,
+      "verified": 5,
+      "unverified": 1,
+      "beeOnly": 1,
+      "polls": 3
+     }
+    },
+    "lastSession": {
+     "summary": {
+      "sessionId": "ses_mvgyktzh000",
+      "by": "alexa",
+      "startedAt": 1792517400269,
+      "endedAt": 1792517403064,
+      "cards": 4,
+      "attempts": 7,
+      "counted": 6,
+      "passed": 4,
+      "failed": 2,
+      "unverified": 1,
+      "pending": 0,
+      "beeOverrules": 1,
+      "lines": {
+       "passed": 4,
+       "failed": 0,
+       "unverified": 0,
+       "pending": 0,
+       "untried": 0
+      },
+      "perCard": [
+       {
+        "cardId": "demo:vague-referent",
+        "habit": "vague: \"that thing\"",
+        "attempts": 1,
+        "passed": 1,
+        "box": 2,
+        "due": "2026-10-22",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:vague-status",
+        "habit": "vague: \"it's getting there\"",
+        "attempts": 2,
+        "passed": 1,
+        "box": 2,
+        "due": "2026-10-22",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:hedge-i-guess",
+        "habit": "hedges: \"i guess\"",
+        "attempts": 2,
+        "passed": 1,
+        "box": 1,
+        "due": "2026-10-20",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:hedge-stack",
+        "habit": "hedges: \"kind of\", \"maybe\"",
+        "attempts": 1,
+        "passed": 1,
+        "box": 1,
+        "due": "2026-10-21",
+        "line": "passed"
+       }
+      ]
+     },
+     "endedAt": 1792517403064,
+     "lastCardId": "demo:hedge-stack",
+     "lastAttempt": {
+      "id": "att_mvgykvv4007",
+      "cardId": "demo:hedge-stack",
+      "sessionId": "ses_mvgyktzh000",
+      "status": "graded",
+      "counted": true,
+      "createdAt": 1792517402704,
+      "settledAt": 1792517403051,
+      "provisional": {
+       "source": "alexa",
+       "text": "The release is blocked on the API key from finance.",
+       "speechEndAt": 1792517402704,
+       "grade": {
+        "graderVersion": 1,
+        "pass": true,
+        "reasons": [
+         "ok nonempty: 10 words heard",
+         "ok habit: no hedges: \"kind of\", \"maybe\"",
+         "ok fillers: no fillers",
+         "ok content: content match 100% (needs 80%)",
+         "ok required: said \"api\", \"key\""
+        ],
+        "checks": [
+         {
+          "rule": "nonempty",
+          "ok": true,
+          "detail": "10 words heard"
+         },
+         {
+          "rule": "habit",
+          "ok": true,
+          "detail": "no hedges: \"kind of\", \"maybe\""
+         },
+         {
+          "rule": "fillers",
+          "ok": true,
+          "detail": "no fillers"
+         },
+         {
+          "rule": "content",
+          "ok": true,
+          "detail": "content match 100% (needs 80%)"
+         },
+         {
+          "rule": "required",
+          "ok": true,
+          "detail": "said \"api\", \"key\""
+         }
+        ],
+        "habit": {
+         "kind": "hedge",
+         "label": "hedges: \"kind of\", \"maybe\"",
+         "hits": 0,
+         "found": []
+        },
+        "fillerCount": 0,
+        "fillers": [],
+        "hedgeCount": 0,
+        "hedges": [],
+        "contentMatch": 1,
+        "contentThreshold": 0.8,
+        "missing": [],
+        "fuzzy": [],
+        "required": [
+         {
+          "word": "api",
+          "ok": true
+         },
+         {
+          "word": "key",
+          "ok": true
+         }
+        ]
+       }
+      },
+      "bee": {
+       "text": "The release is blocked on the API key from finance. How did I do?",
+       "utteranceIds": [
+        9100007
+       ],
+       "speakerScore": 0.82,
+       "via": "stream",
+       "latencyMs": 345,
+       "coverage": 1,
+       "replay": true,
+       "spokenFromMs": 1792517398000,
+       "spokenToMs": 1792517402000,
+       "conversationId": "99000001",
+       "gradedText": "The release is blocked on the API key from finance.",
+       "extraText": "How did I do?"
+      },
+      "final": {
+       "source": "bee",
+       "pass": true,
+       "grade": {
+        "graderVersion": 1,
+        "pass": true,
+        "reasons": [
+         "ok nonempty: 10 words heard",
+         "ok habit: no hedges: \"kind of\", \"maybe\"",
+         "ok fillers: no fillers",
+         "ok content: content match 100% (needs 80%)",
+         "ok required: said \"api\", \"key\""
+        ],
+        "checks": [
+         {
+          "rule": "nonempty",
+          "ok": true,
+          "detail": "10 words heard"
+         },
+         {
+          "rule": "habit",
+          "ok": true,
+          "detail": "no hedges: \"kind of\", \"maybe\""
+         },
+         {
+          "rule": "fillers",
+          "ok": true,
+          "detail": "no fillers"
+         },
+         {
+          "rule": "content",
+          "ok": true,
+          "detail": "content match 100% (needs 80%)"
+         },
+         {
+          "rule": "required",
+          "ok": true,
+          "detail": "said \"api\", \"key\""
+         }
+        ],
+        "habit": {
+         "kind": "hedge",
+         "label": "hedges: \"kind of\", \"maybe\"",
+         "hits": 0,
+         "found": []
+        },
+        "fillerCount": 0,
+        "fillers": [],
+        "hedgeCount": 0,
+        "hedges": [],
+        "contentMatch": 1,
+        "contentThreshold": 0.8,
+        "missing": [],
+        "fuzzy": [],
+        "required": [
+         {
+          "word": "api",
+          "ok": true
+         },
+         {
+          "word": "key",
+          "ok": true
+         }
+        ]
+       }
+      },
+      "agreement": "agree",
+      "reason": "Bee tagged the wearer saying it",
+      "box": {
+       "from": 1,
+       "dueBefore": "2026-10-21",
+       "to": 1,
+       "dueAfter": "2026-10-21",
+       "scheduled": false
+      },
+      "openingSeq": 6
+     }
+    }
+   }
+  },
+  "GET /api/session (after a round)": {
+   "request": "GET /api/session",
+   "status": 200,
+   "response": {
+    "mode": "demo",
+    "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
+    "bootId": "boot_mvitcjy74550e256",
+    "lastSeq": 36,
+    "state": "idle",
+    "narration": "You're not practising right now. Say quiz me to get your first line.",
+    "verdictReady": false,
+    "retryAfterMs": null,
+    "session": null,
+    "openCard": null,
+    "lastAttempt": null,
+    "deck": {
+     "date": "2026-10-20",
+     "total": 6,
+     "dueNow": 2,
+     "boxes": {
+      "1": 3,
+      "2": 3,
+      "3": 0,
+      "4": 0,
+      "5": 0
+     },
+     "dueByDate": {
+      "2026-10-20": 2,
+      "2026-10-21": 1,
+      "2026-10-22": 3,
+      "2026-10-23": 0,
+      "2026-10-24": 0,
+      "2026-10-25": 0,
+      "2026-10-26": 0
+     },
+     "nextDueDate": "2026-10-21"
+    },
+    "practiceToday": {
+     "attempts": 7,
+     "counted": 6,
+     "passed": 4,
+     "unverified": 1,
+     "beeOverrules": 1
+    },
+    "bee": {
+     "replay": true,
+     "pendingVerifications": 0,
+     "lastEventAt": 1792517403046,
+     "counters": {
+      "events": 12,
+      "utterances": 6,
+      "duplicates": 0,
+      "tags": 5,
+      "wearerTags": 5,
+      "verified": 5,
+      "unverified": 1,
+      "beeOnly": 1,
+      "polls": 3
+     }
+    },
+    "lastSession": {
+     "summary": {
+      "sessionId": "ses_mvgyktzh000",
+      "by": "alexa",
+      "startedAt": 1792517400269,
+      "endedAt": 1792517403064,
+      "cards": 4,
+      "attempts": 7,
+      "counted": 6,
+      "passed": 4,
+      "failed": 2,
+      "unverified": 1,
+      "pending": 0,
+      "beeOverrules": 1,
+      "lines": {
+       "passed": 4,
+       "failed": 0,
+       "unverified": 0,
+       "pending": 0,
+       "untried": 0
+      },
+      "perCard": [
+       {
+        "cardId": "demo:vague-referent",
+        "habit": "vague: \"that thing\"",
+        "attempts": 1,
+        "passed": 1,
+        "box": 2,
+        "due": "2026-10-22",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:vague-status",
+        "habit": "vague: \"it's getting there\"",
+        "attempts": 2,
+        "passed": 1,
+        "box": 2,
+        "due": "2026-10-22",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:hedge-i-guess",
+        "habit": "hedges: \"i guess\"",
+        "attempts": 2,
+        "passed": 1,
+        "box": 1,
+        "due": "2026-10-20",
+        "line": "passed"
+       },
+       {
+        "cardId": "demo:hedge-stack",
+        "habit": "hedges: \"kind of\", \"maybe\"",
+        "attempts": 1,
+        "passed": 1,
+        "box": 1,
+        "due": "2026-10-21",
+        "line": "passed"
+       }
+      ]
+     },
+     "endedAt": 1792517403064,
+     "lastCardId": "demo:hedge-stack",
+     "lastAttempt": {
+      "id": "att_mvgykvv4007",
+      "cardId": "demo:hedge-stack",
+      "sessionId": "ses_mvgyktzh000",
+      "status": "graded",
+      "counted": true,
+      "createdAt": 1792517402704,
+      "settledAt": 1792517403051,
+      "provisional": {
+       "source": "alexa",
+       "text": "The release is blocked on the API key from finance.",
+       "speechEndAt": 1792517402704,
+       "grade": {
+        "graderVersion": 1,
+        "pass": true,
+        "reasons": [
+         "ok nonempty: 10 words heard",
+         "ok habit: no hedges: \"kind of\", \"maybe\"",
+         "ok fillers: no fillers",
+         "ok content: content match 100% (needs 80%)",
+         "ok required: said \"api\", \"key\""
+        ],
+        "checks": [
+         {
+          "rule": "nonempty",
+          "ok": true,
+          "detail": "10 words heard"
+         },
+         {
+          "rule": "habit",
+          "ok": true,
+          "detail": "no hedges: \"kind of\", \"maybe\""
+         },
+         {
+          "rule": "fillers",
+          "ok": true,
+          "detail": "no fillers"
+         },
+         {
+          "rule": "content",
+          "ok": true,
+          "detail": "content match 100% (needs 80%)"
+         },
+         {
+          "rule": "required",
+          "ok": true,
+          "detail": "said \"api\", \"key\""
+         }
+        ],
+        "habit": {
+         "kind": "hedge",
+         "label": "hedges: \"kind of\", \"maybe\"",
+         "hits": 0,
+         "found": []
+        },
+        "fillerCount": 0,
+        "fillers": [],
+        "hedgeCount": 0,
+        "hedges": [],
+        "contentMatch": 1,
+        "contentThreshold": 0.8,
+        "missing": [],
+        "fuzzy": [],
+        "required": [
+         {
+          "word": "api",
+          "ok": true
+         },
+         {
+          "word": "key",
+          "ok": true
+         }
+        ]
+       }
+      },
+      "bee": {
+       "text": "The release is blocked on the API key from finance. How did I do?",
+       "utteranceIds": [
+        9100007
+       ],
+       "speakerScore": 0.82,
+       "via": "stream",
+       "latencyMs": 345,
+       "coverage": 1,
+       "replay": true,
+       "spokenFromMs": 1792517398000,
+       "spokenToMs": 1792517402000,
+       "conversationId": "99000001",
+       "gradedText": "The release is blocked on the API key from finance.",
+       "extraText": "How did I do?"
+      },
+      "final": {
+       "source": "bee",
+       "pass": true,
+       "grade": {
+        "graderVersion": 1,
+        "pass": true,
+        "reasons": [
+         "ok nonempty: 10 words heard",
+         "ok habit: no hedges: \"kind of\", \"maybe\"",
+         "ok fillers: no fillers",
+         "ok content: content match 100% (needs 80%)",
+         "ok required: said \"api\", \"key\""
+        ],
+        "checks": [
+         {
+          "rule": "nonempty",
+          "ok": true,
+          "detail": "10 words heard"
+         },
+         {
+          "rule": "habit",
+          "ok": true,
+          "detail": "no hedges: \"kind of\", \"maybe\""
+         },
+         {
+          "rule": "fillers",
+          "ok": true,
+          "detail": "no fillers"
+         },
+         {
+          "rule": "content",
+          "ok": true,
+          "detail": "content match 100% (needs 80%)"
+         },
+         {
+          "rule": "required",
+          "ok": true,
+          "detail": "said \"api\", \"key\""
+         }
+        ],
+        "habit": {
+         "kind": "hedge",
+         "label": "hedges: \"kind of\", \"maybe\"",
+         "hits": 0,
+         "found": []
+        },
+        "fillerCount": 0,
+        "fillers": [],
+        "hedgeCount": 0,
+        "hedges": [],
+        "contentMatch": 1,
+        "contentThreshold": 0.8,
+        "missing": [],
+        "fuzzy": [],
+        "required": [
+         {
+          "word": "api",
+          "ok": true
+         },
+         {
+          "word": "key",
+          "ok": true
+         }
+        ]
+       }
+      },
+      "agreement": "agree",
+      "reason": "Bee tagged the wearer saying it",
+      "box": {
+       "from": 1,
+       "dueBefore": "2026-10-21",
+       "to": 1,
+       "dueAfter": "2026-10-21",
+       "scheduled": false
+      },
+      "openingSeq": 6
+     }
+    },
+    "lastSessionSummary": {
+     "sessionId": "ses_mvgyktzh000",
+     "by": "alexa",
+     "startedAt": 1792517400269,
+     "endedAt": 1792517403064,
+     "cards": 4,
+     "attempts": 7,
+     "counted": 6,
+     "passed": 4,
+     "failed": 2,
+     "unverified": 1,
+     "pending": 0,
+     "beeOverrules": 1,
+     "lines": {
+      "passed": 4,
+      "failed": 0,
+      "unverified": 0,
+      "pending": 0,
+      "untried": 0
+     },
+     "perCard": [
+      {
+       "cardId": "demo:vague-referent",
+       "habit": "vague: \"that thing\"",
+       "attempts": 1,
+       "passed": 1,
+       "box": 2,
+       "due": "2026-10-22",
+       "line": "passed"
+      },
+      {
+       "cardId": "demo:vague-status",
+       "habit": "vague: \"it's getting there\"",
+       "attempts": 2,
+       "passed": 1,
+       "box": 2,
+       "due": "2026-10-22",
+       "line": "passed"
+      },
+      {
+       "cardId": "demo:hedge-i-guess",
+       "habit": "hedges: \"i guess\"",
+       "attempts": 2,
+       "passed": 1,
+       "box": 1,
+       "due": "2026-10-20",
+       "line": "passed"
+      },
+      {
+       "cardId": "demo:hedge-stack",
+       "habit": "hedges: \"kind of\", \"maybe\"",
+       "attempts": 1,
+       "passed": 1,
+       "box": 1,
+       "due": "2026-10-21",
+       "line": "passed"
+      }
+     ]
+    },
+    "currentSessionSummary": null
+   }
+  },
   "WS session.started": {
    "topic": "session.started",
    "payload": {
     "seq": 1,
-    "at": 1792517400261,
+    "at": 1792517400269,
     "session": {
-     "id": "ses_mvgyktz9000",
+     "id": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
+     "startedAt": 1792517400269,
      "endedAt": null,
      "size": 4,
      "cardIds": [],
@@ -2933,12 +3584,12 @@
    "topic": "session.ended",
    "payload": {
     "seq": 36,
-    "at": 1792517403049,
+    "at": 1792517403064,
     "summary": {
-     "sessionId": "ses_mvgyktz9000",
+     "sessionId": "ses_mvgyktzh000",
      "by": "alexa",
-     "startedAt": 1792517400261,
-     "endedAt": 1792517403049,
+     "startedAt": 1792517400269,
+     "endedAt": 1792517403064,
      "cards": 4,
      "attempts": 7,
      "counted": 6,
@@ -3284,7 +3935,7 @@
      {
       "habit": "vague",
       "label": "vague answers (that thing, pretty much done, and stuff)",
-      "firstDrillAt": 1792517400265,
+      "firstDrillAt": 1792517400274,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3307,7 +3958,7 @@
      {
       "habit": "hedge:kind of",
       "label": "unsure words (\"kind of\")",
-      "firstDrillAt": 1792517402686,
+      "firstDrillAt": 1792517402704,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3330,7 +3981,7 @@
      {
       "habit": "hedge:maybe",
       "label": "unsure words (\"maybe\")",
-      "firstDrillAt": 1792517402686,
+      "firstDrillAt": 1792517402704,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3694,7 +4345,7 @@
      {
       "habit": "vague",
       "label": "vague answers (that thing, pretty much done, and stuff)",
-      "firstDrillAt": 1792517400265,
+      "firstDrillAt": 1792517400274,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3717,7 +4368,7 @@
      {
       "habit": "hedge:kind of",
       "label": "unsure words (\"kind of\")",
-      "firstDrillAt": 1792517402686,
+      "firstDrillAt": 1792517402704,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3740,7 +4391,7 @@
      {
       "habit": "hedge:maybe",
       "label": "unsure words (\"maybe\")",
-      "firstDrillAt": 1792517402686,
+      "firstDrillAt": 1792517402704,
       "lastSessionBefore": {
        "session": "demo-bee-1020",
        "date": "2026-10-20",
@@ -3768,7 +4419,7 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.070Z",
+    "generatedAt": "2026-10-20T17:30:03.108Z",
     "synthetic": true,
     "source": "all",
     "sources": {
@@ -3980,7 +4631,7 @@
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "generatedAt": "2026-10-20T17:30:03.075Z",
+    "generatedAt": "2026-10-20T17:30:03.112Z",
     "pairs": 1,
     "from": "2026-10-13",
     "to": "2026-10-13",
@@ -4106,7 +4757,7 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.082Z",
+    "generatedAt": "2026-10-20T17:30:03.117Z",
     "synthetic": true,
     "source": "bee",
     "sources": {
@@ -4330,7 +4981,7 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.093Z",
+    "generatedAt": "2026-10-20T17:30:03.127Z",
     "synthetic": true,
     "source": "bee",
     "sources": {
@@ -4462,7 +5113,7 @@
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
-    "generatedAt": "2026-10-20T17:30:03.097Z",
+    "generatedAt": "2026-10-20T17:30:03.131Z",
     "event": {
      "title": "Team stand-up (demo)",
      "startsAt": "2026-10-20T18:00:00.000Z",
@@ -4574,17 +5225,17 @@
    "response": {
     "attempts": [
      {
-      "id": "att_mvgykvum007",
+      "id": "att_mvgykvv4007",
       "cardId": "demo:hedge-stack",
-      "sessionId": "ses_mvgyktz9000",
+      "sessionId": "ses_mvgyktzh000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402686,
-      "settledAt": 1792517403030,
+      "createdAt": 1792517402704,
+      "settledAt": 1792517403051,
       "provisional": {
        "source": "alexa",
        "text": "The release is blocked on the API key from finance.",
-       "speechEndAt": 1792517402686,
+       "speechEndAt": 1792517402704,
        "grade": {
         "graderVersion": 1,
         "pass": true,
@@ -4655,7 +5306,7 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 342,
+       "latencyMs": 345,
        "coverage": 1,
        "replay": true,
        "spokenFromMs": 1792517398000,
@@ -4742,17 +5393,17 @@
       "openingSeq": 6
      },
      {
-      "id": "att_mvgykvqw006",
+      "id": "att_mvgykvqz006",
       "cardId": "demo:hedge-i-guess",
-      "sessionId": "ses_mvgyktz9000",
+      "sessionId": "ses_mvgyktzh000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402552,
-      "settledAt": 1792517402674,
+      "createdAt": 1792517402555,
+      "settledAt": 1792517402680,
       "provisional": {
        "source": "typed",
        "text": "I guess the billing export is ready for review today.",
-       "speechEndAt": 1792517402552,
+       "speechEndAt": 1792517402555,
        "grade": {
         "graderVersion": 1,
         "pass": false,
@@ -4812,7 +5463,7 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 121,
+       "latencyMs": 124,
        "coverage": 1,
        "replay": true,
        "spokenFromMs": 1792517398000,
@@ -4888,12 +5539,12 @@
       "openingSeq": 5
      },
      {
-      "id": "att_mvgykvq8005",
+      "id": "att_mvgykvq7005",
       "cardId": "demo:vague-status",
-      "sessionId": "ses_mvgyktz9000",
+      "sessionId": "ses_mvgyktzh000",
       "status": "graded",
       "counted": true,
-      "createdAt": 1792517402528,
+      "createdAt": 1792517402527,
       "settledAt": 1792517402528,
       "provisional": null,
       "bee": {
@@ -4903,7 +5554,7 @@
        ],
        "speakerScore": 0.82,
        "via": "stream",
-       "latencyMs": 728,
+       "latencyMs": 727,
        "coverage": null,
        "replay": true,
        "spokenFromMs": 1792517397000,
@@ -5069,9 +5720,9 @@
    "response": {
     "mode": {
      "enabled": true,
-     "since": 1792517406454,
-     "expiresAt": 1792521006454,
-     "changedAt": 1792517406454,
+     "since": 1792517406580,
+     "expiresAt": 1792521006580,
+     "changedAt": 1792517406580,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -5167,12 +5818,12 @@
      {
       "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
       "synthetic": true,
-      "id": "rcp_mvgyl31202",
+      "id": "rcp_mvgyl34u02",
       "conversationId": "demo-0000-4000-8000-000000000101",
-      "startedAt": 1792517406477,
-      "endedAt": 1792517410008,
+      "startedAt": 1792517406602,
+      "endedAt": 1792517410133,
       "durationMs": 3531,
-      "createdAt": 1792517411990,
+      "createdAt": 1792517412126,
       "replay": true,
       "metrics": {
        "wearerWords": 225,
@@ -5223,7 +5874,7 @@
       "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
       "moment": {
        "text": "I guess we could maybe ship the export on Friday.",
-       "at": 1792517407776,
+       "at": 1792517407901,
        "habit": "hedges",
        "rephrase": "We could ship the export on Friday."
       },
@@ -5252,17 +5903,17 @@
    }
   },
   "GET /api/recaps/<id>": {
-   "request": "GET /api/recaps/rcp_mvgyl31202",
+   "request": "GET /api/recaps/rcp_mvgyl34u02",
    "status": 200,
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "id": "rcp_mvgyl31202",
+    "id": "rcp_mvgyl34u02",
     "conversationId": "demo-0000-4000-8000-000000000101",
-    "startedAt": 1792517406477,
-    "endedAt": 1792517410008,
+    "startedAt": 1792517406602,
+    "endedAt": 1792517410133,
     "durationMs": 3531,
-    "createdAt": 1792517411990,
+    "createdAt": 1792517412126,
     "replay": true,
     "metrics": {
      "wearerWords": 225,
@@ -5313,7 +5964,7 @@
     "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
     "moment": {
      "text": "I guess we could maybe ship the export on Friday.",
-     "at": 1792517407776,
+     "at": 1792517407901,
      "habit": "hedges",
      "rephrase": "We could ship the export on Friday."
     },
@@ -5345,14 +5996,14 @@
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "generatedAt": 1792517412007,
+    "generatedAt": 1792517412136,
     "basis": "recap",
     "narration": "Your last conversation ran high on unsure words: 9, or 4.2 out of every 100 words you said, against your usual 1.4 at work. First signal, from one conversation and not proof: in your next conversation after practising, unsure words went from 2.6 to 0.8 and filler \"like\" from 3.2 to 0.8 per 100 words. This week, unsure words are at 1.2 per 100 words, and 2 lines are ready to practise. Live coaching is on until 2:30 PM.",
     "mode": {
      "enabled": true,
-     "since": 1792517406454,
-     "expiresAt": 1792521006454,
-     "changedAt": 1792517406454,
+     "since": 1792517406580,
+     "expiresAt": 1792521006580,
+     "changedAt": 1792517406580,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -5377,8 +6028,8 @@
     },
     "live": null,
     "lastRecap": {
-     "id": "rcp_mvgyl31202",
-     "endedAt": 1792517410008,
+     "id": "rcp_mvgyl34u02",
+     "endedAt": 1792517410133,
      "headline": "Unsure words ran high: 4.2 per 100 words against your usual 1.4 at work.",
      "setting": "work"
     },
@@ -5408,9 +6059,9 @@
     "synthetic": true,
     "mode": {
      "enabled": true,
-     "since": 1792517406454,
-     "expiresAt": 1792521006454,
-     "changedAt": 1792517406454,
+     "since": 1792517406580,
+     "expiresAt": 1792521006580,
+     "changedAt": 1792517406580,
      "by": "check",
      "reason": "on",
      "rules": {
@@ -5453,7 +6104,7 @@
      "pendingTodos": 0
     },
     "lastNudge": {
-     "id": "ndg_mvgyl00y00",
+     "id": "ndg_mvgyl04g00",
      "conversationId": "demo-0000-4000-8000-000000000101",
      "rule": "hedge-streak",
      "text": "[coach] 4 unsure words in 2 minutes. Say it plainly.",
@@ -5467,17 +6118,17 @@
       "expected": 1.24
      },
      "hops": {
-      "spokenAt": 1792517407979,
-      "beeAt": 1792517408098,
-      "detectedAt": 1792517408098,
-      "todoAt": 1792517408129,
-      "alarmAt": 1792517408329
+      "spokenAt": 1792517408104,
+      "beeAt": 1792517408224,
+      "detectedAt": 1792517408224,
+      "todoAt": 1792517408255,
+      "alarmAt": 1792517408455
      },
      "latencyMs": {
-      "bee": 119,
+      "bee": 120,
       "detect": 0,
       "todo": 31,
-      "total": 350
+      "total": 351
      },
      "wrist": {
       "channel": "replay",
@@ -5490,7 +6141,7 @@
     },
     "recentNudges": [
      {
-      "id": "ndg_mvgyl00y00",
+      "id": "ndg_mvgyl04g00",
       "conversationId": "demo-0000-4000-8000-000000000101",
       "rule": "hedge-streak",
       "text": "[coach] 4 unsure words in 2 minutes. Say it plainly.",
@@ -5504,17 +6155,17 @@
        "expected": 1.24
       },
       "hops": {
-       "spokenAt": 1792517407979,
-       "beeAt": 1792517408098,
-       "detectedAt": 1792517408098,
-       "todoAt": 1792517408129,
-       "alarmAt": 1792517408329
+       "spokenAt": 1792517408104,
+       "beeAt": 1792517408224,
+       "detectedAt": 1792517408224,
+       "todoAt": 1792517408255,
+       "alarmAt": 1792517408455
       },
       "latencyMs": {
-       "bee": 119,
+       "bee": 120,
        "detect": 0,
        "todo": 31,
-       "total": 350
+       "total": 351
       },
       "wrist": {
        "channel": "replay",
@@ -5528,13 +6179,13 @@
     ],
     "recentSkips": [
      {
-      "id": "skp_mvgyl10z01",
+      "id": "skp_mvgyl14i01",
       "conversationId": "demo-0000-4000-8000-000000000101",
       "rule": "hedge-streak",
       "reason": "cooldown",
       "detail": "a nudge went out 1 min 5 s ago; nudges are at least 3 min apart",
-      "at": 1792517409395,
-      "retryAfterMs": 2303,
+      "at": 1792517409522,
+      "retryAfterMs": 2302,
       "evidence": {
        "rule": "hedge-streak",
        "value": 3,
@@ -5547,7 +6198,7 @@
       "replay": true
      }
     ],
-    "lastRecapId": "rcp_mvgyl31202"
+    "lastRecapId": "rcp_mvgyl34u02"
    }
   },
   "POST /api/live/mode (off)": {
@@ -5560,9 +6211,9 @@
    "response": {
     "mode": {
      "enabled": false,
-     "since": 1792517406454,
+     "since": 1792517406580,
      "expiresAt": null,
-     "changedAt": 1792517414807,
+     "changedAt": 1792517414958,
      "by": "check",
      "reason": "off",
      "rules": {
@@ -5594,7 +6245,7 @@
    "response": {
     "dataLabel": "SYNTHETIC DEMO DATA (invented; not anyone's real results)",
     "synthetic": true,
-    "generatedAt": "2026-10-20T17:30:14.818Z",
+    "generatedAt": "2026-10-20T17:30:14.973Z",
     "source": "bee",
     "note": "a secondary view: the setting of each conversation, so like is compared with like; the pre-registered before and after (GET /api/transfer) does not use it",
     "minWords": 400,
@@ -5946,7 +6597,7 @@
      ]
     },
     "recapIds": [
-     "rcp_mvgyl31202"
+     "rcp_mvgyl34u02"
     ]
    }
   },
@@ -5963,11 +6614,12 @@
      "factId": null,
      "text": "Speaking goal (Spee): fewer unsure words and filler \"like\". Since Oct 15: unsure words 2.1 → 0.6 per 100 words; filler \"like\" 2.5 → 0.8 per 100 words; 8 lines passed, checked by Bee.",
      "confirmed": false,
-     "updatedAt": 1792517403030
+     "updatedAt": 1792517403051
     },
     "insights": null,
     "facts": null,
-    "stopped": false
+    "stopped": false,
+    "owed": false
    }
   },
   "POST /api/coach/cue": {
@@ -5979,10 +6631,10 @@
    "status": 200,
    "response": {
     "cue": {
-     "id": "cue_mvgyl58n00",
+     "id": "cue_mvgyl5d600",
      "habit": "filler:like",
      "text": "[coach] If you need a second: pause, don't say \"like\".",
-     "alarmAt": 1792517415085,
+     "alarmAt": 1792517415248,
      "by": "check"
     },
     "wrist": {
@@ -5997,10 +6649,10 @@
   },
   "practice.summary (from the phone)": {
    "seq": 52,
-   "at": 1792517415934,
+   "at": 1792517416109,
    "summary": {
     "takeId": "take_check_mirror_1",
-    "room": "24JT",
+    "room": "T2P4",
     "from": "phone-1",
     "startedAt": 1792518000000,
     "endedAt": 1792518030000,
@@ -6059,7 +6711,7 @@
    "request": "POST /api/demo/mirror",
    "body": {
     "script": "practice-take",
-    "room": "24JT"
+    "room": "T2P4"
    },
    "status": 202,
    "response": {
