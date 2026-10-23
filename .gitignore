@@ -75,3 +75,9 @@ alexa/.ask/
 out/alexa/
 # The skill ids alexa:deploy set up, by invocation name (written by the deploy, read by the hub)
 alexa/*.local.json
+
+# Any local-only config or device notes, wherever they sit
+*.local.json
+*.local.md
+*.local.txt
+devices*.md
