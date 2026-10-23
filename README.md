@@ -1,5 +1,7 @@
 # Spee: a speaking coach on Bee
 
+Watch the 3-minute demo: [youtu.be/CN0ZML0aY7w](https://youtu.be/CN0ZML0aY7w)
+
 English is my second language, and my work language. Videos, courses and workshops help, but what helps most is feedback while I speak, and I never had it. In my real stand-up on October 19, about one word in ten was a filler, and Bee counted 11 unsure words, such as "I think" (`docs/instrument-check.md`). Nobody had told me.
 
 **Spee is a speaking coach that stays on my wrist through the workday. It hears me through Bee on my Apple Watch, tells me what to change, and builds my practice from my own lines, checked against how I usually speak.**
@@ -37,7 +39,7 @@ flowchart LR
 2. **Plain code decides.** Fixed word lists and Bee's timing measure the habits. `src/hub/grade.ts` grades every drill and names the rule behind each verdict. A model (Claude on Amazon Bedrock) only drafts practice lines for vague answers and, if I turn it on, rewords a recap.
 3. **Bee carries the cue back.** A nudge is a Bee to-do with an alarm, so it buzzes my wrist. Live nudges are off until I ask for them, and capped: 3 minutes between any two, 6 an hour, none at night.
 4. **Alexa is the coach I ask.** "Quiz me" starts a drill, and "how did I do?" gives Bee's verdict. "How am I doing?" sums up my current conversation or last recap, "turn on live coaching" switches on the nudges, and "did it transfer?" reads the before/after check. On Alexa, say "Alexa, ask Speech Coach to quiz me". `npm run alexa:deploy` also sets up "Spee Coach" and "Spee" as extra development skills, not yet tried on a device ([`docs/alexa.md`](docs/alexa.md)). The same tools are an MCP server, and `/sim/` is a browser client for it.
-5. **Fire TV and the phone.** The Fire TV app (React Native for Vega) shows the week, live drills and the check. The phone page is the practice microphone for pace, volume and pitch. Both connect through `vega-voice-bridge`, a pairing and relay library of mine, vendored in `vendor/`.
+5. **Fire TV and the phone.** The Fire TV app (React Native for Vega) shows the week, live drills and the check. The phone page is the practice microphone for pace, volume and pitch. Both connect through `vega-voice-bridge`, a pairing and relay library of mine, vendored in `vendor/` ([see it on a Fire TV Stick](https://youtu.be/D6p50MpE-wE)).
 6. **An Agent Skill.** `skills/speaking-coach/SKILL.md` lets an agent warm me up before a meeting and send one if-then cue to my wrist 8 to 12 minutes before it, through the same capped queue.
 
 The full architecture, the hub's API and the privacy design are in [`docs/how-it-works.md`](docs/how-it-works.md).
