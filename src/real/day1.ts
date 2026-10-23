@@ -1,5 +1,5 @@
 // Kill test 2 scorer: did Bee's transcript keep the 10 learner errors planted in
-// day1/french-voice-note-script.md, and the 4 fillers? Pure functions; the CLI wrapper is
+// fixtures/day1/french-voice-note-script.md, and the 4 fillers? Pure functions; the CLI wrapper is
 // scripts/score-day1.ts.
 
 export type Day1Status = "SURVIVED" | "CORRECTED" | "GARBLED";

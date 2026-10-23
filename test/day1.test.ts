@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { JournalGetResponseSchema } from "../src/bee/schemas.js";
 import { coachCoverage, fold, PLANTED, scoreDay1 } from "../src/real/day1.js";
 
-const SCRIPT = readFileSync("day1/french-voice-note-script.md", "utf8").split("## Script (read this aloud)")[1]!.split("## Answer key")[0]!.trim();
+const SCRIPT = readFileSync("fixtures/day1/french-voice-note-script.md", "utf8").split("## Script (read this aloud)")[1]!.split("## Answer key")[0]!.trim();
 
 describe("day-1 scorer", () => {
   it("the script itself scores 10/10 SURVIVED and 4/4 fillers", () => {

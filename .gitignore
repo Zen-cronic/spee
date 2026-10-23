@@ -21,7 +21,7 @@ out/
 cache/
 
 # Day-1 real Bee captures (personal data)
-day1/*.json
+fixtures/day1/*.json
 
 # Real Bee data: wearer-only line store, deck, class outputs (personal data; never commit)
 /real/

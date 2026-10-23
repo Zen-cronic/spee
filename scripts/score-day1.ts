@@ -1,4 +1,4 @@
-// Kill test 2: score the Day-1 French voice note against day1/french-voice-note-script.md.
+// Kill test 2: score the Day-1 French voice note against fixtures/day1/french-voice-note-script.md.
 //
 //   npx tsx scripts/score-day1.ts                 # newest journal (voice note) via the bee CLI
 //   npx tsx scripts/score-day1.ts --id <id>       # a given journal
@@ -6,7 +6,7 @@
 //   npx tsx scripts/score-day1.ts --analyze       # also run the coach (Bedrock) and check it flags survivors
 //   npx tsx scripts/score-day1.ts --file <json>   # a saved `bee journals get --json` payload (offline)
 //
-// Writes out/day1-score.json and saves the raw journal to day1/bee-fr-note.json (both gitignored).
+// Writes out/day1-score.json and saves the raw journal to fixtures/day1/bee-fr-note.json (both gitignored).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { JournalGetResponseSchema, type Journal } from "../src/bee/schemas.js";
 import { CliBeeSource, epochMs } from "../src/bee/source.js";
@@ -39,7 +39,7 @@ async function fetchJournal(): Promise<Journal | null> {
     }
     if (j && j.state === "READY" && j.text) {
       mkdirSync("day1", { recursive: true });
-      writeFileSync("day1/bee-fr-note.json", JSON.stringify(j, null, 2) + "\n");
+      writeFileSync("fixtures/day1/bee-fr-note.json", JSON.stringify(j, null, 2) + "\n");
       return j;
     }
     if (Date.now() >= deadline) return j;
@@ -98,4 +98,4 @@ writeFileSync(
   "out/day1-score.json",
   JSON.stringify({ journal_id: j.id, created_at: j.created_at, state: j.state, scored_at: new Date().toISOString(), score, cleanedScore, coverage, coachItems }, null, 2) + "\n",
 );
-console.log("\nWrote out/day1-score.json" + (existsSync("day1/bee-fr-note.json") && !opt("--file") ? " and day1/bee-fr-note.json" : ""));
+console.log("\nWrote out/day1-score.json" + (existsSync("fixtures/day1/bee-fr-note.json") && !opt("--file") ? " and fixtures/day1/bee-fr-note.json" : ""));
