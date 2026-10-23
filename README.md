@@ -14,6 +14,10 @@ English is my second language, and my work language. Videos, courses and worksho
 - **Lets me practise with Alexa.** Alexa gives me one of my own fumbled lines to say again. The grade comes from what Bee heard, not from Alexa.
 - **Keeps score on Fire TV.** My week per habit, each drill as it moves from "You said it" to "Checked by Bee" to the result, and the before/after check.
 
+## What makes it different
+
+Spee only coaches me. Bee tags each line with who said it, and Spee keeps a line's text only when Bee tags it as mine; other voices, and lines Bee doesn't tag, are only word counts and their text is never stored. On 2026-10-16, Bee's live tag named me on 8 of 9 lines (FL-8 in `FRICTION_LOG.md`). The wrist cue isn't on a timer either: it comes when I hit a streak measured against my own usual, at least twice my usual rate and never fewer than 3 unsure words or 4 "like"s inside 2 minutes. That streak gets one cue, then at least 3 minutes before any other nudge and 10 before the same one again.
+
 ## How it works
 
 ```mermaid
