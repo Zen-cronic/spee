@@ -36,8 +36,8 @@ export function loadDeck(path: string): Deck {
   return existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as Deck) : { cards: [] };
 }
 export function saveDeck(path: string, deck: Deck) {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(deck, null, 1) + "\n");
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  writeFileSync(path, JSON.stringify(deck, null, 1) + "\n", { mode: 0o600 }); // real speech: owner only
 }
 
 // Merge tonight's drills into the deck. Returns the relapsed cards.

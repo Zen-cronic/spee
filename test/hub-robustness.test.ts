@@ -74,6 +74,19 @@ describe("verifier", () => {
 });
 
 describe("state files (M9)", () => {
+  it("state files are owner-only (0600, in a new 0700 directory) unless a mode is given", () => {
+    const dir = mkdtempSync(join(tmpdir(), "bee-mode-"));
+    try {
+      const p = join(dir, "live", "recaps.json");
+      writeJsonAtomic(p, { recaps: [] });
+      expect(statSync(p).mode & 0o777).toBe(0o600);
+      expect(statSync(join(dir, "live")).mode & 0o777).toBe(0o700);
+      writeJsonAtomic(join(dir, "open.json"), {}, { mode: 0o644 });
+      expect(statSync(join(dir, "open.json")).mode & 0o777).toBe(0o644);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("writes atomically, keeps a backup, and survives a corrupt file", () => {
     const dir = mkdtempSync(join(tmpdir(), "bee-atomic-"));
     try {

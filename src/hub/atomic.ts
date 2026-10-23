@@ -7,15 +7,16 @@
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
-// `mode` (for example 0o600 for secrets) is given to the tmp file when it is created: a leftover tmp
-// is removed first and the new one is opened exclusively, so the data never sits in a file that is
-// readable more widely, even for a moment.
+// `mode` (default 0o600: these files hold the wearer's state, and the tokens) is given to the tmp file
+// when it is created: a leftover tmp is removed first and the new one is opened exclusively, so the
+// data never sits in a file that is readable more widely, even for a moment. A new directory is 0700.
 export function writeJsonAtomic(path: string, data: unknown, opts: { mode?: number } = {}): void {
-  mkdirSync(dirname(path), { recursive: true });
+  const mode = opts.mode ?? 0o600;
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = `${path}.tmp`;
   rmSync(tmp, { force: true });
-  writeFileSync(tmp, JSON.stringify(data, null, 1) + "\n", { flag: "wx", ...(opts.mode === undefined ? {} : { mode: opts.mode }) });
-  if (opts.mode !== undefined) chmodSync(tmp, opts.mode); // the umask can only narrow it; set it exactly
+  writeFileSync(tmp, JSON.stringify(data, null, 1) + "\n", { flag: "wx", mode });
+  chmodSync(tmp, mode); // the umask can only narrow it; set it exactly
   renameSync(tmp, path);
 }
 

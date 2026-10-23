@@ -109,8 +109,8 @@ export async function callTool(opts: CallToolOpts): Promise<ToolCallResult> {
         usage.outputTokens += u.outputTokens ?? 0;
         usage.byModel[modelId] = (usage.byModel[modelId] ?? 0) + 1;
         const kept = opts.sanitize ? opts.sanitize(input) : input;
-        mkdirSync(CACHE_DIR, { recursive: true });
-        writeFileSync(file, JSON.stringify(kept === null ? { label: opts.label, modelId, rejected: true, usage: u, at: new Date().toISOString() } : { label: opts.label, modelId, input: kept, usage: u, at: new Date().toISOString() }, null, 1));
+        mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 }); // the cache holds real speech: owner only
+        writeFileSync(file, JSON.stringify(kept === null ? { label: opts.label, modelId, rejected: true, usage: u, at: new Date().toISOString() } : { label: opts.label, modelId, input: kept, usage: u, at: new Date().toISOString() }, null, 1), { mode: 0o600 });
         return { input: kept, modelId, cached: false, usage: u };
       } catch (e) {
         const err = e as Error;

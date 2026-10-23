@@ -28,9 +28,9 @@ const noLlm = args.includes("--no-llm");
 
 const src = new CliBeeSource();
 const { corpus, context } = await loadRealCorpus(src, { ids });
-mkdirSync("real", { recursive: true });
+mkdirSync("real", { recursive: true, mode: 0o700 });
 mkdirSync("out", { recursive: true });
-writeFileSync("real/corpus.json", JSON.stringify(corpus, null, 1) + "\n");
+writeFileSync("real/corpus.json", JSON.stringify(corpus, null, 1) + "\n", { mode: 0o600 }); // real speech: owner only
 
 console.log(`Wearer labels: ${corpus.wearer.labels.length} (${corpus.wearer.method})${corpus.wearer.note ? `; ${corpus.wearer.note}` : ""}`);
 for (const s of corpus.sessions)
