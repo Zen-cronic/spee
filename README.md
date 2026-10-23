@@ -2,7 +2,7 @@
 
 English is my second language, and my work language. Videos, courses and workshops help, but what helps most is feedback while I speak, and I never had it. In my real stand-up on October 19, about one word in ten was a filler, and Bee counted 11 unsure words, such as "I think" (`docs/instrument-check.md`). Nobody had told me.
 
-**Spee hears me through Bee on my Apple Watch, tells me what to change, and lets me practise it.**
+**Spee is a speaking coach that stays on my wrist through the workday. It hears me through Bee on my Apple Watch, tells me what to change, and builds my practice from my own lines, checked against how I usually speak.**
 
 > Bee listens. Spee tells me what to change. I do the talking.
 
@@ -12,11 +12,11 @@ English is my second language, and my work language. Videos, courses and worksho
 - **Tells me once, on my wrist.** With live coaching on, a streak of unsure words or "like" sends one short cue to my Watch. Then it stays quiet for a while.
 - **Recaps each conversation.** What ran above my usual, my pace, and one of my own lines said plainly.
 - **Lets me practise with Alexa.** Alexa gives me one of my own fumbled lines to say again. The grade comes from what Bee heard, not from Alexa.
-- **Keeps score on Fire TV.** My week per habit, each drill as it moves from "You said it" to "Checked by Bee" to the result, and the before/after check.
+- **Keeps score on Fire TV.** My w## What makes it different
 
-## What makes it different
+Spee is with me through the workday, not in a lesson: while Bee records, it hears my real meetings, work talk and casual chats, and with live coaching on it can nudge my wrist mid-conversation. My practice plan comes from my own data: the drills are lines I actually said, they come back on a spaced schedule (sooner when I fumble one or the habit shows up again), and every rate is checked against my own usual for that setting. Spee only coaches me: it keeps a line's text only when Bee tags it as mine, and other voices, and lines Bee doesn't tag, are only word counts; on 2026-10-16, Bee's live tag named me on 8 of 9 lines (FL-8 in `FRICTION_LOG.md`). The wrist cue isn't on a timer: it comes when I hit a streak against my own usual, at least twice my usual rate and never fewer than 3 unsure words or 4 "like"s inside 2 minutes. That streak gets one cue, then at least 3 minutes before any other nudge and 10 before the same one again.
 
-Spee only coaches me. Bee tags each line with who said it, and Spee keeps a line's text only when Bee tags it as mine; other voices, and lines Bee doesn't tag, are only word counts and their text is never stored. On 2026-10-16, Bee's live tag named me on 8 of 9 lines (FL-8 in `FRICTION_LOG.md`). The wrist cue isn't on a timer either: it comes when I hit a streak measured against my own usual, at least twice my usual rate and never fewer than 3 unsure words or 4 "like"s inside 2 minutes. That streak gets one cue, then at least 3 minutes before any other nudge and 10 before the same one again.
+e 2 minutes. That streak gets one cue, then at least 3 minutes before any other nudge and 10 before the same one again.
 
 ## How it works
 
