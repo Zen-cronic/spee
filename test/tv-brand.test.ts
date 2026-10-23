@@ -19,7 +19,7 @@ const SKIP = new Set(["node_modules", "dist", "build", ".tmp", ".ask"]);
 const TEXT = /\.(ts|tsx|mts|js|mjs|json|toml|html|css|md)$/;
 // The friction log's note on the rename. Only this exact line, only near the top of FRICTION_LOG.md and
 // only once is skipped; any other mention there still fails.
-const HISTORY_LINE = "Spee was called Speaking Mirror until 2026-10-21; the entries before that date use the new name.";
+const HISTORY_LINE = "Spee was called Speaking Mirror until 2026-10-21; the entries before that date were updated to the new name.";
 const HISTORY_FILE = "FRICTION_LOG.md";
 function withoutHistoryLine(rel: string, text: string): string {
   if (rel !== HISTORY_FILE) return text;
