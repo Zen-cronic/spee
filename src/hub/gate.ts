@@ -98,8 +98,10 @@ export function resolveTokens(env: Record<string, string | undefined> = process.
     }
     const t = randomBytes(18).toString("base64url");
     toSave[name] = t;
-    const shown = name === "MCP_TOKEN" ? `…${t.slice(-4)}` : t; // the MCP token is never printed in full
-    print(`hub: ${name} is unset; generated: ${shown}  (${savePath ? `saved in ${savePath} for the next start; ` : ""}export ${name} to choose your own)`);
+    // Neither token is printed in full: a filmed or pasted start would hand out paired access. The
+    // phone pairs through the TV's QR code; the full value is in the 0600 tokens file.
+    const where = name === "PAIR_TOKEN" ? "the TV's Pair phone QR code carries it; " : "";
+    print(`hub: ${name} is unset; generated: …${t.slice(-4)}  (${where}${savePath ? `saved in ${savePath} for the next start; ` : ""}export ${name} to choose your own)`);
     return [t, "generated"];
   };
   const [pairToken, pair] = one("PAIR_TOKEN");

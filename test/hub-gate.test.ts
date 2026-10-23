@@ -44,12 +44,13 @@ describe("gate: what counts as public", () => {
     expect(bearerOk(MCP, MCP)).toBe(false);
     expect(bearerOk(undefined, MCP)).toBe(false);
   });
-  it("unset tokens are generated; the pair token is printed once, the MCP token only by its last 4; set ones are never printed", () => {
+  it("unset tokens are generated and printed only by their last 4; set ones are never printed", () => {
     const lines: string[] = [];
     const t = resolveTokens({}, (l) => lines.push(l));
     expect(t.source).toEqual({ pair: "generated", mcp: "generated" });
     expect(t.pairToken.length).toBeGreaterThanOrEqual(20);
-    expect(lines.filter((l) => l.includes(t.pairToken))).toHaveLength(1);
+    expect(lines.join("\n")).not.toContain(t.pairToken);
+    expect(lines.filter((l) => l.includes(`PAIR_TOKEN is unset; generated: …${t.pairToken.slice(-4)}`))).toHaveLength(1);
     expect(lines.join("\n")).not.toContain(t.mcpToken);
     expect(lines.filter((l) => l.includes(`MCP_TOKEN is unset; generated: …${t.mcpToken.slice(-4)}`))).toHaveLength(1);
     const kept: string[] = [];
