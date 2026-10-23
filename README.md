@@ -6,6 +6,8 @@ English is my second language, and my work language. Videos, courses and worksho
 
 > Bee listens. Spee tells me what to change. I do the talking.
 
+The explainer page, with a stand-up you can step through: https://spee.live
+
 ## What it does
 
 - **Learns how I usually speak.** From the lines Bee tags as mine, Spee counts unsure words ("I guess", "maybe", "kind of"), fillers ("like", "um", "you know"), vague answers ("that thing") and starting over ("the the"), and tracks my pace and long turns. Each count is compared with my usual in that setting: a meeting, work talk or a casual chat.
