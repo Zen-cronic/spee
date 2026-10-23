@@ -9,7 +9,7 @@ Bee is the input of record for the pre-registered check: it counts Bee conversat
 - When an end time is missing on either side, the overlap cannot be checked. The check then falls back to the Bee conversation that starts nearest the meeting, within 45 minutes, and says so: this match is weaker.
 - A meeting is skipped, with the reason printed, when either side has no English lines of yours: for example when `npm run meetings` was given a `--wearer` spelling that matched no caption speaker.
 
-## Result on real data (one meeting: the 2026-10-19 weekly stand-up)
+## Result on real data (one meeting: my 2026-10-19 stand-up)
 
 Rechecked on 2026-10-20 with the overlap pairing, which cuts Bee's lines to the meeting's start and end: the counts are unchanged, because the Bee recording and the meeting covered the same span. Starting over (the control) read 4 in captions and 9 in Bee (0.59 against 1.29 per 100; intervals overlap).
 

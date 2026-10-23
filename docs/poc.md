@@ -44,7 +44,7 @@ LLM calls are sequential with exponential backoff on throttling, and cached in `
 
 ## Meetings mode (English communication coaching)
 
-The coach also runs on video-meeting caption transcripts (Tactiq exports of Google Meet captions), as an English communication benchmark. Read `MEETINGS_REPORT.md` for the results.
+The coach also runs on video-meeting caption transcripts (Tactiq exports of Google Meet captions), as an English communication benchmark. `MEETINGS_REPORT.md` describes the method; the per-meeting results stay in the gitignored `out/`.
 
 ```bash
 npm run meetings -- --wearer "<your name as the captions show it>" [--glossary <misheard-terms.json>] [--no-llm] <transcript.txt> ...
