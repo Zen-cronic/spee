@@ -1,0 +1,4 @@
+{
+  "note": "Copy to alexa/skill-id.local.json (git-ignored) and set your development skill's id. Any field here overrides alexa/skill-id.json.",
+  "skillId": "amzn1.ask.skill.<your-skill-id>"
+}

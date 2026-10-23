@@ -5,7 +5,9 @@
 //
 // Spee answers to several invocation names, one development skill per name, all on this endpoint
 // (docs/alexa.md, "Skill names"). The accepted ids are:
-//   - ALEXA_SKILL_ID, else alexa/skill-id.json (the "speech coach" skill);
+//   - ALEXA_SKILL_ID, else alexa/skill-id.local.json (git-ignored), else alexa/skill-id.json (the
+//     "speech coach" skill; the checked-in file holds a placeholder id, so the real one lives in the
+//     local file or the environment);
 //   - each id in ALEXA_SKILL_IDS (comma-separated);
 //   - each skill in alexa/skill-ids.local.json, which `npm run alexa:deploy` writes (git-ignored).
 // An entry that is not an amzn1.ask.skill.* id is skipped and reported, never accepted.
@@ -24,15 +26,54 @@ export interface SkillConfig {
   locales: string[];
 }
 
-export function readSkillConfig(path = SKILL_CONFIG_PATH): SkillConfig {
+// The checked-in alexa/skill-id.json holds the stage, profile and locales and a placeholder id. The
+// real id lives in alexa/skill-id.local.json (git-ignored, same shape; any field it sets wins) or in
+// ALEXA_SKILL_ID. `localPath` defaults to the checked-in path with .json -> .local.json.
+export const PLACEHOLDER_SKILL_ID = "amzn1.ask.skill.00000000-0000-0000-0000-000000000000";
+export const localConfigPath = (path: string) => path.replace(/\.json$/, ".local.json");
+
+export function readSkillConfigWithSource(path = SKILL_CONFIG_PATH, localPath = localConfigPath(path)): SkillConfig & { source: string } {
   const j = JSON.parse(readFileSync(path, "utf8")) as Partial<SkillConfig>;
-  if (typeof j.skillId !== "string" || !j.skillId.startsWith("amzn1.ask.skill.")) throw new Error(`${path}: skillId must be an amzn1.ask.skill.* id`);
-  return { skillId: j.skillId, stage: j.stage ?? "development", askProfile: j.askProfile ?? "default", locales: j.locales ?? ["en-CA", "en-US"] };
+  let local: Partial<SkillConfig> = {};
+  let text: string | null = null;
+  try {
+    text = readFileSync(localPath, "utf8");
+  } catch {
+    text = null; // no local file: the checked-in values stand
+  }
+  if (text !== null) {
+    try {
+      local = JSON.parse(text) as Partial<SkillConfig>;
+    } catch {
+      throw new Error(`${label(localPath)} does not parse`);
+    }
+  }
+  const fromLocal = typeof local.skillId === "string";
+  const skillId = fromLocal ? local.skillId : j.skillId;
+  const where = fromLocal ? label(localPath) : label(path);
+  if (typeof skillId !== "string" || !skillId.startsWith("amzn1.ask.skill.")) throw new Error(`${where}: skillId must be an amzn1.ask.skill.* id`);
+  return {
+    skillId,
+    stage: local.stage ?? j.stage ?? "development",
+    askProfile: local.askProfile ?? j.askProfile ?? "default",
+    locales: local.locales ?? j.locales ?? ["en-CA", "en-US"],
+    source: where,
+  };
 }
 
-// ALEXA_SKILL_ID from the environment, else alexa/skill-id.json.
+export function readSkillConfig(path = SKILL_CONFIG_PATH, localPath = localConfigPath(path)): SkillConfig {
+  const { source: _source, ...cfg } = readSkillConfigWithSource(path, localPath);
+  return cfg;
+}
+
+// ALEXA_SKILL_ID from the environment, else alexa/skill-id.local.json, else alexa/skill-id.json.
 export function resolveSkillId(env: Record<string, string | undefined> = process.env, path = SKILL_CONFIG_PATH): string {
   return env.ALEXA_SKILL_ID?.trim() || readSkillConfig(path).skillId;
+}
+
+// Where the primary id comes from: "ALEXA_SKILL_ID", or the file's repo-relative path.
+export function skillIdOrigin(env: Record<string, string | undefined> = process.env, path = SKILL_CONFIG_PATH): string {
+  return env.ALEXA_SKILL_ID?.trim() ? "ALEXA_SKILL_ID" : readSkillConfigWithSource(path).source;
 }
 
 // The skills `npm run alexa:deploy` set up, by invocation name. Written by the deploy, read by the hub.
@@ -95,7 +136,7 @@ export function resolveSkillIds(env: Record<string, string | undefined> = proces
   const warnings: string[] = [];
   const primary = env.ALEXA_SKILL_ID?.trim();
   ids.add(resolveSkillId(env, paths.config));
-  sources.push(primary ? "ALEXA_SKILL_ID" : label(paths.config ?? SKILL_CONFIG_PATH));
+  sources.push(primary ? "ALEXA_SKILL_ID" : readSkillConfigWithSource(paths.config ?? SKILL_CONFIG_PATH).source);
   const listed = parseSkillIdList(env.ALEXA_SKILL_IDS);
   listed.ids.forEach((id) => ids.add(id));
   warnings.push(...listed.warnings);

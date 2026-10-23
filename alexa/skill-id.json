@@ -1,5 +1,5 @@
 {
-  "note": "The development skill this repo deploys to (npm run alexa:deploy). Not a secret: Alexa sends it in every request. ALEXA_SKILL_ID overrides it.",
+  "note": "The development skill this repo deploys to (npm run alexa:deploy). skillId here is a placeholder: put the real id in alexa/skill-id.local.json (git-ignored; see alexa/skill-id.local.example.json) or set ALEXA_SKILL_ID. Either one wins over this file.",
   "skillId": "amzn1.ask.skill.00000000-0000-0000-0000-000000000000",
   "stage": "development",
   "askProfile": "default",

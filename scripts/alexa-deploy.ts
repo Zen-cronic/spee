@@ -8,7 +8,7 @@
 // Alexa takes one invocation name per skill and locale, so each name is its own development skill
 // (docs/alexa.md, "Skill names"). The names, in priority order, default to "speech coach", "spee
 // coach" and "spee". The checked-in model's name ("speech coach") is the existing skill
-// (ALEXA_SKILL_ID, else alexa/skill-id.json); a name recorded in alexa/skill-ids.local.json
+// (ALEXA_SKILL_ID, else alexa/skill-id.local.json, else alexa/skill-id.json); a name recorded in alexa/skill-ids.local.json
 // (git-ignored) reuses its skill. The account is the record of which skills exist and the local file
 // a cache, so on every real run the deploy first reads the account. A recorded skill that is no longer
 // there is said so, and its name is set up again like a name with none recorded. The checked-in skill
@@ -60,7 +60,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeJsonAtomic } from "../src/hub/atomic.js";
 import { REPO_ROOT } from "../src/hub/static.js";
-import { isSkillId, LOCAL_SKILLS_PATH, parseSkillIdList, readLocalSkills, readSkillConfig } from "../src/alexa/verify.js";
+import { isSkillId, LOCAL_SKILLS_PATH, parseSkillIdList, readLocalSkills, readSkillConfigWithSource } from "../src/alexa/verify.js";
 import { checkInvocationName, DEFAULT_INVOCATION_NAMES, loadSkillPackage, markedName, normalizeName, packageFor, type InteractionModel, type SkillManifest, type SkillPackage } from "../src/alexa/skillPackage.js";
 
 export type AskResult = { ok: boolean; out: string; err: string };
@@ -514,7 +514,7 @@ export function askCli(bin = process.env.ASK_BIN || "ask"): AskRunner {
 }
 
 export function deployConfig(args: string[], env: Record<string, string | undefined>, endpoint: string): DeployConfig {
-  const skillCfg = readSkillConfig();
+  const skillCfg = readSkillConfigWithSource();
   const primaryEnv = env.ALEXA_SKILL_ID?.trim();
   return {
     names: parseNames(args, env),
@@ -523,7 +523,7 @@ export function deployConfig(args: string[], env: Record<string, string | undefi
     stage: skillCfg.stage,
     locales: skillCfg.locales,
     base: loadSkillPackage(skillCfg.locales),
-    primary: { skillId: primaryEnv || skillCfg.skillId, source: primaryEnv ? "ALEXA_SKILL_ID" : "alexa/skill-id.json" },
+    primary: { skillId: primaryEnv || skillCfg.skillId, source: primaryEnv ? "ALEXA_SKILL_ID" : skillCfg.source },
     envIds: (env.ALEXA_SKILL_IDS ?? "").split(",").map((x) => x.trim()).filter(Boolean),
     localPath: LOCAL_SKILLS_PATH,
     outDir: join(REPO_ROOT, "out/alexa"),

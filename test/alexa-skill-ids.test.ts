@@ -1,5 +1,5 @@
 // Spee answers to several invocation names, one development skill per name, all on POST /alexa
-// (src/alexa/verify.ts). The hub accepts ALEXA_SKILL_ID (else alexa/skill-id.json), ALEXA_SKILL_IDS
+// (src/alexa/verify.ts). The hub accepts ALEXA_SKILL_ID (else alexa/skill-id.local.json, else alexa/skill-id.json), ALEXA_SKILL_IDS
 // and the skills alexa:deploy recorded in alexa/skill-ids.local.json; any other id is refused exactly
 // as before, on the LAN and through the gate. Ids never appear in a log line or the health note.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -10,7 +10,7 @@ import { Readable } from "node:stream";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAlexaPlugin } from "../src/alexa/plugin.js";
 import type { AlexaRequestEnvelope } from "../src/alexa/types.js";
-import { readLocalSkills, resolveSkillIds, skillIdSource, verifyAlexaRequest } from "../src/alexa/verify.js";
+import { PLACEHOLDER_SKILL_ID, readLocalSkills, readSkillConfig, readSkillConfigWithSource, resolveSkillIds, skillIdSource, verifyAlexaRequest } from "../src/alexa/verify.js";
 import type { PluginCtx } from "../src/hub/plugin.js";
 import { createPlugins } from "../src/hub/plugins.js";
 import { startHubServer, type HubServer } from "../src/hub/server.js";
@@ -60,6 +60,31 @@ describe("verifyAlexaRequest with a list of skill ids", () => {
   });
   it("still checks the timestamp for a listed id", () => {
     expect(verifyAlexaRequest(env(COACH, NOW), { skillId: [MAIN, COACH], now: NOW + 151_000 })).toEqual({ ok: false, reason: "timestamp outside the 150 s window" });
+  });
+});
+
+describe("alexa/skill-id.local.json", () => {
+  it("the checked-in alexa/skill-id.json holds only the placeholder id", () => {
+    const j = JSON.parse(readFileSync(new URL("../alexa/skill-id.json", import.meta.url), "utf8")) as { skillId: string };
+    expect(j.skillId).toBe(PLACEHOLDER_SKILL_ID);
+  });
+  it("its skillId replaces the checked-in one, and ALEXA_SKILL_ID replaces both", () => {
+    const d = mkdtempSync(join(tmpdir(), "alexa-cfg-"));
+    try {
+      const cfg = join(d, "skill-id.json");
+      writeFileSync(cfg, JSON.stringify({ skillId: PLACEHOLDER_SKILL_ID, askProfile: "default", locales: ["en-CA", "en-US"] }));
+      expect(readSkillConfigWithSource(cfg)).toMatchObject({ skillId: PLACEHOLDER_SKILL_ID, source: "skill-id.json" });
+      writeFileSync(join(d, "skill-id.local.json"), JSON.stringify({ skillId: COACH }));
+      expect(readSkillConfigWithSource(cfg)).toMatchObject({ skillId: COACH, askProfile: "default", locales: ["en-CA", "en-US"], source: "skill-id.local.json" });
+      expect(resolveSkillIds({}, { config: cfg, local: join(d, "none.json") })).toMatchObject({ ids: [COACH], sources: ["skill-id.local.json"] });
+      expect(resolveSkillIds({ ALEXA_SKILL_ID: MAIN }, { config: cfg, local: join(d, "none.json") })).toMatchObject({ ids: [MAIN], sources: ["ALEXA_SKILL_ID"] });
+      writeFileSync(join(d, "skill-id.local.json"), JSON.stringify({ skillId: "not-an-id" }));
+      expect(() => readSkillConfig(cfg)).toThrow(/skill-id\.local\.json: skillId must be/);
+      writeFileSync(join(d, "skill-id.local.json"), "{");
+      expect(() => readSkillConfig(cfg)).toThrow(/does not parse/);
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 });
 
