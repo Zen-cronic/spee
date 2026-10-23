@@ -14,7 +14,7 @@ Everything below runs on synthetic demo data unless the hub runs live. Every scr
 
 ## Screens
 
-The web TV screenshots were captured on 2026-10-20 at 1920×1080 against `npm run hub -- --demo --port 8795` (synthetic data, live coaching turned on with `POST /api/live/mode`, then `POST /api/demo/live` and `POST /api/demo/mirror`). `web-pair` is still the 2026-10-16 shot. The Vega ones are from 2026-10-16 on the Virtual Device, before the redesign.
+The web TV screenshots were captured on 2026-10-20 at 1920×1080 against `npm run hub -- --demo --port 8795` (synthetic data, live coaching turned on with `POST /api/live/mode`, then `POST /api/demo/live` and `POST /api/demo/mirror`). `web-pair` is still the 2026-10-16 shot. In both pairing shots the QR code is blurred, because it encoded a pair token and a LAN address. The Vega ones are from 2026-10-16 on the Virtual Device, before the redesign.
 
 | Screen | Web TV | Vega Virtual Device (10-16) | What it shows |
 |---|---|---|---|
